@@ -20968,22 +20968,31 @@ ${allContent}
   async function loadNotifHistory() {
     var tbody = document.getElementById("notifHistoryBody");
     if (!tbody) return;
+    var _notifApiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
     try {
-      var resp = await fetch(apiBase + "/api/admin/notifications", { headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } });
+      var _notifToken = (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken) ? window.SagarSoftAuth.getServerToken() : "";
+      var resp = await fetch(_notifApiBase + "/api/admin/notifications", { cache: "no-store", headers: { "Authorization": "Bearer " + (_notifToken || "") } });
+      if (!resp.ok) {
+        var _errData = await resp.json().catch(function () { return {}; });
+        console.error("[Notification History] HTTP " + resp.status + ":", _errData);
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
+        return;
+      }
       var data = await resp.json().catch(function () { return {}; });
       if (!data.success || !Array.isArray(data.notifications)) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notifications found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
         return;
       }
       tbody.innerHTML = data.notifications.map(function (n) {
         var date = n.created_at ? new Date(n.created_at).toLocaleString() : "-";
-        var school = n.school_name || n.school_id || "All Schools";
+        var school = escapeHtml(String(n.school_name || n.school_id || "All Schools"));
         var title = escapeHtml(String(n.title || "Notification"));
         var msg = escapeHtml(String(n.message || ""));
         return '<tr><td>' + date + '</td><td>' + school + '</td><td>' + title + '</td><td>' + msg + '</td></tr>';
-      }).join("") || '<tr><td colspan="4" style="text-align:center;padding:16px;">No notifications found.</td></tr>';
+      }).join("") || '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
     } catch (_e) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:#d64b4b;">Failed to load history.</td></tr>';
+      console.error("[Notification History] Load error:", _e && _e.message ? _e.message : _e);
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
     }
   }
 
@@ -20992,7 +21001,8 @@ ${allContent}
     clearNotifBtn.addEventListener("click", async function () {
       if (!(await brandedConfirm("Clear all notification history?"))) return;
       var msgEl = document.getElementById("notifHistoryMessage");
-      fetch(apiBase + "/api/admin/notifications", { method: "DELETE", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } }).then(function (resp) {
+      var _clearApiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
+      fetch(_clearApiBase + "/api/admin/notifications", { method: "DELETE", cache: "no-store", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } }).then(function (resp) {
         return resp.json().catch(function () { return {}; });
       }).then(function (data) {
         if (data.success) {

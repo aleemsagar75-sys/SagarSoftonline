@@ -2799,6 +2799,7 @@ app.get("/api/admin/notifications", requireSuperAdmin, async function (req, res)
     var result = await pool.query("select n.id, n.school_id, n.title, n.message, n.created_at, coalesce(a.school_name,'') as school_name from public.license_notifications n left join public.license_accounts a on n.school_id = a.school_id order by n.created_at desc limit 100");
     return res.json({ success: true, notifications: result.rows });
   } catch (error) {
+    console.error("GET /api/admin/notifications error:", error.message);
     return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
