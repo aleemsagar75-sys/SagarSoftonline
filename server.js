@@ -110,6 +110,58 @@ async function ensureSchema() {
       data jsonb,
       created_at timestamptz not null default now()
     );
+
+    create table if not exists public.students (
+      id text primary key,
+      admission_no text,
+      name text,
+      picture text,
+      date_of_admission date,
+      class_name text,
+      section text,
+      discount_in_fee numeric,
+      date_of_birth date,
+      gender text,
+      blood_group text,
+      disease_info text,
+      birth_id text,
+      previous_school text,
+      previous_id text,
+      orphan_status text,
+      religion text,
+      address text,
+      phone text,
+      father_name text,
+      father_education text,
+      father_national_id text,
+      father_phone text,
+      father_occupation text,
+      father_income text,
+      mother_name text,
+      mother_education text,
+      mother_national_id text,
+      mother_phone text,
+      mother_occupation text,
+      status text,
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists public.classes (
+      id text primary key,
+      name text,
+      monthly_fee numeric,
+      teacher_id text,
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists public.app_records (
+      school_id text not null,
+      module_name text not null,
+      record_id text not null,
+      record_data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, module_name, record_id)
+    );
   `);
 }
 
@@ -196,6 +248,184 @@ async function syncEmployeeMirrorTables(client, database) {
   }
 }
 
+function emptyToNullDate(value) {
+  const raw = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+}
+
+async function syncStudentMirrorTable(client, database) {
+  const students = Array.isArray(database && database.students) ? database.students : [];
+  await client.query("delete from public.students");
+
+  for (const student of students) {
+    const studentId = String(student.id || `STU-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    await client.query(`
+      insert into public.students (
+        id, admission_no, name, picture, date_of_admission, class_name, section,
+        discount_in_fee, date_of_birth, gender, blood_group, disease_info,
+        birth_id, previous_school, previous_id, orphan_status, religion, address,
+        phone, father_name, father_education, father_national_id, father_phone,
+        father_occupation, father_income, mother_name, mother_education,
+        mother_national_id, mother_phone, mother_occupation, status, created_at
+      )
+      values (
+        $1, $2, $3, $4, $5, $6, $7,
+        $8, $9, $10, $11, $12,
+        $13, $14, $15, $16, $17, $18,
+        $19, $20, $21, $22, $23,
+        $24, $25, $26, $27,
+        $28, $29, $30, $31, now()
+      )
+      on conflict (id)
+      do update set
+        admission_no = excluded.admission_no,
+        name = excluded.name,
+        picture = excluded.picture,
+        date_of_admission = excluded.date_of_admission,
+        class_name = excluded.class_name,
+        section = excluded.section,
+        discount_in_fee = excluded.discount_in_fee,
+        date_of_birth = excluded.date_of_birth,
+        gender = excluded.gender,
+        blood_group = excluded.blood_group,
+        disease_info = excluded.disease_info,
+        birth_id = excluded.birth_id,
+        previous_school = excluded.previous_school,
+        previous_id = excluded.previous_id,
+        orphan_status = excluded.orphan_status,
+        religion = excluded.religion,
+        address = excluded.address,
+        phone = excluded.phone,
+        father_name = excluded.father_name,
+        father_education = excluded.father_education,
+        father_national_id = excluded.father_national_id,
+        father_phone = excluded.father_phone,
+        father_occupation = excluded.father_occupation,
+        father_income = excluded.father_income,
+        mother_name = excluded.mother_name,
+        mother_education = excluded.mother_education,
+        mother_national_id = excluded.mother_national_id,
+        mother_phone = excluded.mother_phone,
+        mother_occupation = excluded.mother_occupation,
+        status = excluded.status
+    `, [
+      studentId,
+      String(student.admissionNo || student.rollNo || ""),
+      String(student.name || ""),
+      String(student.picture || ""),
+      emptyToNullDate(student.dateOfAdmission),
+      String(student.className || ""),
+      String(student.section || ""),
+      Number(student.discountInFee || 0),
+      emptyToNullDate(student.dateOfBirth),
+      String(student.gender || ""),
+      String(student.bloodGroup || ""),
+      String(student.diseaseInfo || ""),
+      String(student.birthId || ""),
+      String(student.previousSchool || ""),
+      String(student.previousId || ""),
+      String(student.orphanStatus || ""),
+      String(student.religion || ""),
+      String(student.address || ""),
+      String(student.phone || ""),
+      String(student.fatherName || ""),
+      String(student.fatherEducation || ""),
+      String(student.fatherNationalId || ""),
+      String(student.fatherPhone || ""),
+      String(student.fatherOccupation || ""),
+      String(student.fatherIncome || ""),
+      String(student.motherName || ""),
+      String(student.motherEducation || ""),
+      String(student.motherNationalId || ""),
+      String(student.motherPhone || ""),
+      String(student.motherOccupation || ""),
+      String(student.status || "active")
+    ]);
+  }
+}
+
+async function syncClassMirrorTable(client, database) {
+  const classes = Array.isArray(database && database.classes) ? database.classes : [];
+  await client.query("delete from public.classes");
+
+  for (const classItem of classes) {
+    const classId = String(classItem.id || `CLS-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    await client.query(`
+      insert into public.classes (id, name, monthly_fee, teacher_id, created_at)
+      values ($1, $2, $3, $4, now())
+      on conflict (id)
+      do update set
+        name = excluded.name,
+        monthly_fee = excluded.monthly_fee,
+        teacher_id = excluded.teacher_id
+    `, [
+      classId,
+      String(classItem.name || ""),
+      Number(classItem.monthlyTuitionFees || classItem.monthlyFee || 0),
+      String(classItem.classTeacher || classItem.teacherId || "")
+    ]);
+  }
+}
+
+function collectAppRecords(database) {
+  const records = [];
+  const addRecord = function (moduleName, recordId, value) {
+    records.push({
+      moduleName: String(moduleName || "unknown"),
+      recordId: String(recordId || `${moduleName}-${records.length + 1}`),
+      data: value && typeof value === "object" ? value : { value: value }
+    });
+  };
+  const addArrayRecords = function (moduleName, rows) {
+    (Array.isArray(rows) ? rows : []).forEach(function (row, index) {
+      const id = row && typeof row === "object" && row.id ? row.id : `${moduleName}-${index + 1}`;
+      addRecord(moduleName, id, row);
+    });
+  };
+  const addObjectRecord = function (moduleName, value) {
+    if (value && typeof value === "object") {
+      addRecord(moduleName, moduleName, value);
+    }
+  };
+
+  Object.keys(database || {}).forEach(function (key) {
+    const value = database[key];
+    if (Array.isArray(value)) {
+      addArrayRecords(key, value);
+    } else if (value && typeof value === "object") {
+      addObjectRecord(key, value);
+      Object.keys(value).forEach(function (childKey) {
+        const childValue = value[childKey];
+        const moduleName = `${key}.${childKey}`;
+        if (Array.isArray(childValue)) {
+          addArrayRecords(moduleName, childValue);
+        } else if (childValue && typeof childValue === "object") {
+          addObjectRecord(moduleName, childValue);
+        }
+      });
+    } else {
+      addRecord(key, key, { value: value });
+    }
+  });
+
+  return records;
+}
+
+async function syncAppRecordsTable(client, schoolId, database) {
+  const records = collectAppRecords(database);
+  await client.query("delete from public.app_records where school_id = $1", [schoolId]);
+  for (const record of records) {
+    await client.query(`
+      insert into public.app_records (school_id, module_name, record_id, record_data, updated_at)
+      values ($1, $2, $3, $4::jsonb, now())
+      on conflict (school_id, module_name, record_id)
+      do update set
+        record_data = excluded.record_data,
+        updated_at = now()
+    `, [schoolId, record.moduleName, record.recordId, JSON.stringify(record.data)]);
+  }
+}
+
 app.get("/health", async (_req, res) => {
   await pool.query("select 1");
   res.json({ success: true, message: "SagarSoft online API is running." });
@@ -223,6 +453,9 @@ app.post("/api/database/:schoolId", requireApiKey, async (req, res) => {
       do update set database = excluded.database, updated_at = now()
     `, [schoolId, JSON.stringify(database)]);
     await syncEmployeeMirrorTables(client, database);
+    await syncStudentMirrorTable(client, database);
+    await syncClassMirrorTable(client, database);
+    await syncAppRecordsTable(client, schoolId, database);
     await client.query("commit");
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
