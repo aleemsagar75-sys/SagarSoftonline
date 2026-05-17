@@ -21,6 +21,27 @@ const pool = new Pool({
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "50mb" }));
 
+app.get("/", (_req, res) => {
+  res.type("html").send(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>SagarSoft Online API</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 32px; color: #123; }
+          code { background: #eef4f8; padding: 3px 6px; border-radius: 4px; }
+        </style>
+      </head>
+      <body>
+        <h1>SagarSoft Online API is live</h1>
+        <p>This URL is the backend API for the SagarSoft desktop app.</p>
+        <p>Health check: <code>/health</code></p>
+      </body>
+    </html>
+  `);
+});
+
 function requireApiKey(req, res, next) {
   if (!apiKey) {
     return next();
