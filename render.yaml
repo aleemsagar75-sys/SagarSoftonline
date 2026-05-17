@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: sagarsoft-online-api
+    env: node
+    plan: free
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_DB_URL
+        sync: false
+      - key: SAGARSOFT_API_KEY
+        sync: false
+      - key: DEFAULT_SCHOOL_ID
+        sync: false

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SagarSoft Management System | Login</title>
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/login.css">
+</head>
+<body>
+  <main class="login-shell">
+    <section class="brand-panel">
+      <div class="brand-panel__content">
+        <div class="brand-logo-wrap">
+          <img src="./assets/SagarSoft.logo.png" alt="SagarSoft Logo" class="brand-logo">
+        </div>
+        <span class="brand-badge">Offline School ERP</span>
+        <h1>SagarSoft Management System</h1>
+        <p class="lead">
+          Manage students, teachers, classes, attendance, fees, and parent access from one modern
+          dashboard that works completely offline.
+        </p>
+
+        <div class="feature-list">
+          <article class="feature-card">
+            <span class="feature-icon">MR</span>
+            <div>
+              <h2>Multi-role login</h2>
+              <p>Admin, Teacher, Student, and Parent portals with role-based access.</p>
+            </div>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">SC</span>
+            <div>
+              <h2>School-wide control</h2>
+              <p>Keep academic and fee records organized in a clean offline system.</p>
+            </div>
+          </article>
+          <article class="feature-card">
+            <span class="feature-icon">OF</span>
+            <div>
+              <h2>100% offline</h2>
+              <p>All records are stored in the browser using LocalStorage, with no internet needed.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="login-panel">
+      <div class="login-card">
+        <div class="login-card__header">
+          <p class="eyebrow">Welcome back</p>
+          <h2>Sign in to continue</h2>
+          <p>Choose a role, then log in,thanks.</p>
+        </div>
+
+        <div class="demo-box">
+          <strong></strong>
+          <ul> 
+            <li><span>In case of any error please</span><code></code></li>
+            <li><span>contact super admin</span><code> </code></li>
+            
+          </ul>
+        </div>
+
+        <form id="loginForm" class="login-form" novalidate autocomplete="on">
+          <div class="field-group">
+            <label for="role">Role</label>
+            <div class="role-grid" id="roleGrid">
+              <button type="button" class="role-option active" data-role="admin">Admin</button>
+              <button type="button" class="role-option" data-role="teacher">Teacher</button>
+              <button type="button" class="role-option" data-role="student">Student</button>
+              <button type="button" class="role-option" data-role="parent">Parent</button>
+            </div>
+            <input type="hidden" id="role" name="role" value="admin">
+          </div>
+
+          <div class="field-group">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" placeholder="Enter your email" required autocomplete="username">
+          </div>
+
+          <div class="field-group">
+            <label for="password">Password</label>
+            <div class="password-wrapper">
+              <input id="password" name="password" type="password" placeholder="Enter your password" required autocomplete="current-password">
+              <button type="button" id="togglePassword" class="password-toggle" aria-label="Toggle password visibility">
+                Show
+              </button>
+            </div>
+          </div>
+
+          <div class="field-row">
+            <label class="checkbox">
+              <input id="rememberMe" name="rememberMe" type="checkbox">
+              <span>Remember me on this device</span>
+            </label>
+            <button type="button" id="fillDemoBtn" class="text-button"></button>
+          </div>
+
+          <button type="submit" class="primary-button">Login to Dashboard</button>
+          <p id="formMessage" class="form-message" aria-live="polite"></p>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <script src="./js/online-config.js"></script>
+  <script src="./js/storage.js"></script>
+  <script src="./js/auth.js"></script>
+  <script src="./js/login.js"></script>
+</body>
+</html>
