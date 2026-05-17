@@ -85,6 +85,31 @@ async function ensureSchema() {
       message text not null default '',
       created_at timestamptz not null default now()
     );
+
+    create table if not exists public.employees (
+      id text primary key,
+      name text,
+      subject text,
+      designation text,
+      role text,
+      phone text,
+      date_of_joining date,
+      monthly_salary numeric,
+      email text,
+      status text,
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists public.teachers (
+      id text primary key,
+      name text,
+      designation text,
+      phone text,
+      email text,
+      status text,
+      data jsonb,
+      created_at timestamptz not null default now()
+    );
   `);
 }
 
@@ -111,6 +136,66 @@ function toLicensePayload(row, notifications) {
   };
 }
 
+async function syncEmployeeMirrorTables(client, database) {
+  const employees = Array.isArray(database && database.teachers) ? database.teachers : [];
+  await client.query("delete from public.employees");
+  await client.query("delete from public.teachers");
+
+  for (const employee of employees) {
+    const employeeId = String(employee.id || `TCH-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    await client.query(`
+      insert into public.employees (
+        id, name, subject, designation, role, phone, date_of_joining,
+        monthly_salary, email, status, created_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+      on conflict (id)
+      do update set
+        name = excluded.name,
+        subject = excluded.subject,
+        designation = excluded.designation,
+        role = excluded.role,
+        phone = excluded.phone,
+        date_of_joining = excluded.date_of_joining,
+        monthly_salary = excluded.monthly_salary,
+        email = excluded.email,
+        status = excluded.status
+    `, [
+      employeeId,
+      String(employee.name || ""),
+      String(employee.subject || ""),
+      String(employee.designation || employee.role || ""),
+      String(employee.role || ""),
+      String(employee.phone || employee.mobile || ""),
+      employee.dateOfJoining || null,
+      Number(employee.monthlySalary || 0),
+      String(employee.email || ""),
+      String(employee.status || "active")
+    ]);
+
+    await client.query(`
+      insert into public.teachers (id, name, designation, phone, email, status, data, created_at)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+      on conflict (id)
+      do update set
+        name = excluded.name,
+        designation = excluded.designation,
+        phone = excluded.phone,
+        email = excluded.email,
+        status = excluded.status,
+        data = excluded.data
+    `, [
+      employeeId,
+      String(employee.name || ""),
+      String(employee.designation || employee.role || ""),
+      String(employee.phone || employee.mobile || ""),
+      String(employee.email || ""),
+      String(employee.status || "active"),
+      JSON.stringify(employee)
+    ]);
+  }
+}
+
 app.get("/health", async (_req, res) => {
   await pool.query("select 1");
   res.json({ success: true, message: "SagarSoft online API is running." });
@@ -128,13 +213,24 @@ app.get("/api/database/:schoolId", requireApiKey, async (req, res) => {
 app.post("/api/database/:schoolId", requireApiKey, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   const database = req.body && req.body.database ? req.body.database : {};
-  await pool.query(`
-    insert into public.school_databases (school_id, database, updated_at)
-    values ($1, $2::jsonb, now())
-    on conflict (school_id)
-    do update set database = excluded.database, updated_at = now()
-  `, [schoolId, JSON.stringify(database)]);
-  return res.json({ success: true, school_id: schoolId });
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query(`
+      insert into public.school_databases (school_id, database, updated_at)
+      values ($1, $2::jsonb, now())
+      on conflict (school_id)
+      do update set database = excluded.database, updated_at = now()
+    `, [schoolId, JSON.stringify(database)]);
+    await syncEmployeeMirrorTables(client, database);
+    await client.query("commit");
+    return res.json({ success: true, school_id: schoolId });
+  } catch (error) {
+    await client.query("rollback");
+    return res.status(500).json({ success: false, message: error.message || "Unable to save online database." });
+  } finally {
+    client.release();
+  }
 });
 
 app.post("/api/admin/license", requireApiKey, async (req, res) => {
