@@ -88,6 +88,8 @@ async function ensureSchema() {
 
     create table if not exists public.employees (
       id text primary key,
+      school_id text,
+      source_id text,
       name text,
       subject text,
       designation text,
@@ -102,6 +104,8 @@ async function ensureSchema() {
 
     create table if not exists public.teachers (
       id text primary key,
+      school_id text,
+      source_id text,
       name text,
       designation text,
       phone text,
@@ -113,6 +117,8 @@ async function ensureSchema() {
 
     create table if not exists public.students (
       id text primary key,
+      school_id text,
+      source_id text,
       admission_no text,
       name text,
       picture text,
@@ -148,6 +154,8 @@ async function ensureSchema() {
 
     create table if not exists public.classes (
       id text primary key,
+      school_id text,
+      source_id text,
       name text,
       monthly_fee numeric,
       teacher_id text,
@@ -162,6 +170,20 @@ async function ensureSchema() {
       updated_at timestamptz not null default now(),
       primary key (school_id, module_name, record_id)
     );
+
+    alter table public.employees add column if not exists school_id text;
+    alter table public.employees add column if not exists source_id text;
+    alter table public.teachers add column if not exists school_id text;
+    alter table public.teachers add column if not exists source_id text;
+    alter table public.students add column if not exists school_id text;
+    alter table public.students add column if not exists source_id text;
+    alter table public.classes add column if not exists school_id text;
+    alter table public.classes add column if not exists source_id text;
+
+    create index if not exists idx_employees_school_id on public.employees (school_id);
+    create index if not exists idx_teachers_school_id on public.teachers (school_id);
+    create index if not exists idx_students_school_id on public.students (school_id);
+    create index if not exists idx_classes_school_id on public.classes (school_id);
   `);
 }
 
@@ -188,21 +210,31 @@ function toLicensePayload(row, notifications) {
   };
 }
 
-async function syncEmployeeMirrorTables(client, database) {
+function scopedMirrorId(schoolId, sourceId, prefix) {
+  const rawId = String(sourceId || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  return {
+    sourceId: rawId,
+    mirrorId: `${schoolId}:${rawId}`
+  };
+}
+
+async function syncEmployeeMirrorTables(client, schoolId, database) {
   const employees = Array.isArray(database && database.teachers) ? database.teachers : [];
-  await client.query("delete from public.employees");
-  await client.query("delete from public.teachers");
+  await client.query("delete from public.employees where school_id = $1", [schoolId]);
+  await client.query("delete from public.teachers where school_id = $1", [schoolId]);
 
   for (const employee of employees) {
-    const employeeId = String(employee.id || `TCH-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    const ids = scopedMirrorId(schoolId, employee.id, "TCH");
     await client.query(`
       insert into public.employees (
-        id, name, subject, designation, role, phone, date_of_joining,
+        id, school_id, source_id, name, subject, designation, role, phone, date_of_joining,
         monthly_salary, email, status, created_at
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())
       on conflict (id)
       do update set
+        school_id = excluded.school_id,
+        source_id = excluded.source_id,
         name = excluded.name,
         subject = excluded.subject,
         designation = excluded.designation,
@@ -213,7 +245,9 @@ async function syncEmployeeMirrorTables(client, database) {
         email = excluded.email,
         status = excluded.status
     `, [
-      employeeId,
+      ids.mirrorId,
+      schoolId,
+      ids.sourceId,
       String(employee.name || ""),
       String(employee.subject || ""),
       String(employee.designation || employee.role || ""),
@@ -226,10 +260,12 @@ async function syncEmployeeMirrorTables(client, database) {
     ]);
 
     await client.query(`
-      insert into public.teachers (id, name, designation, phone, email, status, data, created_at)
-      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+      insert into public.teachers (id, school_id, source_id, name, designation, phone, email, status, data, created_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
       on conflict (id)
       do update set
+        school_id = excluded.school_id,
+        source_id = excluded.source_id,
         name = excluded.name,
         designation = excluded.designation,
         phone = excluded.phone,
@@ -237,7 +273,9 @@ async function syncEmployeeMirrorTables(client, database) {
         status = excluded.status,
         data = excluded.data
     `, [
-      employeeId,
+      ids.mirrorId,
+      schoolId,
+      ids.sourceId,
       String(employee.name || ""),
       String(employee.designation || employee.role || ""),
       String(employee.phone || employee.mobile || ""),
@@ -253,15 +291,15 @@ function emptyToNullDate(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
 }
 
-async function syncStudentMirrorTable(client, database) {
+async function syncStudentMirrorTable(client, schoolId, database) {
   const students = Array.isArray(database && database.students) ? database.students : [];
-  await client.query("delete from public.students");
+  await client.query("delete from public.students where school_id = $1", [schoolId]);
 
   for (const student of students) {
-    const studentId = String(student.id || `STU-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    const ids = scopedMirrorId(schoolId, student.id, "STU");
     await client.query(`
       insert into public.students (
-        id, admission_no, name, picture, date_of_admission, class_name, section,
+        id, school_id, source_id, admission_no, name, picture, date_of_admission, class_name, section,
         discount_in_fee, date_of_birth, gender, blood_group, disease_info,
         birth_id, previous_school, previous_id, orphan_status, religion, address,
         phone, father_name, father_education, father_national_id, father_phone,
@@ -269,15 +307,17 @@ async function syncStudentMirrorTable(client, database) {
         mother_national_id, mother_phone, mother_occupation, status, created_at
       )
       values (
-        $1, $2, $3, $4, $5, $6, $7,
-        $8, $9, $10, $11, $12,
-        $13, $14, $15, $16, $17, $18,
-        $19, $20, $21, $22, $23,
-        $24, $25, $26, $27,
-        $28, $29, $30, $31, now()
+        $1, $2, $3, $4, $5, $6, $7, $8, $9,
+        $10, $11, $12, $13, $14,
+        $15, $16, $17, $18, $19, $20,
+        $21, $22, $23, $24, $25,
+        $26, $27, $28, $29,
+        $30, $31, $32, $33, now()
       )
       on conflict (id)
       do update set
+        school_id = excluded.school_id,
+        source_id = excluded.source_id,
         admission_no = excluded.admission_no,
         name = excluded.name,
         picture = excluded.picture,
@@ -309,7 +349,9 @@ async function syncStudentMirrorTable(client, database) {
         mother_occupation = excluded.mother_occupation,
         status = excluded.status
     `, [
-      studentId,
+      ids.mirrorId,
+      schoolId,
+      ids.sourceId,
       String(student.admissionNo || student.rollNo || ""),
       String(student.name || ""),
       String(student.picture || ""),
@@ -344,22 +386,26 @@ async function syncStudentMirrorTable(client, database) {
   }
 }
 
-async function syncClassMirrorTable(client, database) {
+async function syncClassMirrorTable(client, schoolId, database) {
   const classes = Array.isArray(database && database.classes) ? database.classes : [];
-  await client.query("delete from public.classes");
+  await client.query("delete from public.classes where school_id = $1", [schoolId]);
 
   for (const classItem of classes) {
-    const classId = String(classItem.id || `CLS-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    const ids = scopedMirrorId(schoolId, classItem.id, "CLS");
     await client.query(`
-      insert into public.classes (id, name, monthly_fee, teacher_id, created_at)
-      values ($1, $2, $3, $4, now())
+      insert into public.classes (id, school_id, source_id, name, monthly_fee, teacher_id, created_at)
+      values ($1, $2, $3, $4, $5, $6, now())
       on conflict (id)
       do update set
+        school_id = excluded.school_id,
+        source_id = excluded.source_id,
         name = excluded.name,
         monthly_fee = excluded.monthly_fee,
         teacher_id = excluded.teacher_id
     `, [
-      classId,
+      ids.mirrorId,
+      schoolId,
+      ids.sourceId,
       String(classItem.name || ""),
       Number(classItem.monthlyTuitionFees || classItem.monthlyFee || 0),
       String(classItem.classTeacher || classItem.teacherId || "")
@@ -452,9 +498,9 @@ app.post("/api/database/:schoolId", requireApiKey, async (req, res) => {
       on conflict (school_id)
       do update set database = excluded.database, updated_at = now()
     `, [schoolId, JSON.stringify(database)]);
-    await syncEmployeeMirrorTables(client, database);
-    await syncStudentMirrorTable(client, database);
-    await syncClassMirrorTable(client, database);
+    await syncEmployeeMirrorTables(client, schoolId, database);
+    await syncStudentMirrorTable(client, schoolId, database);
+    await syncClassMirrorTable(client, schoolId, database);
     await syncAppRecordsTable(client, schoolId, database);
     await client.query("commit");
     return res.json({ success: true, school_id: schoolId });
