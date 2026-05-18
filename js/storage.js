@@ -1,6 +1,10 @@
 /* Major section: LocalStorage database helpers and production seed data */
 (function () {
   const DB_KEY = "sagarsoft_db";
+  const REMOTE_PENDING_KEY = "sagarsoft_db_remote_pending";
+  const REMOTE_DIRTY_AT_KEY = "sagarsoft_db_remote_dirty_at";
+  const REMOTE_LAST_SYNC_KEY = "sagarsoft_db_remote_last_sync_at";
+  const REMOTE_LAST_ERROR_KEY = "sagarsoft_db_remote_last_error";
   let remoteLoadStarted = false;
   let remoteSaveTimer = null;
   
@@ -164,11 +168,19 @@
     if (!config.apiBaseUrl) {
       return;
     }
-    await fetch(`${config.apiBaseUrl}/api/database/${encodeURIComponent(config.schoolId)}`, {
+    const response = await fetch(`${config.apiBaseUrl}/api/database/${encodeURIComponent(config.schoolId)}`, {
       method: "POST",
       headers: onlineHeaders(),
       body: JSON.stringify({ database: database || {} })
     });
+    const payload = await response.json().catch(function () { return {}; });
+    if (!response.ok || !payload.success) {
+      throw new Error(payload.message || "Unable to save online database.");
+    }
+    localStorage.removeItem(REMOTE_PENDING_KEY);
+    localStorage.removeItem(REMOTE_DIRTY_AT_KEY);
+    localStorage.removeItem(REMOTE_LAST_ERROR_KEY);
+    localStorage.setItem(REMOTE_LAST_SYNC_KEY, new Date().toISOString());
   }
 
   function loadRemoteDatabaseInBackground() {
@@ -177,6 +189,17 @@
       return;
     }
     remoteLoadStarted = true;
+    const pendingSnapshot = localStorage.getItem(REMOTE_PENDING_KEY);
+    if (pendingSnapshot) {
+      try {
+        pushRemoteDatabase(JSON.parse(pendingSnapshot)).catch(function (error) {
+          localStorage.setItem(REMOTE_LAST_ERROR_KEY, String(error && error.message ? error.message : error));
+        });
+      } catch (error) {
+        localStorage.setItem(REMOTE_LAST_ERROR_KEY, String(error && error.message ? error.message : error));
+      }
+      return;
+    }
     fetchRemoteDatabase().then(function (remoteDatabase) {
       if (!remoteDatabase) {
         const localSnapshot = localStorage.getItem(DB_KEY);
@@ -195,11 +218,39 @@
     if (!config.apiBaseUrl) {
       return;
     }
+    let snapshot = "{}";
+    try {
+      snapshot = JSON.stringify(database || {});
+      localStorage.setItem(REMOTE_PENDING_KEY, snapshot);
+      localStorage.setItem(REMOTE_DIRTY_AT_KEY, new Date().toISOString());
+      localStorage.removeItem(REMOTE_LAST_ERROR_KEY);
+    } catch (error) {
+      localStorage.setItem(REMOTE_LAST_ERROR_KEY, String(error && error.message ? error.message : error));
+      return;
+    }
     clearTimeout(remoteSaveTimer);
     remoteSaveTimer = setTimeout(function () {
-      pushRemoteDatabase(database).catch(function () {});
+      pushRemoteDatabase(JSON.parse(snapshot)).catch(function (error) {
+        localStorage.setItem(REMOTE_LAST_ERROR_KEY, String(error && error.message ? error.message : error));
+      });
     }, 250);
   }
+
+  window.addEventListener("beforeunload", function () {
+    const pendingSnapshot = localStorage.getItem(REMOTE_PENDING_KEY);
+    const config = getOnlineConfig();
+    if (!pendingSnapshot || !config.apiBaseUrl) {
+      return;
+    }
+    try {
+      fetch(`${config.apiBaseUrl}/api/database/${encodeURIComponent(config.schoolId)}`, {
+        method: "POST",
+        headers: onlineHeaders(),
+        body: JSON.stringify({ database: JSON.parse(pendingSnapshot) }),
+        keepalive: true
+      }).catch(function () {});
+    } catch (_error) {}
+  });
 
   function getDatabase() {
     loadRemoteDatabaseInBackground();
@@ -556,11 +607,36 @@
     return saveDatabase(updatedDatabase);
   }
 
+  function getSyncStatus() {
+    return {
+      pending: Boolean(localStorage.getItem(REMOTE_PENDING_KEY)),
+      dirtyAt: localStorage.getItem(REMOTE_DIRTY_AT_KEY) || "",
+      lastSyncAt: localStorage.getItem(REMOTE_LAST_SYNC_KEY) || "",
+      lastError: localStorage.getItem(REMOTE_LAST_ERROR_KEY) || ""
+    };
+  }
+
+  function flushRemoteSave() {
+    const pendingSnapshot = localStorage.getItem(REMOTE_PENDING_KEY);
+    const snapshot = pendingSnapshot || localStorage.getItem(DB_KEY);
+    if (!snapshot) {
+      return Promise.resolve(null);
+    }
+    try {
+      return pushRemoteDatabase(JSON.parse(snapshot));
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
   window.SagarSoftDB = {
     key: DB_KEY,
     getDatabase,
     saveDatabase,
     updateDatabase,
-    defaultDatabase
+    defaultDatabase,
+    pushRemoteDatabase,
+    getSyncStatus,
+    flushRemoteSave
   };
 })();
