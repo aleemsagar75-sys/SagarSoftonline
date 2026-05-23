@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "SagarSoft Mobile",
+    "slug": "sagarsoft-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.sagarsoft.mobile"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "74c2855e-8cd1-426a-bcaf-9df009be31b7"
+      }
+    }
+  }
+}
