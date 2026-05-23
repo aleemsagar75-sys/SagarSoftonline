@@ -2,6 +2,8 @@ require("dotenv").config();
 
 const cors = require("cors");
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const { Pool } = require("pg");
 
 const app = express();
@@ -20,6 +22,17 @@ const pool = new Pool({
 
 app.use(cors({ origin: true }));
 app.use(express.json({ limit: "50mb" }));
+
+const webDirCandidates = [
+  process.env.SAGARSOFT_WEB_DIR,
+  path.resolve(__dirname, ".."),
+  __dirname
+].filter(Boolean);
+const webAppDir = webDirCandidates.find((candidate) => fs.existsSync(path.join(candidate, "dashboard.html")));
+if (webAppDir) {
+  app.use("/app", express.static(webAppDir));
+  app.get("/dashboard.html", (_req, res) => res.sendFile(path.join(webAppDir, "dashboard.html")));
+}
 
 app.get("/", (_req, res) => {
   res.type("html").send(`
@@ -472,6 +485,54 @@ async function syncAppRecordsTable(client, schoolId, database) {
   }
 }
 
+async function saveSchoolDatabaseWithMirrors(schoolId, database) {
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    await client.query(`
+      insert into public.school_databases (school_id, database, updated_at)
+      values ($1, $2::jsonb, now())
+      on conflict (school_id)
+      do update set database = excluded.database, updated_at = now()
+    `, [schoolId, JSON.stringify(database || {})]);
+    await syncEmployeeMirrorTables(client, schoolId, database || {});
+    await syncStudentMirrorTable(client, schoolId, database || {});
+    await syncClassMirrorTable(client, schoolId, database || {});
+    await syncAppRecordsTable(client, schoolId, database || {});
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function getSchoolDatabase(schoolId) {
+  const result = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
+  return result.rowCount ? result.rows[0].database : null;
+}
+
+async function findLicenseByToken(schoolId, token) {
+  const result = await pool.query(`
+    select * from public.license_accounts
+    where school_id = $1 and coalesce(license_token, 'LIC-' || school_id) = $2
+    limit 1
+  `, [schoolId, token]);
+  return result.rowCount ? result.rows[0] : null;
+}
+
+function isLicenseUsable(row) {
+  if (!row) {
+    return false;
+  }
+  const status = String(row.status || "").toLowerCase();
+  const expiry = row.expiry_date ? new Date(row.expiry_date) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return status === "active" && !row.modules_locked && (!expiry || expiry >= today);
+}
+
 app.get("/health", async (_req, res) => {
   await pool.query("select 1");
   res.json({ success: true, message: "SagarSoft online API is running." });
@@ -489,26 +550,11 @@ app.get("/api/database/:schoolId", requireApiKey, async (req, res) => {
 app.post("/api/database/:schoolId", requireApiKey, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   const database = req.body && req.body.database ? req.body.database : {};
-  const client = await pool.connect();
   try {
-    await client.query("begin");
-    await client.query(`
-      insert into public.school_databases (school_id, database, updated_at)
-      values ($1, $2::jsonb, now())
-      on conflict (school_id)
-      do update set database = excluded.database, updated_at = now()
-    `, [schoolId, JSON.stringify(database)]);
-    await syncEmployeeMirrorTables(client, schoolId, database);
-    await syncStudentMirrorTable(client, schoolId, database);
-    await syncClassMirrorTable(client, schoolId, database);
-    await syncAppRecordsTable(client, schoolId, database);
-    await client.query("commit");
+    await saveSchoolDatabaseWithMirrors(schoolId, database);
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
-    await client.query("rollback");
     return res.status(500).json({ success: false, message: error.message || "Unable to save online database." });
-  } finally {
-    client.release();
   }
 });
 
@@ -570,6 +616,109 @@ app.post("/api/activate-school.php", async (req, res) => {
   const row = result.rows[0];
   const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
   return res.json(toLicensePayload(row, notes.rows));
+});
+
+app.post("/api/mobile/login", async (req, res) => {
+  const identifier = String(req.body.identifier || req.body.email || req.body.school_id || "").trim();
+  const email = identifier.toLowerCase();
+  const password = String(req.body.password || "");
+  const requestedRole = String(req.body.role || "admin").trim().toLowerCase();
+  if (!identifier || !password) {
+    return res.status(400).json({ success: false, message: "School email / ID and password are required." });
+  }
+  if (!["admin", "superadmin"].includes(requestedRole)) {
+    const userResult = await pool.query(`
+      select sd.school_id, sd.database, la.*
+      from public.school_databases sd
+      join public.license_accounts la on la.school_id = sd.school_id
+      where exists (
+        select 1
+        from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
+        where lower(app_user->>'email') = $1
+          and app_user->>'password' = $2
+          and lower(app_user->>'role') = $3
+          and lower(coalesce(app_user->>'active', 'true')) <> 'false'
+      )
+      limit 1
+    `, [email, password, requestedRole]);
+    if (!userResult.rowCount) {
+      return res.status(401).json({ success: false, message: "Invalid app user credentials." });
+    }
+    const license = userResult.rows[0];
+    if (!isLicenseUsable(license)) {
+      return res.status(403).json({ success: false, message: "School subscription is inactive, blocked, or expired.", license: toLicensePayload(license, []) });
+    }
+    const database = userResult.rows[0].database || {};
+    const appUser = Array.isArray(database.users)
+      ? database.users.find((entry) => (
+        String(entry.email || "").trim().toLowerCase() === email &&
+        String(entry.password || "") === password &&
+        String(entry.role || "").trim().toLowerCase() === requestedRole &&
+        entry.active !== false
+      ))
+      : null;
+    const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [license.school_id]);
+    return res.json({
+      success: true,
+      license: toLicensePayload(license, notes.rows),
+      user: appUser || { email: identifier, role: requestedRole, name: requestedRole },
+      school_id: license.school_id,
+      license_token: license.license_token || `LIC-${license.school_id}`,
+      database: database || {}
+    });
+  }
+  const result = await pool.query(`
+    select * from public.license_accounts
+    where (lower(email) = $1 or lower(school_id) = $1) and password = $2
+    limit 1
+  `, [email, password]);
+  if (!result.rowCount) {
+    return res.status(401).json({ success: false, message: "Invalid school credentials." });
+  }
+  const license = result.rows[0];
+  if (!isLicenseUsable(license)) {
+    return res.status(403).json({ success: false, message: "School subscription is inactive, blocked, or expired.", license: toLicensePayload(license, []) });
+  }
+  const database = await getSchoolDatabase(license.school_id);
+  const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [license.school_id]);
+  return res.json({
+    success: true,
+    license: toLicensePayload(license, notes.rows),
+    user: {
+      id: requestedRole === "superadmin" ? "USR-SUPER-001" : "USR-ADMIN-001",
+      name: requestedRole === "superadmin" ? "SagarSoft Super Admin" : (license.school_name || "School Admin"),
+      email: license.email,
+      role: requestedRole === "superadmin" ? "superadmin" : "admin"
+    },
+    school_id: license.school_id,
+    license_token: license.license_token || `LIC-${license.school_id}`,
+    database: database || {}
+  });
+});
+
+app.get("/api/mobile/database/:schoolId", async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  const token = String(req.query.license_token || req.headers["x-license-token"] || "").trim();
+  const license = await findLicenseByToken(schoolId, token);
+  if (!license || !isLicenseUsable(license)) {
+    return res.status(401).json({ success: false, message: "Invalid or inactive license." });
+  }
+  return res.json({ success: true, school_id: schoolId, database: await getSchoolDatabase(schoolId) || {} });
+});
+
+app.post("/api/mobile/database/:schoolId", async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  const token = String(req.body.license_token || req.headers["x-license-token"] || "").trim();
+  const license = await findLicenseByToken(schoolId, token);
+  if (!license || !isLicenseUsable(license)) {
+    return res.status(401).json({ success: false, message: "Invalid or inactive license." });
+  }
+  try {
+    await saveSchoolDatabaseWithMirrors(schoolId, req.body.database || {});
+    return res.json({ success: true, school_id: schoolId });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message || "Unable to save mobile database." });
+  }
 });
 
 app.post("/api/check-license.php", async (req, res) => {
