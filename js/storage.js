@@ -6,6 +6,7 @@
   const REMOTE_LAST_SYNC_KEY = "sagarsoft_db_remote_last_sync_at";
   const REMOTE_LAST_ERROR_KEY = "sagarsoft_db_remote_last_error";
   let remoteLoadStarted = false;
+  let remoteLoadSchoolId = "";
   let remoteSaveTimer = null;
   
   function pickStudentField(student, keys, fallback) {
@@ -132,10 +133,22 @@
 
   function getOnlineConfig() {
     const config = window.SagarSoftOnlineConfig || {};
+    let databaseSchoolId = "";
+    try {
+      const localDatabase = JSON.parse(localStorage.getItem(DB_KEY) || "{}");
+      databaseSchoolId = String(
+        localDatabase &&
+        localDatabase.generalSettings &&
+        localDatabase.generalSettings.licenseSettings &&
+        localDatabase.generalSettings.licenseSettings.schoolId
+          ? localDatabase.generalSettings.licenseSettings.schoolId
+          : ""
+      ).trim();
+    } catch (_error) {}
     return {
       apiBaseUrl: String(config.apiBaseUrl || "").trim().replace(/\/+$/, ""),
       apiKey: String(config.apiKey || "").trim(),
-      schoolId: String(config.schoolId || "SCH-2026-001").trim()
+      schoolId: String(databaseSchoolId || config.schoolId || "SCH-2026-001").trim()
     };
   }
 
@@ -185,7 +198,16 @@
 
   function loadRemoteDatabaseInBackground() {
     const config = getOnlineConfig();
-    if (!config.apiBaseUrl || remoteLoadStarted) {
+    if (!config.apiBaseUrl) {
+      return;
+    }
+    if (remoteLoadSchoolId !== config.schoolId) {
+      remoteLoadStarted = false;
+      remoteLoadSchoolId = config.schoolId;
+      localStorage.removeItem(REMOTE_PENDING_KEY);
+      localStorage.removeItem(REMOTE_DIRTY_AT_KEY);
+    }
+    if (remoteLoadStarted) {
       return;
     }
     remoteLoadStarted = true;
