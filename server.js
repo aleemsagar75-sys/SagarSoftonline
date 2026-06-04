@@ -112,6 +112,7 @@ async function ensureSchema() {
       monthly_salary numeric,
       email text,
       status text,
+      data jsonb,
       created_at timestamptz not null default now()
     );
 
@@ -162,6 +163,7 @@ async function ensureSchema() {
       mother_phone text,
       mother_occupation text,
       status text,
+      data jsonb,
       created_at timestamptz not null default now()
     );
 
@@ -172,6 +174,7 @@ async function ensureSchema() {
       name text,
       monthly_fee numeric,
       teacher_id text,
+      data jsonb,
       created_at timestamptz not null default now()
     );
 
@@ -184,19 +187,193 @@ async function ensureSchema() {
       primary key (school_id, module_name, record_id)
     );
 
+    create table if not exists public.app_users (
+      school_id text not null,
+      source_id text not null,
+      name text,
+      email text,
+      role text,
+      active boolean,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.subjects (
+      school_id text not null,
+      source_id text not null,
+      subject_name text,
+      class_name text,
+      teacher_id text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.attendance (
+      school_id text not null,
+      source_id text not null,
+      entity_type text,
+      student_id text,
+      employee_id text,
+      date date,
+      status text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.fees (
+      school_id text not null,
+      source_id text not null,
+      student_id text,
+      student_name text,
+      class_name text,
+      fee_month text,
+      status text,
+      total_amount numeric,
+      deposit numeric,
+      remaining numeric,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.fee_invoices (
+      school_id text not null,
+      source_id text not null,
+      student_id text,
+      student_name text,
+      class_name text,
+      fee_month text,
+      total_amount numeric,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.fee_collections (
+      school_id text not null,
+      source_id text not null,
+      student_id text,
+      student_name text,
+      class_name text,
+      fee_month text,
+      deposit numeric,
+      remaining numeric,
+      collected_at timestamptz,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.salary_payments (
+      school_id text not null,
+      source_id text not null,
+      employee_id text,
+      employee_name text,
+      salary_month text,
+      salary_amount numeric,
+      bonus numeric,
+      deduction numeric,
+      net_salary numeric,
+      payment_date date,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.accounts_ledger (
+      school_id text not null,
+      source_id text not null,
+      date date,
+      type text,
+      category text,
+      amount numeric,
+      note text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.activity_logs (
+      school_id text not null,
+      source_id text not null,
+      title text,
+      message text,
+      created_at timestamptz,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
     alter table public.employees add column if not exists school_id text;
     alter table public.employees add column if not exists source_id text;
+    alter table public.employees add column if not exists data jsonb;
+    alter table public.employees add column if not exists updated_at timestamptz not null default now();
     alter table public.teachers add column if not exists school_id text;
     alter table public.teachers add column if not exists source_id text;
+    alter table public.teachers add column if not exists data jsonb;
+    alter table public.teachers add column if not exists updated_at timestamptz not null default now();
     alter table public.students add column if not exists school_id text;
     alter table public.students add column if not exists source_id text;
+    alter table public.students add column if not exists data jsonb;
+    alter table public.students add column if not exists updated_at timestamptz not null default now();
     alter table public.classes add column if not exists school_id text;
     alter table public.classes add column if not exists source_id text;
+    alter table public.classes add column if not exists data jsonb;
+    alter table public.classes add column if not exists updated_at timestamptz not null default now();
+    alter table public.app_users add column if not exists id text;
+    alter table public.subjects add column if not exists school_id text;
+    alter table public.subjects add column if not exists id text;
+    alter table public.subjects add column if not exists source_id text;
+    alter table public.subjects add column if not exists subject_name text;
+    alter table public.subjects add column if not exists class_name text;
+    alter table public.subjects add column if not exists teacher_id text;
+    alter table public.subjects add column if not exists data jsonb not null default '{}'::jsonb;
+    alter table public.subjects add column if not exists updated_at timestamptz not null default now();
+    alter table public.attendance add column if not exists school_id text;
+    alter table public.attendance add column if not exists id text;
+    alter table public.attendance add column if not exists source_id text;
+    alter table public.attendance add column if not exists entity_type text;
+    alter table public.attendance add column if not exists student_id text;
+    alter table public.attendance add column if not exists employee_id text;
+    alter table public.attendance add column if not exists date date;
+    alter table public.attendance add column if not exists status text;
+    alter table public.attendance add column if not exists data jsonb not null default '{}'::jsonb;
+    alter table public.attendance add column if not exists updated_at timestamptz not null default now();
+    alter table public.fees add column if not exists school_id text;
+    alter table public.fees add column if not exists id text;
+    alter table public.fees add column if not exists source_id text;
+    alter table public.fees add column if not exists student_id text;
+    alter table public.fees add column if not exists student_name text;
+    alter table public.fees add column if not exists class_name text;
+    alter table public.fees add column if not exists fee_month text;
+    alter table public.fees add column if not exists status text;
+    alter table public.fees add column if not exists total_amount numeric;
+    alter table public.fees add column if not exists deposit numeric;
+    alter table public.fees add column if not exists remaining numeric;
+    alter table public.fees add column if not exists data jsonb not null default '{}'::jsonb;
+    alter table public.fees add column if not exists updated_at timestamptz not null default now();
+    alter table public.fee_invoices add column if not exists id text;
+    alter table public.fee_collections add column if not exists id text;
+    alter table public.salary_payments add column if not exists id text;
+    alter table public.accounts_ledger add column if not exists id text;
+    alter table public.activity_logs add column if not exists id text;
 
     create index if not exists idx_employees_school_id on public.employees (school_id);
     create index if not exists idx_teachers_school_id on public.teachers (school_id);
     create index if not exists idx_students_school_id on public.students (school_id);
     create index if not exists idx_classes_school_id on public.classes (school_id);
+    create index if not exists idx_app_users_school_id on public.app_users (school_id);
+    create index if not exists idx_subjects_school_id on public.subjects (school_id);
+    create index if not exists idx_attendance_school_id on public.attendance (school_id);
+    create index if not exists idx_fees_school_id on public.fees (school_id);
+    create index if not exists idx_fee_invoices_school_id on public.fee_invoices (school_id);
+    create index if not exists idx_fee_collections_school_id on public.fee_collections (school_id);
+    create index if not exists idx_salary_payments_school_id on public.salary_payments (school_id);
+    create index if not exists idx_accounts_ledger_school_id on public.accounts_ledger (school_id);
+    create index if not exists idx_activity_logs_school_id on public.activity_logs (school_id);
   `);
 }
 
@@ -241,9 +418,9 @@ async function syncEmployeeMirrorTables(client, schoolId, database) {
     await client.query(`
       insert into public.employees (
         id, school_id, source_id, name, subject, designation, role, phone, date_of_joining,
-        monthly_salary, email, status, created_at
+        monthly_salary, email, status, data, created_at
       )
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, now())
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, now())
       on conflict (id)
       do update set
         school_id = excluded.school_id,
@@ -256,7 +433,8 @@ async function syncEmployeeMirrorTables(client, schoolId, database) {
         date_of_joining = excluded.date_of_joining,
         monthly_salary = excluded.monthly_salary,
         email = excluded.email,
-        status = excluded.status
+        status = excluded.status,
+        data = excluded.data
     `, [
       ids.mirrorId,
       schoolId,
@@ -269,7 +447,8 @@ async function syncEmployeeMirrorTables(client, schoolId, database) {
       employee.dateOfJoining || null,
       Number(employee.monthlySalary || 0),
       String(employee.email || ""),
-      String(employee.status || "active")
+      String(employee.status || "active"),
+      JSON.stringify(employee)
     ]);
 
     await client.query(`
@@ -317,7 +496,7 @@ async function syncStudentMirrorTable(client, schoolId, database) {
         birth_id, previous_school, previous_id, orphan_status, religion, address,
         phone, father_name, father_education, father_national_id, father_phone,
         father_occupation, father_income, mother_name, mother_education,
-        mother_national_id, mother_phone, mother_occupation, status, created_at
+        mother_national_id, mother_phone, mother_occupation, status, data, created_at
       )
       values (
         $1, $2, $3, $4, $5, $6, $7, $8, $9,
@@ -325,7 +504,7 @@ async function syncStudentMirrorTable(client, schoolId, database) {
         $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25,
         $26, $27, $28, $29,
-        $30, $31, $32, $33, now()
+        $30, $31, $32, $33, $34::jsonb, now()
       )
       on conflict (id)
       do update set
@@ -360,7 +539,8 @@ async function syncStudentMirrorTable(client, schoolId, database) {
         mother_national_id = excluded.mother_national_id,
         mother_phone = excluded.mother_phone,
         mother_occupation = excluded.mother_occupation,
-        status = excluded.status
+        status = excluded.status,
+        data = excluded.data
     `, [
       ids.mirrorId,
       schoolId,
@@ -394,7 +574,8 @@ async function syncStudentMirrorTable(client, schoolId, database) {
       String(student.motherNationalId || ""),
       String(student.motherPhone || ""),
       String(student.motherOccupation || ""),
-      String(student.status || "active")
+      String(student.status || "active"),
+      JSON.stringify(student)
     ]);
   }
 }
@@ -406,22 +587,24 @@ async function syncClassMirrorTable(client, schoolId, database) {
   for (const classItem of classes) {
     const ids = scopedMirrorId(schoolId, classItem.id, "CLS");
     await client.query(`
-      insert into public.classes (id, school_id, source_id, name, monthly_fee, teacher_id, created_at)
-      values ($1, $2, $3, $4, $5, $6, now())
+      insert into public.classes (id, school_id, source_id, name, monthly_fee, teacher_id, data, created_at)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
       on conflict (id)
       do update set
         school_id = excluded.school_id,
         source_id = excluded.source_id,
         name = excluded.name,
         monthly_fee = excluded.monthly_fee,
-        teacher_id = excluded.teacher_id
+        teacher_id = excluded.teacher_id,
+        data = excluded.data
     `, [
       ids.mirrorId,
       schoolId,
       ids.sourceId,
       String(classItem.name || ""),
       Number(classItem.monthlyTuitionFees || classItem.monthlyFee || 0),
-      String(classItem.classTeacher || classItem.teacherId || "")
+      String(classItem.classTeacher || classItem.teacherId || ""),
+      JSON.stringify(classItem)
     ]);
   }
 }
@@ -485,6 +668,122 @@ async function syncAppRecordsTable(client, schoolId, database) {
   }
 }
 
+function rowId(row, prefix, index) {
+  return String((row && row.id) || `${prefix}-${index + 1}`);
+}
+
+function scopedRowIdValue(schoolId, sourceId) {
+  return `${schoolId}:${sourceId}`;
+}
+
+function rowData(row) {
+  return JSON.stringify(row && typeof row === "object" ? row : {});
+}
+
+async function syncStructuredModuleTables(client, schoolId, database) {
+  const users = Array.isArray(database && database.users) ? database.users : [];
+  const subjects = Array.isArray(database && database.subjects) ? database.subjects : [];
+  const attendance = Array.isArray(database && database.attendance) ? database.attendance : [];
+  const fees = Array.isArray(database && database.fees) ? database.fees : [];
+  const settings = (database && database.generalSettings) || {};
+  const feeInvoices = Array.isArray(settings.feeInvoices) ? settings.feeInvoices : [];
+  const feeCollections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
+  const salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
+  const accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
+  const activityLogs = Array.isArray(database && database.activityLogs) ? database.activityLogs : [];
+
+  await client.query("delete from public.app_users where school_id = $1", [schoolId]);
+  await client.query("delete from public.subjects where school_id = $1", [schoolId]);
+  await client.query("delete from public.attendance where school_id = $1", [schoolId]);
+  await client.query("delete from public.fees where school_id = $1", [schoolId]);
+  await client.query("delete from public.fee_invoices where school_id = $1", [schoolId]);
+  await client.query("delete from public.fee_collections where school_id = $1", [schoolId]);
+  await client.query("delete from public.salary_payments where school_id = $1", [schoolId]);
+  await client.query("delete from public.accounts_ledger where school_id = $1", [schoolId]);
+  await client.query("delete from public.activity_logs where school_id = $1", [schoolId]);
+
+  for (let index = 0; index < users.length; index += 1) {
+    const row = users[index];
+    const sourceId = rowId(row, "USR", index);
+    await client.query(`
+      insert into public.app_users (id, school_id, source_id, name, email, role, active, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
+    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.name || "", row.email || "", row.role || "", row.active !== false, rowData(row)]);
+  }
+
+  for (let index = 0; index < subjects.length; index += 1) {
+    const row = subjects[index];
+    const sourceId = rowId(row, "SUB", index);
+    await client.query(`
+      insert into public.subjects (id, school_id, source_id, subject_name, class_name, teacher_id, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.subjectName || row.name || "", row.className || "", row.teacherId || row.teacher || "", rowData(row)]);
+  }
+
+  for (let index = 0; index < attendance.length; index += 1) {
+    const row = attendance[index];
+    const sourceId = rowId(row, "ATT", index);
+    await client.query(`
+      insert into public.attendance (id, school_id, source_id, entity_type, student_id, employee_id, date, status, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
+    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.entityType || "student", row.studentId || "", row.employeeId || row.teacherId || "", emptyToNullDate(row.date), row.status || "", rowData(row)]);
+  }
+
+  for (let index = 0; index < fees.length; index += 1) {
+    const row = fees[index];
+    const sourceId = rowId(row, "FEE", index);
+    await client.query(`
+      insert into public.fees (id, school_id, source_id, student_id, student_name, class_name, fee_month, status, total_amount, deposit, remaining, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, now())
+    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", row.status || "", Number(row.totalAmount || row.amount || 0), Number(row.deposit || 0), Number(row.remaining || 0), rowData(row)]);
+  }
+
+  for (let index = 0; index < feeInvoices.length; index += 1) {
+    const row = feeInvoices[index];
+    const sourceId = rowId(row, "INV", index);
+    await client.query(`
+      insert into public.fee_invoices (id, school_id, source_id, student_id, student_name, class_name, fee_month, total_amount, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
+    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", Number(row.totalAmount || row.amount || 0), rowData(row)]);
+  }
+
+  for (let index = 0; index < feeCollections.length; index += 1) {
+    const row = feeCollections[index];
+    const sourceId = rowId(row, "COL", index);
+    await client.query(`
+      insert into public.fee_collections (id, school_id, source_id, student_id, student_name, class_name, fee_month, deposit, remaining, collected_at, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
+    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", Number(row.deposit || 0), Number(row.remaining || 0), row.collectedAt || row.paymentDate || row.date || null, rowData(row)]);
+  }
+
+  for (let index = 0; index < salaryPayments.length; index += 1) {
+    const row = salaryPayments[index];
+    const sourceId = rowId(row, "SAL", index);
+    await client.query(`
+      insert into public.salary_payments (id, school_id, source_id, employee_id, employee_name, salary_month, salary_amount, bonus, deduction, net_salary, payment_date, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, now())
+    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.employeeId || row.teacherId || "", row.employeeName || row.teacherName || row.name || "", row.salaryMonth || row.month || "", Number(row.salaryAmount || 0), Number(row.bonus || 0), Number(row.deduction || 0), Number(row.netSalary || 0), emptyToNullDate(row.paymentDate || row.date), rowData(row)]);
+  }
+
+  for (let index = 0; index < accountsLedger.length; index += 1) {
+    const row = accountsLedger[index];
+    const sourceId = rowId(row, "LED", index);
+    await client.query(`
+      insert into public.accounts_ledger (id, school_id, source_id, date, type, category, amount, note, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
+    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, emptyToNullDate(row.date), row.type || "", row.category || "", Number(row.amount || 0), row.note || "", rowData(row)]);
+  }
+
+  for (let index = 0; index < activityLogs.length; index += 1) {
+    const row = activityLogs[index];
+    const sourceId = rowId(row, "LOG", index);
+    await client.query(`
+      insert into public.activity_logs (id, school_id, source_id, title, message, created_at, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.title || row.action || "", row.message || row.description || "", row.createdAt || row.date || null, rowData(row)]);
+  }
+}
+
 async function saveSchoolDatabaseWithMirrors(schoolId, database) {
   const client = await pool.connect();
   try {
@@ -498,6 +797,7 @@ async function saveSchoolDatabaseWithMirrors(schoolId, database) {
     await syncEmployeeMirrorTables(client, schoolId, database || {});
     await syncStudentMirrorTable(client, schoolId, database || {});
     await syncClassMirrorTable(client, schoolId, database || {});
+    await syncStructuredModuleTables(client, schoolId, database || {});
     await syncAppRecordsTable(client, schoolId, database || {});
     await client.query("commit");
   } catch (error) {
@@ -510,7 +810,59 @@ async function saveSchoolDatabaseWithMirrors(schoolId, database) {
 
 async function getSchoolDatabase(schoolId) {
   const result = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
-  return result.rowCount ? result.rows[0].database : null;
+  const database = result.rowCount ? (result.rows[0].database || {}) : {};
+  database.generalSettings = database.generalSettings || {};
+
+  const readDataRows = async function (tableName) {
+    const rows = await pool.query(
+      `select data from public.${tableName} where school_id = $1 and data is not null order by updated_at desc`,
+      [schoolId]
+    );
+    return rows.rows.map((row) => row.data || {}).filter((row) => row && typeof row === "object");
+  };
+
+  const [
+    teachers,
+    students,
+    classes,
+    users,
+    subjects,
+    attendance,
+    fees,
+    feeInvoices,
+    feeCollections,
+    salaryPayments,
+    accountsLedger,
+    activityLogs
+  ] = await Promise.all([
+    readDataRows("teachers"),
+    readDataRows("students"),
+    readDataRows("classes"),
+    readDataRows("app_users"),
+    readDataRows("subjects"),
+    readDataRows("attendance"),
+    readDataRows("fees"),
+    readDataRows("fee_invoices"),
+    readDataRows("fee_collections"),
+    readDataRows("salary_payments"),
+    readDataRows("accounts_ledger"),
+    readDataRows("activity_logs")
+  ]);
+
+  if (teachers.length) database.teachers = teachers;
+  if (students.length) database.students = students;
+  if (classes.length) database.classes = classes;
+  if (users.length) database.users = users;
+  if (subjects.length) database.subjects = subjects;
+  if (attendance.length) database.attendance = attendance;
+  if (fees.length) database.fees = fees;
+  if (activityLogs.length) database.activityLogs = activityLogs;
+  if (feeInvoices.length) database.generalSettings.feeInvoices = feeInvoices;
+  if (feeCollections.length) database.generalSettings.feeCollections = feeCollections;
+  if (salaryPayments.length) database.generalSettings.salaryPayments = salaryPayments;
+  if (accountsLedger.length) database.generalSettings.accountsLedger = accountsLedger;
+
+  return result.rowCount || teachers.length || students.length || classes.length || users.length || subjects.length || attendance.length || fees.length ? database : null;
 }
 
 async function findLicenseByToken(schoolId, token) {
@@ -540,11 +892,11 @@ app.get("/health", async (_req, res) => {
 
 app.get("/api/database/:schoolId", requireApiKey, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
-  const result = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
-  if (!result.rowCount) {
+  const database = await getSchoolDatabase(schoolId);
+  if (!database) {
     return res.json({ success: true, school_id: schoolId, database: null });
   }
-  return res.json({ success: true, school_id: schoolId, database: result.rows[0].database });
+  return res.json({ success: true, school_id: schoolId, database });
 });
 
 app.post("/api/database/:schoolId", requireApiKey, async (req, res) => {

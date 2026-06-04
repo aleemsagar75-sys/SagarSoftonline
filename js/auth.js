@@ -176,6 +176,9 @@
       createdAt: new Date().toISOString()
     });
     window.SagarSoftDB.saveDatabase(database);
+    if (window.SagarSoftDB && typeof window.SagarSoftDB.flushRemoteSave === "function") {
+      window.SagarSoftDB.flushRemoteSave().catch(function () {});
+    }
 
     const session = {
       id: adminRecord.id,

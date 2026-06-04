@@ -1,5 +1,5 @@
 window.SagarSoftOnlineConfig = {
-  apiBaseUrl: "",
-  apiKey: "sagarsoft-online-2026-change-this-before-live",
+  apiBaseUrl: "https://sagarsoftonline.onrender.com",
+  apiKey: "SagarSoft_2026_Online_DB_9xKp72LmQ4vR8zT",
   schoolId: "SagarSoftDB"
 };

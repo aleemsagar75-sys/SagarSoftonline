@@ -109,6 +109,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!target || target.tagName !== "INPUT") {
       return false;
     }
+    if (target.id === "ledgerCategoryInput") {
+      return false;
+    }
     if (target.type === "number" || target.getAttribute("inputmode") === "numeric") {
       return true;
     }
@@ -2046,7 +2049,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     const whatsappPhone = normalizeWhatsappPhone(phone);
     const whatsappLink = whatsappPhone
-      ? `https://web.whatsapp.com/send?phone=${encodeURIComponent(whatsappPhone)}&text=${encodeURIComponent(messageText)}`
+      ? getWhatsappOpenUrl(whatsappPhone, messageText)
       : "";
     let opened = false;
     if (openChat && whatsappLink) {
@@ -2095,6 +2098,20 @@ document.addEventListener("DOMContentLoaded", function () {
     const top = Math.max(0, Math.round(dualScreenTop + (viewportHeight - height) / 2));
     const features = `toolbar=no,location=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=${width},height=${height},left=${left},top=${top}`;
     return window.open(url, windowName || "_blank", features);
+  }
+
+  function isMobileRuntime() {
+    return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || "") || (window.matchMedia && window.matchMedia("(max-width: 760px)").matches);
+  }
+
+  function getWhatsappOpenUrl(phone, text) {
+    const normalizedPhone = normalizeWhatsappPhone(phone);
+    const encodedPhone = encodeURIComponent(normalizedPhone || "");
+    const encodedText = encodeURIComponent(String(text || ""));
+    if (isMobileRuntime()) {
+      return `whatsapp://send?phone=${encodedPhone}&text=${encodedText}`;
+    }
+    return `https://wa.me/${encodedPhone}?text=${encodedText}`;
   }
 
   function sendDirectWhatsappToStudent(student, contextLabel, presetMessage) {
@@ -2657,13 +2674,49 @@ document.addEventListener("DOMContentLoaded", function () {
               body.print-thermal table {
                 font-size: 5.8pt;
               }
-              body.print-thermal th, body.print-thermal td {
+            body.print-thermal th, body.print-thermal td {
                 padding: 1px 2px;
               }
+            }
+            .mobile-print-toolbar {
+              display: none;
+              position: sticky;
+              top: 0;
+              z-index: 9999;
+              gap: 8px;
+              padding: 10px;
+              background: #0b1f3a;
+              box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+            }
+            .mobile-print-toolbar button {
+              flex: 1;
+              min-height: 42px;
+              border: 0;
+              border-radius: 8px;
+              font-weight: 800;
+              color: #0b1f3a;
+              background: #fff;
+            }
+            .mobile-print-toolbar .print-now {
+              color: #fff;
+              background: #0e8a72;
+            }
+            @media screen and (max-width: 760px) {
+              body { background: #eef6f8; }
+              .mobile-print-toolbar { display: flex; }
+              .print-wrap { padding: 10px; }
+            }
+            @media print {
+              .mobile-print-toolbar { display: none !important; }
             }
           </style>
         </head>
         <body class="${paperSize ? 'print-' + paperSize : ''}">
+          <nav class="mobile-print-toolbar">
+            <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.close(); }">Back</button>
+            <button type="button" onclick="window.close();">Cancel</button>
+            <button class="print-now" type="button" onclick="window.print();">Print</button>
+          </nav>
           <main class="print-wrap">
             ${reportHeaderHtml}
             ${config.subtitle ? `<p class="report-subtitle">${config.subtitle}</p>` : ""}
@@ -3781,7 +3834,7 @@ document.addEventListener("DOMContentLoaded", function () {
     settings.salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
 
     if (!settings.__accountsLedgerUserTouched && settings.accountsLedger.length) {
-      settings.accountsLedger = [];
+      settings.__accountsLedgerUserTouched = true;
       settings.__accountsLedgerLegacyClearedV1 = true;
       settings.__accountsLedgerLegacyClearedV2 = true;
       changed = true;
@@ -3815,9 +3868,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }).reduce(function (sum, item) {
       return sum + Number(item.netSalary || item.salaryAmount || 0);
     }, 0);
-    const monthlyLedger = accountsLedger.filter(function (item) {
-      return getMonthKeyFromValue(item.date || item.createdAt) === currentMonth;
+    let monthlyLedger = accountsLedger.filter(function (item) {
+      const itemMonth = getMonthKeyFromValue(item.date || item.createdAt);
+      return itemMonth ? itemMonth === currentMonth : true;
     });
+    if (!monthlyLedger.length && accountsLedger.length) {
+      monthlyLedger = accountsLedger.slice();
+    }
     const totalIncome = monthlyLedger.filter(function (item) {
       return String(item.type || "").toLowerCase() === "income";
     }).reduce(function (sum, item) {
@@ -3834,6 +3891,8 @@ document.addEventListener("DOMContentLoaded", function () {
       totalIncome: totalIncome,
       totalSalaries: totalSalaries,
       totalExpenses: totalExpenses,
+      incomeTotal: totalFeeCollection + totalIncome,
+      expenseTotal: totalSalaries + totalExpenses,
       totalProfit: (totalFeeCollection + totalIncome) - totalSalaries - totalExpenses
     };
   }
@@ -13954,10 +14013,12 @@ document.addEventListener("DOMContentLoaded", function () {
         saveDatabase();
       }
       const currencySymbol = (settings.accountSettings && settings.accountSettings.symbol) ? settings.accountSettings.symbol : "Rs";
-      const ledger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
 
       function getLedgerRows() {
-        return ledger.slice().sort(function (a, b) {
+        const currentLedger = Array.isArray(database.generalSettings && database.generalSettings.accountsLedger)
+          ? database.generalSettings.accountsLedger
+          : [];
+        return currentLedger.slice().sort(function (a, b) {
           return String(b.date || "").localeCompare(String(a.date || "")) || String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
         });
       }
@@ -14064,8 +14125,10 @@ document.addEventListener("DOMContentLoaded", function () {
             const id = delBtn.getAttribute("data-ledger-delete");
             showStyledDeleteConfirmation("Account Entry", function () {
               settings.accountsLedger = (settings.accountsLedger || []).filter(function (item) { return String(item.id) !== String(id); });
+              settings.__accountsLedgerUserTouched = true;
               saveDatabase();
-              renderModule(route, title);
+              refreshDatabase();
+              renderDynamicModuleWorkspace(route, title);
               openAppMessageBox("Success", "Account entry deleted successfully.", "success");
             });
             return;
@@ -14086,7 +14149,7 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
             <div class="form-grid">
               <div class="field-group"><label for="ledgerDateInput">Date*</label><input id="ledgerDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
-              <div class="field-group"><label for="ledgerCategoryInput">Category*</label><input id="ledgerCategoryInput" type="text" placeholder="${isIncome ? "e.g Fee Collection" : "e.g Utility Bills"}"></div>
+              <div class="field-group"><label for="ledgerCategoryInput">Category*</label><input id="ledgerCategoryInput" type="text" inputmode="text" autocomplete="off" placeholder="${isIncome ? "e.g Fee Collection" : "e.g Utility Bills"}"></div>
               <div class="field-group"><label for="ledgerAmountInput">Amount*</label><input id="ledgerAmountInput" type="number" min="0" step="0.01" placeholder="0"></div>
               <div class="field-group field-group--full"><label for="ledgerNoteInput">Note</label><textarea id="ledgerNoteInput" rows="3" placeholder="Optional details"></textarea></div>
             </div>
@@ -14156,9 +14219,11 @@ document.addEventListener("DOMContentLoaded", function () {
             showStyledDeleteConfirmation(entry ? `${entry.category} - ${currencySymbol}${entry.amount}` : "Account Entry", function () {
               const updatedSettings = database.generalSettings;
               updatedSettings.accountsLedger = (updatedSettings.accountsLedger || []).filter(function (item) { return String(item.id) !== String(id); });
+              updatedSettings.__accountsLedgerUserTouched = true;
               addActivity("Account entry deleted", `Ledger entry deleted: ${id}`);
               saveDatabase();
-              renderModule(route, title);
+              refreshDatabase();
+              renderDynamicModuleWorkspace(route, title);
               openAppMessageBox("Success", "Account entry deleted successfully.", "success");
             });
             return;
@@ -14189,8 +14254,9 @@ document.addEventListener("DOMContentLoaded", function () {
               localStorage.removeItem("sagarsoft_edit_ledger_id");
               addActivity("Account entry updated", `${isIncome ? "Income" : "Expense"} entry updated: ${category}`);
               saveDatabase();
+              refreshDatabase();
               openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} updated successfully.`, "success");
-              renderModule(route, title);
+              renderDynamicModuleWorkspace(route, title);
               return;
             }
           }
@@ -14207,8 +14273,9 @@ document.addEventListener("DOMContentLoaded", function () {
           currentSettings.__accountsLedgerUserTouched = true;
           addActivity("Account entry created", `${isIncome ? "Income" : "Expense"} entry created: ${category}`);
           saveDatabase();
+          refreshDatabase();
           openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} saved successfully.`, "success");
-          renderModule(route, title);
+          renderDynamicModuleWorkspace(route, title);
         });
         return;
       }
@@ -18252,7 +18319,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!normalizedPhone || !text) {
           return false;
         }
-        const link = `https://web.whatsapp.com/send?phone=${encodeURIComponent(normalizedPhone)}&text=${encodeURIComponent(text)}`;
+        const link = getWhatsappOpenUrl(normalizedPhone, text);
         if (window.SagarSoftDesktop && typeof window.SagarSoftDesktop.openExternal === "function") {
           window.SagarSoftDesktop.openExternal(link).catch(function () {
             return null;
@@ -21780,54 +21847,181 @@ document.addEventListener("DOMContentLoaded", function () {
     }).join("");
   }
 
+  function getDashboardFinanceSeries() {
+    const settings = (database && database.generalSettings) ? database.generalSettings : {};
+    const feeCollections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
+    const salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
+    const accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const today = new Date();
+    const months = [];
+    for (let offset = 5; offset >= 0; offset -= 1) {
+      const date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+      months.push({
+        key: key,
+        label: `${monthNames[date.getMonth()]} ${date.getFullYear()}`
+      });
+    }
+    return months.map(function (month) {
+      const feeIncome = feeCollections.filter(function (item) {
+        return getMonthKeyFromValue(item.collectedAt || item.paymentDate || item.date || item.feeMonth || item.month) === month.key;
+      }).reduce(function (sum, item) {
+        return sum + Number(item.deposit || 0);
+      }, 0);
+      const ledgerIncome = accountsLedger.filter(function (item) {
+        return String(item.type || "").toLowerCase() === "income" && getMonthKeyFromValue(item.date || item.createdAt) === month.key;
+      }).reduce(function (sum, item) {
+        return sum + Number(item.amount || 0);
+      }, 0);
+      const salaryExpense = salaryPayments.filter(function (item) {
+        return getMonthKeyFromValue(item.paymentDate || item.date || item.salaryMonth || item.createdAt) === month.key;
+      }).reduce(function (sum, item) {
+        return sum + Number(item.netSalary || item.salaryAmount || 0);
+      }, 0);
+      const ledgerExpense = accountsLedger.filter(function (item) {
+        return String(item.type || "").toLowerCase() === "expense" && getMonthKeyFromValue(item.date || item.createdAt) === month.key;
+      }).reduce(function (sum, item) {
+        return sum + Number(item.amount || 0);
+      }, 0);
+      return {
+        label: month.label,
+        income: feeIncome + ledgerIncome,
+        expense: salaryExpense + ledgerExpense
+      };
+    });
+  }
+
+  function buildSmoothPath(points) {
+    if (!points.length) {
+      return "";
+    }
+    if (points.length === 1) {
+      return `M ${points[0].x} ${points[0].y}`;
+    }
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let index = 1; index < points.length; index += 1) {
+      const previous = points[index - 1];
+      const current = points[index];
+      const middleX = (previous.x + current.x) / 2;
+      path += ` C ${middleX} ${previous.y}, ${middleX} ${current.y}, ${current.x} ${current.y}`;
+    }
+    return path;
+  }
+
+  function buildDashboardFinancePictureGraph(finance, currencySymbol) {
+    const series = getDashboardFinanceSeries();
+    const maxValue = Math.max(1, ...series.map(function (row) {
+      return Math.max(Number(row.income || 0), Number(row.expense || 0));
+    }));
+    const width = 760;
+    const height = 300;
+    const left = 54;
+    const right = 24;
+    const top = 34;
+    const bottom = 54;
+    const chartWidth = width - left - right;
+    const chartHeight = height - top - bottom;
+    const xStep = series.length > 1 ? chartWidth / (series.length - 1) : chartWidth;
+    const yFor = function (value) {
+      return bottom + chartHeight - ((Number(value || 0) / maxValue) * chartHeight);
+    };
+    const incomePoints = series.map(function (row, index) {
+      return { x: left + (index * xStep), y: yFor(row.income), value: row.income };
+    });
+    const expensePoints = series.map(function (row, index) {
+      return { x: left + (index * xStep), y: yFor(row.expense), value: row.expense };
+    });
+    const baseY = bottom + chartHeight;
+    const incomeLine = buildSmoothPath(incomePoints);
+    const expenseLine = buildSmoothPath(expensePoints);
+    const incomeArea = `${incomeLine} L ${incomePoints[incomePoints.length - 1].x} ${baseY} L ${incomePoints[0].x} ${baseY} Z`;
+    const expenseArea = `${expenseLine} L ${expensePoints[expensePoints.length - 1].x} ${baseY} L ${expensePoints[0].x} ${baseY} Z`;
+    const gridRows = [0, 0.25, 0.5, 0.75, 1].map(function (ratio) {
+      const y = bottom + (chartHeight * ratio);
+      const value = Math.round(maxValue * (1 - ratio));
+      return `<line x1="${left}" y1="${y}" x2="${width - right}" y2="${y}"></line><text x="${left - 10}" y="${y + 4}" text-anchor="end">${value}</text>`;
+    }).join("");
+    const monthLabels = series.map(function (row, index) {
+      const x = left + (index * xStep);
+      return `<text class="month-label" x="${x}" y="${height - 18}" text-anchor="middle">${escapeHtml(row.label)}</text>`;
+    }).join("");
+    const incomeDots = incomePoints.map(function (point) {
+      return `<circle class="income-dot" cx="${point.x}" cy="${point.y}" r="4"><title>${currencySymbol} ${Math.round(point.value)}</title></circle>`;
+    }).join("");
+    const expenseDots = expensePoints.map(function (point) {
+      return `<circle class="expense-dot" cx="${point.x}" cy="${point.y}" r="4"><title>${currencySymbol} ${Math.round(point.value)}</title></circle>`;
+    }).join("");
+    const totalIncome = Math.round(Number(finance.incomeTotal || 0));
+    const totalExpense = Math.round(Number(finance.expenseTotal || 0));
+    return `
+      <div class="dashboard-finance-picture" aria-label="Income vs expense graph">
+        <div class="dashboard-finance-picture__legend">
+          <span><i class="expense"></i> Expenses ${currencySymbol} ${totalExpense}</span>
+          <span><i class="income"></i> Income ${currencySymbol} ${totalIncome}</span>
+        </div>
+        <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Monthly income and expense">
+          <g class="finance-grid">${gridRows}</g>
+          <path class="expense-area" d="${expenseArea}"></path>
+          <path class="income-area" d="${incomeArea}"></path>
+          <path class="expense-line" d="${expenseLine}"></path>
+          <path class="income-line" d="${incomeLine}"></path>
+          ${expenseDots}
+          ${incomeDots}
+          <g class="finance-months">${monthLabels}</g>
+        </svg>
+      </div>
+    `;
+  }
+
   function renderDashboardAnalytics() {
     const financeChart = document.getElementById("dashboardFinanceChart");
-    const financeBars = document.getElementById("dashboardFinanceBars");
     const attendanceBars = document.getElementById("dashboardAttendanceBar");
-    if (!financeChart || !financeBars || !attendanceBars) {
+    if (!financeChart || !attendanceBars) {
       return;
     }
 
-    const ledger = ((database.generalSettings && database.generalSettings.accountsLedger) || []).slice();
-    const income = ledger.filter(function (row) { return row.type === "Income"; }).reduce(function (sum, row) { return sum + Number(row.amount || 0); }, 0);
-    const expense = ledger.filter(function (row) { return row.type === "Expense"; }).reduce(function (sum, row) { return sum + Number(row.amount || 0); }, 0);
+    const finance = getDashboardMonthFinance();
+    const currencySymbol = (database.generalSettings && database.generalSettings.accountSettings && database.generalSettings.accountSettings.symbol)
+      ? database.generalSettings.accountSettings.symbol
+      : "Rs";
+    const income = Number(finance.totalFeeCollection || 0) + Number(finance.totalIncome || 0);
+    const expense = Number(finance.totalSalaries || 0) + Number(finance.totalExpenses || 0);
     const totalFinance = income + expense;
-    const incomePercent = totalFinance ? Math.round((income / totalFinance) * 100) : 0;
-    const categoryMap = ledger.reduce(function (map, row) {
-      const key = row.category || "Other";
-      map.set(key, (map.get(key) || 0) + Number(row.amount || 0));
-      return map;
-    }, new Map());
-    const categoryRows = Array.from(categoryMap.entries()).map(function (entry) {
-      return { label: entry[0], value: Math.round(entry[1]) };
-    }).sort(function (a, b) { return b.value - a.value; }).slice(0, 6);
-    const maxCategory = categoryRows.length ? Math.max.apply(null, categoryRows.map(function (item) { return item.value; })) : 1;
+    const hasFinanceSeries = getDashboardFinanceSeries().some(function (row) {
+      return Number(row.income || 0) || Number(row.expense || 0);
+    });
 
-    financeChart.innerHTML = totalFinance
-      ? buildDashboardCircleChart(incomePercent, `Income ${income} | Expense ${expense}`, "#1d9c61", "#d64b4b")
+    financeChart.innerHTML = (totalFinance || hasFinanceSeries)
+      ? buildDashboardFinancePictureGraph(finance, currencySymbol)
       : `<p class="empty-state">No finance entries yet.</p>`;
-    financeBars.innerHTML = categoryRows.length
-      ? buildDashboardBars(categoryRows, maxCategory)
-      : `<p class="empty-state">No finance category stats yet.</p>`;
 
-    // Get TODAY's attendance only
+    // Get TODAY's student attendance only
     const todayISO = getTodayDateISO();
     const todayAttendance = (database.attendance || []).filter(function (row) {
       const attendanceDate = (row.date || "").substring(0, 10);
-      return attendanceDate === todayISO;
+      const isStudentAttendance = row.studentId || !row.entityType || row.entityType === "student";
+      return isStudentAttendance && attendanceDate === todayISO;
     });
     const present = todayAttendance.filter(function (row) { return row.status === "Present"; }).length;
     const leave = todayAttendance.filter(function (row) { return row.status === "On-leave"; }).length;
     const absent = todayAttendance.filter(function (row) { return row.status === "Absent"; }).length;
-    const totalAttendance = present + leave + absent;
+    const totalStudents = (database.students || []).filter(function (student) { return String(student.status || "active").toLowerCase() !== "inactive"; }).length;
+    const totalAttendance = Math.max(todayAttendance.length, present + leave + absent);
+    const unmarked = Math.max(0, totalStudents - totalAttendance);
     const attRows = [
       { label: "Present", value: present },
       { label: "On-leave", value: leave },
-      { label: "Absent", value: absent }
+      { label: "Absent", value: absent },
+      { label: "Unmarked", value: unmarked }
     ];
-    attendanceBars.innerHTML = totalAttendance
+    attendanceBars.innerHTML = (totalAttendance || unmarked)
       ? buildDashboardBars(attRows, Math.max.apply(null, attRows.map(function (item) { return item.value; })))
-      : `<p class="empty-state">No attendance marked for today.</p>`;
+      : `<p class="empty-state">No students found for attendance overview.</p>`;
+    financeChart.style.cursor = "pointer";
+    financeChart.onclick = function () { setRoute("accounts-report"); };
+    attendanceBars.style.cursor = "pointer";
+    attendanceBars.onclick = function () { setRoute("students-attendance"); };
   }
 
   function updateDashboardClock() {
@@ -22239,6 +22433,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (isStudentsModule) {
       setStudentRoute(normalizedRoute);
+      return;
+    }
+
+    if (isDashboard) {
+      renderDashboard();
       return;
     }
 

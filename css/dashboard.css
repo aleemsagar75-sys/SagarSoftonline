@@ -3942,6 +3942,195 @@ th {
   }
 }
 
+@media (max-width: 760px) {
+  html,
+  body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .content-area,
+  .view,
+  .module-summary,
+  .module-guide,
+  .panel-card,
+  .table-card,
+  .whatsapp-form-card,
+  .whatsapp-history-card,
+  .report-card,
+  .offline-registry-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .form-grid,
+  .module-toolbar,
+  .toolbar,
+  .toolbar--status,
+  .toolbar--students,
+  .report-grid,
+  .report-cards,
+  .split-grid,
+  .utility-grid,
+  .dashboard-grid,
+  .class-subjects-grid,
+  .id-cards-grid,
+  .student-directory-grid,
+  .stats-grid,
+  .hero-metrics {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  .form-actions,
+  .table-actions,
+  .test-result-row-actions,
+  .test-result-toolbar-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    gap: 0.5rem !important;
+  }
+
+  .primary-button,
+  .secondary-button,
+  .table-action-btn,
+  .danger-button,
+  button {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .form-actions > *,
+  .table-actions > *,
+  .test-result-row-actions > *,
+  .test-result-toolbar-actions > * {
+    width: 100% !important;
+  }
+
+  .table-wrap,
+  .test-result-table-wrap,
+  .registry-table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-wrap table,
+  .test-result-table-wrap table,
+  .registry-table-wrap table {
+    min-width: 680px;
+  }
+
+  .field-group input,
+  .field-group select,
+  .field-group textarea,
+  input,
+  select,
+  textarea {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+}
+
+.dashboard-finance-picture {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 310px;
+}
+
+.dashboard-finance-picture__legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+  color: #5d6572;
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.dashboard-finance-picture__legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.dashboard-finance-picture__legend i {
+  width: 28px;
+  height: 12px;
+  border-radius: 2px;
+  border: 3px solid rgba(34, 96, 227, 0.7);
+  background: rgba(82, 124, 236, 0.5);
+}
+
+.dashboard-finance-picture__legend i.expense {
+  border-color: rgba(255, 111, 127, 0.8);
+  background: rgba(255, 132, 148, 0.55);
+}
+
+.dashboard-finance-picture svg {
+  width: 100%;
+  min-height: 260px;
+  display: block;
+}
+
+.dashboard-finance-picture .finance-grid line {
+  stroke: rgba(15, 43, 63, 0.1);
+  stroke-width: 1;
+}
+
+.dashboard-finance-picture .finance-grid text,
+.dashboard-finance-picture .month-label {
+  fill: #6d7480;
+  font-size: 12px;
+}
+
+.dashboard-finance-picture .income-area {
+  fill: rgba(82, 124, 236, 0.55);
+}
+
+.dashboard-finance-picture .expense-area {
+  fill: rgba(255, 132, 148, 0.58);
+}
+
+.dashboard-finance-picture .income-line {
+  fill: none;
+  stroke: #5b7df2;
+  stroke-width: 4;
+}
+
+.dashboard-finance-picture .expense-line {
+  fill: none;
+  stroke: #ff7586;
+  stroke-width: 4;
+}
+
+.dashboard-finance-picture .income-dot {
+  fill: #5b7df2;
+}
+
+.dashboard-finance-picture .expense-dot {
+  fill: #ff7586;
+}
+
+@media (max-width: 760px) {
+  .dashboard-finance-picture {
+    min-height: 250px;
+  }
+
+  .dashboard-finance-picture svg {
+    min-height: 220px;
+  }
+}
+
 .table-action-btn {
   display: inline-flex;
   align-items: center;

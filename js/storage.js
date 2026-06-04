@@ -255,7 +255,7 @@
       pushRemoteDatabase(JSON.parse(snapshot)).catch(function (error) {
         localStorage.setItem(REMOTE_LAST_ERROR_KEY, String(error && error.message ? error.message : error));
       });
-    }, 250);
+    }, 60);
   }
 
   window.addEventListener("beforeunload", function () {
@@ -443,16 +443,22 @@
       }
 
       // Clean corrupted accountsLedger entries (check for "1000 0" or similar invalid data)
-      parsedData.generalSettings.accountsLedger = (parsedData.generalSettings.accountsLedger || []).filter(function (entry) {
-        // Keep only valid entries with proper structure
-        return entry && 
-               typeof entry === "object" && 
-               entry.id && 
-               entry.date && 
-               entry.type && 
-               entry.category && 
-               typeof entry.amount === "number" && 
-                              entry.amount >= 0;
+      parsedData.generalSettings.accountsLedger = (parsedData.generalSettings.accountsLedger || []).map(function (entry) {
+        if (!entry || typeof entry !== "object") {
+          return null;
+        }
+        return {
+          ...entry,
+          amount: Number(entry.amount || 0)
+        };
+      }).filter(function (entry) {
+        return entry &&
+               entry.id &&
+               entry.date &&
+               entry.type &&
+               entry.category &&
+               Number.isFinite(entry.amount) &&
+               entry.amount >= 0;
       });
 
       if (!Array.isArray(parsedData.users)) {
