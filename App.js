@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Linking, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { WebView } from "react-native-webview";
 
@@ -52,6 +52,24 @@ export default function App() {
         allowFileAccess
         allowsBackForwardNavigationGestures
         setSupportMultipleWindows={false}
+        onShouldStartLoadWithRequest={(request) => {
+          const url = String(request.url || "");
+          const isExternal =
+            url.startsWith("whatsapp://") ||
+            url.startsWith("intent://") ||
+            url.includes("wa.me/") ||
+            url.includes("api.whatsapp.com/");
+          if (isExternal) {
+            Linking.openURL(url).catch(() => {
+              const fallback = url.startsWith("whatsapp://")
+                ? url.replace("whatsapp://send", "https://api.whatsapp.com/send")
+                : url;
+              Linking.openURL(fallback).catch(() => {});
+            });
+            return false;
+          }
+          return true;
+        }}
         onLoadEnd={() => setLoading(false)}
         onError={() => {
           setLoading(false);
