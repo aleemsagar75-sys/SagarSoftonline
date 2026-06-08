@@ -42,7 +42,17 @@ async function _initPool() {
   try {
     var addrs = await dns.promises.resolve4(info.host);
     info.host = addrs[0];
-  } catch (_e) {}
+  } catch (_e) {
+    var match = info.host.match(/^db\.(.+?)\.supabase\.co$/);
+    if (match) {
+      var poolerHost = match[1] + ".pooler.supabase.com";
+      try {
+        var pAddrs = await dns.promises.resolve4(poolerHost);
+        info.host = pAddrs[0];
+        info.port = 5432;
+      } catch (_e2) {}
+    }
+  }
   _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, ssl: { rejectUnauthorized: false } });
   return _pool;
 }
