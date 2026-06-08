@@ -1,8 +1,6 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 
 const dns = require("dns");
-dns.setDefaultResultOrder("ipv4first");
-
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -24,9 +22,42 @@ if (!process.env.SUPABASE_DB_URL) {
   throw new Error("SUPABASE_DB_URL is required.");
 }
 
-const pool = new Pool({
-  connectionString: process.env.SUPABASE_DB_URL,
-  ssl: { rejectUnauthorized: false },
+function parseDbUrl(url) {
+  var u = new URL(url);
+  return {
+    host: u.hostname,
+    port: parseInt(u.port || "5432"),
+    user: decodeURIComponent(u.username),
+    password: decodeURIComponent(u.password),
+    database: u.pathname.slice(1).split("?")[0]
+  };
+}
+
+var _pool = null;
+var _poolPromise = null;
+
+async function _initPool() {
+  if (_pool) return _pool;
+  var info = parseDbUrl(process.env.SUPABASE_DB_URL);
+  try {
+    var addrs = await dns.promises.resolve4(info.host);
+    info.host = addrs[0];
+  } catch (_e) {}
+  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, ssl: { rejectUnauthorized: false } });
+  return _pool;
+}
+
+var pool = new Proxy({}, {
+  get: function (target, prop) {
+    return function () {
+      var args = arguments;
+      var ctx = this;
+      if (!_poolPromise) _poolPromise = _initPool();
+      return _poolPromise.then(function (p) {
+        return p[prop].apply(p, args);
+      });
+    };
+  }
 });
 
 var allowedOrigins = [
