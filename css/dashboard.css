@@ -4166,3 +4166,58 @@ th {
 .table-action-btn i {
   font-size: 0.9rem;
 }
+
+/* Utility classes for inline style replacement */
+.search-wrap {
+  position: relative;
+  flex: 1;
+}
+.search-input-wrap {
+  width: 100%;
+  position: relative;
+  z-index: 10;
+}
+.search-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid rgba(27,95,122,0.15);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 300px;
+  overflow-y: auto;
+  display: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  z-index: 100;
+}
+.input-prefix-group {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.input-prefix {
+  padding: 0.75rem 1rem;
+  background: #f0f0f0;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #333;
+  border-right: 1px solid #ccc;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+.input-prefix-field {
+  flex: 1;
+  border: none;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+}
+.warning-text {
+  color: #d64b4b;
+  display: none;
+  margin-top: 0.25rem;
+}

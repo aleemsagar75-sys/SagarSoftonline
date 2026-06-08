@@ -2,12 +2,9 @@
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
-  console.log("Employee View clicked, ID:", employeeId);
   const database = window.SagarSoftDB.getDatabase();
-  console.log("Database teachers:", database.teachers);
   const employee = (database.teachers || []).find(e => e.id === employeeId);
   if (!employee) {
-    console.log("Employee not found");
     return;
   }
   const employeeModalContent = document.getElementById("employeeModalContent");
@@ -19,8 +16,8 @@ window.handleEmployeeViewClick = function(employeeId) {
   try {
     const generalSettings = database.generalSettings || {};
     const currencySymbol = (generalSettings.accountSettings && generalSettings.accountSettings.symbol) ? generalSettings.accountSettings.symbol : "Rs";
-    const assignedClasses = (database.classesList || []).filter(function (c) { return String(c.teacher || "").toLowerCase() === String(employee.name || "").toLowerCase(); });
-    const assignedSubjects = (database.subjectAssignments || []).filter(function (s) { return String(s.employeeName || "") === String(employee.name || ""); });
+    const assignedClasses = (database.classes || []).filter(function (c) { return String(c.teacher || "").toLowerCase() === String(employee.name || "").toLowerCase(); });
+    const assignedSubjects = (database.subjects || []).filter(function (s) { return String(s.employeeName || "") === String(employee.name || ""); });
     const salaryPayments = (generalSettings.salaryPayments || []).filter(function (s) { return s.employeeId === employee.id; }).slice(-12);
     const totalSalary = salaryPayments.reduce(function (sum, s) { return sum + Number(s.salaryAmount || 0); }, 0);
     
@@ -36,13 +33,11 @@ window.handleEmployeeViewClick = function(employeeId) {
 };
 
 window.handleEmployeeEditClick = function(employeeId) {
-  console.log("Employee Edit clicked, ID:", employeeId);
-  localStorage.setItem("sagarsoft_edit_employee_id", employeeId);
+  sessionStorage.setItem("sagarsoft_edit_employee_id", employeeId);
   setRoute("employees-add-new");
 };
 
 window.handleEmployeeDeleteClick = function(employeeId) {
-  console.log("Employee Delete clicked, ID:", employeeId);
   const database = window.SagarSoftDB.getDatabase();
   const employee = (database.teachers || []).find(e => e.id === employeeId);
   if (!employee) {
@@ -762,7 +757,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const license = database.generalSettings.licenseSettings;
     const accountSettings = database.generalSettings.accountSettings || {};
     const defaultLicense = {
-      schoolId: `SCH-${new Date().getFullYear()}-001`,
+      schoolId: "SCH-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase(),
       schoolName: fallbackSchoolName,
       activated: false,
       subscriptionPlan: "monthly",
@@ -772,7 +767,7 @@ document.addEventListener("DOMContentLoaded", function () {
       status: "inactive",
       lastVerifiedAt: "",
       verificationIntervalDays: 20,
-      websiteEndpoint: "https://sagarsoftadmin.onrender.com",
+      websiteEndpoint: (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com",
       licenseToken: "",
       lastServerResponse: ""
     };
@@ -1003,7 +998,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function normalizeLicenseEndpoint(value) {
-    const defaultEndpoint = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftadmin.onrender.com";
+    const defaultEndpoint = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
     let endpoint = String(value || defaultEndpoint).trim().replace(/\/+$/, "");
     if (!endpoint || endpoint.includes("infinityfreeapp.com")) {
       return defaultEndpoint;
@@ -1019,12 +1014,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function getOnlineDeviceId() {
     const key = "sagarsoft_device_id";
-    let deviceId = localStorage.getItem(key);
-    if (!deviceId) {
-      deviceId = `SSMS-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      localStorage.setItem(key, deviceId);
-    }
-    return deviceId;
+    try { return sessionStorage.getItem(key) || ""; } catch (e) { return ""; }
   }
 
   function normalizePortalPlan(plan) {
@@ -1110,48 +1100,88 @@ document.addEventListener("DOMContentLoaded", function () {
     const opts = options || {};
     const license = ensureLicenseSettings();
     const accountSettings = database.generalSettings.accountSettings || {};
-    const endpoint = normalizeLicenseEndpoint(license.websiteEndpoint);
-    license.websiteEndpoint = endpoint;
+    const baseUrl = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
+    const endpoint = normalizeLicenseEndpoint(license.websiteEndpoint || baseUrl);
     let payload = null;
 
-    if (!license.licenseToken || opts.forceActivate) {
-      const email = String(accountSettings.username || currentUser.email || "").trim().toLowerCase();
-      const password = String(accountSettings.password || "").trim();
-      if (!email || !password) {
+    if (opts.forceActivate) {
+      var syncEmailInput = document.getElementById("accountUsernameInput");
+      var syncPasswordInput = document.getElementById("accountPasswordInput");
+      var syncEmail = syncEmailInput ? String(syncEmailInput.value).trim().toLowerCase() : "";
+      var syncPassword = syncPasswordInput ? String(syncPasswordInput.value).trim() : "";
+      if (!syncEmail || !syncPassword) {
         throw new Error("School email and password are required for online activation.");
       }
-      payload = await postLicenseJson(`${endpoint}/api/activate-school.php`, {
-        email: email,
-        password: password,
-        device_id: getOnlineDeviceId()
-      });
-    } else {
-      payload = await postLicenseJson(`${endpoint}/api/check-license.php`, {
+      payload = await postLicenseJson(`${endpoint}/api/sync-school-data.php`, {
         school_id: license.schoolId,
-        license_token: license.licenseToken
-      });
-    }
-
-    applyOnlineLicensePayload(payload);
-
-    const refreshedLicense = ensureLicenseSettings();
-    try {
-      const syncPayload = await postLicenseJson(`${endpoint}/api/sync-school-data.php`, {
-        school_id: refreshedLicense.schoolId,
-        license_token: refreshedLicense.licenseToken,
-        school_name: refreshedLicense.schoolName,
-        activation_status: String(refreshedLicense.status || (refreshedLicense.activated ? "active" : "inactive")).toLowerCase(),
-        plan: String(refreshedLicense.subscriptionPlan || "monthly").replace("3-months", "3months").replace("5-months", "5months").replace("1-year", "1year"),
-        start_date: refreshedLicense.startDate,
-        expiry_date: refreshedLicense.expiryDate,
+        school_name: license.schoolName,
+        email: syncEmail,
+        password: syncPassword,
+        activation_status: "active",
+        plan: String(license.subscriptionPlan || "monthly").replace("3-months", "3months").replace("5-months", "5months").replace("1-year", "1year"),
+        start_date: license.startDate || new Date().toISOString().slice(0, 10),
+        expiry_date: license.expiryDate || null,
+        license_token: license.licenseToken || null,
         basic_data: {
-          school_name: refreshedLicense.schoolName,
+          school_name: license.schoolName,
           total_students: (database.students || []).length,
           total_employees: (database.teachers || []).length,
           software_version: "1.0.0",
           last_seen: new Date().toISOString()
         }
       });
+      if (payload && payload.license) {
+        applyOnlineLicensePayload(payload.license);
+      }
+    } else if (!license.licenseToken) {
+      var actEmailInput = document.getElementById("accountUsernameInput");
+      var actPasswordInput = document.getElementById("accountPasswordInput");
+      const email = actEmailInput ? String(actEmailInput.value).trim().toLowerCase() : "";
+      const password = actPasswordInput ? String(actPasswordInput.value).trim() : "";
+      if (!email || !password) {
+        throw new Error("School email and password are required.");
+      }
+      payload = await postLicenseJson(`${endpoint}/api/activate-school.php`, {
+        email: email,
+        password: password,
+        device_id: getOnlineDeviceId()
+      });
+      applyOnlineLicensePayload(payload);
+    } else {
+      payload = await postLicenseJson(`${endpoint}/api/check-license.php`, {
+        school_id: license.schoolId,
+        license_token: license.licenseToken
+      });
+      applyOnlineLicensePayload(payload);
+    }
+
+    const refreshedLicense = ensureLicenseSettings();
+    try {
+      var syncEmail2Input = document.getElementById("accountUsernameInput");
+      var syncPassword2Input = document.getElementById("accountPasswordInput");
+      var syncEmail2 = syncEmail2Input ? String(syncEmail2Input.value).trim().toLowerCase() : "";
+      var syncPassword2 = syncPassword2Input ? String(syncPassword2Input.value).trim() : "";
+      var syncPayload = null;
+      if (!opts.forceActivate) {
+        syncPayload = await postLicenseJson(`${endpoint}/api/sync-school-data.php`, {
+          school_id: refreshedLicense.schoolId,
+          license_token: refreshedLicense.licenseToken,
+          school_name: refreshedLicense.schoolName,
+          email: syncEmail2,
+          password: syncPassword2,
+          activation_status: String(refreshedLicense.status || (refreshedLicense.activated ? "active" : "inactive")).toLowerCase(),
+          plan: String(refreshedLicense.subscriptionPlan || "monthly").replace("3-months", "3months").replace("5-months", "5months").replace("1-year", "1year"),
+          start_date: refreshedLicense.startDate,
+          expiry_date: refreshedLicense.expiryDate,
+          basic_data: {
+            school_name: refreshedLicense.schoolName,
+            total_students: (database.students || []).length,
+            total_employees: (database.teachers || []).length,
+            software_version: "1.0.0",
+            last_seen: new Date().toISOString()
+          }
+        });
+      }
       if (syncPayload && syncPayload.license) {
         applyOnlineLicensePayload(syncPayload.license);
       }
@@ -1299,7 +1329,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const numbers = database.students
       .map(s => {
         const match = String(s.admissionNo || "").match(/\d+$/);
-        return match ? parseInt(match[0], 10) : 0;
+        return match ? parseFloat(match[0], 10) : 0;
       })
       .filter(n => n > 0);
     return numbers.length > 0 ? String(Math.max(...numbers)) : "";
@@ -1310,7 +1340,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const numbers = database.teachers
       .map(e => {
         const match = String(e.id || "").match(/\d+$/);
-        return match ? parseInt(match[0], 10) : 0;
+        return match ? parseFloat(match[0], 10) : 0;
       })
       .filter(n => n > 0);
     return numbers.length > 0 ? String(Math.max(...numbers)) : "";
@@ -1331,7 +1361,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (payload === "SSMS-BACKUP-") {
       throw new Error("Unable to encode backup data.");
     }
-    localStorage.setItem("sagarsoft_auto_backup_latest", payload);
+    sessionStorage.setItem("sagarsoft_auto_backup_latest", payload);
     const blob = new Blob([payload], { type: "application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
@@ -1559,7 +1589,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     let alertState = {};
     try {
-      alertState = JSON.parse(localStorage.getItem("sagarsoft_super_expiry_alert_state") || "{}") || {};
+      alertState = JSON.parse(sessionStorage.getItem("sagarsoft_super_expiry_alert_state") || "{}") || {};
     } catch (error) {
       alertState = {};
     }
@@ -1584,7 +1614,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
     if (changed) {
-      localStorage.setItem("sagarsoft_super_expiry_alert_state", JSON.stringify(alertState));
+      sessionStorage.setItem("sagarsoft_super_expiry_alert_state", JSON.stringify(alertState));
     }
   }
 
@@ -2388,7 +2418,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       });
       if (doc.fonts && typeof doc.fonts.ready === "object") {
-        waits.push(doc.fonts.ready.catch(function () {}));
+        waits.push(doc.fonts.ready.catch(function (err) { console.warn("Font loading failed:", err); }));
       }
       Promise.race([
         Promise.all(waits),
@@ -4180,17 +4210,6 @@ document.addEventListener("DOMContentLoaded", function () {
     ];
     const isAttendanceModuleRoute = attendanceModuleRoutes.includes(route);
 
-    function escapeHtml(value) {
-      return String(value || "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-    }
-
-    function escapeAttr(value) {
-      return escapeHtml(value).replace(/"/g, "&quot;");
-    }
-
     function getCurrentMonthInputValue() {
       return new Date().toISOString().slice(0, 7);
     }
@@ -4362,7 +4381,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const classRecord = database.classes.find(function (item) {
         return item.name === selectedClass;
       });
-      const monthlyFee = Math.max(0, parseInt(classRecord && classRecord.monthlyTuitionFees ? classRecord.monthlyTuitionFees : 0, 10));
+      const monthlyFee = Math.max(0, parseFloat(classRecord && classRecord.monthlyTuitionFees ? classRecord.monthlyTuitionFees : 0, 10));
       return [
         { label: "Monthly Tuition Fees", amount: monthlyFee, fixed: true },
         { label: "ADMISSION FEE", amount: 0, fixed: false },
@@ -4567,7 +4586,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const rows = settings.feeParticulars[cls] || getDefaultFeeParticulars(cls);
         rowsWrap.innerHTML = rows.map(function (row, index) {
           const fixed = row.fixed ? "readonly" : "";
-          const safeAmount = Math.max(0, parseInt(row.amount || 0, 10));
+          const safeAmount = Math.max(0, parseFloat(row.amount || 0, 10));
           return `
             <article class="module-line-item">
               <div class="field-group">
@@ -4587,7 +4606,7 @@ document.addEventListener("DOMContentLoaded", function () {
       function renderPreview() {
         const amounts = Array.from(rowsWrap.querySelectorAll(".fee-particular-amount")).map(function (input) {
           const val = input.value.trim();
-          return val === "" ? 0 : Math.max(0, parseInt(val, 10) || 0);
+          return val === "" ? 0 : Math.max(0, parseFloat(val, 10) || 0);
         });
         const total = amounts.reduce(function (sum, value) { return sum + value; }, 0);
         preview.innerHTML = `<p><strong>Class:</strong> ${escapeHtml(classSelect.value || "-")}</p><p><strong>Total Amount:</strong> ${total}</p>`;
@@ -4605,7 +4624,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const amounts = rowsWrap.querySelectorAll(".fee-particular-amount");
         settings.feeParticulars[cls] = Array.from(labels).map(function (labelInput, index) {
           const amountVal = amounts[index].value.trim();
-          const amount = amountVal === "" ? 0 : Math.max(0, parseInt(amountVal, 10) || 0);
+          const amount = amountVal === "" ? 0 : Math.max(0, parseFloat(amountVal, 10) || 0);
           return {
             label: labelInput.value.trim(),
             amount: amount,
@@ -4679,7 +4698,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       function renderStructurePreview() {
         const total = Array.from(rowsWrap.querySelectorAll(".fee-structure-amount")).reduce(function (sum, input) {
-          return sum + Math.max(0, parseInt(input.value || 0, 10));
+          return sum + Math.max(0, parseFloat(input.value || 0, 10));
         }, 0);
         preview.innerHTML = `<p><strong>Class:</strong> ${escapeHtml(classSelect.value || "-")}</p><p><strong>Total:</strong> ${total}</p>`;
       }
@@ -4702,7 +4721,7 @@ document.addEventListener("DOMContentLoaded", function () {
       document.getElementById("saveFeeStructureBtn").addEventListener("click", function () {
         const cls = classSelect.value;
         settings.feeStructures[cls] = Array.from(rowsWrap.querySelectorAll(".module-line-item")).map(function (row) {
-          const amount = Math.max(0, parseInt(row.querySelector(".fee-structure-amount").value || 0, 10));
+          const amount = Math.max(0, parseFloat(row.querySelector(".fee-structure-amount").value || 0, 10));
           return {
             type: row.querySelector(".fee-structure-type").value.trim(),
             amount: amount
@@ -5374,8 +5393,8 @@ document.addEventListener("DOMContentLoaded", function () {
         searchInput.value = `${student.name || ""} (${student.admissionNo || "-"})`;
         classifyInvoicesForPrint = [];
         const particulates = buildFeeParticularsForStudent(student);
-        const totalAmount = particulates.reduce(function (sum, item) { return sum + Math.max(0, parseInt(item.amount || 0, 10)); }, 0);
-        const fineAmount = Math.max(0, parseInt(fineInput ? fineInput.value : 0, 10));
+        const totalAmount = particulates.reduce(function (sum, item) { return sum + Math.max(0, parseFloat(item.amount || 0, 10)); }, 0);
+        const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0, 10));
         const invoiceData = {
           id: `INV-TEMP-${Date.now()}`,
           studentId: student.id,
@@ -5486,10 +5505,10 @@ document.addEventListener("DOMContentLoaded", function () {
         return classParticulars.map(function (item) {
           const label = String(item.label || "");
           if (label.toUpperCase().includes("DISCOUNT IN FEE")) {
-            const discountAmount = Math.max(0, parseInt(student.discountAmount || 0, 10));
+            const discountAmount = Math.max(0, parseFloat(student.discountAmount || 0, 10));
             return { ...item, amount: discountAmount };
           }
-          const amount = Math.max(0, parseInt(item.amount || 0, 10));
+          const amount = Math.max(0, parseFloat(item.amount || 0, 10));
           return { ...item, amount: amount };
         });
       }
@@ -5608,8 +5627,8 @@ document.addEventListener("DOMContentLoaded", function () {
         message.className = "form-message";
         await new Promise(function (resolve) { setTimeout(resolve, 0); });
         const particulars = buildFeeParticularsForStudent(student);
-        const totalAmount = particulars.reduce(function (sum, item) { return sum + Math.max(0, parseInt(item.amount || 0, 10)); }, 0);
-        const fineAmount = Math.max(0, parseInt(fineInput.value || 0, 10));
+        const totalAmount = particulars.reduce(function (sum, item) { return sum + Math.max(0, parseFloat(item.amount || 0, 10)); }, 0);
+        const fineAmount = Math.max(0, parseFloat(fineInput.value || 0, 10));
         const invoiceData = {
           id: `INV-${Date.now()}-${student.id}`,
           studentId: student.id,
@@ -5695,8 +5714,8 @@ document.addEventListener("DOMContentLoaded", function () {
               continue;
             }
             const particulars = buildFeeParticularsForStudent(student);
-            const totalAmount = particulars.reduce(function (sum, item) { return sum + Math.max(0, parseInt(item.amount || 0, 10)); }, 0);
-            const fineAmount = Math.max(0, parseInt(fineInput.value || 0, 10));
+            const totalAmount = particulars.reduce(function (sum, item) { return sum + Math.max(0, parseFloat(item.amount || 0, 10)); }, 0);
+            const fineAmount = Math.max(0, parseFloat(fineInput.value || 0, 10));
             const invoiceData = {
               id: `INV-${Date.now()}-${student.id}`,
               studentId: student.id,
@@ -6267,11 +6286,11 @@ document.addEventListener("DOMContentLoaded", function () {
       let latestReceiptData = null;
       let isUserEditing = false;
 
-      const prefillStudentSearch = localStorage.getItem("sagarsoft_prefill_student_search");
-      const prefillFeeMonth = localStorage.getItem("sagarsoft_prefill_fee_month");
+      const prefillStudentSearch = sessionStorage.getItem("sagarsoft_prefill_student_search");
+      const prefillFeeMonth = sessionStorage.getItem("sagarsoft_prefill_fee_month");
       if (prefillStudentSearch) {
         searchInput.value = prefillStudentSearch;
-        localStorage.removeItem("sagarsoft_prefill_student_search");
+        sessionStorage.removeItem("sagarsoft_prefill_student_search");
       }
       if (prefillFeeMonth) {
         // Convert "Month, Year" format to "YYYY-MM" format if needed
@@ -6287,7 +6306,7 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
         monthSelect.value = convertedMonth;
-        localStorage.removeItem("sagarsoft_prefill_fee_month");
+        sessionStorage.removeItem("sagarsoft_prefill_fee_month");
       }
 
       function getFilteredStudents() {
@@ -6321,11 +6340,11 @@ document.addEventListener("DOMContentLoaded", function () {
         return classParticulars.map(function (item) {
           const label = String(item.label || "");
           if (label.toUpperCase().includes("DISCOUNT IN FEE")) {
-            const discountAmount = Math.max(0, parseInt(student.discountAmount || 0, 10));
+            const discountAmount = Math.max(0, parseFloat(student.discountAmount || 0, 10));
             const discountType = student.discountType ? `${student.discountType}` : `${student.discountInFee || 0} %`;
             return { label: `DISCOUNT IN FEE ${discountType}`, amount: discountAmount };
           }
-          const amount = Math.max(0, parseInt(item.amount || 0, 10));
+          const amount = Math.max(0, parseFloat(item.amount || 0, 10));
           return { label: item.label || "-", amount: amount };
         });
       }
@@ -6388,7 +6407,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         const rows = getFeeParticularRows(student);
-        const total = rows.reduce(function (sum, row) { return sum + Math.max(0, parseInt(row.amount || 0, 10)); }, 0);
+        const total = rows.reduce(function (sum, row) { return sum + Math.max(0, parseFloat(row.amount || 0, 10)); }, 0);
         
         // Calculate previous month dues (unpaid remaining amounts)
         const currentMonthFormatted = normalizeFeeMonthLabel(monthSelect.value);
@@ -6406,7 +6425,7 @@ document.addEventListener("DOMContentLoaded", function () {
         
         const totalWithPreviousDues = total + previousDues;
         const depositText = depositInput.value.trim();
-        const deposit = depositText === "" ? 0 : Math.max(0, parseInt(depositText, 10) || 0);
+        const deposit = depositText === "" ? 0 : Math.max(0, parseFloat(depositText, 10) || 0);
         const dueBalance = Math.max(totalWithPreviousDues - deposit, 0);
         detailsBox.innerHTML = `
           <article class="module-preview-card">
@@ -6422,7 +6441,7 @@ document.addEventListener("DOMContentLoaded", function () {
               <table>
                 <thead><tr><th>Sr.</th><th>Particulars</th><th>Amount</th></tr></thead>
                 <tbody>${rows.map(function (row, index) {
-                  const safeAmount = Math.max(0, parseInt(row.amount || 0, 10));
+                  const safeAmount = Math.max(0, parseFloat(row.amount || 0, 10));
                   return `<tr><td>${index + 1}</td><td>${escapeHtml(row.label || "-")}</td><td>${safeAmount}</td></tr>`;
                 }).join("")}${previousDues > 0 ? `<tr><td></td><td><strong>Previous Month Dues</strong></td><td>${previousDues}</td></tr>` : ""}</tbody>
                 <tfoot>
@@ -6474,9 +6493,9 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const particulars = getFeeParticularRows(student);
-        const currentMonthAmount = particulars.reduce(function (sum, row) { return sum + Math.max(0, parseInt(row.amount || 0, 10)); }, 0);
+        const currentMonthAmount = particulars.reduce(function (sum, row) { return sum + Math.max(0, parseFloat(row.amount || 0, 10)); }, 0);
         const depositText = depositInput.value.trim();
-        const deposit = depositText === "" ? 0 : Math.max(0, parseInt(depositText, 10) || 0);
+        const deposit = depositText === "" ? 0 : Math.max(0, parseFloat(depositText, 10) || 0);
         if (deposit <= 0) {
           message.textContent = "Please enter amount.";
           message.className = "form-message error";
@@ -6718,8 +6737,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       function getSelectedMonthYear() {
         const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        const monthIndex = parseInt(monthSelect.value, 10);
-        const year = parseInt(yearInput.value, 10);
+        const monthIndex = parseFloat(monthSelect.value, 10);
+        const year = parseFloat(yearInput.value, 10);
         return `${monthNames[monthIndex]}, ${year}`;
       }
 
@@ -6744,13 +6763,13 @@ document.addEventListener("DOMContentLoaded", function () {
           return item.name === student.className;
         });
         if (classRecord && classRecord.monthlyTuitionFees != null) {
-          return Math.max(0, parseInt(classRecord.monthlyTuitionFees || 0, 10));
+          return Math.max(0, parseFloat(classRecord.monthlyTuitionFees || 0, 10));
         }
         const particulars = (settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className);
         const monthlyFeeRow = particulars.find(function (item) {
           return String(item.label || "").toLowerCase().includes("monthly");
         });
-        return Math.max(0, parseInt(monthlyFeeRow && monthlyFeeRow.amount ? monthlyFeeRow.amount : 0, 10));
+        return Math.max(0, parseFloat(monthlyFeeRow && monthlyFeeRow.amount ? monthlyFeeRow.amount : 0, 10));
       }
 
       function getDefaulterReminderAmount(student) {
@@ -6808,9 +6827,9 @@ document.addEventListener("DOMContentLoaded", function () {
           if (!student) {
             return;
           }
-          localStorage.setItem("sagarsoft_prefill_student_search", `${student.name} (${student.admissionNo || "-"})`);
+          sessionStorage.setItem("sagarsoft_prefill_student_search", `${student.name} (${student.admissionNo || "-"})`);
           const selectedMonth = getSelectedMonthYear();
-          localStorage.setItem("sagarsoft_prefill_fee_month", selectedMonth);
+          sessionStorage.setItem("sagarsoft_prefill_fee_month", selectedMonth);
           setRoute("collect-fees");
           return;
         }
@@ -6870,10 +6889,10 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         const particulars = ((settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className)).map(function (item) {
-          const amount = Math.max(0, parseInt(item.amount || 0, 10));
+          const amount = Math.max(0, parseFloat(item.amount || 0, 10));
           return { label: item.label || "-", amount: amount };
         });
-        const total = particulars.reduce(function (sum, row) { return sum + Math.max(0, parseInt(row.amount || 0, 10)); }, 0);
+        const total = particulars.reduce(function (sum, row) { return sum + Math.max(0, parseFloat(row.amount || 0, 10)); }, 0);
         const feeMonth = getSelectedMonthYear();
         database.fees.unshift({
           id: `FEE-${Date.now()}-${student.id}`,
@@ -11857,11 +11876,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const employeeClickHandler = function (event) {
-        console.log("Employee click detected, target:", event.target);
         const actionButton = event.target.closest("[data-action]");
-        console.log("Action button found:", actionButton);
         if (!actionButton) {
-          console.log("No action button found, returning");
           return;
         }
         const action = actionButton.dataset.action;
@@ -11878,7 +11894,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         if (action === "edit-employee") {
-          localStorage.setItem("sagarsoft_edit_employee_id", employeeId);
+          sessionStorage.setItem("sagarsoft_edit_employee_id", employeeId);
           setRoute("employees-add-new");
           return;
         }
@@ -11895,7 +11911,6 @@ document.addEventListener("DOMContentLoaded", function () {
       };
 
       if (!tableBody.__listenerAttached) {
-        console.log("Attaching employee click listener to tableBody", tableBody);
         tableBody.addEventListener("click", employeeClickHandler);
         tableBody.__listenerAttached = true;
       } else {
@@ -11907,7 +11922,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (route === "employees-add-new") {
-      const editEmployeeId = localStorage.getItem("sagarsoft_edit_employee_id");
+      const editEmployeeId = sessionStorage.getItem("sagarsoft_edit_employee_id");
       const editingEmployee = editEmployeeId ? getEmployeeById(editEmployeeId) : null;
       let employeePictureData = editingEmployee ? editingEmployee.picture || "" : "";
 
@@ -12104,7 +12119,7 @@ document.addEventListener("DOMContentLoaded", function () {
         employeePictureData = "";
         message.textContent = "";
         message.className = "form-message";
-        localStorage.removeItem("sagarsoft_edit_employee_id");
+        sessionStorage.removeItem("sagarsoft_edit_employee_id");
         renderEmployeePreview();
       });
 
@@ -12189,7 +12204,7 @@ document.addEventListener("DOMContentLoaded", function () {
         saveEmployeeRecord(employeeRecord);
         addActivity(editingEmployee ? "Employee updated" : "Employee added", `${employeeRecord.name} employee record saved.`);
         saveDatabase();
-        localStorage.removeItem("sagarsoft_edit_employee_id");
+        sessionStorage.removeItem("sagarsoft_edit_employee_id");
         renderDashboard();
         message.textContent = "Employee form submitted successfully.";
         message.className = "form-message success";
@@ -13224,7 +13239,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }) || null;
         const totalAmount = record ? Number(record.totalAmount || 0) : Number(classFeeMap.get(student.className) || 0);
         const deposit = record ? Number(record.deposit || 0) : 0;
-        const remaining = record ? Number(record.remainings || Math.max(totalAmount - deposit, 0)) : Math.max(totalAmount - deposit, 0);
+        const remaining = record ? Number(record.remaining || Math.max(totalAmount - deposit, 0)) : Math.max(totalAmount - deposit, 0);
         const status = remaining <= 0 && totalAmount > 0 ? "paid" : "due";
         return { student: student, month: monthLabel, totalAmount: totalAmount, deposit: deposit, remaining: remaining, status: status };
       }).filter(function (row) {
@@ -13251,7 +13266,7 @@ document.addEventListener("DOMContentLoaded", function () {
       const expenses = (settings.salaryPayments || []).filter(function (row) {
         return inRange(row.paymentDate || row.date || "");
       }).map(function (row) {
-        const total = Number(row.netAmount || (Number(row.salaryAmount || 0) + Number(row.bonus || 0) - Number(row.deduction || 0)));
+        const total = Number(row.netAmount ?? (Number(row.salaryAmount || 0) + Number(row.bonus || 0) - Number(row.deduction || 0)));
         return { date: row.paymentDate || row.date || "-", type: "Expense", source: "Salary Payment", ref: row.employeeName || row.employeeId || "-", amount: total };
       });
       const rows = incomes.concat(expenses).sort(function (a, b) {
@@ -14115,7 +14130,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (amountInput && amountInput.id === "ledgerAmountInput") amountInput.value = entry.amount;
             if (noteInput && noteInput.id === "ledgerNoteInput") noteInput.value = entry.note;
             
-            localStorage.setItem("sagarsoft_edit_ledger_id", id);
+            sessionStorage.setItem("sagarsoft_edit_ledger_id", id);
             window.scrollTo(0, 0);
             openAppMessageBox("Info", "Entry loaded for editing. Make changes and click Save.", "info");
             return;
@@ -14206,7 +14221,7 @@ document.addEventListener("DOMContentLoaded", function () {
             if (amountInput) amountInput.value = Number(entry.amount || 0);
             if (noteInput) noteInput.value = entry.note || "";
             
-            localStorage.setItem("sagarsoft_edit_ledger_id", id);
+            sessionStorage.setItem("sagarsoft_edit_ledger_id", id);
             window.scrollTo(0, 0);
             openAppMessageBox("Info", "Entry loaded for editing. Make changes and click Save.", "info");
             return;
@@ -14241,7 +14256,7 @@ document.addEventListener("DOMContentLoaded", function () {
           }
           
           const currentSettings = database.generalSettings;
-          const editId = localStorage.getItem("sagarsoft_edit_ledger_id");
+          const editId = sessionStorage.getItem("sagarsoft_edit_ledger_id");
           if (editId) {
             const index = (currentSettings.accountsLedger || []).findIndex(function (item) { return String(item.id) === String(editId); });
             if (index >= 0) {
@@ -14251,7 +14266,7 @@ document.addEventListener("DOMContentLoaded", function () {
               currentSettings.accountsLedger[index].note = note;
               currentSettings.accountsLedger[index].updatedAt = new Date().toISOString();
               currentSettings.__accountsLedgerUserTouched = true;
-              localStorage.removeItem("sagarsoft_edit_ledger_id");
+              sessionStorage.removeItem("sagarsoft_edit_ledger_id");
               addActivity("Account entry updated", `${isIncome ? "Income" : "Expense"} entry updated: ${category}`);
               saveDatabase();
               refreshDatabase();
@@ -15574,90 +15589,7 @@ document.addEventListener("DOMContentLoaded", function () {
           document.body.appendChild(overlay);
         }
 
-        function setupFallbackToolbar_DUP() {
-          editorArea.addEventListener("click", function () {
-            setSelectedEditorNode(null);
-            editorArea.focus();
-          });
-          editorArea.addEventListener("keydown", function (event) {
-            if ((event.key === "Delete" || event.key === "Backspace") && selectedEditorNode) {
-              const inEditableCell = event.target && event.target.closest && event.target.closest("td,th,[contenteditable='true']");
-              const selection = window.getSelection ? window.getSelection() : null;
-              const anchorNode = selection ? selection.anchorNode : null;
-              const anchorInCell = anchorNode && anchorNode.parentElement && anchorNode.parentElement.closest && anchorNode.parentElement.closest("td,th");
-              if (inEditableCell || anchorInCell) {
-                return;
-              }
-              selectedEditorNode.remove();
-              selectedEditorNode = null;
-              event.preventDefault();
-            }
-          });
-          editorToolbar.querySelectorAll("[data-qp-cmd]").forEach(function (button) {
-            button.addEventListener("click", function () {
-              editorArea.focus();
-              document.execCommand(button.getAttribute("data-qp-cmd"), false, null);
-            });
-          });
-          document.getElementById("qpApplyFontSize").addEventListener("click", function () {
-            const px = Math.max(8, Number(document.getElementById("qpFontSizeInput").value || 16));
-            editorArea.focus();
-            const sel = window.getSelection && window.getSelection();
-            if (sel && sel.rangeCount && String(sel.toString()).trim()) {
-              try {
-                document.execCommand("styleWithCSS", false, true);
-              } catch (_error) {}
-              document.execCommand("fontSize", false, "7");
-              editorArea.querySelectorAll("font[size='7']").forEach(function (node) {
-                node.removeAttribute("size");
-                node.style.fontSize = `${px}px`;
-              });
-            } else {
-              insertAtCursor(`<span style="font-size:${px}px;">Text</span>`);
-            }
-          });
-          document.getElementById("qpApplyTextColor").addEventListener("click", function () {
-            const color = document.getElementById("qpTextColorInput").value || "#0f2748";
-            editorArea.focus();
-            const sel = window.getSelection && window.getSelection();
-            if (sel && sel.rangeCount && String(sel.toString()).trim()) {
-              document.execCommand("foreColor", false, color);
-            } else {
-              insertAtCursor(`<span style="color:${escapeAttr(color)};">Text</span>`);
-            }
-          });
-          document.getElementById("qpApplyBgColor").addEventListener("click", function () {
-            const color = document.getElementById("qpBgColorInput").value || "#fff59d";
-            editorArea.focus();
-            const sel = window.getSelection && window.getSelection();
-            if (sel && sel.rangeCount && String(sel.toString()).trim()) {
-              document.execCommand("hiliteColor", false, color);
-            } else {
-              insertAtCursor(`<span style="background-color:${escapeAttr(color)};">Text</span>`);
-            }
-          });
-          document.getElementById("qpInsertTable").addEventListener("click", function () {
-            openTableSizeDialog(function (rows, cols) {
-              const htmlRows = new Array(rows).fill("").map(function () {
-                return `<tr>${new Array(cols).fill("<td contenteditable='true' style='border:1px solid #1f2f45;padding:6px;min-width:90px;min-height:30px;'>Cell</td>").join("")}</tr>`;
-              }).join("");
-              insertAtCursor(`<div class="qp-editor-table-wrap" style="display:inline-block;resize:none;overflow:visible;min-width:260px;min-height:40px;padding:0;border:none;outline:none;box-shadow:none;background:transparent;"><table style="border-collapse:collapse;min-width:240px;width:100%;background:transparent;">${htmlRows}</table></div><p><br></p>`);
-            });
-          });
-          document.getElementById("qpInsertImage").addEventListener("click", function () {
-            imageInput.click();
-          });
-          imageInput.addEventListener("change", function () {
-            const file = imageInput.files && imageInput.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function () {
-              insertAtCursor(`<img src="${String(reader.result || "")}" alt="editor-image" style="width:220px;height:auto;"><p><br></p>`);
-            };
-            reader.readAsDataURL(file);
-            imageInput.value = "";
-          });
-        }
+
 
         function setupAdvancedToolbar() {
           function ensureCustomLibraries() {
@@ -15753,9 +15685,7 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         }
 
-        function initCkEditorIfAvailable_DUP() {
-          // Intentionally no-op: using local integrated toolbar/editor for guaranteed offline behavior.
-        }
+
 
         classSelect.addEventListener("change", renderSubjectSelect);
         subjectSelect.addEventListener("change", renderExistingChapterSelect);
@@ -17021,7 +16951,7 @@ document.addEventListener("DOMContentLoaded", function () {
           input.addEventListener("input", renderClassTestRows);
           input.addEventListener("change", renderClassTestRows);
         });
-        const editPayloadText = localStorage.getItem("sagarsoft_edit_class_test");
+        const editPayloadText = sessionStorage.getItem("sagarsoft_edit_class_test");
         if (editPayloadText) {
           try {
             const editPayload = JSON.parse(editPayloadText);
@@ -17033,7 +16963,7 @@ document.addEventListener("DOMContentLoaded", function () {
           } catch (_error) {
             updateClassTestSubjects("");
           }
-          localStorage.removeItem("sagarsoft_edit_class_test");
+          sessionStorage.removeItem("sagarsoft_edit_class_test");
         } else {
           updateClassTestSubjects("");
         }
@@ -17134,7 +17064,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         if (editButton) {
-          localStorage.setItem("sagarsoft_edit_class_test", JSON.stringify({
+          sessionStorage.setItem("sagarsoft_edit_class_test", JSON.stringify({
             className: row.className || "",
             subjectName: row.subjectName || "",
             testName: row.testName || "",
@@ -19148,30 +19078,12 @@ document.addEventListener("DOMContentLoaded", function () {
             <div class="form-actions">
               <button class="table-action-btn danger" id="lockModeLogoutBtn" type="button">Logout</button>
             </div>
-            <div class="form-grid" style="margin-top:12px;">
-              <div class="field-group">
-                <label for="onlineSchoolEmailInput">Online School Email</label>
-                <input id="onlineSchoolEmailInput" type="email" value="${escapeAttr(account.username || currentUser.email || "")}" placeholder="school@example.com">
-              </div>
-              <div class="field-group">
-                <label for="onlineSchoolPasswordInput">Online School Password</label>
-                <input id="onlineSchoolPasswordInput" type="text" value="${escapeAttr(account.password || "")}" placeholder="School password">
-              </div>
-              <div class="field-group field-group--full">
-                <label for="onlineWebsiteEndpointInput">Website API URL</label>
-                <input id="onlineWebsiteEndpointInput" type="url" value="${escapeAttr(license.websiteEndpoint || "https://sagarsoftadmin.onrender.com")}" placeholder="https://sagarsoftadmin.onrender.com" readonly class="module-input--readonly">
-              </div>
-            </div>
-            <div class="form-actions">
-              <button class="primary-button" id="onlineActivateLockedBtn" type="button">Online Activate</button>
-            </div>
-            <p class="form-message" id="offlineLicenseMessage"></p>
           </article>
         `;
         moduleGuide.innerHTML = `
           <article>
             <strong>Info</strong>
-            <p>Only logout is available until account activation is completed from control portal.</p>
+            <p>Contact Super Admin to activate your school account.</p>
           </article>
         `;
         const lockModeLogoutBtn = document.getElementById("lockModeLogoutBtn");
@@ -19179,44 +19091,6 @@ document.addEventListener("DOMContentLoaded", function () {
           lockModeLogoutBtn.addEventListener("click", function () {
             window.SagarSoftAuth.logout();
             window.location.href = "./login.html";
-          });
-        }
-        const onlineActivateLockedBtn = document.getElementById("onlineActivateLockedBtn");
-        if (onlineActivateLockedBtn) {
-          onlineActivateLockedBtn.addEventListener("click", async function () {
-            const message = document.getElementById("offlineLicenseMessage");
-            const emailInput = document.getElementById("onlineSchoolEmailInput");
-            const passwordInput = document.getElementById("onlineSchoolPasswordInput");
-            const endpointInput = document.getElementById("onlineWebsiteEndpointInput");
-            if (!database.generalSettings.accountSettings) {
-              database.generalSettings.accountSettings = {};
-            }
-            database.generalSettings.accountSettings.username = String(emailInput ? emailInput.value : "").trim().toLowerCase();
-            database.generalSettings.accountSettings.password = String(passwordInput ? passwordInput.value : "").trim();
-            license.websiteEndpoint = normalizeLicenseEndpoint(license.websiteEndpoint || (endpointInput ? endpointInput.value : ""));
-            onlineActivateLockedBtn.disabled = true;
-            if (message) {
-              message.textContent = "Activating from website...";
-              message.className = "form-message";
-            }
-            try {
-              const result = await verifyLicenseWithServer({ forceActivate: true });
-              if (message) {
-                message.textContent = result.message;
-                message.className = "form-message success";
-              }
-              openAppMessageBox("Success", result.message, "success");
-              setRoute("account-settings");
-            } catch (error) {
-              const detail = error && error.message ? error.message : "Online activation failed.";
-              if (message) {
-                message.textContent = detail;
-                message.className = "form-message error";
-              }
-              openAppMessageBox("Error", detail, "error");
-            } finally {
-              onlineActivateLockedBtn.disabled = false;
-            }
           });
         }
         return;
@@ -19307,15 +19181,9 @@ document.addEventListener("DOMContentLoaded", function () {
               <label for="subscriptionExpiryInput">Expiry Date</label>
               <input id="subscriptionExpiryInput" type="date" value="${escapeAttr(license.expiryDate || "")}" readonly class="module-input--readonly">
             </div>
-            <div class="field-group field-group--full">
-              <label for="licenseWebsiteEndpointInput">Website API URL</label>
-              <input id="licenseWebsiteEndpointInput" type="url" value="${escapeAttr(license.websiteEndpoint || "https://sagarsoftadmin.onrender.com")}" placeholder="https://sagarsoftadmin.onrender.com" ${isSuperAdmin ? "" : "readonly"} class="${isSuperAdmin ? "" : "module-input--readonly"}">
-            </div>
           </div>
           <div class="form-actions">
             ${isSuperAdmin ? '<button class="primary-button" id="activateAccountBtn" type="button">Activate Account</button>' : ""}
-            <button class="primary-button" id="onlineActivateLicenseBtn" type="button">Online Activate</button>
-            <button class="table-action-btn" id="onlineVerifyLicenseBtn" type="button">Verify Online</button>
           </div>
           <article class="subscription-activation-card" style="margin-top:12px;">
             <strong>Backup & Restore</strong>
@@ -19436,10 +19304,6 @@ document.addEventListener("DOMContentLoaded", function () {
         if (editedSchoolName) {
           const activeLicense = ensureLicenseSettings();
           activeLicense.schoolName = editedSchoolName;
-          const endpointInput = document.getElementById("licenseWebsiteEndpointInput");
-          if (endpointInput && isSuperAdmin) {
-            activeLicense.websiteEndpoint = normalizeLicenseEndpoint(endpointInput.value);
-          }
           settings.instituteProfile.name = editedSchoolName;
           database.school.name = editedSchoolName;
         }
@@ -19630,31 +19494,27 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       }
 
-      const planInput = document.getElementById("subscriptionPlanInput");
-      const customDaysInput = document.getElementById("customDaysInput");
-      const startInput = document.getElementById("subscriptionStartInput");
-      const expiryInput = document.getElementById("subscriptionExpiryInput");
-      const websiteEndpointInput = document.getElementById("licenseWebsiteEndpointInput");
-      const schoolNameInput = document.getElementById("schoolNameInput");
-      const licenseMessage = document.getElementById("licenseMessage");
-      const activateAccountBtn = document.getElementById("activateAccountBtn");
-      const onlineActivateLicenseBtn = document.getElementById("onlineActivateLicenseBtn");
-      const onlineVerifyLicenseBtn = document.getElementById("onlineVerifyLicenseBtn");
-      const exportSchoolSummaryBtn = null;
-      const exportSecureBackupBtn = document.getElementById("exportSecureBackupBtn");
-      const importSecureBackupBtn = document.getElementById("importSecureBackupBtn");
-      const importSecureBackupInput = document.getElementById("importSecureBackupInput");
-      const secureBackupMessage = document.getElementById("secureBackupMessage");
-      const applyOfflineLicenseBtnMain = null;
-      const generateOfflineLicenseBtn = null;
-      const exportOfflineUpdatePackageBtn = null;
-      const importOfflineUpdatePackageBtn = null;
-      const importOfflineUpdatePackageInput = null;
+      var planInput = document.getElementById("subscriptionPlanInput");
+      var customDaysInput = document.getElementById("customDaysInput");
+      var startInput = document.getElementById("subscriptionStartInput");
+      var expiryInput = document.getElementById("subscriptionExpiryInput");
+      var schoolNameInput = document.getElementById("schoolNameInput");
+      var licenseMessage = document.getElementById("licenseMessage");
+      var activateAccountBtn = document.getElementById("activateAccountBtn");
+      var exportSchoolSummaryBtn = null;
+      var exportSecureBackupBtn = document.getElementById("exportSecureBackupBtn");
+      var importSecureBackupBtn = document.getElementById("importSecureBackupBtn");
+      var importSecureBackupInput = document.getElementById("importSecureBackupInput");
+      var secureBackupMessage = document.getElementById("secureBackupMessage");
+      var applyOfflineLicenseBtnMain = null;
+      var generateOfflineLicenseBtn = null;
+      var exportOfflineUpdatePackageBtn = null;
+      var importOfflineUpdatePackageBtn = null;
+      var importOfflineUpdatePackageInput = null;
 
       if (!isSuperAdmin) {
-        // School-side restricted settings: keep only essentials visible.
         [planInput, customDaysInput, startInput, expiryInput, schoolNameInput].forEach(function (el) {
-          const group = el && el.closest ? el.closest(".field-group") : null;
+          var group = el && el.closest ? el.closest(".field-group") : null;
           if (group) {
             group.style.display = "none";
           }
@@ -19665,85 +19525,88 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       function updateExpiryPreview() {
-        const plan = planInput.value;
-        const customDays = Number(customDaysInput.value || 0);
-        const startDate = startInput.value || todayISO;
-        const totalDays = getPlanDays(plan, customDays);
+        var plan = planInput.value;
+        var customDays = Number(customDaysInput.value || 0);
+        var startDate = startInput.value || todayISO;
+        var totalDays = getPlanDays(plan, customDays);
         expiryInput.value = addDaysISO(startDate, totalDays);
       }
 
-      if (planInput) {
-        planInput.addEventListener("change", updateExpiryPreview);
-      }
-      if (customDaysInput) {
-        customDaysInput.addEventListener("input", updateExpiryPreview);
-      }
-      if (startInput) {
-        startInput.addEventListener("change", updateExpiryPreview);
-      }
+      if (planInput) planInput.addEventListener("change", updateExpiryPreview);
+      if (customDaysInput) customDaysInput.addEventListener("input", updateExpiryPreview);
+      if (startInput) startInput.addEventListener("change", updateExpiryPreview);
       updateExpiryPreview();
 
-      async function runOnlineLicenseCheck(forceActivate) {
-        const activeLicense = ensureLicenseSettings();
-        const usernameInput = document.getElementById("accountUsernameInput");
-        const passwordInput = document.getElementById("accountPasswordInput");
-        if (!database.generalSettings.accountSettings) {
-          database.generalSettings.accountSettings = {};
-        }
-        if (usernameInput) {
-          database.generalSettings.accountSettings.username = String(usernameInput.value || "").trim().toLowerCase();
-        }
-        if (passwordInput) {
-          database.generalSettings.accountSettings.password = String(passwordInput.value || "").trim();
-        }
-        if (websiteEndpointInput) {
-          activeLicense.websiteEndpoint = normalizeLicenseEndpoint(websiteEndpointInput.value);
-        }
-        if (licenseMessage) {
-          licenseMessage.textContent = forceActivate ? "Activating school from website..." : "Verifying license from website...";
-          licenseMessage.className = "form-message";
-        }
-        if (onlineActivateLicenseBtn) {
-          onlineActivateLicenseBtn.disabled = true;
-        }
-        if (onlineVerifyLicenseBtn) {
-          onlineVerifyLicenseBtn.disabled = true;
-        }
-        try {
-          const result = await verifyLicenseWithServer({ forceActivate: Boolean(forceActivate) });
-          addActivity("Online license verified", `${activeLicense.schoolName || activeLicense.schoolId} verified from website.`);
-          if (licenseMessage) {
-            licenseMessage.textContent = result.message;
-            licenseMessage.className = "form-message success";
+      if (activateAccountBtn) {
+        activateAccountBtn.addEventListener("click", async function () {
+          var activeLicense = ensureLicenseSettings();
+          var schoolId = activeLicense.schoolId;
+          var schoolName = schoolNameInput ? schoolNameInput.value.trim() : activeLicense.schoolName;
+          var plan = planInput ? planInput.value : activeLicense.subscriptionPlan;
+          var startDate = startInput ? startInput.value : activeLicense.startDate;
+          var expiryDate = expiryInput ? expiryInput.value : activeLicense.expiryDate;
+          var emailInput = document.getElementById("accountUsernameInput");
+          var passwordInput = document.getElementById("accountPasswordInput");
+          var email = emailInput ? String(emailInput.value).trim().toLowerCase() : "";
+          var password = passwordInput ? String(passwordInput.value).trim() : "";
+          if (!email || !password) {
+            if (licenseMessage) { licenseMessage.textContent = "Please enter school email and password above."; licenseMessage.className = "form-message error"; }
+            openAppMessageBox("Error", "School email and password are required.", "error");
+            return;
           }
-          openAppMessageBox("Success", result.message, "success");
-          setRoute("account-settings");
-        } catch (error) {
-          const detail = error && error.message ? error.message : "Unable to verify license online.";
-          if (licenseMessage) {
-            licenseMessage.textContent = detail;
-            licenseMessage.className = "form-message error";
+          var endpoint = normalizeLicenseEndpoint(activeLicense.websiteEndpoint);
+          if (licenseMessage) { licenseMessage.textContent = "Activating school account..."; licenseMessage.className = "form-message"; }
+          if (activateAccountBtn) activateAccountBtn.disabled = true;
+          try {
+            var payload = await postLicenseJson(endpoint + "/api/sync-school-data.php", {
+              school_id: schoolId,
+              school_name: schoolName,
+              email: email,
+              password: password,
+              activation_status: "active",
+              plan: plan,
+              start_date: startDate || new Date().toISOString().slice(0, 10),
+              expiry_date: expiryDate || null,
+              license_token: activeLicense.licenseToken || null,
+              basic_data: {
+                school_name: schoolName,
+                total_students: (database.students || []).length,
+                total_employees: (database.teachers || []).length,
+                software_version: "1.0.0",
+                last_seen: new Date().toISOString()
+              }
+            });
+            if (payload && payload.license) {
+              var lic = payload.license;
+              activeLicense.activated = true;
+              activeLicense.status = "active";
+              activeLicense.schoolId = lic.school_id || schoolId;
+              activeLicense.schoolName = lic.school_name || schoolName;
+              activeLicense.subscriptionPlan = lic.plan || plan;
+              activeLicense.startDate = lic.start_date || startDate;
+              activeLicense.expiryDate = lic.expiry_date || expiryDate;
+              activeLicense.lastVerifiedAt = new Date().toISOString();
+              if (!database.generalSettings.accountSettings) database.generalSettings.accountSettings = {};
+              database.generalSettings.accountSettings.subscription = lic.plan || plan;
+              database.generalSettings.accountSettings.expiry = lic.expiry_date || expiryDate;
+              settings.instituteProfile.name = schoolName;
+              database.school.name = schoolName;
+              addActivity("School account activated", schoolName + " activated via sync.");
+              saveDatabase();
+              applyRouteAccessVisibility();
+              updateTopProfileIdentity();
+              renderProfileDropdownMenu();
+            }
+            if (licenseMessage) { licenseMessage.textContent = "School account activated successfully."; licenseMessage.className = "form-message success"; }
+            openAppMessageBox("Success", "School account activated successfully.", "success");
+            setRoute("account-settings");
+          } catch (error) {
+            var detail = error && error.message ? error.message : "Activation failed.";
+            if (licenseMessage) { licenseMessage.textContent = detail; licenseMessage.className = "form-message error"; }
+            openAppMessageBox("Error", detail, "error");
+          } finally {
+            if (activateAccountBtn) activateAccountBtn.disabled = false;
           }
-          openAppMessageBox("Error", detail, "error");
-        } finally {
-          if (onlineActivateLicenseBtn) {
-            onlineActivateLicenseBtn.disabled = false;
-          }
-          if (onlineVerifyLicenseBtn) {
-            onlineVerifyLicenseBtn.disabled = false;
-          }
-        }
-      }
-
-      if (onlineActivateLicenseBtn) {
-        onlineActivateLicenseBtn.addEventListener("click", function () {
-          runOnlineLicenseCheck(true);
-        });
-      }
-
-      if (onlineVerifyLicenseBtn) {
-        onlineVerifyLicenseBtn.addEventListener("click", function () {
-          runOnlineLicenseCheck(false);
         });
       }
 
@@ -19923,36 +19786,6 @@ document.addEventListener("DOMContentLoaded", function () {
             }
           };
           reader.readAsText(file);
-        });
-      }
-
-      if (activateAccountBtn) {
-        activateAccountBtn.addEventListener("click", function () {
-          const activeLicense = ensureLicenseSettings();
-          activeLicense.subscriptionPlan = planInput.value;
-          activeLicense.customDays = Math.max(1, Number(customDaysInput.value || 30));
-          activeLicense.startDate = formatDateInput(startInput.value || todayISO);
-          activeLicense.expiryDate = formatDateInput(expiryInput.value || addDaysISO(activeLicense.startDate, getPlanDays(activeLicense.subscriptionPlan, activeLicense.customDays)));
-          activeLicense.schoolName = (schoolNameInput && schoolNameInput.value.trim()) || settings.instituteProfile.name || database.school.name || activeLicense.schoolName;
-          if (activeLicense.schoolName) {
-            settings.instituteProfile.name = activeLicense.schoolName;
-            database.school.name = activeLicense.schoolName;
-          }
-          activeLicense.activated = true;
-          activeLicense.status = "active";
-          activeLicense.lastVerifiedAt = new Date().toISOString();
-          settings.accountSettings.subscription = activeLicense.subscriptionPlan;
-          settings.accountSettings.expiry = activeLicense.expiryDate;
-          upsertSchoolRegistryFromLicense(activeLicense);
-          addActivity("School account activated", `${activeLicense.schoolName} activated till ${activeLicense.expiryDate}.`);
-          saveDatabase();
-          updateTopProfileIdentity();
-          renderProfileDropdownMenu();
-          applyRouteAccessVisibility();
-          licenseMessage.textContent = "School account activated successfully.";
-          licenseMessage.className = "form-message success";
-          openAppMessageBox("Success", "School account activated successfully.", "success");
-          setRoute("account-settings");
         });
       }
 
@@ -20247,8 +20080,8 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       const generalSettings = database.generalSettings || {};
       const currencySymbol = (generalSettings.accountSettings && generalSettings.accountSettings.symbol) ? generalSettings.accountSettings.symbol : "Rs";
-      const assignedClasses = (database.classesList || []).filter(function (c) { return String(c.teacher || "").toLowerCase() === String(employee.name || "").toLowerCase(); });
-      const assignedSubjects = (database.subjectAssignments || []).filter(function (s) { return String(s.employeeName || "") === String(employee.name || ""); });
+      const assignedClasses = (database.classes || []).filter(function (c) { return String(c.teacher || "").toLowerCase() === String(employee.name || "").toLowerCase(); });
+      const assignedSubjects = (database.subjects || []).filter(function (s) { return String(s.employeeName || "") === String(employee.name || ""); });
       const salaryPayments = (generalSettings.salaryPayments || []).filter(function (s) { return s.employeeId === employee.id; }).slice(-12);
       const totalSalary = salaryPayments.reduce(function (sum, s) { return sum + Number(s.salaryAmount || 0); }, 0);
       
@@ -20265,9 +20098,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function renderAllStudentsDirectory() {
-    console.log("renderAllStudentsDirectory called");
     const students = getDirectoryStudents();
-    console.log("Students to render:", students.length);
 
     studentDirectoryGrid.innerHTML = students.map(function (student) {
       return `
@@ -22183,7 +22014,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const actionButton = event.target.closest("[data-action]");
 
     if (!actionButton) {
-      console.log("No actionButton found, returning");
       return;
     }
 
@@ -22191,10 +22021,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const studentId = actionButton.dataset.id;
     const student = database.students.find(function (item) { return item.id === studentId; });
 
-    console.log("Action:", action, "StudentId:", studentId, "Student found:", !!student);
 
     if (!student && action !== "create-student-login") {
-      console.log("Student not found and action is not create-student-login, returning");
       return;
     }
 
@@ -22205,11 +22033,8 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (action === "view-student") {
-      console.log("View student action triggered");
       const student = database.students.find(function (item) { return item.id === studentId; });
-      console.log("Student for modal:", student);
       if (student) {
-        console.log("Opening student modal");
         openStudentModal(student);
       }
       return;
@@ -22528,7 +22353,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       if (route === "employees-add-new") {
-        localStorage.removeItem("sagarsoft_edit_employee_id");
+        sessionStorage.removeItem("sagarsoft_edit_employee_id");
       }
 
       setRoute(route);
@@ -22561,7 +22386,6 @@ document.addEventListener("DOMContentLoaded", function () {
   newClassForm.addEventListener("submit", handleClassFormSubmit);
   assignSubjectsForm.addEventListener("submit", handleAssignSubjectsSubmit);
   studentsTableBody.addEventListener("click", handleTableActionClick);
-  console.log("Attaching initial listener to studentDirectoryGrid in DOMContentLoaded");
   studentDirectoryGrid.addEventListener("click", handleTableActionClick);
   studentDirectoryGrid.__listenerAttached = true;
   studentStatusGrid.addEventListener("click", handleTableActionClick);

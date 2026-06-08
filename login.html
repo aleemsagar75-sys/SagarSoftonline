@@ -14,11 +14,11 @@
         <div class="brand-logo-wrap">
           <img src="./assets/SagarSoft.logo.png" alt="SagarSoft Logo" class="brand-logo">
         </div>
-        <span class="brand-badge">Offline School ERP</span>
+        <span class="brand-badge">Online School ERP</span>
         <h1>SagarSoft Management System</h1>
         <p class="lead">
           Manage students, teachers, classes, attendance, fees, and parent access from one modern
-          dashboard that works completely offline.
+          dashboard that works completely online with Supabase cloud storage.
         </p>
 
         <div class="feature-list">
@@ -33,14 +33,14 @@
             <span class="feature-icon">SC</span>
             <div>
               <h2>School-wide control</h2>
-              <p>Keep academic and fee records organized in a clean offline system.</p>
+              <p>Keep academic and fee records organized in a secure online system.</p>
             </div>
           </article>
           <article class="feature-card">
             <span class="feature-icon">OF</span>
             <div>
-              <h2>100% offline</h2>
-              <p>All records are stored in the browser using LocalStorage, with no internet needed.</p>
+              <h2>100% online</h2>
+              <p>All records are stored securely on Supabase cloud database, accessible from anywhere.</p>
             </div>
           </article>
         </div>
@@ -56,11 +56,10 @@
         </div>
 
         <div class="demo-box">
-          <strong></strong>
+          <strong>Demo Mode</strong>
           <ul> 
-            <li><span>In case of any error please</span><code></code></li>
-            <li><span>contact super admin</span><code> </code></li>
-            
+            <li><span>In case of any error please</span><code>reset &amp; retry</code></li>
+            <li><span>contact super admin</span><code>support@sagarsoft.com</code></li>
           </ul>
         </div>
 
@@ -96,7 +95,7 @@
               <input id="rememberMe" name="rememberMe" type="checkbox">
               <span>Remember me on this device</span>
             </label>
-            <button type="button" id="fillDemoBtn" class="text-button"></button>
+            <button type="button" id="fillDemoBtn" class="text-button">Fill Demo Credentials</button>
           </div>
 
           <button type="submit" class="primary-button">Login to Dashboard</button>
@@ -107,6 +106,7 @@
   </main>
 
   <script src="./js/online-config.js"></script>
+  <script src="./js/crypto-utils.js"></script>
   <script src="./js/storage.js"></script>
   <script src="./js/auth.js"></script>
   <script src="./js/login.js"></script>

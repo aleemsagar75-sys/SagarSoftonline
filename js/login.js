@@ -96,9 +96,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     showMessage("Checking login details...", "");
 
-    const result = window.SagarSoftAuth.loginWithOnlineFallback
-      ? await window.SagarSoftAuth.loginWithOnlineFallback(email, password, role, rememberMeInput.checked)
-      : window.SagarSoftAuth.login(email, password, role, rememberMeInput.checked);
+    var result;
+    try {
+      result = window.SagarSoftAuth.loginWithOnlineFallback
+        ? await window.SagarSoftAuth.loginWithOnlineFallback(email, password, role, rememberMeInput.checked)
+        : window.SagarSoftAuth.login(email, password, role, rememberMeInput.checked);
+    } catch (_e) {
+      result = { success: false, message: "An unexpected error occurred. Please try again or contact support." };
+    }
 
     if (!result.success) {
       showMessage(result.message, "error");

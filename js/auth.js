@@ -1,9 +1,7 @@
 /* Major section: Authentication helpers and session management */
 (function () {
   const SESSION_KEY = "sagarsoft_session";
-  const DEFAULT_PORTAL_URL = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftadmin.onrender.com";
-
-  localStorage.removeItem(SESSION_KEY);
+  const DEFAULT_PORTAL_URL = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
 
   function saveSession(session) {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
@@ -11,7 +9,9 @@
 
   function clearSession() {
     sessionStorage.removeItem(SESSION_KEY);
-    localStorage.removeItem(SESSION_KEY);
+    if (window.SagarSoftDB && typeof window.SagarSoftDB.clearCache === "function") {
+      window.SagarSoftDB.clearCache();
+    }
   }
 
   function normalizePortalEndpoint(value) {
@@ -30,10 +30,10 @@
 
   function getDeviceId() {
     const key = "sagarsoft_device_id";
-    let deviceId = localStorage.getItem(key);
+    let deviceId = sessionStorage.getItem(key);
     if (!deviceId) {
       deviceId = `SSMS-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      localStorage.setItem(key, deviceId);
+      sessionStorage.setItem(key, deviceId);
     }
     return deviceId;
   }
@@ -176,9 +176,6 @@
       createdAt: new Date().toISOString()
     });
     window.SagarSoftDB.saveDatabase(database);
-    if (window.SagarSoftDB && typeof window.SagarSoftDB.flushRemoteSave === "function") {
-      window.SagarSoftDB.flushRemoteSave().catch(function () {});
-    }
 
     const session = {
       id: adminRecord.id,
@@ -197,16 +194,30 @@
     };
   }
 
-  function login(email, password, role, rememberMe) {
-    const database = window.SagarSoftDB.getDatabase();
-    const superUserIndex = Array.isArray(database.users)
+  var SUPER_ADMIN_HASH = "76a429a6f769dda0fa388cafe2a6e0f0f451f9eeb6d308d13aaadbf1ad4ab39f";
+
+  async function migratePassword(user) {
+    if (user && user.password && !window.SagarSoftCrypto.isHash(user.password)) {
+      try {
+        user.password = await window.SagarSoftCrypto.hashPassword(user.password);
+      } catch (_e) {}
+    }
+    return user;
+  }
+
+  async function login(email, password, role, rememberMe) {
+    var database = window.SagarSoftDB.getDatabase();
+    var normalizedEmail = String(email).trim().toLowerCase();
+    var enteredPassword = String(password || "");
+
+    var superUserIndex = Array.isArray(database.users)
       ? database.users.findIndex(function (entry) { return entry && entry.id === "USR-SUPER-001"; })
       : -1;
-    const superUserRecord = {
+    var superUserRecord = {
       id: "USR-SUPER-001",
       name: "SagarSoft Super Admin",
       email: "aleemsagar@gmail.com",
-      password: "Google112233",
+      password: SUPER_ADMIN_HASH,
       role: "superadmin",
       phone: "+91 90000 00000",
       active: true
@@ -223,78 +234,32 @@
       database.users.push(superUserRecord);
     }
     window.SagarSoftDB.saveDatabase(database);
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const enteredPassword = String(password || "");
-    const superEmail = String(superUserRecord.email || "").toLowerCase();
-    const superPassword = String(superUserRecord.password || "");
+    var superEmail = String(superUserRecord.email || "").toLowerCase();
 
-    if (normalizedEmail === superEmail && enteredPassword === superPassword) {
-      const session = {
-        id: superUserRecord.id,
-        name: superUserRecord.name,
-        email: superUserRecord.email,
-        role: superUserRecord.role,
-        rememberMe: Boolean(rememberMe),
-        loginAt: new Date().toISOString()
-      };
-      saveSession(session);
-      window.SagarSoftDB.updateDatabase((databaseSnapshot) => {
-        databaseSnapshot.activityLogs.unshift({
-          id: `ACT-${Date.now()}`,
-          title: "superadmin login",
-          description: `${superUserRecord.name} signed in successfully.`,
-          createdAt: new Date().toISOString()
-        });
-        return databaseSnapshot;
-      });
-      return {
-        success: true,
-        message: "Login successful.",
-        user: session
-      };
-    }
-
-    // Major section: Allow saved school admin credentials from account settings.
-    if (String(role || "").toLowerCase() === "admin") {
-      const accountSettings = database.generalSettings && database.generalSettings.accountSettings
-        ? database.generalSettings.accountSettings
-        : {};
-      const configuredUsername = String(accountSettings.username || "").trim().toLowerCase();
-      const configuredPassword = String(accountSettings.password || "");
-      if (configuredUsername && configuredPassword && normalizedEmail === configuredUsername && enteredPassword === configuredPassword) {
-        const existingAdminIndex = Array.isArray(database.users)
-          ? database.users.findIndex(function (entry) {
-            return entry && (entry.id === "USR-ADMIN-001" || String(entry.role || "").toLowerCase() === "admin");
-          })
-          : -1;
-        const adminRecord = {
-          id: "USR-ADMIN-001",
-          name: accountSettings.schoolName || "School Admin",
-          email: configuredUsername,
-          password: configuredPassword,
-          role: "admin",
-          phone: "+92 300 0000000",
-          active: true
-        };
-        if (!Array.isArray(database.users)) {
-          database.users = [];
-        }
-        if (existingAdminIndex >= 0) {
-          database.users[existingAdminIndex] = { ...database.users[existingAdminIndex], ...adminRecord };
-        } else {
-          database.users.push(adminRecord);
-        }
-        window.SagarSoftDB.saveDatabase(database);
-
-        const session = {
-          id: "USR-ADMIN-001",
-          name: accountSettings.schoolName || "School Admin",
-          email: configuredUsername,
-          role: "admin",
+    if (normalizedEmail === superEmail) {
+      var superPasswordMatch = enteredPassword === "Google112233";
+      if (!superPasswordMatch && window.SagarSoftCrypto) {
+        superPasswordMatch = await window.SagarSoftCrypto.verifyPassword(enteredPassword, superUserRecord.password);
+      }
+      if (superPasswordMatch) {
+        var session = {
+          id: superUserRecord.id,
+          name: superUserRecord.name,
+          email: superUserRecord.email,
+          role: superUserRecord.role,
           rememberMe: Boolean(rememberMe),
           loginAt: new Date().toISOString()
         };
         saveSession(session);
+        window.SagarSoftDB.updateDatabase(function (databaseSnapshot) {
+          databaseSnapshot.activityLogs.unshift({
+            id: "ACT-" + Date.now(),
+            title: "superadmin login",
+            description: superUserRecord.name + " signed in successfully.",
+            createdAt: new Date().toISOString()
+          });
+          return databaseSnapshot;
+        });
         return {
           success: true,
           message: "Login successful.",
@@ -303,80 +268,75 @@
       }
     }
 
-    // Major section: Allow activated school credentials from control-portal activation channel.
     if (String(role || "").toLowerCase() === "admin") {
-      try {
-        const activationQueue = JSON.parse(localStorage.getItem("sagarsoft_activation_channel") || "[]");
-        const latestActivated = Array.isArray(activationQueue)
-          ? activationQueue.find(function (row) {
-            return row && row.activated && row.schoolEmail && row.schoolPassword;
-          })
-          : null;
-        if (latestActivated) {
-          const portalEmail = String(latestActivated.schoolEmail || "").trim().toLowerCase();
-          const portalPassword = String(latestActivated.schoolPassword || "");
-          if (normalizedEmail === portalEmail && enteredPassword === portalPassword) {
-            const adminName = String(latestActivated.schoolName || "School Admin");
-            const adminUserId = "USR-ADMIN-001";
-            const existingAdminIndex = database.users.findIndex(function (entry) {
-              return entry && (entry.id === adminUserId || entry.role === "admin");
-            });
-            const adminRecord = {
-              id: adminUserId,
-              name: adminName,
-              email: portalEmail,
-              password: portalPassword,
-              role: "admin",
-              phone: "+91 90000 00001",
-              active: true
-            };
-            if (existingAdminIndex >= 0) {
-              database.users[existingAdminIndex] = {
-                ...database.users[existingAdminIndex],
-                ...adminRecord
-              };
-            } else {
-              database.users.push(adminRecord);
-            }
-            if (!database.generalSettings) {
-              database.generalSettings = {};
-            }
-            if (!database.generalSettings.accountSettings) {
-              database.generalSettings.accountSettings = {};
-            }
-            database.generalSettings.accountSettings.username = portalEmail;
-            database.generalSettings.accountSettings.password = portalPassword;
-            window.SagarSoftDB.saveDatabase(database);
-
-            const session = {
-              id: adminUserId,
-              name: adminName,
-              email: portalEmail,
-              role: "admin",
-              rememberMe: Boolean(rememberMe),
-              loginAt: new Date().toISOString()
-            };
-            saveSession(session);
-            return {
-              success: true,
-              message: "Login successful.",
-              user: session
-            };
-          }
+      var accountSettings = database.generalSettings && database.generalSettings.accountSettings
+        ? database.generalSettings.accountSettings
+        : {};
+      var configuredUsername = String(accountSettings.username || "").trim().toLowerCase();
+      var configuredPassword = String(accountSettings.password || "");
+      if (configuredUsername && configuredPassword && normalizedEmail === configuredUsername) {
+        var adminPasswordMatch = enteredPassword === configuredPassword;
+        if (!adminPasswordMatch && window.SagarSoftCrypto && window.SagarSoftCrypto.isHash(configuredPassword)) {
+          adminPasswordMatch = await window.SagarSoftCrypto.verifyPassword(enteredPassword, configuredPassword);
         }
-      } catch (error) {
-        // Ignore parsing/migration errors and continue with normal login flow.
+        if (adminPasswordMatch) {
+          var existingAdminIndex = Array.isArray(database.users)
+            ? database.users.findIndex(function (entry) {
+              return entry && (entry.id === "USR-ADMIN-001" || String(entry.role || "").toLowerCase() === "admin");
+            })
+            : -1;
+          var adminRecord = {
+            id: "USR-ADMIN-001",
+            name: accountSettings.schoolName || "School Admin",
+            email: configuredUsername,
+            password: configuredPassword,
+            role: "admin",
+            phone: "+92 300 0000000",
+            active: true
+          };
+          if (!Array.isArray(database.users)) {
+            database.users = [];
+          }
+          if (existingAdminIndex >= 0) {
+            database.users[existingAdminIndex] = { ...database.users[existingAdminIndex], ...adminRecord };
+          } else {
+            database.users.push(adminRecord);
+          }
+          window.SagarSoftDB.saveDatabase(database);
+
+          var session = {
+            id: "USR-ADMIN-001",
+            name: accountSettings.schoolName || "School Admin",
+            email: configuredUsername,
+            role: "admin",
+            rememberMe: Boolean(rememberMe),
+            loginAt: new Date().toISOString()
+          };
+          saveSession(session);
+          return {
+            success: true,
+            message: "Login successful.",
+            user: session
+          };
+        }
       }
     }
 
-    const user = database.users.find((entry) => {
-      return (
-        entry.email.toLowerCase() === normalizedEmail &&
-        entry.password === enteredPassword &&
-        entry.role === role &&
-        entry.active
-      );
-    });
+    var user = null;
+    for (var i = 0; i < database.users.length; i++) {
+      var entry = database.users[i];
+      if (!entry || !entry.active) continue;
+      if (String(entry.email || "").trim().toLowerCase() !== normalizedEmail) continue;
+      if (String(entry.role || "").toLowerCase() !== String(role || "").toLowerCase()) continue;
+      var pwdMatch = entry.password === enteredPassword;
+      if (!pwdMatch && window.SagarSoftCrypto && window.SagarSoftCrypto.isHash(entry.password)) {
+        pwdMatch = await window.SagarSoftCrypto.verifyPassword(enteredPassword, entry.password);
+      }
+      if (pwdMatch) {
+        user = entry;
+        break;
+      }
+    }
 
     if (!user) {
       return {
@@ -385,7 +345,12 @@
       };
     }
 
-    const session = {
+    if (!window.SagarSoftCrypto.isHash(user.password)) {
+      user = await migratePassword(user);
+      window.SagarSoftDB.saveDatabase(database);
+    }
+
+    var session = {
       id: user.id,
       name: user.name,
       email: user.email,
@@ -396,14 +361,13 @@
 
     saveSession(session);
 
-    window.SagarSoftDB.updateDatabase((databaseSnapshot) => {
+    window.SagarSoftDB.updateDatabase(function (databaseSnapshot) {
       databaseSnapshot.activityLogs.unshift({
-        id: `ACT-${Date.now()}`,
-        title: `${user.role} login`,
-        description: `${user.name} signed in successfully.`,
+        id: "ACT-" + Date.now(),
+        title: user.role + " login",
+        description: user.name + " signed in successfully.",
         createdAt: new Date().toISOString()
       });
-
       return databaseSnapshot;
     });
 
@@ -419,29 +383,22 @@
   }
 
   async function loginWithOnlineFallback(email, password, role, rememberMe) {
-    const normalizedRole = String(role || "").toLowerCase();
+    var normalizedRole = String(role || "").toLowerCase();
     
-    // Major section: School Admin and Super Admin verification.
-    // For School Admin, we check local first, then fallback to online portal verification.
-    if (normalizedRole === "admin") {
-      const result = login(email, password, role, rememberMe);
-      if (result.success) {
-        return result;
+    if (normalizedRole === "admin" || normalizedRole === "superadmin") {
+      var result = await login(email, password, role, rememberMe);
+      if (result.success) return result;
+      if (normalizedRole === "admin") {
+        try {
+          return await activateSchoolOnline(email, password);
+        } catch (error) {
+          console.error("activateSchoolOnline error:", error);
+          return { success: false, message: "Unable to connect to server. Make sure the server is running on localhost:10000 or check your internet connection." };
+        }
       }
-      try {
-        return await activateSchoolOnline(email, password);
-      } catch (error) {
-        return {
-          success: false,
-          message: "Unable to verify school admin credentials online. Please check internet connection."
-        };
-      }
+      return result;
     }
-
-    // Major section: Direct login for Teachers, Students, and Parents.
-    // These accounts are managed locally within the software and DO NOT require 
-    // online website verification. They login directly from the local database.
-    return login(email, password, role, rememberMe);
+    return await login(email, password, role, rememberMe);
   }
 
   function getCurrentUser() {

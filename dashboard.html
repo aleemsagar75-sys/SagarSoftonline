@@ -308,9 +308,9 @@
         </nav>
 
         <section class="sidebar-card">
-          <p class="sidebar-card__label">Offline Mode</p>
-          <strong>All modules work without internet.</strong>
-          <span>Your browser is acting like the local database server.</span>
+          <p class="sidebar-card__label">Online Mode</p>
+          <strong>All modules are cloud-connected.</strong>
+          <span>Data is stored securely on Supabase cloud servers.</span>
         </section>
       </div>
     </aside>
@@ -451,9 +451,9 @@
             </div>
 
             <div class="toolbar toolbar--simple">
-              <div style="position: relative; flex: 1;">
-                <input id="allStudentsSearchInput" type="search" placeholder="Search by student name or roll number" style="width: 100%; position: relative; z-index: 10;">
-                <div id="allStudentsSearchDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid rgba(27,95,122,0.15); border-top: none; border-radius: 0 0 8px 8px; max-height: 300px; overflow-y: auto; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100;"></div>
+              <div class="search-wrap">
+                <input id="allStudentsSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap">
+                <div id="allStudentsSearchDropdown" class="search-dropdown"></div>
               </div>
               <select id="allStudentsClassFilter">
                 <option value="all">All Classes</option>
@@ -478,9 +478,9 @@
             </div>
 
             <div class="toolbar toolbar--status">
-              <div style="position: relative; flex: 1;">
-                <input id="studentStatusSearchInput" type="search" placeholder="Search by student name or roll number" style="width: 100%; position: relative; z-index: 10;">
-                <div id="studentStatusSearchDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid rgba(27,95,122,0.15); border-top: none; border-radius: 0 0 8px 8px; max-height: 300px; overflow-y: auto; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100;"></div>
+              <div class="search-wrap">
+                <input id="studentStatusSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap">
+                <div id="studentStatusSearchDropdown" class="search-dropdown"></div>
               </div>
               <select id="studentStatusClassFilter">
                 <option value="all">All Classes</option>
@@ -500,9 +500,9 @@
             </div>
 
             <div class="toolbar toolbar--simple">
-              <div style="position: relative; flex: 1;">
-                <input id="admissionLetterSearchInput" type="search" placeholder="Search by student name or roll number" style="width: 100%; position: relative; z-index: 10;">
-                <div id="admissionLetterSearchDropdown" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid rgba(27,95,122,0.15); border-top: none; border-radius: 0 0 8px 8px; max-height: 300px; overflow-y: auto; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 100;"></div>
+              <div class="search-wrap">
+                <input id="admissionLetterSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap">
+                <div id="admissionLetterSearchDropdown" class="search-dropdown"></div>
               </div>
             </div>
 
@@ -824,11 +824,11 @@
                     </div>
                     <div class="field-group">
                       <label for="admissionNo">Roll No*</label>
-                      <div style="display: flex; align-items: stretch; border: 1px solid #ccc; border-radius: 8px; overflow: hidden;">
-                        <span style="padding: 0.75rem 1rem; background: #f0f0f0; font-weight: 700; font-size: 0.95rem; color: #333; border-right: 1px solid #ccc; white-space: nowrap; display: flex; align-items: center;">STD</span>
-                        <input id="admissionNo" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="001" required style="flex: 1; border: none; padding: 0.75rem; font-size: 0.95rem;">
+                      <div class="input-prefix-group">
+                        <span class="input-prefix">STD</span>
+                        <input id="admissionNo" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="001" required class="input-prefix-field">
                       </div>
-                      <small id="admissionNoWarning" class="helper-text" style="color: #d64b4b; display: none; margin-top: 0.25rem;">Roll No already exists</small>
+                      <small id="admissionNoWarning" class="warning-text">Roll No already exists</small>
                     </div>
                     <div class="field-group">
                       <label for="dateOfAdmission">Date of Admission*</label>
@@ -1059,6 +1059,7 @@
   </div>
 
   <script src="./js/online-config.js"></script>
+  <script src="./js/crypto-utils.js"></script>
   <script src="./js/storage.js"></script>
   <script src="./js/auth.js"></script>
   <script src="./js/dashboard.js"></script>
