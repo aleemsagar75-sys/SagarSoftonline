@@ -1,4 +1,7 @@
-require("dotenv").config({ path: __dirname + "/server/.env" });
+require("dotenv").config({ path: __dirname + "/.env" });
+
+const dns = require("dns");
+dns.setDefaultResultOrder("ipv4first");
 
 const express = require("express");
 const fs = require("fs");
@@ -24,7 +27,6 @@ if (!process.env.SUPABASE_DB_URL) {
 const pool = new Pool({
   connectionString: process.env.SUPABASE_DB_URL,
   ssl: { rejectUnauthorized: false },
-  family: 4
 });
 
 var allowedOrigins = [
