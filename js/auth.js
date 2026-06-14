@@ -3,6 +3,30 @@
   const SESSION_KEY = "sagarsoft_session";
   const DEFAULT_PORTAL_URL = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
 
+  const DEMO_SNAPSHOT_KEY = "sagarsoft_demo_snapshot";
+  const DEMO_EMAIL_SET = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"]);
+
+  function isDemoEmail(email) {
+    return DEMO_EMAIL_SET.has(String(email || "").trim().toLowerCase());
+  }
+
+  function saveDemoSnapshot(database) {
+    try { sessionStorage.setItem(DEMO_SNAPSHOT_KEY, JSON.stringify(database)); } catch (_e) {}
+  }
+
+  function restoreDemoSnapshot() {
+    try {
+      var raw = sessionStorage.getItem(DEMO_SNAPSHOT_KEY);
+      if (raw) {
+        var snapshot = JSON.parse(raw);
+        if (snapshot && window.SagarSoftDB && typeof window.SagarSoftDB.saveDatabase === "function") {
+          window.SagarSoftDB.saveDatabase(snapshot);
+        }
+      }
+    } catch (_e) {}
+    try { sessionStorage.removeItem(DEMO_SNAPSHOT_KEY); } catch (_e) {}
+  }
+
   function saveSession(session) {
     sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   }
@@ -313,6 +337,7 @@
             loginAt: new Date().toISOString()
           };
           saveSession(session);
+          if (isDemoEmail(normalizedEmail)) { saveDemoSnapshot(database); }
           return {
             success: true,
             message: "Login successful.",
@@ -321,6 +346,20 @@
         }
       }
     }
+
+    var demoAccounts = [
+      { id: "USR-ADMIN-DEMO", name: "School Admin", email: "admin@sagarsoft.com", password: "admin123", role: "admin", phone: "+92 300 0000000", active: true },
+      { id: "USR-TEACHER-DEMO", name: "Demo Teacher", email: "teacher@sagarsoft.com", password: "teacher123", role: "teacher", phone: "+92 300 0000001", active: true },
+      { id: "USR-STUDENT-DEMO", name: "Demo Student", email: "student@sagarsoft.com", password: "student123", role: "student", phone: "+92 300 0000002", active: true },
+      { id: "USR-PARENT-DEMO", name: "Demo Parent", email: "parent@sagarsoft.com", password: "parent123", role: "parent", phone: "+92 300 0000003", active: true }
+    ];
+    demoAccounts.forEach(function (demoUser) {
+      var exists = database.users.some(function (u) { return u && String(u.email || "").trim().toLowerCase() === demoUser.email; });
+      if (!exists) {
+        database.users.push(demoUser);
+      }
+    });
+    window.SagarSoftDB.saveDatabase(database);
 
     var user = null;
     for (var i = 0; i < database.users.length; i++) {
@@ -371,6 +410,8 @@
       return databaseSnapshot;
     });
 
+    if (isDemoEmail(normalizedEmail)) { saveDemoSnapshot(window.SagarSoftDB.getDatabase()); }
+
     return {
       success: true,
       message: "Login successful.",
@@ -379,6 +420,8 @@
   }
 
   function logout() {
+    var session = getCurrentUser();
+    if (session && isDemoEmail(session.email)) { restoreDemoSnapshot(); }
     clearSession();
   }
 

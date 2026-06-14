@@ -1,34 +1,181 @@
-/* Major section: Dashboard shell, routing, and student management module */
+﻿/* Major section: Dashboard shell, routing, and student management module */
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
-  const database = window.SagarSoftDB.getDatabase();
-  const employee = (database.teachers || []).find(e => e.id === employeeId);
-  if (!employee) {
-    return;
+  function _eH(v) { return String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
+  function _eA(v) { return String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function _gI(n) { return (n||"?").split(" ").map(function(w){return (w[0]||"").toUpperCase();}).join("").slice(0,2)||"?"; }
+  function _mL(mv) {
+    var v=String(mv||"").trim();
+    if(/^\d{4}-\d{2}$/.test(v)){var p=v.split("-"),y=Number(p[0]),m=Number(p[1]),mn=["January","February","March","April","May","June","July","August","September","October","November","December"];if(m>=1&&m<=12)return mn[m-1]+", "+y;}
+    return v||"N/A";
   }
-  const employeeModalContent = document.getElementById("employeeModalContent");
-  if (!employeeModalContent) {
 
-    return;
-  }
-  
+  var database = window.SagarSoftDB.getDatabase();
+  var employee = (database.teachers||[]).find(function(e){return e.id===employeeId;});
+  if (!employee) return;
+  var modalContent = document.getElementById("employeeModalContent");
+  if (!modalContent) return;
+
   try {
-    const generalSettings = database.generalSettings || {};
-    const currencySymbol = (generalSettings.accountSettings && generalSettings.accountSettings.symbol) ? generalSettings.accountSettings.symbol : "Rs";
-    const assignedClasses = (database.classes || []).filter(function (c) { return String(c.teacher || "").toLowerCase() === String(employee.name || "").toLowerCase(); });
-    const assignedSubjects = (database.subjects || []).filter(function (s) { return String(s.employeeName || "") === String(employee.name || ""); });
-    const salaryPayments = (generalSettings.salaryPayments || []).filter(function (s) { return s.employeeId === employee.id; }).slice(-12);
-    const totalSalary = salaryPayments.reduce(function (sum, s) { return sum + Number(s.salaryAmount || 0); }, 0);
-    
-    const profileHTML = `<div style="display:grid; gap:1.2rem;"><div style="display:grid; grid-template-columns:100px 1fr; gap:1.2rem; align-items:start; padding:1rem; border-radius:12px; background:rgba(27,95,122,0.06);">${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" style="width:100px; height:100px; border-radius:8px; object-fit:cover; border:2px solid #1b5f7a;">` : `<span style="width:100px; height:100px; border-radius:8px; background:linear-gradient(135deg,#0f2b3f,#1b5f7a); color:#fff; font-weight:700; font-size:1.4rem; display:inline-flex; align-items:center; justify-content:center;">${getInitials(employee.name || "E")}</span>`}<div><h3 style="margin:0; color:#0f2b3f; font-size:1.1rem;">${escapeHtml(employee.name || "-")}</h3><p style="margin:0.3rem 0; color:#1b5f7a; font-weight:600;">${escapeHtml(employee.designation || "-")}</p><p style="margin:0.3rem 0; color:#555; font-size:0.9rem;">Role: ${escapeHtml(employee.role || "-")}</p></div></div><div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.8rem;"><div style="padding:0.8rem; border-radius:10px; background:rgba(27,95,122,0.08); border:1px solid rgba(27,95,122,0.15);"><p style="margin:0; color:#888; font-size:0.85rem; font-weight:600;">Date of Joining</p><p style="margin:0.3rem 0 0; color:#0f2b3f; font-weight:700;">${escapeHtml(employee.dateOfJoining || "-")}</p></div><div style="padding:0.8rem; border-radius:10px; background:rgba(27,95,122,0.08); border:1px solid rgba(27,95,122,0.15);"><p style="margin:0; color:#888; font-size:0.85rem; font-weight:600;">Total Salary (Last 12M)</p><p style="margin:0.3rem 0 0; color:#0f2b3f; font-weight:700;">${currencySymbol} ${totalSalary}</p></div></div><div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Contact Information</h4><p style="margin:0.3rem 0; color:#555; font-size:0.9rem;"><strong>Email:</strong> ${escapeHtml(employee.email || "-")}</p><p style="margin:0.3rem 0; color:#555; font-size:0.9rem;"><strong>Mobile:</strong> ${escapeHtml(getEmployeeDisplayPhone(employee))}</p><p style="margin:0.3rem 0; color:#555; font-size:0.9rem;"><strong>Address:</strong> ${escapeHtml(employee.address || "-")}</p></div>${assignedClasses.length > 0 ? `<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Classes Teaching (${assignedClasses.length})</h4><div style="display:grid; gap:0.4rem; font-size:0.9rem;">${assignedClasses.slice(0,5).map(function(c){return `<span style="padding:0.4rem 0.6rem; background:rgba(27,95,122,0.1); border-radius:6px;">${escapeHtml(c.name || "-")}</span>`;}).join("")}</div></div>` : ""}${assignedSubjects.length > 0 ? `<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Subjects Assigned (${assignedSubjects.length})</h4><div style="display:grid; gap:0.4rem; font-size:0.9rem;">${assignedSubjects.slice(0,5).map(function(s){return `<span style="padding:0.4rem 0.6rem; background:rgba(27,95,122,0.1); border-radius:6px;">${escapeHtml(s.subjectName || "-")} (${escapeHtml(s.className || "-")})</span>`;}).join("")}</div></div>` : ""}${salaryPayments.length > 0 ? `<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Recent Salary Payments</h4><div style="display:grid; gap:0.6rem; font-size:0.9rem;">${salaryPayments.slice(0,6).map(function(s){return `<div style="display:grid; grid-template-columns:1fr auto; gap:1rem; padding:0.6rem; background:rgba(27,95,122,0.04); border-radius:8px;"><span><strong>${escapeHtml(s.salaryMonth || "-")}</strong></span><span style="color:#1b5f7a; font-weight:600;">${currencySymbol} ${Number(s.netSalary || 0)}</span></div>`;}).join("")}</div></div>` : ""}</div>`;
-    employeeModalContent.innerHTML = profileHTML;
-    const modal = document.getElementById("employeeModal");
-    if (modal) {
-      modal.hidden = false;
-    }
+    var gs = database.generalSettings||{};
+    var cs = (gs.accountSettings&&gs.accountSettings.symbol)?gs.accountSettings.symbol:"Rs";
+
+    var attData = (database.attendance||[]).filter(function(a){return a.employeeId===employee.id&&a.entityType==="employee";});
+    var totalPresent = attData.filter(function(a){return String(a.status||"").toLowerCase()==="present";}).length;
+    var totalLeave = attData.filter(function(a){return String(a.status||"").toLowerCase()==="on-leave";}).length;
+    var totalAbsent = attData.filter(function(a){return String(a.status||"").toLowerCase()==="absent";}).length;
+    var attPct = attData.length ? Math.round((totalPresent/attData.length)*100) : 0;
+
+    var now=new Date(),curMonth=now.getMonth(),curYear=now.getFullYear();
+    var mnthN=["January","February","March","April","May","June","July","August","September","October","November","December"];
+    var curMonthName=mnthN[curMonth];
+    var monthAtt=attData.filter(function(a){if(!a.date)return false;var d=new Date(a.date);return d.getMonth()===curMonth&&d.getFullYear()===curYear;});
+    var monthPresent=monthAtt.filter(function(a){return String(a.status||"").toLowerCase()==="present";}).length;
+    var monthLeave=monthAtt.filter(function(a){return String(a.status||"").toLowerCase()==="on-leave";}).length;
+    var monthAbsent=monthAtt.filter(function(a){return String(a.status||"").toLowerCase()==="absent";}).length;
+
+    var salaryAll = (gs.salaryPayments||[]).filter(function(s){return s.employeeId===employee.id;});
+    var salaryRecent = salaryAll.slice(-12).reverse();
+    var totalSalary = salaryAll.reduce(function(sm,s){return sm+Number(s.netSalary||s.salaryAmount||0);},0);
+
+    var assignedClasses=(database.classes||[]).filter(function(c){return String(c.teacher||"").toLowerCase()===String(employee.name||"").toLowerCase();});
+    var assignedSubjects=(database.subjects||[]).filter(function(s){return String(s.employeeName||"")===String(employee.name||"");});
+
+    var circ=2*Math.PI*42;
+
+    modalContent.innerHTML = '<article style="max-height:85vh;overflow-y:auto;">' +
+      '<div style="display:grid;gap:1.5rem;">' +
+
+      /* --- Profile header --- */
+      '<div style="display:grid;grid-template-columns:100px 1fr;gap:1.5rem;align-items:start;padding:1.5rem;border-radius:16px;background:linear-gradient(135deg,rgba(15,43,63,0.06),rgba(27,95,122,0.04));">' +
+        (employee.picture
+          ? '<img src="'+_eA(employee.picture)+'" alt="'+_eA(employee.name)+'" style="width:100px;height:100px;border-radius:12px;object-fit:cover;border:2px solid #1b5f7a;">'
+          : '<span style="width:100px;height:100px;border-radius:12px;background:linear-gradient(135deg,#0f2b3f,#1b5f7a);color:#fff;font-weight:700;font-size:1.4rem;display:inline-flex;align-items:center;justify-content:center;">'+_gI(employee.name)+'</span>') +
+        '<div>' +
+          '<h2 style="margin:0 0 0.5rem;font-size:1.4rem;color:#0f2b3f;">'+_eH(employee.name||"-")+'</h2>' +
+          '<p style="margin:0.3rem 0;color:#1b5f7a;font-weight:600;">'+_eH(employee.designation||employee.role||"-")+'</p>' +
+          '<p style="margin:0.3rem 0;color:#555;">Status: <span style="padding:0.2rem 0.6rem;border-radius:12px;background:'+(String(employee.status).toLowerCase()==="active"?"rgba(29,156,97,0.1)":"rgba(214,75,75,0.1)")+';color:'+(String(employee.status).toLowerCase()==="active"?"#1d9c61":"#d64b4b")+';font-weight:600;">'+_eH(employee.status)+'</span></p>' +
+        '</div>' +
+      '</div>' +
+
+      /* --- Employee Details --- */
+      '<div style="padding:1rem;border-radius:12px;border:1px solid rgba(27,95,122,0.15);">' +
+        '<h4 style="margin:0 0 0.8rem;color:#0f2b3f;font-size:1rem;">Employee Details</h4>' +
+        '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.6rem;font-size:0.88rem;">' +
+          '<div><strong style="color:#555;">Employee ID:</strong> '+_eH(employee.id||"-")+'</div>' +
+          '<div><strong style="color:#555;">Designation:</strong> '+_eH(employee.designation||employee.role||"-")+'</div>' +
+          '<div><strong style="color:#555;">Date of Joining:</strong> '+_eH(employee.dateOfJoining||"-")+'</div>' +
+          '<div><strong style="color:#555;">Date of Birth:</strong> '+_eH(employee.dateOfBirth||"-")+'</div>' +
+          '<div><strong style="color:#555;">Gender:</strong> '+_eH(employee.gender||"-")+'</div>' +
+          '<div><strong style="color:#555;">Blood Group:</strong> '+_eH(employee.bloodGroup||"-")+'</div>' +
+          '<div><strong style="color:#555;">Religion:</strong> '+_eH(employee.religion||"-")+'</div>' +
+          '<div><strong style="color:#555;">Education:</strong> '+_eH(employee.education||"-")+'</div>' +
+          '<div><strong style="color:#555;">Experience:</strong> '+_eH(employee.experience||"-")+'</div>' +
+          '<div><strong style="color:#555;">Monthly Salary:</strong> '+cs+' '+_eH(String(employee.monthlySalary||"0"))+'</div>' +
+        '</div>' +
+      '</div>' +
+
+      /* --- Contact Information --- */
+      '<div style="padding:1rem;border-radius:12px;border:1px solid rgba(27,95,122,0.15);">' +
+        '<h4 style="margin:0 0 0.8rem;color:#0f2b3f;font-size:1rem;">Contact Information</h4>' +
+        '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.6rem;font-size:0.88rem;">' +
+          '<div><strong style="color:#555;">Phone:</strong> '+_eH(employee.phone||"-")+'</div>' +
+          '<div><strong style="color:#555;">Email:</strong> '+_eH(employee.email||"-")+'</div>' +
+          '<div><strong style="color:#555;">Address:</strong> '+_eH(employee.address||"-")+'</div>' +
+          '<div><strong style="color:#555;">Father / Husband Name:</strong> '+_eH(employee.fatherOrHusbandName||"-")+'</div>' +
+          '<div><strong style="color:#555;">National ID:</strong> '+_eH(employee.nationalId||"-")+'</div>' +
+          '<div><strong style="color:#555;">Subject:</strong> '+_eH(employee.subject||"-")+'</div>' +
+        '</div>' +
+      '</div>' +
+
+      /* --- Assigned Classes & Subjects --- */
+      ((assignedClasses.length>0||assignedSubjects.length>0) ? (
+      '<div style="padding:1rem;border-radius:12px;border:1px solid rgba(27,95,122,0.15);">' +
+        '<h4 style="margin:0 0 0.8rem;color:#0f2b3f;font-size:1rem;">Assigned Classes &amp; Subjects</h4>' +
+        '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.6rem;font-size:0.88rem;">' +
+          (assignedClasses.length>0 ? '<div><strong style="color:#555;">Classes:</strong> '+_eH(assignedClasses.map(function(c){return c.name;}).join(", "))+'</div>' : '') +
+          (assignedSubjects.length>0 ? '<div><strong style="color:#555;">Subjects:</strong> '+_eH(assignedSubjects.map(function(s){return s.name;}).join(", "))+'</div>' : '') +
+        '</div>' +
+      '</div>'
+      ) : '') +
+
+      /* --- Attendance Report --- */
+      '<div style="padding:1rem;border-radius:12px;border:1px solid rgba(27,95,122,0.15);">' +
+        '<h4 style="margin:0 0 0.8rem;color:#0f2b3f;font-size:1rem;">Attendance Report</h4>' +
+        '<div style="display:flex;gap:1.5rem;justify-content:center;margin-bottom:1rem;">' +
+          '<svg width="100" height="100" viewBox="0 0 100 100">' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="'+(attPct>=75?"#1d9c61":attPct>=40?"#f0ad4e":"#d64b4b")+'" stroke-width="8" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ*(1-attPct/100))+'" transform="rotate(-90 50 50)" stroke-linecap="round"/>' +
+            '<text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="18" fill="#0f2b3f">'+attPct+'%</text>' +
+            '<text x="50" y="66" text-anchor="middle" font-weight="500" font-size="9" fill="#888">Overall</text>' +
+          '</svg>' +
+          '<svg width="100" height="100" viewBox="0 0 100 100">' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="#1b5f7a" stroke-width="8" stroke-dasharray="'+circ+'" stroke-dashoffset="0" transform="rotate(-90 50 50)" stroke-linecap="round"/>' +
+            '<text x="50" y="44" text-anchor="middle" font-weight="700" font-size="13" fill="#0f2b3f">'+_eH(curMonthName)+'</text>' +
+            '<text x="50" y="60" text-anchor="middle" font-weight="600" font-size="11" fill="#555">'+curYear+'</text>' +
+          '</svg>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.8rem;">' +
+          '<div style="padding:0.8rem;border-radius:10px;background:rgba(29,156,97,0.1);border:1px solid rgba(29,156,97,0.2);text-align:center;">' +
+            '<p style="margin:0;font-size:1.1rem;font-weight:700;color:#1d9c61;">'+totalPresent+'</p>' +
+            '<p style="margin:0;font-size:0.8rem;color:#1d9c61;font-weight:600;">PRESENTS</p>' +
+            '<p style="margin:0;font-size:0.75rem;color:#888;">This Month: '+monthPresent+'</p>' +
+          '</div>' +
+          '<div style="padding:0.8rem;border-radius:10px;background:rgba(240,173,78,0.1);border:1px solid rgba(240,173,78,0.2);text-align:center;">' +
+            '<p style="margin:0;font-size:1.1rem;font-weight:700;color:#f0ad4e;">'+totalLeave+'</p>' +
+            '<p style="margin:0;font-size:0.8rem;color:#f0ad4e;font-weight:600;">LEAVES</p>' +
+            '<p style="margin:0;font-size:0.75rem;color:#888;">This Month: '+monthLeave+'</p>' +
+          '</div>' +
+          '<div style="padding:0.8rem;border-radius:10px;background:rgba(214,75,75,0.1);border:1px solid rgba(214,75,75,0.2);text-align:center;">' +
+            '<p style="margin:0;font-size:1.1rem;font-weight:700;color:#d64b4b;">'+totalAbsent+'</p>' +
+            '<p style="margin:0;font-size:0.8rem;color:#d64b4b;font-weight:600;">ABSENTS</p>' +
+            '<p style="margin:0;font-size:0.75rem;color:#888;">This Month: '+monthAbsent+'</p>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+
+      /* --- Salary Report --- */
+      '<div style="padding:1rem;border-radius:12px;border:1px solid rgba(27,95,122,0.15);">' +
+        '<h4 style="margin:0 0 0.8rem;color:#0f2b3f;font-size:1rem;">Salary Report</h4>' +
+        '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.8rem;margin-bottom:0.8rem;">' +
+          '<div style="padding:0.8rem;border-radius:10px;background:rgba(27,95,122,0.08);text-align:center;">' +
+            '<p style="margin:0;font-size:0.8rem;color:#888;font-weight:600;">Total Salary Received</p>' +
+            '<p style="margin:0.3rem 0 0;font-size:1.2rem;font-weight:700;color:#0f2b3f;">'+cs+' '+totalSalary+'</p>' +
+          '</div>' +
+          '<div style="padding:0.8rem;border-radius:10px;background:rgba(27,95,122,0.08);text-align:center;">' +
+            '<p style="margin:0;font-size:0.8rem;color:#888;font-weight:600;">Payments Made</p>' +
+            '<p style="margin:0.3rem 0 0;font-size:1.2rem;font-weight:700;color:#0f2b3f;">'+salaryAll.length+'</p>' +
+          '</div>' +
+        '</div>' +
+        (salaryRecent.length>0 ? (
+        '<h5 style="margin:0 0 0.5rem;color:#1b5f7a;font-size:0.85rem;">Recent Payments</h5>' +
+        '<div style="display:grid;gap:0.4rem;font-size:0.85rem;">' +
+          salaryRecent.map(function(s){
+            var ml = _mL(s.salaryMonth);
+            var amt = Number(s.netSalary||s.salaryAmount||0);
+            var bonus = Number(s.bonus||0);
+            var ded = Number(s.deduction||0);
+            return '<div style="display:grid;grid-template-columns:1fr auto;gap:1rem;padding:0.4rem 0.6rem;background:rgba(27,95,122,0.06);border-radius:6px;border-left:3px solid #1b5f7a;">' +
+              '<div><span style="font-weight:600;color:#333;">'+_eH(ml)+'</span>' +
+              (bonus>0?' <span style="color:#1d9c61;font-size:0.8rem;">(+'+cs+' '+bonus+' bonus)</span>':'') +
+              (ded>0?' <span style="color:#d64b4b;font-size:0.8rem;">(-'+cs+' '+ded+' ded)</span>':'') +
+              '</div>' +
+              '<span style="color:#1b5f7a;font-weight:600;">'+cs+' '+amt+'</span>' +
+              '</div>';
+          }).join("") +
+        '</div>'
+        ) : '<p style="color:#999;font-size:0.85rem;text-align:center;padding:0.5rem 0;margin:0;">No salary payments recorded.</p>') +
+      '</div>' +
+
+      '</div>' +
+    '</article>';
+
+    var modal = document.getElementById("employeeModal");
+    if (modal) modal.hidden = false;
   } catch (error) {
-    employeeModalContent.innerHTML = "<p style='color: red;'>Error loading profile: " + escapeHtml(error.message) + "</p>";
+    modalContent.innerHTML = "<p style='color:red;'>Error loading profile: "+_eH(error.message)+"</p>";
   }
 };
 
@@ -48,6 +195,7 @@ window.handleEmployeeDeleteClick = function(employeeId) {
     deleteEmployeeRecord(employeeId);
     renderDashboard();
     renderDynamicModuleWorkspace("all-employees", "All Employees");
+    (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
   });
 };
 
@@ -56,6 +204,50 @@ document.addEventListener("DOMContentLoaded", function () {
 
   if (!currentUser) {
     return;
+  }
+
+  var brandOverlay = document.createElement("div");
+  brandOverlay.id = "brandModalOverlay";
+  brandOverlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:none;align-items:center;justify-content:center;font-family:Segoe UI,system-ui,sans-serif";
+  brandOverlay.innerHTML = '<div id="brandModalBox" style="background:#fff;border-radius:12px;padding:24px;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2)"><h3 id="brandModalTitle" style="margin:0 0 8px;color:#0f2b3f;font-size:1.1rem"></h3><p id="brandModalText" style="margin:0 0 16px;color:#555;font-size:0.95rem;line-height:1.5"></p><input id="brandModalInput" type="text" style="display:none;width:100%;padding:10px 12px;border:1.5px solid #dde4ea;border-radius:8px;font-size:0.95rem;outline:none;box-sizing:border-box"><div id="brandModalActions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"></div></div>';
+  document.body.appendChild(brandOverlay);
+
+  function brandedAlert(msg) {
+    return new Promise(function (resolve) {
+      brandOverlay.style.display = "flex";
+      document.getElementById("brandModalTitle").textContent = "Alert";
+      document.getElementById("brandModalText").textContent = msg;
+      document.getElementById("brandModalInput").style.display = "none";
+      document.getElementById("brandModalActions").innerHTML = '<button class="brandPrimary" style="padding:8px 20px;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;background:#1b5f7a;color:#fff">OK</button>';
+      document.getElementById("brandModalActions").firstChild.onclick = function () { brandOverlay.style.display = "none"; resolve(); };
+    });
+  }
+  function brandedConfirm(msg) {
+    return new Promise(function (resolve) {
+      brandOverlay.style.display = "flex";
+      document.getElementById("brandModalTitle").textContent = "Confirm";
+      document.getElementById("brandModalText").textContent = msg;
+      document.getElementById("brandModalInput").style.display = "none";
+      document.getElementById("brandModalActions").innerHTML = '<button class="brandSecondary" style="padding:8px 20px;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;background:#e6eefc;color:#1b5f7a">Cancel</button><button class="brandPrimary" style="padding:8px 20px;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;background:#1b5f7a;color:#fff">OK</button>';
+      document.getElementById("brandModalActions").children[0].onclick = function () { brandOverlay.style.display = "none"; resolve(false); };
+      document.getElementById("brandModalActions").children[1].onclick = function () { brandOverlay.style.display = "none"; resolve(true); };
+    });
+  }
+  function brandedPrompt(msg, def) {
+    return new Promise(function (resolve) {
+      brandOverlay.style.display = "flex";
+      document.getElementById("brandModalTitle").textContent = "Prompt";
+      document.getElementById("brandModalText").textContent = msg;
+      var input = document.getElementById("brandModalInput");
+      input.style.display = "";
+      input.value = def || "";
+      input.focus();
+      input.select();
+      document.getElementById("brandModalActions").innerHTML = '<button class="brandSecondary" style="padding:8px 20px;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;background:#e6eefc;color:#1b5f7a">Cancel</button><button class="brandPrimary" style="padding:8px 20px;border:none;border-radius:8px;font-size:0.9rem;font-weight:600;cursor:pointer;background:#1b5f7a;color:#fff">OK</button>';
+      document.getElementById("brandModalActions").children[0].onclick = function () { brandOverlay.style.display = "none"; resolve(null); };
+      document.getElementById("brandModalActions").children[1].onclick = function () { brandOverlay.style.display = "none"; resolve(input.value); };
+      input.onkeydown = function (e) { if (e.key === "Enter") { brandOverlay.style.display = "none"; resolve(input.value); } if (e.key === "Escape") { brandOverlay.style.display = "none"; resolve(null); } };
+    });
   }
 
   const studentRoutes = [
@@ -628,7 +820,8 @@ document.addEventListener("DOMContentLoaded", function () {
     "accounts-report": "Accounts Report",
     "customised-reports": "Customised Reports",
     "generate-certificate": "Generate Certificate",
-    "certificate-templates": "Certificate Templates"
+    "certificate-templates": "Certificate Templates",
+    "sms-templates": "Sms/Whatsapp Templates"
   };
 
   let database = window.SagarSoftDB.getDatabase();
@@ -639,6 +832,8 @@ document.addEventListener("DOMContentLoaded", function () {
   let promoteSelectionState = {};
   const superAdminRole = "superadmin";
   const superAdminBypass = currentUser.role === superAdminRole;
+  var DEMO_EMAIL_LIST = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"]);
+  var isDemoUser = currentUser && DEMO_EMAIL_LIST.has(String(currentUser.email || "").trim().toLowerCase());
   const roleRouteAllowMap = {
     superadmin: ["*"],
     admin: ["*"],
@@ -925,6 +1120,9 @@ document.addEventListener("DOMContentLoaded", function () {
   function getLicenseLockState() {
     const license = ensureLicenseSettings();
     if (superAdminBypass) {
+      return { locked: false, reason: "" };
+    }
+    if (isDemoUser) {
       return { locked: false, reason: "" };
     }
     if (!license.activated) {
@@ -1919,7 +2117,9 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function interpolateTemplate(template, data) {
-    return String(template || "").replace(/\{(\w+)\}/g, function (_, key) {
+    var text = String(template || "");
+    text = text.replace(/\{Mr\.?\/Ms\.?\}/gi, "{prefix}");
+    return text.replace(/\{(\w+)\}/g, function (_, key) {
       return typeof data[key] === "undefined" ? "" : String(data[key]);
     });
   }
@@ -2034,33 +2234,44 @@ document.addEventListener("DOMContentLoaded", function () {
     if (gateway.apiKey) {
       headers.Authorization = `Bearer ${gateway.apiKey}`;
     }
+    const urlsToTry = [baseUrl];
+    var portFallback = "";
+    var portMatch = baseUrl.match(/:(\d+)(?:\/|$)/);
+    if (portMatch) {
+      portFallback = "http://127.0.0.1:" + portMatch[1];
+      urlsToTry.push(portFallback);
+    }
     let success = false;
-    for (let index = 0; index < endpoints.length; index += 1) {
-      const endpoint = endpoints[index];
-      try {
-        const response = await fetchWithTimeout(`${baseUrl}${endpoint}`, {
-          method: "POST",
-          headers: headers,
-          body: JSON.stringify({ phone: phone, message: messageText })
-        }, 3500);
-        if (response.ok || response.type === "opaque") {
-          success = true;
-          break;
-        }
-      } catch (error) {
+    for (let u = 0; u < urlsToTry.length; u++) {
+      const urlBase = urlsToTry[u];
+      for (let index = 0; index < endpoints.length; index += 1) {
+        const endpoint = endpoints[index];
         try {
-          await fetchWithTimeout(`${baseUrl}${endpoint}`, {
+          const response = await fetchWithTimeout(`${urlBase}${endpoint}`, {
             method: "POST",
-            mode: "no-cors",
-            headers: { "Content-Type": "text/plain;charset=UTF-8" },
+            headers: headers,
             body: JSON.stringify({ phone: phone, message: messageText })
           }, 3500);
-          success = true;
-          break;
-        } catch (innerError) {
-          // Try next endpoint.
+          if (response.ok || response.type === "opaque") {
+            success = true;
+            break;
+          }
+        } catch (error) {
+          try {
+            await fetchWithTimeout(`${urlBase}${endpoint}`, {
+              method: "POST",
+              mode: "no-cors",
+              headers: { "Content-Type": "text/plain;charset=UTF-8" },
+              body: JSON.stringify({ phone: phone, message: messageText })
+            }, 3500);
+            success = true;
+            break;
+          } catch (innerError) {
+            // Try next endpoint.
+          }
         }
       }
+      if (success) break;
     }
     outboxItem.status = success ? "sent" : "failed";
     if (success) {
@@ -2068,6 +2279,18 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     saveDatabase();
     return { success: success, outboxItem: outboxItem };
+  }
+
+  function openWhatsAppWithFallback(appUrl, webUrl) {
+    if (isMobileRuntime()) {
+      window.open(appUrl, "_blank");
+      return true;
+    }
+    var popup = window.open(webUrl, "sagarsoftWhatsappPopup", "width=980,height=760,scrollbars=yes,resizable=yes");
+    if (!popup) {
+      popup = openCenteredWindow(webUrl, "sagarsoftWhatsappPopup");
+    }
+    return true;
   }
 
   function logWhatsappCommunication(payload) {
@@ -2078,13 +2301,13 @@ document.addEventListener("DOMContentLoaded", function () {
       return false;
     }
     const whatsappPhone = normalizeWhatsappPhone(phone);
-    const whatsappLink = whatsappPhone
-      ? getWhatsappOpenUrl(whatsappPhone, messageText)
-      : "";
-    let opened = false;
-    if (openChat && whatsappLink) {
-      const popup = openCenteredWindow(whatsappLink, "sagarsoftWhatsappPopup");
-      opened = Boolean(popup);
+    const encodedPhone = encodeURIComponent(whatsappPhone || "");
+    const encodedText = encodeURIComponent(messageText);
+    const appUrl = "whatsapp://send?phone=" + encodedPhone + "&text=" + encodedText;
+    const webUrl = "https://wa.me/" + encodedPhone + "?text=" + encodedText;
+    var opened = false;
+    if (openChat) {
+      opened = openWhatsAppWithFallback(appUrl, webUrl);
     }
     pushSmsOutboxEntry({
       recipientName: payload.recipientName || "-",
@@ -2102,13 +2325,11 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   async function saveCommunicationPdf(html, fileName) {
-    if (!window.SagarSoftDesktop || typeof window.SagarSoftDesktop.savePdf !== "function") {
-      return { success: false, message: "PDF is available in desktop app only." };
+    if (window.SagarSoftDesktop && typeof window.SagarSoftDesktop.savePdf === "function") {
+      return window.SagarSoftDesktop.savePdf({ html: html, fileName: fileName });
     }
-    return window.SagarSoftDesktop.savePdf({
-      html: html,
-      fileName: fileName
-    });
+    await openPrintHtmlWindow(html);
+    return { success: true, filePath: fileName };
   }
 
   function openCenteredWindow(url, windowName) {
@@ -2175,12 +2396,12 @@ document.addEventListener("DOMContentLoaded", function () {
   function getGenderPrefix(gender) {
     const normalized = String(gender || "").trim().toLowerCase();
     if (normalized === "male") {
-      return "Mr.";
+      return "Mr";
     }
     if (normalized === "female") {
-      return "Ms.";
+      return "Ms";
     }
-    return "Mx.";
+    return "Mx";
   }
 
   function getSavedMessageTemplate(key, fallback) {
@@ -2481,10 +2702,12 @@ document.addEventListener("DOMContentLoaded", function () {
             </section>
     `;
     const printPageSizeCss = paperSize === "thermal"
-      ? "@page { size: 80mm 297mm; margin: 0; }"
+      ? "@page { size: 80mm " + (config._thermalPageH || 297) + "mm; margin: 0; }"
       : paperSize === "a4"
         ? "@page { size: A4; margin: 0; }"
-        : "";
+        : paperSize === null
+          ? "@page { size: auto; margin: 3mm; }"
+          : "";
 
     const printHtml = `
       <!DOCTYPE html>
@@ -2505,9 +2728,12 @@ document.addEventListener("DOMContentLoaded", function () {
             }
             .print-wrap {
               width: 100%;
-              max-width: 1120px;
+              max-width: 100%;
               margin: 0 auto;
               padding: 22px 24px;
+            }
+            body.print-a4 .print-wrap {
+              max-width: 210mm;
             }
             .report-header {
               display: grid;
@@ -2624,6 +2850,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 -webkit-print-color-adjust: exact;
                 print-color-adjust: exact;
               }
+              html { height: 100%; }
               img {
                 filter: none !important;
               }
@@ -2636,22 +2863,30 @@ document.addEventListener("DOMContentLoaded", function () {
               body.print-a4 {
                 font-size: 11pt;
               }
+              body.print-thermal {
+                width: 80mm;
+                margin: 0;
+                font-size: 7pt;
+                height: 100%;
+                display: flex;
+                flex-direction: column;
+                justify-content: flex-start;
+              }
               body.print-thermal .print-wrap {
                 width: 80mm;
                 max-width: 80mm;
                 margin: 0;
                 padding: 0;
-              }
-              body.print-thermal {
-                width: 80mm;
-                margin: 0;
-                font-size: 7pt;
+                align-self: flex-start;
               }
               body.print-thermal .report-header,
               body.print-thermal .report-card,
               body.print-thermal .report-content {
                 margin-top: 0;
                 margin-bottom: 0;
+                display: block;
+                align-content: start;
+                justify-content: start;
               }
               body.print-thermal .report-header {
                 gap: 1px;
@@ -2684,22 +2919,6 @@ document.addEventListener("DOMContentLoaded", function () {
               body.print-thermal .report-grid p {
                 font-size: 5.8pt;
                 line-height: 1.15;
-              }
-              body.print-thermal .thermal-invoice-page {
-                break-after: page;
-                page-break-after: always;
-                margin: 0;
-                padding: 1mm 2mm;
-              }
-              body.print-thermal .thermal-invoice-page:last-child {
-                break-after: auto;
-                page-break-after: auto;
-              }
-              body.print-thermal .thermal-invoice-item {
-                break-inside: avoid;
-                page-break-inside: avoid;
-                margin: 0 0 2mm;
-                padding: 0;
               }
               body.print-thermal table {
                 font-size: 5.8pt;
@@ -2794,6 +3013,17 @@ document.addEventListener("DOMContentLoaded", function () {
     popup.focus();
     await waitForPrintResources(popup);
     popup.print();
+    var dialogOpened = false;
+    var closeTimer = setInterval(function() {
+      try {
+        if (popup.closed) { clearInterval(closeTimer); return; }
+        if (popup.matchMedia('print').matches) dialogOpened = true;
+        if (dialogOpened && !popup.matchMedia('print').matches) {
+          clearInterval(closeTimer);
+          popup.close();
+        }
+      } catch(e) { clearInterval(closeTimer); }
+    }, 200);
   }
 
   async function openThermalPrintWindow(html, popupOptions, popupErrorMessage) {
@@ -3714,8 +3944,15 @@ document.addEventListener("DOMContentLoaded", function () {
         tone: "parents",
         route: "parents-info-report",
         label: "Parents",
-        value: database.users.filter(function (item) { return item.role === "parent"; }).length,
-        note: "Accounts available"
+        value: (function () {
+          var phones = new Set();
+          (database.students || []).forEach(function (s) {
+            if (s.fatherPhone) phones.add(s.fatherPhone);
+            if (s.motherPhone) phones.add(s.motherPhone);
+          });
+          return phones.size;
+        })(),
+        note: "Associated with students"
       },
       {
         icon: "SB",
@@ -4075,6 +4312,212 @@ document.addEventListener("DOMContentLoaded", function () {
     `;
   }
 
+  function normalizeAttendanceStatus(statusValue) {
+    const value = String(statusValue || "").toLowerCase();
+    if (value === "present" || value === "p") {
+      return "Present";
+    }
+    if (value === "on-leave" || value === "on leave" || value === "leave" || value === "a.l" || value === "al") {
+      return "On-leave";
+    }
+    return "Absent";
+  }
+
+  function getAttendanceRecords(entityType) {
+    return (database.attendance || []).filter(function (item) {
+      if (entityType === "student") {
+        return item.studentId || !item.entityType || item.entityType === "student";
+      }
+      if (entityType === "employee") {
+        return item.employeeId || item.entityType === "employee";
+      }
+      return true;
+    });
+  }
+
+  function getAttendanceRecordFor(entityType, entityId, dateValue) {
+    return getAttendanceRecords(entityType).find(function (item) {
+      const idMatch = entityType === "student" ? item.studentId === entityId : item.employeeId === entityId;
+      return idMatch && item.date === dateValue;
+    }) || null;
+  }
+
+  function saveAttendanceRecord(entityType, entityId, dateValue, statusValue, extraData) {
+    if (!Array.isArray(database.attendance)) {
+      database.attendance = [];
+    }
+    const normalizedStatus = normalizeAttendanceStatus(statusValue);
+    const existingIndex = database.attendance.findIndex(function (item) {
+      const isSameEntity = entityType === "student" ? item.studentId === entityId : item.employeeId === entityId;
+      const isEntityTypeMatch = entityType === "student" ? (!item.entityType || item.entityType === "student") : item.entityType === "employee";
+      return isSameEntity && isEntityTypeMatch && item.date === dateValue;
+    });
+    const baseRecord = {
+      id: existingIndex >= 0 ? database.attendance[existingIndex].id : `ATT-${entityType}-${Date.now()}-${entityId}`,
+      entityType: entityType,
+      date: dateValue,
+      status: normalizedStatus
+    };
+    if (entityType === "student") {
+      baseRecord.studentId = entityId;
+    } else {
+      baseRecord.employeeId = entityId;
+    }
+    const attendanceRecord = {
+      ...baseRecord,
+      ...(extraData || {})
+    };
+    if (existingIndex >= 0) {
+      database.attendance[existingIndex] = { ...database.attendance[existingIndex], ...attendanceRecord };
+    } else {
+      database.attendance.unshift(attendanceRecord);
+    }
+  }
+
+  function openQrAttendanceScanner(onAttendanceMarked) {
+    if (typeof Html5Qrcode === "undefined") {
+      alert("QR scanner library not loaded. Please refresh the page.");
+      return;
+    }
+    var overlay = document.createElement("div");
+    overlay.className = "scanner-overlay";
+    var schoolName = (database.generalSettings && database.generalSettings.instituteProfile && database.generalSettings.instituteProfile.name) || (database.school && database.school.name) || "";
+    var todayDate = getTodayDateISO();
+    var startScanHtml =
+      '<div class="scanner-modal__body" id="scannerStartScreen">' +
+      '<div class="field-group" style="margin-bottom:12px;">' +
+      '<label for="scannerDateInput" style="font-size:13px;color:#fff;">Select Date</label>' +
+      '<input id="scannerDateInput" type="date" value="' + todayDate + '" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid #cbd5e1;font:400 14px Poppins,sans-serif;">' +
+      '</div>' +
+      '<div class="scanner-start-icon"><i class="fas fa-camera"></i></div>' +
+      '<p class="scanner-start-text">Allow camera access when prompted, then point the ID card QR code at the camera to instantly mark attendance.</p>' +
+      '<button id="scannerStartBtn" class="scanner-start-btn" type="button"><i class="fas fa-qrcode"></i> Start Scanning</button>' +
+      '</div>';
+    var scanViewHtml =
+      '<div class="scanner-modal__body" id="scannerScanScreen" style="display:none;">' +
+      '<p class="scanner-sub"><i class="fas fa-camera"></i> Point camera at ID card QR code</p>' +
+      '<div id="scannerCameraView"></div>' +
+      '<div id="scannerResult" class="scanner-result" style="display:none;"></div>' +
+      '<button id="scannerCloseBtn" class="scanner-close-btn" type="button">Close Scanner</button>' +
+      '</div>';
+    overlay.innerHTML =
+      '<div class="scanner-modal">' +
+      '<div class="scanner-modal__head">' +
+      '<i class="fas fa-qrcode"></i><h3>Scan Attendance</h3>' +
+      (schoolName ? '<span class="scanner-modal__school">' + schoolName + '</span>' : "") +
+      '</div>' +
+      startScanHtml + scanViewHtml +
+      "</div>";
+    document.body.appendChild(overlay);
+    var resultDiv = overlay.querySelector("#scannerResult");
+    var dateInput = overlay.querySelector("#scannerDateInput");
+    var html5QrCode = new Html5Qrcode("scannerCameraView");
+    var isScanning = true;
+    var scannedIds = {};
+    overlay.querySelector("#scannerStartBtn").addEventListener("click", function () {
+      overlay.querySelector("#scannerStartScreen").style.display = "none";
+      overlay.querySelector("#scannerScanScreen").style.display = "block";
+      var config = { fps: 10, qrbox: { width: 220, height: 220 } };
+      html5QrCode.start({ facingMode: "environment" }, config, onScanSuccess, function () {}).catch(function (err) {
+        resultDiv.style.display = "flex";
+        resultDiv.className = "scanner-result error";
+        resultDiv.innerHTML = '<i class="fas fa-video-slash"></i> Camera access denied or not available.';
+      });
+    });
+    var onScanSuccess = function (decodedText) {
+      if (!isScanning) return;
+      if (scannedIds[decodedText]) return;
+      isScanning = false;
+      scannedIds[decodedText] = true;
+      var parts = decodedText.split(":");
+      if (parts.length < 3 || parts[0] !== "ATTEND") {
+        resultDiv.style.display = "flex";
+        resultDiv.className = "scanner-result error";
+        resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Invalid QR code. Please scan a valid ID card.';
+        setTimeout(function () { resultDiv.style.display = "none"; isScanning = true; }, 2000);
+        return;
+      }
+      var scannedType = parts[1];
+      var scannedId = parts.slice(2).join(":");
+      var entityType = scannedType === "STUDENT" ? "student" : "employee";
+      var person = null;
+      var personName = "";
+      if (entityType === "student") {
+        person = (database.students || []).find(function (s) { return s.admissionNo === scannedId || s.id === scannedId; });
+        personName = person ? person.name || "" : scannedId;
+      } else {
+        person = (getEmployees() || []).find(function (e) { return e.id === scannedId || e.employeeId === scannedId; });
+        personName = person ? person.name || "" : scannedId;
+      }
+      if (!person) {
+        resultDiv.style.display = "flex";
+        resultDiv.className = "scanner-result error";
+        resultDiv.innerHTML = '<i class="fas fa-user-times"></i> ' + scannedType + " with ID '" + scannedId + "' not found.";
+        setTimeout(function () { resultDiv.style.display = "none"; isScanning = true; }, 2000);
+        return;
+      }
+      var dateValue = dateInput ? dateInput.value : getTodayDateISO();
+      if (onAttendanceMarked) {
+        onAttendanceMarked(entityType, person, dateValue);
+      }
+      resultDiv.style.display = "flex";
+      resultDiv.className = "scanner-result success";
+      resultDiv.innerHTML = '<i class="fas fa-check-circle"></i> ' + personName + " - Present";
+      setTimeout(function () { resultDiv.style.display = "none"; isScanning = true; }, 2000);
+    };
+    overlay.querySelector("#scannerCloseBtn").addEventListener("click", function () {
+      isScanning = false;
+      html5QrCode.stop().then(function () {
+        html5QrCode.clear();
+      }).catch(function () {});
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    });
+  }
+
+  function openMobileAppDownloadModal() {
+    var detectedUrl = window.location.href.replace(/\/dashboard\.html.*$/, "/").replace(/\/login\.html.*$/, "/");
+    var existing = document.getElementById("mobileAppOverlay");
+    if (existing) existing.remove();
+    var overlay = document.createElement("div");
+    overlay.id = "mobileAppOverlay";
+    overlay.className = "scanner-overlay";
+    overlay.innerHTML =
+      '<div class="scanner-modal" style="max-width:420px;">' +
+      '<div class="scanner-modal__head">' +
+      '<i class="fas fa-mobile-alt"></i><h3>Download Mobile App</h3>' +
+      "</div>" +
+      '<div class="scanner-modal__body" style="text-align:center;padding:1.5rem;">' +
+      '<p style="margin-bottom:0.75rem;font-size:0.85rem;color:#3a5068;">Enter your PC/Laptop IP address below, then scan the QR code with your phone.</p>' +
+      '<div class="field-group" style="margin-bottom:0.75rem;">' +
+      '<input id="mobileAppUrlInput" type="text" value="' + escapeAttr(detectedUrl) + '" style="width:100%;padding:0.5rem;font-size:0.85rem;border:1px solid #dde4ea;border-radius:6px;text-align:center;">' +
+      "</div>" +
+      '<div id="mobileAppQrWrap" style="background:#fff;border-radius:12px;padding:1rem;display:inline-block;box-shadow:0 2px 8px rgba(0,0,0,0.08);">' +
+      '<img id="mobileAppQrImg" src="https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=' + encodeURIComponent(detectedUrl) + '" alt="QR Code" style="width:220px;height:220px;display:block;">' +
+      "</div>" +
+      '<p style="margin:0.75rem 0 0.25rem;font-size:0.85rem;color:#3a5068;">Steps:</p>' +
+      '<ol style="text-align:left;font-size:0.8rem;color:#3a5068;line-height:1.7;margin:0;padding-left:1.25rem;">' +
+      '<li>Make sure phone and PC are on <strong>same WiFi</strong>.</li>' +
+      '<li>Scan the QR code with your phone.</li>' +
+      '<li>In phone browser, tap <strong>menu &rarr; Add to Home Screen</strong>.</li>' +
+      "</ol>" +
+      '<button id="mobileAppCloseBtn" class="scanner-close-btn" type="button" style="margin-top:1rem;">Close</button>' +
+      "</div>" +
+      "</div>";
+    document.body.appendChild(overlay);
+    document.getElementById("mobileAppCloseBtn").addEventListener("click", function () { overlay.remove(); });
+    overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.remove(); });
+    var urlInput = document.getElementById("mobileAppUrlInput");
+    var qrImg = document.getElementById("mobileAppQrImg");
+    urlInput.addEventListener("input", function () {
+      var val = this.value.trim();
+      if (val) {
+        qrImg.src = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(val);
+      }
+    });
+    urlInput.focus();
+    urlInput.select();
+  }
+
   function renderDynamicModuleWorkspace(route, title) {
     const viewModule = document.getElementById("view-module");
     const moduleSectionLabel = document.getElementById("moduleSectionLabel");
@@ -4088,6 +4531,10 @@ document.addEventListener("DOMContentLoaded", function () {
     const moduleGuideCard = moduleGuide ? moduleGuide.closest(".panel-card") : null;
     if (moduleSummary) moduleSummary.scrollTop = 0;
     if (moduleGuide) moduleGuide.scrollTop = 0;
+    var fwEl = document.getElementById("moduleFullWidth");
+    if (fwEl) { fwEl.style.display = "none"; fwEl.innerHTML = ""; }
+    var splitCards = document.querySelectorAll(".split-grid > .panel-card");
+    if (splitCards.length >= 2) { splitCards[0].style.gridColumn = ""; splitCards[1].style.display = ""; }
     const classOptions = getStudentClassOptions();
     const generalSettingsRoutes = [
       "institute-profile",
@@ -4149,7 +4596,8 @@ document.addEventListener("DOMContentLoaded", function () {
       "manage-test-marks",
       "test-result",
       "generate-certificate",
-      "certificate-templates"
+      "certificate-templates",
+      "sms-templates"
     ];
     const examModuleRoutes = [
       "create-new-exam",
@@ -4566,15 +5014,21 @@ document.addEventListener("DOMContentLoaded", function () {
             <label for="feeParticularClassSelect">Fee Particulars for*</label>
             <select id="feeParticularClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select>
           </div>
-          <div id="feeParticularRows" class="module-line-list"></div>
+          <div id="feeParticularRows" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
           <div class="form-actions">
             <button class="primary-button" id="saveFeeParticularBtn" type="button">Update Particulars</button>
           </div>
           <p class="form-message" id="feeParticularMessage"></p>
         </article>
+        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
+          <strong>Preview</strong>
+          <div id="feeParticularPreview"></div>
+        </div>
       `;
 
-      moduleGuide.innerHTML = `<article><strong>Preview</strong><div id="feeParticularPreview"></div></article>`;
+      moduleGuide.innerHTML = "";
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
 
       const classSelect = document.getElementById("feeParticularClassSelect");
       const rowsWrap = document.getElementById("feeParticularRows");
@@ -4588,14 +5042,14 @@ document.addEventListener("DOMContentLoaded", function () {
           const fixed = row.fixed ? "readonly" : "";
           const safeAmount = Math.max(0, parseFloat(row.amount || 0, 10));
           return `
-            <article class="module-line-item">
-              <div class="field-group">
-                <label>Particular Label*</label>
-                <input class="fee-particular-label" data-index="${index}" type="text" value="${escapeAttr(row.label)}" ${fixed}>
+            <article class="module-line-item" style="border:1px solid #dde4ea;border-radius:8px;padding:8px;">
+              <div class="field-group" style="margin-bottom:4px;">
+                <label style="font-size:11px;">Particular Label*</label>
+                <input class="fee-particular-label" data-index="${index}" type="text" value="${escapeAttr(row.label)}" ${fixed} style="font-size:12px;padding:6px 8px;">
               </div>
               <div class="field-group">
-                <label>Prefix Amount* ${row.fixed ? "[FIXED]" : ""}</label>
-                <input class="fee-particular-amount" data-index="${index}" type="text" placeholder="0" inputmode="numeric" value="${safeAmount}" ${fixed}>
+                <label style="font-size:11px;">Amount* ${row.fixed ? "[FIXED]" : ""}</label>
+                <input class="fee-particular-amount" data-index="${index}" type="text" placeholder="0" inputmode="numeric" value="${safeAmount}" ${fixed} style="font-size:12px;padding:6px 8px;">
               </div>
             </article>
           `;
@@ -4661,9 +5115,15 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <p class="form-message" id="feeStructureMessage"></p>
         </article>
+        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
+          <strong>Preview</strong>
+          <div id="feeStructurePreview"></div>
+        </div>
       `;
 
-      moduleGuide.innerHTML = `<article><strong>Preview</strong><div id="feeStructurePreview"></div></article>`;
+      moduleGuide.innerHTML = ``;
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
 
       const classSelect = document.getElementById("feeStructureClassSelect");
       const rowsWrap = document.getElementById("feeStructureRows");
@@ -4768,9 +5228,15 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <p class="form-message" id="discountMessage"></p>
         </article>
+        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
+          <strong>Applied Discounts</strong>
+          <div id="discountPreviewList" class="compact-list"></div>
+        </div>
       `;
 
-      moduleGuide.innerHTML = `<article><strong>Applied Discounts</strong><div id="discountPreviewList" class="compact-list"></div></article>`;
+      moduleGuide.innerHTML = ``;
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
 
       const searchInput = document.getElementById("discountSearchInput");
       const classFilter = document.getElementById("discountClassFilter");
@@ -4998,9 +5464,15 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <p class="form-message" id="rulesMessage"></p>
         </article>
+        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
+          <strong>Preview</strong>
+          <div id="rulesPreview" class="module-preview-card"></div>
+        </div>
       `;
 
-      moduleGuide.innerHTML = `<article><strong>Preview</strong><div id="rulesPreview" class="module-preview-card"></div></article>`;
+      moduleGuide.innerHTML = ``;
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
 
       const applyToSelect = document.getElementById("rulesApplyToSelect");
       const editor = document.getElementById("rulesEditor");
@@ -5094,10 +5566,7 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <p class="form-message" id="gradingMessage"></p>
         </article>
-      `;
-
-      moduleGuide.innerHTML = `
-        <article>
+        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
           <strong>Fail Criteria</strong>
           <p>Student will be marked as FAILED if overall/subject threshold is below criteria.</p>
           <div class="form-grid">
@@ -5118,8 +5587,12 @@ document.addEventListener("DOMContentLoaded", function () {
             <button class="primary-button" id="saveFailCriteriaBtn" type="button">Update Criteria</button>
           </div>
           <p class="form-message" id="failMessage"></p>
-        </article>
+        </div>
       `;
+
+      moduleGuide.innerHTML = ``;
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
 
       const gradingRows = document.getElementById("gradingRows");
       const gradingMessage = document.getElementById("gradingMessage");
@@ -5313,8 +5786,8 @@ document.addEventListener("DOMContentLoaded", function () {
             <div id="feeInvoicePreviewBox" class="module-preview-card" style="height:100%;overflow-y:auto;"><p>Select student and generate invoice.</p></div>
           </div>
           <div class="form-actions" style="display:flex;gap:6px;padding:8px 0;border-top:1px solid #e0e6f2;">
-            <button class="primary-button" id="printFeeInvoiceBtn" type="button" disabled style="flex:1;">Print Invoice (A4)</button>
-            <button class="secondary-button" id="printFeeInvoiceThermalBtn" type="button" disabled style="flex:1;">Print Invoice (Thermal)</button>
+            <button class="primary-button" id="printFeeInvoiceA4Btn" type="button" disabled style="flex:1;">Print Invoice</button>
+            <button class="secondary-button" id="printFeeInvoiceThermalBtn" type="button" disabled style="flex:1;">Print (Thermal)</button>
           </div>
         </article>
       `;
@@ -5332,7 +5805,8 @@ document.addEventListener("DOMContentLoaded", function () {
       const bankSelect = document.getElementById("feeInvoiceBankSelect");
       const previewBox = document.getElementById("feeInvoicePreviewBox");
       const message = document.getElementById("feeInvoiceMessage");
-      const printInvoiceBtn = document.getElementById("printFeeInvoiceBtn");
+      const printInvoiceBtn = document.getElementById("printFeeInvoiceA4Btn");
+      const printThermalBtn = document.getElementById("printFeeInvoiceThermalBtn");
       const generateStudentInvoiceBtn = document.getElementById("generateStudentInvoiceBtn");
       const generateClasswiseInvoiceBtn = document.getElementById("generateClasswiseInvoiceBtn");
       const feeInvoiceStudentDropdown = document.getElementById("feeInvoiceStudentSearchDropdown");
@@ -5353,6 +5827,9 @@ document.addEventListener("DOMContentLoaded", function () {
       let feeInvoiceSearchTimer = null;
       let latestInvoicePreviewData = null;
       let classifyInvoicesForPrint = [];
+      previewBox.style.display = "none";
+      printInvoiceBtn.style.display = "none";
+      printThermalBtn.style.display = "none";
 
       function getFilteredStudents() {
         const search = searchInput.value.trim().toLowerCase();
@@ -5393,7 +5870,7 @@ document.addEventListener("DOMContentLoaded", function () {
         searchInput.value = `${student.name || ""} (${student.admissionNo || "-"})`;
         classifyInvoicesForPrint = [];
         const particulates = buildFeeParticularsForStudent(student);
-        const totalAmount = particulates.reduce(function (sum, item) { return sum + Math.max(0, parseFloat(item.amount || 0, 10)); }, 0);
+        const totalAmount = particulates.reduce(function (sum, item) { return sum + (parseFloat(item.amount || 0, 10)); }, 0);
         const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0, 10));
         const invoiceData = {
           id: `INV-TEMP-${Date.now()}`,
@@ -5407,7 +5884,6 @@ document.addEventListener("DOMContentLoaded", function () {
           particulars: particulates,
           totalAmount: totalAmount
         };
-        renderInvoicePreview(student, invoiceData);
       }
 
       function renderFeeInvoiceSearchResults(searchTerm) {
@@ -5502,15 +5978,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
       function buildFeeParticularsForStudent(student) {
         const classParticulars = (settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className);
-        return classParticulars.map(function (item) {
+        const discountPercent = Math.max(0, Math.min(100, parseFloat(student.discountInFee || 0, 10)));
+        var items = classParticulars.map(function (item) {
           const label = String(item.label || "");
           if (label.toUpperCase().includes("DISCOUNT IN FEE")) {
-            const discountAmount = Math.max(0, parseFloat(student.discountAmount || 0, 10));
-            return { ...item, amount: discountAmount };
+            return null;
           }
           const amount = Math.max(0, parseFloat(item.amount || 0, 10));
           return { ...item, amount: amount };
-        });
+        }).filter(function (item) { return item !== null; });
+        if (discountPercent > 0) {
+          var subtotal = items.reduce(function (sum, item) { return sum + item.amount; }, 0);
+          var discountAmount = Math.round(subtotal * discountPercent / 100);
+          items.push({ label: "DISCOUNT IN FEE " + discountPercent + "%", amount: -discountAmount });
+        }
+        return items;
       }
 
       function createFeeRecordFromInvoice(student, invoiceData, existingId) {
@@ -5573,7 +6055,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <div style="display:grid;grid-template-columns:92px 1fr 92px;align-items:center;gap:10px;">
               <div style="text-align:left;">${bank && bank.logo ? `<img src="${bank.logo}" alt="Bank Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : "<span style='font-weight:700;'>Bank Logo</span>"}</div>
               <div style="text-align:center;">
-                <h3 style="margin:0;font-size:1.08rem;">${escapeHtml(profile.name || database.school.name || "School Name")}</h3>
+                <h3 style="margin:0;font-size:1.08rem;">${escapeHtml(profile.name || (database.school && database.school.name) || "School Name")}</h3>
                 <p style="margin:2px 0 0;font-size:0.86rem;">${escapeHtml(profile.slogan || "-")}</p>
               </div>
               <div style="text-align:right;">${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : "<span style='font-weight:700;'>School Logo</span>"}</div>
@@ -5611,7 +6093,7 @@ document.addEventListener("DOMContentLoaded", function () {
           profile: profile
         };
         printInvoiceBtn.disabled = false;
-        document.getElementById("printFeeInvoiceThermalBtn").disabled = false;
+        printThermalBtn.disabled = false;
       }
 
       async function generateInvoiceForStudent(student) {
@@ -5622,13 +6104,13 @@ document.addEventListener("DOMContentLoaded", function () {
         generateStudentInvoiceBtn.disabled = true;
         generateClasswiseInvoiceBtn.disabled = true;
         printInvoiceBtn.disabled = true;
-        document.getElementById("printFeeInvoiceThermalBtn").disabled = true;
+        printThermalBtn.disabled = true;
         message.textContent = "Generating invoice...";
         message.className = "form-message";
         await new Promise(function (resolve) { setTimeout(resolve, 0); });
         const particulars = buildFeeParticularsForStudent(student);
-        const totalAmount = particulars.reduce(function (sum, item) { return sum + Math.max(0, parseFloat(item.amount || 0, 10)); }, 0);
-        const fineAmount = Math.max(0, parseFloat(fineInput.value || 0, 10));
+        const totalAmount = particulars.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
+        const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0, 10));
         const invoiceData = {
           id: `INV-${Date.now()}-${student.id}`,
           studentId: student.id,
@@ -5649,6 +6131,10 @@ document.addEventListener("DOMContentLoaded", function () {
           renderInvoicePreview(student, invoiceData);
           message.textContent = "Fees invoice generated successfully.";
           message.className = "form-message success";
+          previewBox.style.display = "block";
+          printInvoiceBtn.style.display = "";
+          printThermalBtn.style.display = "";
+          moduleGuide.closest(".panel-card").style.display = "block";
           setTimeout(function () {
             saveDatabase();
           }, 0);
@@ -5659,7 +6145,7 @@ document.addEventListener("DOMContentLoaded", function () {
           generateStudentInvoiceBtn.disabled = false;
           generateClasswiseInvoiceBtn.disabled = false;
           printInvoiceBtn.disabled = !latestInvoicePreviewData;
-          document.getElementById("printFeeInvoiceThermalBtn").disabled = !latestInvoicePreviewData;
+          printThermalBtn.disabled = !latestInvoicePreviewData;
         }
       }
 
@@ -5693,7 +6179,7 @@ document.addEventListener("DOMContentLoaded", function () {
         generateClasswiseInvoiceBtn.disabled = true;
         generateStudentInvoiceBtn.disabled = true;
         printInvoiceBtn.disabled = true;
-        document.getElementById("printFeeInvoiceThermalBtn").disabled = true;
+        printThermalBtn.disabled = true;
         message.textContent = `Generating ${students.length} invoices...`;
         message.className = "form-message";
         await new Promise(function (resolve) { setTimeout(resolve, 0); });
@@ -5714,8 +6200,8 @@ document.addEventListener("DOMContentLoaded", function () {
               continue;
             }
             const particulars = buildFeeParticularsForStudent(student);
-            const totalAmount = particulars.reduce(function (sum, item) { return sum + Math.max(0, parseFloat(item.amount || 0, 10)); }, 0);
-            const fineAmount = Math.max(0, parseFloat(fineInput.value || 0, 10));
+            const totalAmount = particulars.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
+            const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0, 10));
             const invoiceData = {
               id: `INV-${Date.now()}-${student.id}`,
               studentId: student.id,
@@ -5758,11 +6244,14 @@ document.addEventListener("DOMContentLoaded", function () {
           if (invoicesData.length > 0) {
             renderInvoicePreview(invoicesData[0].student, invoicesData[0].invoiceData);
           }
-          message.textContent = `Invoices generated for ${students.length} students. Select A4 or Thermal to print all.`;
+          message.textContent = `Invoices generated for ${students.length} students.`;
           message.className = "form-message success";
           classifyInvoicesForPrint = invoicesData;
-          printFeeInvoiceBtn.disabled = false;
-          document.getElementById("printFeeInvoiceThermalBtn").disabled = false;
+          printInvoiceBtn.disabled = false;
+          printThermalBtn.disabled = false;
+          previewBox.style.display = "block";
+          printInvoiceBtn.style.display = "";
+          printThermalBtn.style.display = "";
           setTimeout(function () {
             saveDatabase();
           }, 0);
@@ -5779,10 +6268,18 @@ document.addEventListener("DOMContentLoaded", function () {
         input.addEventListener("input", function () {
           classifyInvoicesForPrint = [];
           renderStudentSuggestions();
+          moduleSummary.style.display = "";
+          previewBox.style.display = "none";
+          printInvoiceBtn.style.display = "none";
+          printThermalBtn.style.display = "none";
         });
         input.addEventListener("change", function () {
           classifyInvoicesForPrint = [];
           renderStudentSuggestions();
+          moduleSummary.style.display = "";
+          previewBox.style.display = "none";
+          printInvoiceBtn.style.display = "none";
+          printThermalBtn.style.display = "none";
         });
       });
 
@@ -5795,47 +6292,7 @@ document.addEventListener("DOMContentLoaded", function () {
           
         // If classwise invoices exist, print all combined; otherwise print single invoice
         if (classifyInvoicesForPrint.length > 0) {
-          let allInvoicesHtml = `
-            <style>
-              @media print {
-                body.print-thermal,
-                body.print-thermal .print-wrap,
-                body.print-thermal .report-content {
-                  display: block !important;
-                  width: 80mm !important;
-                  max-width: 80mm !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  gap: 0 !important;
-                }
-                body.print-thermal .thermal-invoice-page {
-                  display: grid !important;
-                  grid-template-rows: repeat(3, 99mm) !important;
-                  width: 80mm !important;
-                  height: 297mm !important;
-                  margin: 0 !important;
-                  padding: 0 !important;
-                  break-after: page !important;
-                  page-break-after: always !important;
-                  overflow: hidden !important;
-                }
-                body.print-thermal .thermal-invoice-page:last-child {
-                  break-after: auto !important;
-                  page-break-after: auto !important;
-                }
-                body.print-thermal .thermal-invoice-item {
-                  width: 80mm !important;
-                  height: 99mm !important;
-                  max-height: 99mm !important;
-                  margin: 0 !important;
-                  padding: 1mm 2mm !important;
-                  overflow: hidden !important;
-                  break-inside: avoid !important;
-                  page-break-inside: avoid !important;
-                }
-              }
-            </style>
-          `;
+          let allInvoicesHtml = "";
           
           // Group invoices by page: page N contains 3 thermal invoices.
           const pages = [];
@@ -5914,7 +6371,7 @@ document.addEventListener("DOMContentLoaded", function () {
           await openPrintReport({
             contentHtml: allInvoicesHtml,
             hideHeader: true
-          }, null, "a4");
+          }, null, null);
         } else {
           // Single invoice print
           if (!latestInvoicePreviewData) {
@@ -5958,272 +6415,119 @@ document.addEventListener("DOMContentLoaded", function () {
                 <tfoot><tr><th colspan="2" style="text-align:left;">Total</th><th style="text-align:right;">${Number(invoiceData.totalAmount || 0)}</th></tr></tfoot>
               </table>
             `
-          }, null, "a4");
+          }, null, null);
         }
       });
 
-      const printFeeInvoiceThermalBtn = document.getElementById("printFeeInvoiceThermalBtn");
-      printFeeInvoiceThermalBtn.addEventListener("click", async function () {
-        // Get institute details for print
+      // Thermal — 3 invoices per page, A4-like layout
+      printThermalBtn.addEventListener("click", async function () {
         const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+        const printableLogo = await normalizeImageForPrintShared(profile.logo || "");
         const instituteProfile = profile;
-        const instituteLogo = profile.logo || "";
-        const printableLogo = await normalizeImageForPrintShared(instituteLogo);
-        
-        // If classwise invoices exist, print all combined; otherwise print single invoice
-        if (classifyInvoicesForPrint.length > 0) {
-          let allInvoicesHtml = "";
-          
-          // Group invoices by page: page N contains 3 thermal invoices.
-          const pages = [];
-          const invoicesPerPage = 3;
-          let currentPageInvoices = [];
-          
-          for (let i = 0; i < classifyInvoicesForPrint.length; i++) {
-            currentPageInvoices.push(classifyInvoicesForPrint[i]);
-            if (currentPageInvoices.length === invoicesPerPage) {
-              pages.push(currentPageInvoices);
-              currentPageInvoices = [];
-            }
-          }
-          if (currentPageInvoices.length > 0) {
-            pages.push(currentPageInvoices);
-          }
-          
-          // Render each page with its invoices
-          for (let pageIdx = 0; pageIdx < pages.length; pageIdx++) {
-            const pageInvoices = pages[pageIdx];
-            let pageContent = `<div class="thermal-invoice-page">`;
-            
-            for (let invIdx = 0; invIdx < pageInvoices.length; invIdx++) {
-              const invoiceEntry = pageInvoices[invIdx];
-              const bank = banks.find(function (b) { return b.id === invoiceEntry.invoiceData.bankId; }) || null;
-              const printableBankLogo = bank && bank.logo ? await normalizeImageForPrintShared(bank.logo) : "";
-              const rowsMarkup = invoiceEntry.invoiceData.particulars.map(function (item, index) {
-                return `<tr><td>${index + 1}</td><td>${escapeHtml(item.label || "-")}</td><td style="text-align:right;">${Number(item.amount || 0)}</td></tr>`;
-              }).join("");
-              
-              pageContent += `
-                <div class="thermal-invoice-item">
-                <div style="padding:0;margin:0;">
-                <section class="report-header" style="gap:1px;padding:1mm 0;">
-                  ${printableLogo ? `<img class="logo" src="${printableLogo}" alt="School logo">` : `<span class="logo-placeholder">${getInitials(instituteProfile.name || "S")}</span>`}
-                  <h1 class="school-title" style="font-size:7pt;line-height:1.05;">${escapeHtml(instituteProfile.name || "-")}</h1>
-                  <p class="school-slogan" style="font-size:5.5pt;line-height:1.1;margin:0;">${escapeHtml(instituteProfile.slogan || "School Management System")}</p>
-                  <div class="school-meta" style="font-size:5.5pt;line-height:1.1;">
-                    <div>${escapeHtml(instituteProfile.phone || "-")} | PSRA ${escapeHtml(instituteProfile.psra || "-")}</div>
-                    <div>${escapeHtml(instituteProfile.address || "-")}, ${escapeHtml(instituteProfile.country || "-")}</div>
-                  </div>
-                </section>
-                <article class="report-card" style="display:grid;grid-template-columns:14mm 1fr 1fr;gap:1.5mm;align-items:start;margin:0;padding:1mm;border-radius:2mm;">
-                  <div>
-                    ${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:12mm;height:12mm;border-radius:2mm;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:12mm;height:12mm;border-radius:2mm;border:1px solid #000;align-items:center;justify-content:center;font-size:5.5pt;">BANK</span>`}
-                  </div>
-                  <div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));gap:1mm;font-size:5.8pt;line-height:1.15;">
-                    <p><strong>Roll No:</strong> ${escapeHtml(invoiceEntry.student.admissionNo || "-")}</p>
-                    <p><strong>Class:</strong> ${escapeHtml(invoiceEntry.student.className || "-")}</p>
-                    <p><strong>Student Name:</strong> ${escapeHtml(invoiceEntry.student.name || "-")}</p>
-                    <p><strong>Father Name:</strong> ${escapeHtml(invoiceEntry.student.fatherName || "-")}</p>
-                    <p><strong>Fee Month:</strong> ${escapeHtml(invoiceEntry.invoiceData.feeMonth || "-")}</p>
-                    <p><strong>Date:</strong> ${escapeHtml(invoiceEntry.invoiceData.date || "-")}</p>
-                    <p><strong>Due Date:</strong> ${escapeHtml(invoiceEntry.invoiceData.dueDate || "-")}</p>
-                    <p><strong>Fine After Due Date:</strong> ${Number(invoiceEntry.invoiceData.fineAfterDueDate || 0)}</p>
-                  </div>
-                  <div style="font-size:5.8pt;line-height:1.15;">
-                    <h4 style="margin:0 0 1mm;text-align:center;font-size:5.8pt;"><span style="display:inline-block;background:#1e5eff;color:#fff;padding:1px 4px;border-radius:2mm;">Bank Copy</span></h4>
-                    <p style="margin:0 0 1px;"><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
-                    <p style="margin:0 0 1px;"><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
-                    <p style="margin:0 0 1px;"><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
-                    <p style="margin:0;"><strong>Instructions:</strong> ${escapeHtml(bank ? bank.instructions : "-")}</p>
-                  </div>
-                </article>
-                <table style="width:100%;border-collapse:collapse;margin:0;">
-                  <thead><tr><th style="border:1px solid #ddd;padding:1px 2px;">Sr</th><th style="border:1px solid #ddd;padding:1px 2px;">Particular</th><th style="border:1px solid #ddd;padding:1px 2px;">Amount</th></tr></thead>
-                  <tbody>${rowsMarkup}</tbody>
-                  <tfoot><tr><th colspan="2" style="border:1px solid #ddd;padding:1px 2px;text-align:left;">Total</th><th style="border:1px solid #ddd;padding:1px 2px;text-align:right;">${Number(invoiceEntry.invoiceData.totalAmount || 0)}</th></tr></tfoot>
-                </table>
-                </div>
-                </div>
-              `;
-            }
-            pageContent += `</div>`;
-            allInvoicesHtml += pageContent;
-          }
-          const thermalPrintHtml = `
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <meta charset="utf-8">
-                <style>
-                  @page { size: 80mm 297mm; margin: 0; }
-                  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                  html, body { width: 80mm; margin: 0; padding: 0; background: #fff; color: #000; font-family: "Segoe UI", Arial, sans-serif; }
-                  .thermal-invoice-page {
-                    display: grid;
-                    grid-template-rows: repeat(3, 99mm);
-                    width: 80mm;
-                    height: 297mm;
-                    margin: 0;
-                    padding: 0;
-                    overflow: hidden;
-                    page-break-after: always;
-                    break-after: page;
-                  }
-                  .thermal-invoice-page:last-child {
-                    page-break-after: auto;
-                    break-after: auto;
-                  }
-                  .thermal-invoice-item {
-                    width: 80mm;
-                    height: 99mm;
-                    max-height: 99mm;
-                    margin: 0;
-                    padding: 1mm 2mm;
-                    overflow: hidden;
-                    page-break-inside: avoid;
-                    break-inside: avoid;
-                  }
-                  .report-header {
-                    display: grid;
-                    gap: 1px;
-                    justify-items: center;
-                    text-align: center;
-                    padding: 1mm 0;
-                  }
-                  .logo, .logo-placeholder {
-                    width: 9mm;
-                    height: 9mm;
-                    border-radius: 2mm;
-                    object-fit: cover;
-                  }
-                  .logo-placeholder {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    color: #000;
-                    border: 1px solid #000;
-                    font-weight: 700;
-                  }
-                  .school-title { margin: 0; font-size: 7pt; line-height: 1.05; }
-                  .school-slogan, .school-meta { margin: 0; font-size: 5.5pt; line-height: 1.1; }
-                  .report-card {
-                    display: grid;
-                    grid-template-columns: 14mm 1fr 1fr;
-                    gap: 1.5mm;
-                    align-items: start;
-                    margin: 0;
-                    padding: 1mm;
-                    border: 1px solid #000;
-                    border-radius: 2mm;
-                    font-size: 5.8pt;
-                    line-height: 1.15;
-                  }
-                  .report-grid {
-                    display: grid;
-                    grid-template-columns: repeat(2, minmax(0, 1fr));
-                    gap: 1mm;
-                  }
-                  p { margin: 0; }
-                  table { width: 100%; border-collapse: collapse; margin: 0; font-size: 5.8pt; }
-                  th, td { border: 1px solid #000; padding: 1px 2px; text-align: left; vertical-align: top; }
-                  th { font-weight: 700; }
-                </style>
-              </head>
-              <body>
-                ${allInvoicesHtml}
-                <script>
-                  window.addEventListener("load", function () {
-                    setTimeout(function () { window.print(); }, 300);
-                  });
-                </script>
-              </body>
-            </html>
-          `;
-          await openThermalPrintWindow(thermalPrintHtml, "width=420,height=900", "Please allow popups to print thermal invoices.");
-        } else {
-          // Single invoice print
-          if (!latestInvoicePreviewData) {
-            return;
-          }
-          const invoiceData = latestInvoicePreviewData.invoiceData;
-          const student = latestInvoicePreviewData.student;
-          const bank = latestInvoicePreviewData.bank;
-          const printableBankLogo = bank && bank.logo ? await normalizeImageForPrintShared(bank.logo) : "";
-          const rowsMarkup = invoiceData.particulars.map(function (item, index) {
-            return `<tr><td>${index + 1}</td><td>${escapeHtml(item.label || "-")}</td><td style="text-align:right;">${Number(item.amount || 0)}</td></tr>`;
-          }).join("");
-          const singleThermalHtml = `
-            <!DOCTYPE html>
-            <html>
-              <head>
-                <meta charset="utf-8">
-                <style>
-                  @page { size: 80mm 105mm; margin: 0; }
-                  * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                  html, body { width: 80mm; height: 105mm; margin: 0; padding: 0; background: #fff; color: #000; font-family: "Segoe UI", Arial, sans-serif; overflow: hidden; }
-                  .single-thermal-invoice { width: 80mm; height: 105mm; margin: 0; padding: 1mm 2mm; overflow: hidden; }
-                  .report-header { display: grid; gap: 1px; justify-items: center; text-align: center; padding: 1mm 0; }
-                  .logo, .logo-placeholder { width: 9mm; height: 9mm; border-radius: 2mm; object-fit: cover; }
-                  .logo-placeholder { display: inline-flex; align-items: center; justify-content: center; color: #000; border: 1px solid #000; font-weight: 700; }
-                  .school-title { margin: 0; font-size: 7pt; line-height: 1.05; }
-                  .school-slogan, .school-meta { margin: 0; font-size: 5.5pt; line-height: 1.1; }
-                  .report-card { display: grid; grid-template-columns: 14mm 1fr 1fr; gap: 1.5mm; align-items: start; margin: 0; padding: 1mm; border: 1px solid #000; border-radius: 2mm; font-size: 5.8pt; line-height: 1.15; }
-                  .report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1mm; }
-                  p { margin: 0; }
-                  table { width: 100%; border-collapse: collapse; margin: 0; font-size: 5.8pt; }
-                  th, td { border: 1px solid #000; padding: 1px 2px; text-align: left; vertical-align: top; }
-                  th { font-weight: 700; }
-                </style>
-              </head>
-              <body>
-                <main class="single-thermal-invoice">
-                  <section class="report-header">
-                    ${printableLogo ? `<img class="logo" src="${printableLogo}" alt="School logo">` : `<span class="logo-placeholder">${getInitials(instituteProfile.name || "S")}</span>`}
-                    <h1 class="school-title">${escapeHtml(instituteProfile.name || "-")}</h1>
-                    <p class="school-slogan">${escapeHtml(instituteProfile.slogan || "School Management System")}</p>
-                    <div class="school-meta">
-                      <div>${escapeHtml(instituteProfile.phone || "-")} | PSRA ${escapeHtml(instituteProfile.psra || "-")}</div>
-                      <div>${escapeHtml(instituteProfile.address || "-")}, ${escapeHtml(instituteProfile.country || "-")}</div>
-                    </div>
-                  </section>
-                  <article class="report-card">
-                    <div>
-                      ${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:12mm;height:12mm;border-radius:2mm;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:12mm;height:12mm;border-radius:2mm;border:1px solid #000;align-items:center;justify-content:center;font-size:5.5pt;">BANK</span>`}
-                    </div>
-                    <div class="report-grid">
-                      <p><strong>Roll No:</strong> ${escapeHtml(student.admissionNo || "-")}</p>
-                      <p><strong>Class:</strong> ${escapeHtml(student.className || "-")}</p>
-                      <p><strong>Student Name:</strong> ${escapeHtml(student.name || "-")}</p>
-                      <p><strong>Father Name:</strong> ${escapeHtml(student.fatherName || "-")}</p>
-                      <p><strong>Fee Month:</strong> ${escapeHtml(invoiceData.feeMonth || "-")}</p>
-                      <p><strong>Date:</strong> ${escapeHtml(invoiceData.date || "-")}</p>
-                      <p><strong>Due Date:</strong> ${escapeHtml(invoiceData.dueDate || "-")}</p>
-                      <p><strong>Fine After Due Date:</strong> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
-                    </div>
-                    <div style="font-size:5.8pt;line-height:1.15;">
-                      <h4 style="margin:0 0 1mm;text-align:center;font-size:5.8pt;"><span style="display:inline-block;background:#1e5eff;color:#fff;padding:1px 4px;border-radius:2mm;">Bank Copy</span></h4>
-                      <p><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
-                      <p><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
-                      <p><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
-                      <p><strong>Instructions:</strong> ${escapeHtml(bank ? bank.instructions : "-")}</p>
-                    </div>
-                  </article>
-                  <table>
-                    <thead><tr><th>Sr</th><th>Particular</th><th>Amount</th></tr></thead>
-                    <tbody>${rowsMarkup}</tbody>
-                    <tfoot><tr><th colspan="2">Total</th><th style="text-align:right;">${Number(invoiceData.totalAmount || 0)}</th></tr></tfoot>
-                  </table>
-                </main>
-                <script>
-                  window.addEventListener("load", function () {
-                    setTimeout(function () { window.print(); }, 300);
-                  });
-                </script>
-              </body>
-            </html>
-          `;
-          await openThermalPrintWindow(singleThermalHtml, "width=420,height=620", "Please allow popups to print thermal invoice.");
+        const invoices = classifyInvoicesForPrint.length > 0 ? classifyInvoicesForPrint : (latestInvoicePreviewData ? [latestInvoicePreviewData] : []);
+        if (!invoices.length) return;
+
+        const bankLogoMap = {};
+        for (let i = 0; i < invoices.length; i++) {
+          const b = banks.find(function(bn){return bn.id===invoices[i].invoiceData.bankId;})||null;
+          if (b && b.logo) bankLogoMap[b.id] = await normalizeImageForPrintShared(b.logo);
         }
+
+        function rowsHtml(particulars) {
+          return (particulars||[]).map(function (item, idx) {
+            return `<tr><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${idx+1}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${escapeHtml(item.label||"-")}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;text-align:right;">${Number(item.amount||0)}</td></tr>`;
+          }).join("");
+        }
+
+        function buildInvoice(entry, isLast) {
+          const bankId = entry.invoiceData.bankId || null;
+          const bank = banks.find(function (b) { return b.id === bankId; }) || null;
+          const bankLogo = bankId && bankLogoMap[bankId] ? bankLogoMap[bankId] : "";
+          const rows = rowsHtml(entry.invoiceData.particulars);
+          return `
+            <div style="${isLast ? '' : 'margin-bottom:12mm;'}page-break-inside:avoid;">
+              <section style="text-align:center;margin-bottom:0.5mm;padding:0.5mm 0;">
+                ${printableLogo ? `<img src="${printableLogo}" style="width:5mm;height:5mm;border-radius:0.5mm;object-fit:cover;">` : `<span style="display:inline-flex;width:5mm;height:5mm;border-radius:0.5mm;background:linear-gradient(135deg,#1e5eff,#30b59c);color:#fff;align-items:center;justify-content:center;font-size:4pt;font-weight:700;">${getInitials(instituteProfile.name || "S")}</span>`}
+                <div style="font-size:6.5pt;font-weight:700;margin:0.2mm 0;">${escapeHtml(instituteProfile.name || "-")}</div>
+                <div style="font-size:4pt;color:#4e678f;margin:0;">${escapeHtml(instituteProfile.slogan || "School Management System")}</div>
+                <div style="font-size:3.5pt;color:#4e678f;margin-top:0.2mm;">
+                  ${escapeHtml(instituteProfile.phone || "-")} | PSRA ${escapeHtml(instituteProfile.psra || "-")}
+                </div>
+                <div style="font-size:3.5pt;color:#4e678f;">
+                  ${escapeHtml(instituteProfile.address || "-")}, ${escapeHtml(instituteProfile.country || "-")}
+                </div>
+              </section>
+              <article style="display:grid;grid-template-columns:8mm 1fr 1fr;gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">
+                <div style="text-align:center;">
+                  ${bankLogo ? `<img src="${bankLogo}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">BANK</span>`}
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.2mm;">
+                  <p style="margin:0;"><b>Roll No:</b> ${escapeHtml(entry.student.admissionNo || "-")}</p>
+                  <p style="margin:0;"><b>Class:</b> ${escapeHtml(entry.student.className || "-")}</p>
+                  <p style="margin:0;"><b>Student:</b> ${escapeHtml(entry.student.name || "-")}</p>
+                  <p style="margin:0;"><b>Father:</b> ${escapeHtml(entry.student.fatherName || "-")}</p>
+                  <p style="margin:0;"><b>Month:</b> ${escapeHtml(entry.invoiceData.feeMonth || "-")}</p>
+                  <p style="margin:0;"><b>Date:</b> ${escapeHtml(entry.invoiceData.date || "-")}</p>
+                  <p style="margin:0;"><b>Due:</b> ${escapeHtml(entry.invoiceData.dueDate || "-")}</p>
+                  <p style="margin:0;"><b>Fine:</b> ${Number(entry.invoiceData.fineAfterDueDate || 0)}</p>
+                </div>
+                <div>
+                  <div style="text-align:center;margin-bottom:0.3mm;">
+                    <span style="display:inline-block;background:#1e5eff;color:#fff;padding:0.2mm 0.8mm;border-radius:0.5mm;font-size:4.5pt;">Bank Copy</span>
+                  </div>
+                  <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Bank:</b> ${escapeHtml(bank ? bank.name : "-")}</p>
+                  <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Address:</b> ${escapeHtml(bank ? bank.address : "-")}</p>
+                  <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>A/C#:</b> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
+                  <p style="margin:0;font-size:4.5pt;"><b>Inst:</b> ${escapeHtml(bank ? bank.instructions : "-")}</p>
+                </div>
+              </article>
+              <table style="width:100%;border-collapse:collapse;font-size:5.5pt;">
+                <thead><tr><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Sr</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Particular</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;text-align:right;">Amount</th></tr></thead>
+                <tbody>${rows}</tbody>
+                <tfoot><tr><th colspan="2" style="border:0.5px solid #888;padding:0.3mm 0.8mm;text-align:left;font-size:5pt;">Total</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;text-align:right;font-size:5pt;">${Number(entry.invoiceData.totalAmount||0)}</th></tr></tfoot>
+              </table>
+            </div>`;
+        }
+
+        const perPage = 3;
+        let allContent = "";
+        let maxH = 0;
+        for (let i = 0; i < invoices.length; i += perPage) {
+          const group = invoices.slice(i, i + perPage);
+          let pageContent = "";
+          let pageH = 0;
+          for (let j = 0; j < group.length; j++) {
+            const n = (group[j].invoiceData.particulars||[]).length;
+            const marginH = (j < group.length - 1) ? 12 : 0;
+            const est = 40 + (n * 4.5) + marginH;
+            pageH += est;
+            pageContent += buildInvoice(group[j], j === group.length - 1);
+            if (j < group.length - 1) {
+              pageContent += `<div style="border-top:0.5px dashed #888;margin:0 0 0.5mm 0;"></div>`;
+              pageH += 0.5;
+            }
+          }
+          pageH += 2;
+          maxH = Math.max(maxH, pageH);
+          allContent += `<div style="page-break-after:always;padding:0.5mm 1mm;margin:0;overflow:hidden;">${pageContent}</div>`;
+        }
+
+        const thermalHtml = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title></title>
+<style>
+*{box-sizing:border-box;}
+            @page{size:80mm ${Math.ceil(maxH)}mm;margin:0;}
+body{width:80mm;margin:0;padding:0;font-family:"Segoe UI",Arial,sans-serif;color:#102542;background:#fff;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+@media print{
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
+</style>
+</head><body>
+${allContent}
+</body></html>`;
+
+        await openPrintHtmlWindow(thermalHtml, "width=420,height=700", "Please allow popups to print thermal document.");
       });
 
       return;
@@ -6337,16 +6641,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
       function getFeeParticularRows(student) {
         const classParticulars = (settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className);
-        return classParticulars.map(function (item) {
+        const discountPercent = Math.max(0, Math.min(100, parseFloat(student.discountInFee || 0, 10)));
+        var items = classParticulars.map(function (item) {
           const label = String(item.label || "");
           if (label.toUpperCase().includes("DISCOUNT IN FEE")) {
-            const discountAmount = Math.max(0, parseFloat(student.discountAmount || 0, 10));
-            const discountType = student.discountType ? `${student.discountType}` : `${student.discountInFee || 0} %`;
-            return { label: `DISCOUNT IN FEE ${discountType}`, amount: discountAmount };
+            return null;
           }
           const amount = Math.max(0, parseFloat(item.amount || 0, 10));
           return { label: item.label || "-", amount: amount };
-        });
+        }).filter(function (item) { return item !== null; });
+        if (discountPercent > 0) {
+          var subtotal = items.reduce(function (sum, item) { return sum + item.amount; }, 0);
+          var discountAmount = Math.round(subtotal * discountPercent / 100);
+          items.push({ label: "DISCOUNT IN FEE " + discountPercent + "%", amount: -discountAmount });
+        }
+        return items;
       }
 
       initializeStudentProfessionalSearch(
@@ -6407,7 +6716,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
         const rows = getFeeParticularRows(student);
-        const total = rows.reduce(function (sum, row) { return sum + Math.max(0, parseFloat(row.amount || 0, 10)); }, 0);
+        const total = rows.reduce(function (sum, row) { return sum + Number(row.amount || 0); }, 0);
         
         // Calculate previous month dues (unpaid remaining amounts)
         const currentMonthFormatted = normalizeFeeMonthLabel(monthSelect.value);
@@ -6441,7 +6750,7 @@ document.addEventListener("DOMContentLoaded", function () {
               <table>
                 <thead><tr><th>Sr.</th><th>Particulars</th><th>Amount</th></tr></thead>
                 <tbody>${rows.map(function (row, index) {
-                  const safeAmount = Math.max(0, parseFloat(row.amount || 0, 10));
+                  const safeAmount = Number(row.amount || 0);
                   return `<tr><td>${index + 1}</td><td>${escapeHtml(row.label || "-")}</td><td>${safeAmount}</td></tr>`;
                 }).join("")}${previousDues > 0 ? `<tr><td></td><td><strong>Previous Month Dues</strong></td><td>${previousDues}</td></tr>` : ""}</tbody>
                 <tfoot>
@@ -6493,7 +6802,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         const particulars = getFeeParticularRows(student);
-        const currentMonthAmount = particulars.reduce(function (sum, row) { return sum + Math.max(0, parseFloat(row.amount || 0, 10)); }, 0);
+        const currentMonthAmount = particulars.reduce(function (sum, row) { return sum + Number(row.amount || 0); }, 0);
         const depositText = depositInput.value.trim();
         const deposit = depositText === "" ? 0 : Math.max(0, parseFloat(depositText, 10) || 0);
         if (deposit <= 0) {
@@ -6552,6 +6861,7 @@ document.addEventListener("DOMContentLoaded", function () {
           id: collectionIndex >= 0 ? settings.feeCollections[collectionIndex].id : `COL-${Date.now()}`,
           feeId: feeRecord.id,
           studentId: student.id,
+          studentName: student.name || "-",
           feeMonth: feeMonth,
           totalAmount: totalAmount,
           deposit: deposit,
@@ -6563,6 +6873,18 @@ document.addEventListener("DOMContentLoaded", function () {
         } else {
           settings.feeCollections.unshift(collectionRecord);
         }
+        settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
+        settings.accountsLedger.unshift({
+          id: "LEDGER-" + Date.now(),
+          date: dateInput.value,
+          type: "Income",
+          category: "Fee Collection",
+          description: "Fee collection - " + (student.name || "-") + " (" + (student.admissionNo || "-") + ") for " + feeMonth,
+          amount: deposit,
+          note: "Fee deposit for " + feeMonth,
+          createdAt: new Date().toISOString()
+        });
+        settings.__accountsLedgerUserTouched = true;
         addActivity("Fee collected", `${student.name} fee collected for ${feeMonth}.`);
         saveDatabase();
         refreshDatabase();
@@ -6714,14 +7036,6 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleGuide.innerHTML = `
         <article>
           <strong>Send Reminders</strong>
-          <div class="field-group field-group--full">
-            <label for="defaultersSmsTemplateInput">SMS Template</label>
-            <textarea id="defaultersSmsTemplateInput" rows="4" readonly>${escapeHtml(getSavedMessageTemplate("defaultersSms", "Dear {prefix} {name}, fee due for {month}. Total amount: {amount}. Please submit fee as soon as possible.\nBest regards, {school}."))}</textarea>
-          </div>
-          <div class="form-actions">
-            <button class="secondary-button" id="editDefaultersSmsTemplateBtn" type="button">Edit Template</button>
-            <button class="primary-button" id="saveDefaultersSmsTemplateBtn" type="button" hidden>Save Template</button>
-          </div>
           <div class="module-check-list">
             <label class="module-check-item"><input type="checkbox" id="defaultersSendSms" checked> SMS</label>
           </div>
@@ -6732,7 +7046,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const yearInput = document.getElementById("defaultersYearInput");
       const list = document.getElementById("defaultersList");
       const emptyState = document.getElementById("defaultersEmptyState");
-      const smsTemplateInput = document.getElementById("defaultersSmsTemplateInput");
       const sendSmsCheckbox = document.getElementById("defaultersSendSms");
 
       function getSelectedMonthYear() {
@@ -6836,47 +7149,52 @@ document.addEventListener("DOMContentLoaded", function () {
 
         const whatsappButton = event.target.closest("[data-fee-defaulter-whatsapp]");
         if (whatsappButton) {
-          const studentId = whatsappButton.getAttribute("data-fee-defaulter-whatsapp");
-          const student = database.students.find(function (item) { return item.id === studentId; }) || null;
-          if (!student) {
-            return;
+          try {
+            const studentId = whatsappButton.getAttribute("data-fee-defaulter-whatsapp");
+            const student = database.students.find(function (item) { return item.id === studentId; }) || null;
+            if (!student) {
+              return;
+            }
+            if (!isStudentWhatsappActive(student)) {
+              openAppMessageBox("Error", "The student/parent is not active account on whatsapp with this number.", "error");
+              return;
+            }
+            const selectedMonth = getSelectedMonthYear();
+            const paidRecord = database.fees.find(function (feeItem) {
+              return feeItem.studentId === student.id &&
+                (feeItem.feeMonth || feeItem.month) === selectedMonth &&
+                feeItem.status === "paid" &&
+                Number(feeItem.remaining || 0) === 0;
+            });
+            if (paidRecord) {
+              return;
+            }
+            var defaulterAmount = getDefaulterReminderAmount(student);
+            const templateText = getSavedMessageTemplate("defaultersSms", "Dear {prefix} {name}, fee due for {month}. Total amount: {amount}. Please submit fee as soon as possible.\nBest regards, {school}.");
+            const messageText = interpolateTemplate(templateText, {
+              prefix: getGenderPrefix(student.gender),
+              name: student.name || "-",
+              roll: student.admissionNo || "-",
+              month: selectedMonth,
+              amount: defaulterAmount,
+              school: database.school.name || "School"
+            });
+            const phone = getStudentWhatsappPhone(student);
+            if (!phone) {
+              openAppMessageBox("Error", "Student phone number not found.", "error");
+              return;
+            }
+            logWhatsappCommunication({
+              recipientName: student.name || "-",
+              recipientPhone: phone,
+              message: messageText,
+              source: "Fees Defaulter WhatsApp",
+              recipientType: "student",
+              campaignType: "fees-defaulter"
+            });
+          } catch (e) {
+            openAppMessageBox("Error", "Failed to send WhatsApp: " + e.message, "error");
           }
-          if (!isStudentWhatsappActive(student)) {
-            openAppMessageBox("Error", "The student/parent is not active account on whatsapp with this number.", "error");
-            return;
-          }
-          const selectedMonth = getSelectedMonthYear();
-          const paidRecord = database.fees.find(function (feeItem) {
-            return feeItem.studentId === student.id &&
-              (feeItem.feeMonth || feeItem.month) === selectedMonth &&
-              feeItem.status === "paid" &&
-              Number(feeItem.remaining || 0) === 0;
-          });
-          if (paidRecord) {
-            return;
-          }
-          const template = buildCommunicationTemplate("fee-defaulter", {
-            prefix: getGenderPrefix(student.gender),
-            name: student.name || "-",
-            roll: student.admissionNo || "-",
-            month: selectedMonth
-          });
-          const messageText = interpolateTemplate(template, {
-            prefix: getGenderPrefix(student.gender),
-            name: student.name || "-",
-            roll: student.admissionNo || "-",
-            month: selectedMonth,
-            school: database.school.name || "School"
-          });
-          logWhatsappCommunication({
-            recipientName: student.name || "-",
-            recipientPhone: normalizeSmsPhone(student.fatherPhone || student.phone || ""),
-            message: messageText,
-            source: "Fees Defaulter WhatsApp",
-            recipientType: "student",
-            campaignType: "fees-defaulter"
-          });
-          sendDirectWhatsappToStudent(student, student.name || "student", messageText);
           return;
         }
 
@@ -6930,6 +7248,11 @@ document.addEventListener("DOMContentLoaded", function () {
         return `http://${raw}`;
       }
 
+      function getLocalhostFallbackUrl(url) {
+        var m = url.match(/:(\d+)(?:\/|$)/);
+        return m ? "http://127.0.0.1:" + m[1] : "";
+      }
+
       async function sendSmsFromDefaulters(phone, text) {
         const baseUrl = normalizeGatewayUrlForReminder(settings.smsGateway && settings.smsGateway.baseUrl);
         if (!baseUrl) {
@@ -6941,24 +7264,30 @@ document.addEventListener("DOMContentLoaded", function () {
           headers.Authorization = `Bearer ${settings.smsGateway.apiKey}`;
         }
         const endpoints = ["/send-sms", "/send", "/api/send-sms"];
-        for (let index = 0; index < endpoints.length; index += 1) {
-          const endpoint = endpoints[index];
-          try {
-            const response = await fetchWithTimeout(`${baseUrl}${endpoint}`, { method: "POST", headers: headers, body: payload }, 3500);
-            if (response.ok || response.type === "opaque") {
-              return true;
-            }
-          } catch (error) {
+        var urlsToTry = [baseUrl];
+        var fb = getLocalhostFallbackUrl(baseUrl);
+        if (fb) urlsToTry.push(fb);
+        for (let u = 0; u < urlsToTry.length; u++) {
+          const urlBase = urlsToTry[u];
+          for (let index = 0; index < endpoints.length; index += 1) {
+            const endpoint = endpoints[index];
             try {
-              await fetchWithTimeout(`${baseUrl}${endpoint}`, {
-                method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "text/plain;charset=UTF-8" },
-                body: payload
-              }, 3500);
-              return true;
-            } catch (innerError) {
-              // continue
+              const response = await fetchWithTimeout(`${urlBase}${endpoint}`, { method: "POST", headers: headers, body: payload }, 3500);
+              if (response.ok || response.type === "opaque") {
+                return true;
+              }
+            } catch (error) {
+              try {
+                await fetchWithTimeout(`${urlBase}${endpoint}`, {
+                  method: "POST",
+                  mode: "no-cors",
+                  headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                  body: payload
+                }, 3500);
+                return true;
+              } catch (innerError) {
+                // continue
+              }
             }
           }
         }
@@ -6979,9 +7308,7 @@ document.addEventListener("DOMContentLoaded", function () {
           alert("No defaulter found for selected month.");
           return;
         }
-        const reminderText = smsTemplateInput && smsTemplateInput.value.trim()
-          ? smsTemplateInput.value.trim()
-          : `Fee reminder for {month}. Kindly submit pending fee.`;
+        const reminderText = getSavedMessageTemplate("defaultersSms", "Fee reminder for {month}. Total amount: {amount}. Kindly submit pending fee.");
         let smsSuccess = 0;
         let smsFail = 0;
         let missingPhone = 0;
@@ -7037,24 +7364,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
       monthSelect.addEventListener("change", renderDefaulters);
       yearInput.addEventListener("change", renderDefaulters);
-
-      const editDefaultersSmsTemplateBtn = document.getElementById("editDefaultersSmsTemplateBtn");
-      const saveDefaultersSmsTemplateBtn = document.getElementById("saveDefaultersSmsTemplateBtn");
-      if (editDefaultersSmsTemplateBtn && saveDefaultersSmsTemplateBtn) {
-        editDefaultersSmsTemplateBtn.addEventListener("click", function () {
-          smsTemplateInput.readOnly = false;
-          smsTemplateInput.style.backgroundColor = "#fff";
-          editDefaultersSmsTemplateBtn.hidden = true;
-          saveDefaultersSmsTemplateBtn.hidden = false;
-        });
-        saveDefaultersSmsTemplateBtn.addEventListener("click", function () {
-          saveMessageTemplate("defaultersSms", smsTemplateInput);
-          smsTemplateInput.readOnly = true;
-          smsTemplateInput.style.backgroundColor = "#f5f5f5";
-          editDefaultersSmsTemplateBtn.hidden = false;
-          saveDefaultersSmsTemplateBtn.hidden = true;
-        });
-      }
 
       renderDefaulters();
       return;
@@ -7402,7 +7711,7 @@ document.addEventListener("DOMContentLoaded", function () {
               <td>${escapeHtml(row.feeMonth || row.month || "-")}</td>
               <td><span class="status-pill ${row.status === "paid" ? "paid" : "unpaid"}">${escapeHtml(row.status)}</span></td>
               <td>${escapeHtml(row.paymentDate || row.date || "-")}</td>
-              <td><button class="table-action-btn danger" type="button" data-fee-action="delete-fee-record" data-id="${row.id}" data-fee-id="${row.feeId}" data-student-id="${row.studentId || ""}" data-month="${row.feeMonth || row.month || ""}">Delete</button></td>
+              <td><button class="table-action-btn danger" type="button" data-fee-action="delete-fee-record" data-id="${row.id}" data-fee-id="${row.feeId}" data-student-id="${row.studentId || ""}" data-student-name="${row.studentName || ""}" data-deposit="${row.deposit || 0}" data-month="${row.feeMonth || row.month || ""}">Delete</button></td>
             </tr>
           `;
         }).join("");
@@ -7418,6 +7727,20 @@ document.addEventListener("DOMContentLoaded", function () {
         const feeId = actionButton.dataset.feeId;
         const studentId = String(actionButton.dataset.studentId || "");
         const feeMonth = String(actionButton.dataset.month || "");
+        const studentName = String(actionButton.dataset.studentName || "");
+        const depositAmount = Number(actionButton.dataset.deposit || 0);
+        
+        settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
+        settings.accountsLedger.unshift({
+          id: "LEDGER-" + Date.now(),
+          date: getTodayDateISO(),
+          type: "Expense",
+          category: "Fee Deletion",
+          description: "Fee deleted for " + (studentName || studentId || "-"),
+          amount: depositAmount,
+          note: "Fee record deleted for month " + feeMonth,
+          createdAt: new Date().toISOString()
+        });
         
         settings.feeCollections = (settings.feeCollections || []).filter(function (collection) {
           if (collection.id) {
@@ -7520,20 +7843,21 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <p class="form-message" id="salaryPayMessage"></p>
         </article>
-      `;
-
-      moduleGuide.innerHTML = `
-        <article>
+        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
           <strong>Paid Slip Preview</strong>
           <div id="salaryPaidSlipPreview" class="module-preview-card">
             <p>Select employee and submit salary to generate paid slip.</p>
           </div>
-          <div class="form-actions">
+          <div class="form-actions" style="margin-top:12px;">
             <button class="primary-button" id="printSalarySlipBtn" type="button" disabled>Print Slip (A4)</button>
             <button class="secondary-button" id="printSalarySlipThermalBtn" type="button" disabled>Print Slip (Thermal)</button>
           </div>
-        </article>
+        </div>
       `;
+
+      moduleGuide.innerHTML = "";
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
 
       const searchInput = document.getElementById("salaryEmployeeSearchInput");
       const searchDropdown = document.getElementById("salaryEmployeeSearchDropdown");
@@ -8191,9 +8515,31 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         showStyledDeleteConfirmation("selected salary record", function () {
           const idSet = new Set(ids);
+          var deletedPayments = (settings.salaryPayments || []).filter(function (item) {
+            return idSet.has(item.id || "");
+          });
+          var totalDeleted = 0;
+          var deletedNames = [];
+          deletedPayments.forEach(function (p) {
+            totalDeleted += Number(p.netAmount ?? (Number(p.salaryAmount || 0) + Number(p.bonus || 0) - Number(p.deduction || 0)));
+            if (p.employeeName && deletedNames.indexOf(p.employeeName) === -1) deletedNames.push(p.employeeName);
+          });
           settings.salaryPayments = (settings.salaryPayments || []).filter(function (item) {
             return !idSet.has(item.id || "");
           });
+          if (totalDeleted > 0) {
+            settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
+            settings.accountsLedger.unshift({
+              id: "LEDGER-" + Date.now(),
+              date: getTodayDateISO(),
+              type: "Income",
+              category: "Salary Deletion",
+              description: "Salary deletion for " + (deletedNames.join(", ") || "Employee"),
+              amount: totalDeleted,
+              note: "Salary record(s) deleted",
+              createdAt: new Date().toISOString()
+            });
+          }
           saveDatabase();
           renderReport();
         });
@@ -8241,64 +8587,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    function normalizeAttendanceStatus(statusValue) {
-      const value = String(statusValue || "").toLowerCase();
-      if (value === "present" || value === "p") {
-        return "Present";
-      }
-      if (value === "on-leave" || value === "on leave" || value === "leave" || value === "a.l" || value === "al") {
-        return "On-leave";
-      }
-      return "Absent";
-    }
 
-    function getAttendanceRecords(entityType) {
-      return (database.attendance || []).filter(function (item) {
-        if (entityType === "student") {
-          return item.studentId || !item.entityType || item.entityType === "student";
-        }
-        if (entityType === "employee") {
-          return item.employeeId || item.entityType === "employee";
-        }
-        return true;
-      });
-    }
-
-    function getAttendanceRecordFor(entityType, entityId, dateValue) {
-      return getAttendanceRecords(entityType).find(function (item) {
-        const idMatch = entityType === "student" ? item.studentId === entityId : item.employeeId === entityId;
-        return idMatch && item.date === dateValue;
-      }) || null;
-    }
-
-    function saveAttendanceRecord(entityType, entityId, dateValue, statusValue, extraData) {
-      const normalizedStatus = normalizeAttendanceStatus(statusValue);
-      const existingIndex = (database.attendance || []).findIndex(function (item) {
-        const isSameEntity = entityType === "student" ? item.studentId === entityId : item.employeeId === entityId;
-        const isEntityTypeMatch = entityType === "student" ? (!item.entityType || item.entityType === "student") : item.entityType === "employee";
-        return isSameEntity && isEntityTypeMatch && item.date === dateValue;
-      });
-      const baseRecord = {
-        id: existingIndex >= 0 ? database.attendance[existingIndex].id : `ATT-${entityType}-${Date.now()}-${entityId}`,
-        entityType: entityType,
-        date: dateValue,
-        status: normalizedStatus
-      };
-      if (entityType === "student") {
-        baseRecord.studentId = entityId;
-      } else {
-        baseRecord.employeeId = entityId;
-      }
-      const attendanceRecord = {
-        ...baseRecord,
-        ...(extraData || {})
-      };
-      if (existingIndex >= 0) {
-        database.attendance[existingIndex] = { ...database.attendance[existingIndex], ...attendanceRecord };
-      } else {
-        database.attendance.unshift(attendanceRecord);
-      }
-    }
 
     function getDateRangeByPreset(presetValue) {
       const today = new Date();
@@ -9669,15 +9958,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 <option value="sms">SMS</option>
               </select>
             </div>
-            <div class="field-group field-group--full">
-              <label for="resultCardMessageTemplateInput">Result Message</label>
-              <textarea id="resultCardMessageTemplateInput" rows="3" readonly>${escapeHtml(getSavedMessageTemplate("resultCard", "Dear student/parent {prefix} {roll},\nResult ({exam}): {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.\nBest regards,\n{school}."))}</textarea>
-            </div>
           </div>
           <div class="form-actions" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1.25rem;align-items:center;">
-            <button class="secondary-button" id="editResultTemplateBtn" type="button" style="min-width:140px;">Edit Template</button>
-            <button class="primary-button" id="saveResultTemplateBtn" type="button" hidden style="min-width:140px;">Save Template</button>
-            <div style="width:1px;height:24px;background:#e0e6f2;margin:0 0.5rem;" class="divider-v"></div>
             <button class="primary-button" id="generateResultCardBtn" type="button" style="min-width:140px;">Generate</button>
             <button class="secondary-button" id="generateResultCardClasswiseBtn" type="button" style="min-width:160px;">Generate Classwise</button>
           </div>
@@ -9707,7 +9989,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const searchDropdown = document.getElementById("resultCardSearchDropdown");
       const searchContainer = document.getElementById("resultCardSearchContainer");
       const sendChannelSelect = document.getElementById("resultCardSendChannelSelect");
-      const resultMessageTemplateInput = document.getElementById("resultCardMessageTemplateInput");
       const previewBox = document.getElementById("resultCardPreviewBox");
       const message = document.getElementById("resultCardMessage");
       const sendResultMessageBtn = document.getElementById("sendResultMessageBtn");
@@ -10210,7 +10491,7 @@ document.addEventListener("DOMContentLoaded", function () {
             message.className = "form-message error";
             return;
           }
-          const template = resultMessageTemplateInput ? resultMessageTemplateInput.value : "Result: {name} ({roll}) {exam} - {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.";
+          const template = getSavedMessageTemplate("resultCard", "Result: {name} ({roll}) {exam} - {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.");
           let success = 0;
           let failed = 0;
           let noPhone = 0;
@@ -10273,7 +10554,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!channel) {
           return;
         }
-        const template = resultMessageTemplateInput ? resultMessageTemplateInput.value : "Result: {name} ({roll}) {exam} - {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.";
+        const template = getSavedMessageTemplate("resultCard", "Result: {name} ({roll}) {exam} - {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.");
         const text = interpolateTemplate(template, {
           name: normalizedStudent.name || "-",
           roll: normalizedStudent.admissionNo || "-",
@@ -10327,24 +10608,6 @@ document.addEventListener("DOMContentLoaded", function () {
         message.className = "form-message info";
         await downloadDmcPdf(latestDmcData);
         sendResultWhatsappBtn.disabled = false;
-      });
-
-      const editResultTemplateBtn = document.getElementById("editResultTemplateBtn");
-      const saveResultTemplateBtn = document.getElementById("saveResultTemplateBtn");
-      
-      editResultTemplateBtn.addEventListener("click", function () {
-        resultMessageTemplateInput.readOnly = false;
-        resultMessageTemplateInput.style.backgroundColor = "#fff";
-        editResultTemplateBtn.hidden = true;
-        saveResultTemplateBtn.hidden = false;
-      });
-
-      saveResultTemplateBtn.addEventListener("click", function () {
-        saveMessageTemplate("resultCard", resultMessageTemplateInput);
-        resultMessageTemplateInput.readOnly = true;
-        resultMessageTemplateInput.style.backgroundColor = "#f5f5f5";
-        editResultTemplateBtn.hidden = false;
-        saveResultTemplateBtn.hidden = true;
       });
 
       renderStudentSuggestions();
@@ -10812,11 +11075,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
       moduleSummary.innerHTML = `
         <article>
-          <strong class="module-center-title">Add/update Attendance</strong>
+          <strong class="module-center-title" style="display:block;margin-bottom:12px;">Add/update Attendance</strong>
           <div class="form-grid">
             <div class="field-group">
               <label for="studentsAttendanceDateInput">Date*</label>
-              <input id="studentsAttendanceDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}">
+              <input id="studentsAttendanceDateInput" type="date" value="${getTodayDateISO()}">
             </div>
             <div class="field-group">
               <label for="studentsAttendanceClassSelect">Search Class*</label>
@@ -10832,20 +11095,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 <button class="table-action-btn" type="button" data-mark-all-status="On-leave">On-leave</button>
                 <button class="table-action-btn" type="button" data-mark-all-status="Absent">Absent</button>
               </div>
-            </div>
-            <div class="field-group">
-              <label for="studentAbsentChannelSelect">Send SMS</label>
-              <select id="studentAbsentChannelSelect">
-                <option value="sms">SMS</option>
-              </select>
-            </div>
-            <div class="field-group field-group--full">
-              <label for="studentAbsentMessageInput">Absentee Message</label>
-              <textarea id="studentAbsentMessageInput" rows="3" readonly>${escapeHtml(getSavedMessageTemplate("studentAbsent", "Dear student/parent {prefix} {name} (Roll No: {roll}), is absent from school today {date}. Please contact school office.\nBest regards,\n{school}."))}</textarea>
-            </div>
-            <div class="form-actions">
-              <button class="secondary-button" id="editStudentAbsentMessageBtn" type="button">Edit Template</button>
-              <button class="primary-button" id="saveStudentAbsentMessageBtn" type="button" hidden>Save Template</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -10865,7 +11114,6 @@ document.addEventListener("DOMContentLoaded", function () {
             </table>
           </div>
           <div class="form-actions">
-            <button class="table-action-btn" id="sendStudentAbsenteesBtn" type="button">Send Absentees Message</button>
             <button class="primary-button" id="saveStudentsAttendanceBtn" type="button">Update Attendance</button>
           </div>
           <p class="form-message" id="studentsAttendanceMessage"></p>
@@ -10873,10 +11121,10 @@ document.addEventListener("DOMContentLoaded", function () {
       `;
 
       moduleGuide.innerHTML = "";
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
       const dateInput = document.getElementById("studentsAttendanceDateInput");
       const classSelect = document.getElementById("studentsAttendanceClassSelect");
-      const channelSelect = document.getElementById("studentAbsentChannelSelect");
-      const absentMessageInput = document.getElementById("studentAbsentMessageInput");
       const tableBody = document.getElementById("studentsAttendanceTableBody");
       const message = document.getElementById("studentsAttendanceMessage");
       let rowStatusState = {};
@@ -10959,7 +11207,16 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
           }
           const statusValue = normalizeAttendanceStatus(rowStatusState[student.id] || "Present");
-          const finalText = `Attendance update: ${student.name || "-"} (${student.admissionNo || "-"}) is marked ${statusValue} on ${dateInput.value}.`;
+          const normSt = normalizeStudentForPrint(student);
+          const template = getSavedMessageTemplate("studentAbsent", "Dear {prefix} {name}, you are marked absent today {date}. Please contact school office.\nBest regards,\n{school}.");
+          const finalText = interpolateTemplate(template, {
+            name: normSt.name || "-",
+            roll: normSt.admissionNo || "-",
+            prefix: getGenderPrefix(normSt.gender),
+            class: normSt.className || "-",
+            date: dateInput.value,
+            school: (database.school || {}).name || "School"
+          });
           if (!isStudentWhatsappActive(student)) {
             openAppMessageBox("Error", "The student is not active account on whatsapp with this number.", "error");
             return;
@@ -11011,116 +11268,12 @@ document.addEventListener("DOMContentLoaded", function () {
         message.textContent = "Students attendance updated successfully.";
         message.className = "form-message success";
         renderTable();
-      });
-
-      document.getElementById("sendStudentAbsenteesBtn").addEventListener("click", async function () {
-        const rows = getRows();
-        const absentees = rows.filter(function (student) {
-          return normalizeAttendanceStatus(rowStatusState[student.id] || student.currentStatus || "Present") === "Absent";
-        });
-        if (!absentees.length) {
-          const detail = "No absent students found for selected date/class.";
-          message.textContent = detail;
-          message.className = "form-message warning";
-          openAppMessageBox("Warning", detail, "warning");
-          return;
-        }
-        const channel = channelSelect ? channelSelect.value : chooseCommunicationChannel("Student Absentees");
-        if (!channel) {
-          return;
-        }
-        if (channel === "sms" && !(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
-          const detail = "SMS gateway is not connected. Please connect from SMS Services first.";
-          message.textContent = detail;
-          message.className = "form-message error";
-          openAppMessageBox("Error", detail, "error");
-          return;
-        }
-        let success = 0;
-        let failed = 0;
-        let noPhone = 0;
-        for (let index = 0; index < absentees.length; index += 1) {
-          const student = absentees[index];
-          const normalizedStudent = normalizeStudentForPrint(student);
-          const recipientPhone = normalizeSmsPhone(normalizedStudent.phone || normalizedStudent.fatherPhone || "");
-          if (!recipientPhone) {
-            noPhone += 1;
-            failed += 1;
-            continue;
-          }
-          const template = absentMessageInput && absentMessageInput.value.trim()
-            ? absentMessageInput.value
-            : buildCommunicationTemplate("student-absent", {
-              prefix: getGenderPrefix(normalizedStudent.gender),
-              name: normalizedStudent.name || "-",
-              rollNo: normalizedStudent.admissionNo || "-",
-              date: dateInput.value
-            });
-          const text = interpolateTemplate(template, {
-            name: normalizedStudent.name || "-",
-            roll: normalizedStudent.admissionNo || "-",
-            prefix: getGenderPrefix(normalizedStudent.gender),
-            class: normalizedStudent.className || "-",
-            date: dateInput.value,
-            school: database.school.name || "School"
-          });
-          if (channel === "sms") {
-            const result = await sendSmsViaConnectedGateway({
-              recipientName: normalizedStudent.name || "-",
-              recipientPhone: recipientPhone,
-              message: text,
-              source: "Students Attendance SMS",
-              recipientType: "student",
-              campaignType: "absentees"
-            });
-            if (result.success) {
-              success += 1;
-            } else {
-              failed += 1;
-            }
-            continue;
-          }
-          const logged = logWhatsappCommunication({
-            recipientName: normalizedStudent.name || "-",
-            recipientPhone: recipientPhone,
-            message: text,
-            source: "Students Attendance WhatsApp",
-            recipientType: "student",
-            campaignType: "absentees"
-          });
-          if (logged) {
-            success += 1;
-          } else {
-            failed += 1;
-          }
-        }
-        const detail = `${channel === "sms" ? "SMS" : "WhatsApp"} alert processed. Success: ${success}, Failed: ${failed}${noPhone ? `, Missing Phone: ${noPhone}` : ""}.`;
-        message.textContent = detail;
-        message.className = `form-message ${failed ? "warning" : "success"}`;
-        openAppMessageBox(failed ? "Warning" : "Success", detail, failed ? "warning" : "success");
+        refreshAttendanceOverview();
       });
 
       [dateInput, classSelect].forEach(function (input) {
         input.addEventListener("change", renderTable);
       });
-
-      const editStudentAbsentMessageBtn = document.getElementById("editStudentAbsentMessageBtn");
-      const saveStudentAbsentMessageBtn = document.getElementById("saveStudentAbsentMessageBtn");
-      if (editStudentAbsentMessageBtn && saveStudentAbsentMessageBtn) {
-        editStudentAbsentMessageBtn.addEventListener("click", function () {
-          absentMessageInput.readOnly = false;
-          absentMessageInput.style.backgroundColor = "#fff";
-          editStudentAbsentMessageBtn.hidden = true;
-          saveStudentAbsentMessageBtn.hidden = false;
-        });
-        saveStudentAbsentMessageBtn.addEventListener("click", function () {
-          saveMessageTemplate("studentAbsent", absentMessageInput);
-          absentMessageInput.readOnly = true;
-          absentMessageInput.style.backgroundColor = "#f5f5f5";
-          editStudentAbsentMessageBtn.hidden = false;
-          saveStudentAbsentMessageBtn.hidden = true;
-        });
-      }
 
       renderTable();
       return;
@@ -11129,11 +11282,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (route === "employees-attendance") {
       moduleSummary.innerHTML = `
         <article>
-          <strong class="module-center-title">Add/update Attendance</strong>
+          <strong class="module-center-title" style="display:block;margin-bottom:12px;">Add/update Attendance</strong>
           <div class="form-grid">
             <div class="field-group">
               <label for="employeesAttendanceDateInput">Date*</label>
-              <input id="employeesAttendanceDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}">
+              <input id="employeesAttendanceDateInput" type="date" value="${getTodayDateISO()}">
             </div>
             <div class="field-group field-group--full">
               <label>Mark Attendance</label>
@@ -11142,20 +11295,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 <button class="table-action-btn" type="button" data-mark-all-emp-status="On-leave">On-leave</button>
                 <button class="table-action-btn" type="button" data-mark-all-emp-status="Absent">Absent</button>
               </div>
-            </div>
-            <div class="field-group">
-              <label for="employeeAbsentChannelSelect">Send SMS</label>
-              <select id="employeeAbsentChannelSelect">
-                <option value="sms">SMS</option>
-              </select>
-            </div>
-            <div class="field-group field-group--full">
-              <label for="employeeAbsentMessageInput">Absentee Message</label>
-              <textarea id="employeeAbsentMessageInput" rows="3" readonly>${escapeHtml(getSavedMessageTemplate("employeeAbsent", "Dear {prefix} {name}, you are marked absent today {date}. Please contact school office.\nBest regards,\n{school}."))}</textarea>
-            </div>
-            <div class="form-actions">
-              <button class="secondary-button" id="editEmployeeAbsentMessageBtn" type="button">Edit Template</button>
-              <button class="primary-button" id="saveEmployeeAbsentMessageBtn" type="button" hidden>Save Template</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -11182,9 +11321,9 @@ document.addEventListener("DOMContentLoaded", function () {
       `;
 
       moduleGuide.innerHTML = "";
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
       const dateInput = document.getElementById("employeesAttendanceDateInput");
-      const channelSelect = document.getElementById("employeeAbsentChannelSelect");
-      const absentMessageInput = document.getElementById("employeeAbsentMessageInput");
       const tableBody = document.getElementById("employeesAttendanceTableBody");
       const message = document.getElementById("employeesAttendanceMessage");
       let rowStatusState = {};
@@ -11239,7 +11378,14 @@ document.addEventListener("DOMContentLoaded", function () {
             return;
           }
           const statusValue = normalizeAttendanceStatus(rowStatusState[employee.id] || "Present");
-          const finalText = `Attendance update: ${employee.name || "-"} (${employee.role || "Employee"}) is marked ${statusValue} on ${dateInput.value}.`;
+          const template = getSavedMessageTemplate("employeeAbsent", "Dear {prefix} {name}, you are marked absent today {date}. Please contact school office.\nBest regards,\n{school}.");
+          const finalText = interpolateTemplate(template, {
+            name: employee.name || "-",
+            prefix: getGenderPrefix(employee.gender),
+            role: employee.role || employee.designation || "Employee",
+            date: dateInput.value,
+            school: (database.school || {}).name || "School"
+          });
           if (!isEmployeeWhatsappActive(employee)) {
             openAppMessageBox("Error", "The employee is not active account on whatsapp with this number.", "error");
             return;
@@ -11291,6 +11437,7 @@ document.addEventListener("DOMContentLoaded", function () {
         message.textContent = "Employees attendance updated successfully.";
         message.className = "form-message success";
         renderTable();
+        refreshAttendanceOverview();
       });
 
       document.getElementById("sendEmployeeAbsenteesBtn").addEventListener("click", async function () {
@@ -11307,11 +11454,7 @@ document.addEventListener("DOMContentLoaded", function () {
             openAppMessageBox("Warning", detail, "warning");
             return;
           }
-          const channel = channelSelect ? channelSelect.value : chooseCommunicationChannel("Employee Absentees");
-          if (!channel) {
-            return;
-          }
-          if (channel === "sms" && !(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
+          if (!(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
             const detail = "SMS gateway is not connected. Please connect from SMS Services first.";
             message.textContent = detail;
             message.className = "form-message error";
@@ -11329,13 +11472,7 @@ document.addEventListener("DOMContentLoaded", function () {
               failed += 1;
               continue;
             }
-            const template = absentMessageInput && absentMessageInput.value.trim()
-              ? absentMessageInput.value
-              : buildCommunicationTemplate("employee-absent", {
-                prefix: getGenderPrefix(employee.gender),
-                name: employee.name || "-",
-                date: dateInput.value
-              });
+            const template = getSavedMessageTemplate("employeeAbsent", "Dear {prefix} {name}, you are marked absent today {date}. Please contact school office.\nBest regards,\n{school}.");
             const text = interpolateTemplate(template, {
               name: employee.name || "-",
               prefix: getGenderPrefix(employee.gender),
@@ -11343,37 +11480,21 @@ document.addEventListener("DOMContentLoaded", function () {
               date: dateInput.value,
               school: database.school.name || "School"
             });
-            if (channel === "sms") {
-              const result = await sendSmsViaConnectedGateway({
-                recipientName: employee.name || "-",
-                recipientPhone: recipientPhone,
-                message: text,
-                source: "Employees Attendance SMS",
-                recipientType: "employee",
-                campaignType: "absentees"
-              });
-              if (result.success) {
-                success += 1;
-              } else {
-                failed += 1;
-              }
-              continue;
-            }
-            const logged = logWhatsappCommunication({
+            const result = await sendSmsViaConnectedGateway({
               recipientName: employee.name || "-",
               recipientPhone: recipientPhone,
               message: text,
-              source: "Employees Attendance WhatsApp",
+              source: "Employees Attendance SMS",
               recipientType: "employee",
               campaignType: "absentees"
             });
-            if (logged) {
+            if (result.success) {
               success += 1;
             } else {
               failed += 1;
             }
           }
-          const detail = `${channel === "sms" ? "SMS" : "WhatsApp"} alert processed. Success: ${success}, Failed: ${failed}${noPhone ? `, Missing Phone: ${noPhone}` : ""}.`;
+          const detail = `SMS alert processed. Success: ${success}, Failed: ${failed}${noPhone ? `, Missing Phone: ${noPhone}` : ""}.`;
           message.textContent = detail;
           message.className = `form-message ${failed ? "warning" : "success"}`;
           openAppMessageBox(failed ? "Warning" : "Success", detail, failed ? "warning" : "success");
@@ -11386,24 +11507,6 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       dateInput.addEventListener("change", renderTable);
-
-      const editEmployeeAbsentMessageBtn = document.getElementById("editEmployeeAbsentMessageBtn");
-      const saveEmployeeAbsentMessageBtn = document.getElementById("saveEmployeeAbsentMessageBtn");
-      if (editEmployeeAbsentMessageBtn && saveEmployeeAbsentMessageBtn) {
-        editEmployeeAbsentMessageBtn.addEventListener("click", function () {
-          absentMessageInput.readOnly = false;
-          absentMessageInput.style.backgroundColor = "#fff";
-          editEmployeeAbsentMessageBtn.hidden = true;
-          saveEmployeeAbsentMessageBtn.hidden = false;
-        });
-        saveEmployeeAbsentMessageBtn.addEventListener("click", function () {
-          saveMessageTemplate("employeeAbsent", absentMessageInput);
-          absentMessageInput.readOnly = true;
-          absentMessageInput.style.backgroundColor = "#f5f5f5";
-          editEmployeeAbsentMessageBtn.hidden = false;
-          saveEmployeeAbsentMessageBtn.hidden = true;
-        });
-      }
 
       renderTable();
       return;
@@ -11809,19 +11912,13 @@ document.addEventListener("DOMContentLoaded", function () {
         </article>
       `;
 
-      moduleGuide.innerHTML = `
-        <article>
-          <strong>Employee Details</strong>
-          <div id="employeeDetailsPreview"><p>Select View Details to see full profile.</p></div>
-        </article>
-      `;
+      moduleGuide.innerHTML = "";
 
       const searchInput = document.getElementById("employeeSearchInput");
       const searchDropdown = document.getElementById("employeeSearchDropdown");
       const tableBody = document.getElementById("employeesTableBody");
 
       const emptyState = document.getElementById("employeesEmptyState");
-      const detailsPreview = document.getElementById("employeeDetailsPreview");
 
       initializeEmployeeProfessionalSearch(
         "employeeSearchInput",
@@ -12052,12 +12149,11 @@ document.addEventListener("DOMContentLoaded", function () {
         </article>
       `;
 
-      moduleGuide.innerHTML = `<article><strong>Preview</strong><div id="employeePreviewBox" class="module-preview-card"></div></article>`;
+      moduleGuide.innerHTML = "";
 
       const employeeForm = document.getElementById("employeeForm");
       const employeePictureInput = document.getElementById("employeePictureInput");
       const message = document.getElementById("employeeFormMessage");
-      const preview = document.getElementById("employeePreviewBox");
 
       function readEmployeePicture(file) {
         return new Promise(function (resolve, reject) {
@@ -12080,38 +12176,14 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      function renderEmployeePreview() {
-        const name = document.getElementById("employeeNameInput").value.trim();
-        const role = document.getElementById("employeeRoleInput").value;
-        const phone = document.getElementById("employeePhoneInput").value.trim();
-        const joiningDate = document.getElementById("employeeJoiningDateInput").value;
-        preview.innerHTML = `
-          <div class="module-preview-head">
-            ${employeePictureData ? `<img src="${employeePictureData}" alt="Employee" class="module-preview-logo">` : `<span class="module-preview-logo-placeholder">${getInitials(name || "E")}</span>`}
-            <div>
-              <h4>${escapeHtml(name || "Employee Name")}</h4>
-              <p>${escapeHtml(role || "Role")}</p>
-            </div>
-          </div>
-          <p><strong>Phone:</strong> ${escapeHtml(phone || "-")}</p>
-          <p><strong>Date of Joining:</strong> ${escapeHtml(joiningDate || "-")}</p>
-        `;
-      }
-
       employeePictureInput.addEventListener("change", function () {
         const file = employeePictureInput.files && employeePictureInput.files[0];
         readEmployeePicture(file).then(function (result) {
           employeePictureData = result;
-          renderEmployeePreview();
         }).catch(function (error) {
           message.textContent = error.message;
           message.className = "form-message error";
         });
-      });
-
-      ["employeeNameInput", "employeeRoleInput", "employeePhoneInput", "employeeJoiningDateInput"].forEach(function (id) {
-        document.getElementById(id).addEventListener("input", renderEmployeePreview);
-        document.getElementById(id).addEventListener("change", renderEmployeePreview);
       });
 
       document.getElementById("clearEmployeeFormBtn").addEventListener("click", function () {
@@ -12120,7 +12192,6 @@ document.addEventListener("DOMContentLoaded", function () {
         message.textContent = "";
         message.className = "form-message";
         sessionStorage.removeItem("sagarsoft_edit_employee_id");
-        renderEmployeePreview();
       });
 
       const employeeIdInput = document.getElementById("employeeIdInput");
@@ -12210,8 +12281,6 @@ document.addEventListener("DOMContentLoaded", function () {
         message.className = "form-message success";
         setRoute("all-employees");
       });
-
-      renderEmployeePreview();
       return;
     }
 
@@ -12231,19 +12300,7 @@ document.addEventListener("DOMContentLoaded", function () {
         </article>
       `;
 
-      moduleGuide.innerHTML = `
-        <article>
-          <strong>SMS Template</strong>
-          <div class="field-group">
-            <label for="staffIdCardSmsTemplateInput">Message</label>
-            <textarea id="staffIdCardSmsTemplateInput" rows="3" readonly>${escapeHtml(getSavedMessageTemplate("staffIdCardSms", getDefaultStaffIdCardTemplate()))}</textarea>
-          </div>
-          <div class="form-actions">
-            <button class="secondary-button" id="editStaffIdCardSmsTemplateBtn" type="button">Edit Template</button>
-            <button class="primary-button" id="saveStaffIdCardSmsTemplateBtn" type="button" hidden>Save Template</button>
-          </div>
-        </article>
-      `;
+      moduleGuide.innerHTML = ``;
 
       const searchInput = document.getElementById("employeeIdCardSearchInput");
       const searchDropdown = document.getElementById("employeeIdCardSearchDropdown");
@@ -12279,7 +12336,7 @@ document.addEventListener("DOMContentLoaded", function () {
               <div class="id-card-modern__inner">
                 <div class="id-card-modern__head">
                   <div class="id-card-modern__school">${escapeHtml(database.school.name || "SagarSoft School")}</div>
-                  ${instituteLogo ? `<img src="${instituteLogo}" alt="Logo" class="id-card-modern__logo">` : `<span class="id-card-modern__logo">SS</span>`}
+                  ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
                 </div>
                 <div class="id-card-modern__profile">
                   ${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" class="student-avatar student-avatar--image">` : `<span class="student-avatar">${getInitials(employee.name || "E")}</span>`}
@@ -12312,6 +12369,8 @@ document.addEventListener("DOMContentLoaded", function () {
         const printableLogo = await normalizeImageForPrintShared(profile.logo || instituteLogo || "");
         const cardsMarkup = await Promise.all(employees.map(async function (employee) {
           const printablePhoto = employee.picture ? await normalizeImageForPrintShared(employee.picture) : "";
+          const qrData = encodeURIComponent("ATTEND:EMPLOYEE:" + employee.id);
+          const employeeQrUrl = "https://quickchart.io/qr?text=" + qrData + "&size=80&margin=1&ecLevel=H&dark=102542";
           return `
             <article class="pvc-card pvc-card--employee">
               <div class="pvc-card__topband"></div>
@@ -12335,6 +12394,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <span>ID: ${escapeHtml(employee.id || "-")}</span>
                 <span>${escapeHtml((profile.phone || database.school.phone || "-"))}</span>
               </footer>
+              <img src="${employeeQrUrl}" alt="QR" class="pvc-card__qr">
             </article>
           `;
         }));
@@ -12377,7 +12437,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 height: 9.5mm;
                 border-radius: 2mm;
                 border: 0.25mm solid rgba(255,255,255,.9);
-                object-fit: cover;
+                object-fit: contain;
+                background: #fff;
               }
               .pvc-card__logo--fallback {
                 display: inline-flex;
@@ -12418,6 +12479,14 @@ document.addEventListener("DOMContentLoaded", function () {
               .pvc-card__meta { display: grid; gap: .65mm; justify-items: center; }
               .pvc-card__name { font-size: 3.2mm; line-height: 1.1; }
               .pvc-card__line { font-size: 2.35mm; line-height: 1.05; color: #274669; }
+              .pvc-card__qr {
+                position: absolute;
+                right: 2.4mm;
+                bottom: 7.2mm;
+                width: 9mm;
+                height: 9mm;
+                border-radius: 0.5mm;
+              }
               .pvc-card__footer {
                 position: absolute;
                 left: 3mm;
@@ -12468,8 +12537,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       async function sendStaffIdCardSms(employee) {
-        const templateInput = document.getElementById("staffIdCardSmsTemplateInput");
-        const text = interpolateTemplate(templateInput ? templateInput.value : getDefaultStaffIdCardTemplate(), getEmployeeTemplateData(employee));
+        const text = interpolateTemplate(getSavedMessageTemplate("staffIdCardSms", getDefaultStaffIdCardTemplate()), getEmployeeTemplateData(employee));
         const result = await sendSmsViaConnectedGateway({
           recipientName: employee.name || "-",
           recipientPhone: getEmployeeDisplayPhone(employee),
@@ -12482,15 +12550,11 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       async function sendStaffIdCardWhatsapp(employee) {
-        const printHtml = await buildEmployeeCardsPrintHtml([employee]);
-        const pdfResult = await saveCommunicationPdf(printHtml, `Staff-ID-Card-${employee.name || employee.id || "Employee"}.pdf`);
-        const templateInput = document.getElementById("staffIdCardSmsTemplateInput");
-        const baseText = interpolateTemplate(templateInput ? templateInput.value : getDefaultStaffIdCardTemplate(), getEmployeeTemplateData(employee));
-        const pdfText = pdfResult && pdfResult.success ? `${baseText}\nPDF: ${pdfResult.filePath}` : baseText;
+        const baseText = interpolateTemplate(getSavedMessageTemplate("staffIdCardSms", getDefaultStaffIdCardTemplate()), getEmployeeTemplateData(employee));
         logWhatsappCommunication({
           recipientName: employee.name || "-",
           recipientPhone: getEmployeeDisplayPhone(employee),
-          message: pdfText,
+          message: baseText,
           source: "Staff ID Card WhatsApp",
           recipientType: "employee",
           campaignType: "id-card"
@@ -12524,21 +12588,6 @@ document.addEventListener("DOMContentLoaded", function () {
       document.getElementById("printAllEmployeeCardsBtn").addEventListener("click", function () {
         printEmployeeCards(getFilteredEmployees(), "Employee ID Cards");
       });
-      document.getElementById("editStaffIdCardSmsTemplateBtn").addEventListener("click", function () {
-        const input = document.getElementById("staffIdCardSmsTemplateInput");
-        input.readOnly = false;
-        input.style.backgroundColor = "#fff";
-        document.getElementById("editStaffIdCardSmsTemplateBtn").hidden = true;
-        document.getElementById("saveStaffIdCardSmsTemplateBtn").hidden = false;
-      });
-      document.getElementById("saveStaffIdCardSmsTemplateBtn").addEventListener("click", function () {
-        const input = document.getElementById("staffIdCardSmsTemplateInput");
-        saveMessageTemplate("staffIdCardSms", input);
-        input.readOnly = true;
-        input.style.backgroundColor = "#f5f5f5";
-        document.getElementById("editStaffIdCardSmsTemplateBtn").hidden = false;
-        document.getElementById("saveStaffIdCardSmsTemplateBtn").hidden = true;
-      });
       searchInput.addEventListener("input", renderEmployeeCards);
       renderEmployeeCards();
       return;
@@ -12563,17 +12612,6 @@ document.addEventListener("DOMContentLoaded", function () {
         <article>
           <strong>Preview</strong>
           <div id="jobLetterPreview">Search and click Print Job Letter.</div>
-        </article>
-        <article>
-          <strong>SMS Template</strong>
-          <div class="field-group">
-            <label for="jobLetterSmsTemplateInput">Message</label>
-            <textarea id="jobLetterSmsTemplateInput" rows="3" readonly>${escapeHtml(getSavedMessageTemplate("jobLetterSms", getDefaultJobLetterTemplate()))}</textarea>
-          </div>
-          <div class="form-actions">
-            <button class="secondary-button" id="editJobLetterSmsTemplateBtn" type="button">Edit Template</button>
-            <button class="primary-button" id="saveJobLetterSmsTemplateBtn" type="button" hidden>Save Template</button>
-          </div>
         </article>
       `;
 
@@ -12666,8 +12704,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       async function sendJobLetterSms(employee) {
-        const templateInput = document.getElementById("jobLetterSmsTemplateInput");
-        const text = interpolateTemplate(templateInput ? templateInput.value : getDefaultJobLetterTemplate(), getJobLetterTemplateData(employee));
+        const text = interpolateTemplate(getSavedMessageTemplate("jobLetterSms", getDefaultJobLetterTemplate()), getJobLetterTemplateData(employee));
         const result = await sendSmsViaConnectedGateway({
           recipientName: employee.name || "-",
           recipientPhone: getEmployeeDisplayPhone(employee),
@@ -12680,20 +12717,11 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       async function sendJobLetterWhatsapp(employee) {
-        const templateInput = document.getElementById("jobLetterSmsTemplateInput");
-        const baseText = interpolateTemplate(templateInput ? templateInput.value : getDefaultJobLetterTemplate(), getJobLetterTemplateData(employee));
-        const printHtml = await openPrintReport({
-          compactPrint: true,
-          subtitle: `Employee: ${escapeHtml(employee.name || "-")}`,
-          contentHtml: buildJobLetterDetailsMarkup(employee),
-          returnHtml: true
-        });
-        const pdfResult = await saveCommunicationPdf(printHtml, `Job-Letter-${employee.name || employee.id || "Employee"}.pdf`);
-        const pdfText = pdfResult && pdfResult.success ? `${baseText}\nPDF: ${pdfResult.filePath}` : baseText;
+        const baseText = interpolateTemplate(getSavedMessageTemplate("jobLetterSms", getDefaultJobLetterTemplate()), getJobLetterTemplateData(employee));
         logWhatsappCommunication({
           recipientName: employee.name || "-",
           recipientPhone: getEmployeeDisplayPhone(employee),
-          message: pdfText,
+          message: baseText,
           source: "Job Letter WhatsApp",
           recipientType: "employee",
           campaignType: "job-letter"
@@ -12743,21 +12771,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-      document.getElementById("editJobLetterSmsTemplateBtn").addEventListener("click", function () {
-        const input = document.getElementById("jobLetterSmsTemplateInput");
-        input.readOnly = false;
-        input.style.backgroundColor = "#fff";
-        document.getElementById("editJobLetterSmsTemplateBtn").hidden = true;
-        document.getElementById("saveJobLetterSmsTemplateBtn").hidden = false;
-      });
-      document.getElementById("saveJobLetterSmsTemplateBtn").addEventListener("click", function () {
-        const input = document.getElementById("jobLetterSmsTemplateInput");
-        saveMessageTemplate("jobLetterSms", input);
-        input.readOnly = true;
-        input.style.backgroundColor = "#f5f5f5";
-        document.getElementById("editJobLetterSmsTemplateBtn").hidden = false;
-        document.getElementById("saveJobLetterSmsTemplateBtn").hidden = true;
-      });
       searchInput.addEventListener("input", renderJobLetterList);
       renderJobLetterList();
       return;
@@ -13296,14 +13309,6 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
             <button class="primary-button" id="printExamReportBtn" type="button">Print Report</button>
           </div>
-          <div class="field-group field-group--full">
-            <label for="reportWhatsappTemplateInput">WhatsApp Template</label>
-            <textarea id="reportWhatsappTemplateInput" rows="3" readonly>${escapeHtml(getSavedMessageTemplate("studentReportWhatsapp", "Dear student/parent {prefix} {roll},\nResult ({exam}): {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.\nBest regards,\n{school}."))}</textarea>
-          </div>
-          <div class="form-actions">
-            <button class="secondary-button" id="editReportTemplateBtn" type="button">Edit Template</button>
-            <button class="primary-button" id="saveReportTemplateBtn" type="button" hidden>Save Template</button>
-          </div>
           <div class="report-cards" id="examReportStats"></div>
           <div class="split-grid report-grid">
             <article class="panel-card"><strong>Result Ratio</strong><div id="examReportChart" class="report-chart-box"></div></article>
@@ -13327,7 +13332,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const chartWrap = document.getElementById("examReportChart");
       const barsWrap = document.getElementById("examReportBars");
       const tableBody = document.getElementById("examReportTableBody");
-      const reportWhatsappTemplateInput = document.getElementById("reportWhatsappTemplateInput");
 
       initializeStudentProfessionalSearch(
         "reportSearchInput",
@@ -13406,18 +13410,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         const result = evaluateExamResult(examSelect.value, student.className, student.id);
         const exam = getExamById(examSelect.value);
-        const template = reportWhatsappTemplateInput && reportWhatsappTemplateInput.value.trim()
-          ? reportWhatsappTemplateInput.value
-          : buildCommunicationTemplate("student-report", {
-            prefix: getGenderPrefix(student.gender),
-            rollNo: student.admissionNo || "-",
-            exam: exam ? exam.name : "Exam",
-            obtained: result.obtainedMarks,
-            total: result.totalMarks,
-            percent: result.percentage,
-            grade: result.grade,
-            status: result.status
-          });
+        const template = getSavedMessageTemplate("studentReportWhatsapp", "Dear student/parent {prefix} {roll},\nResult ({exam}): {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.\nBest regards,\n{school}.");
         const text = interpolateTemplate(template, {
           name: student.name || "-",
           roll: student.admissionNo || "-",
@@ -13432,24 +13425,6 @@ document.addEventListener("DOMContentLoaded", function () {
           school: database.school.name || "School"
         });
         sendDirectWhatsappToStudent(student, student.name || "student", text);
-      });
-
-      const editReportTemplateBtn = document.getElementById("editReportTemplateBtn");
-      const saveReportTemplateBtn = document.getElementById("saveReportTemplateBtn");
-      
-      editReportTemplateBtn.addEventListener("click", function () {
-        reportWhatsappTemplateInput.readOnly = false;
-        reportWhatsappTemplateInput.style.backgroundColor = "#fff";
-        editReportTemplateBtn.hidden = true;
-        saveReportTemplateBtn.hidden = false;
-      });
-
-      saveReportTemplateBtn.addEventListener("click", function () {
-        saveMessageTemplate("studentReportWhatsapp", reportWhatsappTemplateInput);
-        reportWhatsappTemplateInput.readOnly = true;
-        reportWhatsappTemplateInput.style.backgroundColor = "#f5f5f5";
-        editReportTemplateBtn.hidden = false;
-        saveReportTemplateBtn.hidden = true;
       });
 
       renderRows();
@@ -13576,7 +13551,7 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
             <button class="primary-button" id="printAttendanceReportBtn" type="button">Print Report</button>
           </div>
-          ${isStaff ? `<div class="field-group field-group--full"><label for="employeeReportWhatsappTemplateInput">WhatsApp Template</label><textarea id="employeeReportWhatsappTemplateInput" rows="3" readonly>${escapeHtml(getSavedMessageTemplate("employeeReportWhatsapp", "Dear {prefix} {name},\nAttendance report for {month}: Present {present}, Absent {absent}, Leave {leave}, Attendance {percent}%.\nBest regards,\n{school}."))}</textarea></div><div class="form-actions"><button class="secondary-button" id="editEmployeeReportTemplateBtn" type="button">Edit Template</button><button class="primary-button" id="saveEmployeeReportTemplateBtn" type="button" hidden>Save Template</button></div>` : ""}
+          ${"" /* template section removed */}
           <div class="report-cards" id="attendanceReportStats"></div>
           <div class="split-grid report-grid">
             <article class="panel-card"><strong>Attendance Ratio</strong><div id="attendanceReportChart" class="report-chart-box"></div></article>
@@ -13602,7 +13577,6 @@ document.addEventListener("DOMContentLoaded", function () {
       const chartWrap = document.getElementById("attendanceReportChart");
       const barsWrap = document.getElementById("attendanceReportBars");
       const tableBody = document.getElementById("attendanceReportBody");
-      const employeeReportWhatsappTemplateInput = document.getElementById("employeeReportWhatsappTemplateInput");
 
       if (isStaff) {
         initializeEmployeeProfessionalSearch(
@@ -13697,17 +13671,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!match) {
           return;
         }
-        const template = employeeReportWhatsappTemplateInput && employeeReportWhatsappTemplateInput.value.trim()
-          ? employeeReportWhatsappTemplateInput.value
-          : buildCommunicationTemplate("employee-report", {
-            prefix: getGenderPrefix(employee.gender),
-            name: employee.name || "-",
-            month: normalizeFeeMonthLabel(monthInput.value),
-            present: match.present,
-            absent: match.absent,
-            leave: match.leave,
-            percent: match.percent
-          });
+        const template = getSavedMessageTemplate("employeeReportWhatsapp", "Dear {prefix} {name},\nAttendance report for {month}: Present {present}, Absent {absent}, Leave {leave}, Attendance {percent}%.\nBest regards,\n{school}.");
         const messageText = interpolateTemplate(template, {
           prefix: getGenderPrefix(employee.gender),
           name: employee.name || "-",
@@ -13720,26 +13684,6 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         sendDirectWhatsappToEmployee(employee, employee.name || "employee", messageText);
       });
-
-      if (isStaff && employeeReportWhatsappTemplateInput) {
-        const editEmployeeReportTemplateBtn = document.getElementById("editEmployeeReportTemplateBtn");
-        const saveEmployeeReportTemplateBtn = document.getElementById("saveEmployeeReportTemplateBtn");
-        
-        editEmployeeReportTemplateBtn.addEventListener("click", function () {
-          employeeReportWhatsappTemplateInput.readOnly = false;
-          employeeReportWhatsappTemplateInput.style.backgroundColor = "#fff";
-          editEmployeeReportTemplateBtn.hidden = true;
-          saveEmployeeReportTemplateBtn.hidden = false;
-        });
-
-        saveEmployeeReportTemplateBtn.addEventListener("click", function () {
-          saveMessageTemplate("employeeReportWhatsapp", employeeReportWhatsappTemplateInput);
-          employeeReportWhatsappTemplateInput.readOnly = true;
-          employeeReportWhatsappTemplateInput.style.backgroundColor = "#f5f5f5";
-          editEmployeeReportTemplateBtn.hidden = false;
-          saveEmployeeReportTemplateBtn.hidden = true;
-        });
-      }
 
       renderRows();
       return;
@@ -13836,63 +13780,159 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
+      var _now = new Date();
+      var _firstOfMonth = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-01";
+      var _today = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-" + String(_now.getDate()).padStart(2, "0");
       moduleSummary.innerHTML = `
         <article>
-          <strong class="module-center-title">Accounts Report</strong>
-          <div class="toolbar toolbar--status module-toolbar">
-            <select id="accountsPeriodSelect"><option value="all-time">All Time</option><option value="monthly">Monthly</option></select>
-            <input id="accountsMonthInput" type="month" value="${getCurrentMonthInputValue()}">
-            <button class="primary-button" id="printAccountsBtn" type="button">Print Report</button>
+          <strong class="module-center-title">Account Statement</strong>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0 0 1rem;">
+            <label style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.8rem;color:#555;white-space:nowrap;">From<input id="accountsFromInput" type="date" value="${_firstOfMonth}" style="padding:0.3rem 0.5rem;font-size:0.8rem;border:1px solid #dde4ea;border-radius:6px;font-family:inherit;width:130px;"></label>
+            <label style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.8rem;color:#555;white-space:nowrap;">To<input id="accountsToInput" type="date" value="${_today}" style="padding:0.3rem 0.5rem;font-size:0.8rem;border:1px solid #dde4ea;border-radius:6px;font-family:inherit;width:130px;"></label>
+            <button id="clearAccountsHistoryBtn" type="button" style="display:inline-flex;align-items:center;gap:0.15rem;padding:0.1rem 0.35rem;font-size:0.65rem;font-family:inherit;font-weight:600;color:#fff;background:#d64b4b;border:1px solid #d64b4b;border-radius:4px;cursor:pointer;line-height:1.2;white-space:nowrap;min-width:0;width:auto;box-sizing:border-box;"><i class="fas fa-trash" style="font-size:0.6rem;"></i>Clear History</button>
+            <button id="printAccountsBtn" type="button" style="display:inline-flex;align-items:center;gap:0.15rem;padding:0.1rem 0.35rem;font-size:0.65rem;font-family:inherit;font-weight:600;color:#fff;background:#1b5f7a;border:1px solid #1b5f7a;border-radius:4px;cursor:pointer;line-height:1.2;white-space:nowrap;min-width:0;width:auto;box-sizing:border-box;"><i class="fas fa-print" style="font-size:0.6rem;"></i>Print</button>
+            <button id="pdfAccountsBtn" type="button" style="display:inline-flex;align-items:center;gap:0.15rem;padding:0.1rem 0.35rem;font-size:0.65rem;font-family:inherit;font-weight:600;color:#0f2b3f;background:#e8edf0;border:1px solid #dde4ea;border-radius:4px;cursor:pointer;line-height:1.2;white-space:nowrap;min-width:0;width:auto;box-sizing:border-box;"><i class="fas fa-file-pdf" style="font-size:0.6rem;"></i>PDF</button>
+            <button id="excelAccountsBtn" type="button" style="display:inline-flex;align-items:center;gap:0.15rem;padding:0.1rem 0.35rem;font-size:0.65rem;font-family:inherit;font-weight:600;color:#0f2b3f;background:#e8edf0;border:1px solid #dde4ea;border-radius:4px;cursor:pointer;line-height:1.2;white-space:nowrap;min-width:0;width:auto;box-sizing:border-box;"><i class="fas fa-file-excel" style="font-size:0.6rem;"></i>Excel</button>
           </div>
           <div class="report-cards" id="accountsStats"></div>
-          <div class="split-grid report-grid"><article class="panel-card"><strong>Income vs Expense</strong><div id="accountsChart" class="report-chart-box"></div></article><article class="panel-card"><strong>Latest Transactions</strong><div id="accountsBars" class="report-bar-list"></div></article></div>
-          <div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Source</th><th>Reference</th><th>Amount</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
+          <div class="table-wrap" style="overflow-x:auto;"><table style="min-width:650px;"><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Net Balance</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
-      const periodSelect = document.getElementById("accountsPeriodSelect");
-      const monthInput = document.getElementById("accountsMonthInput");
+      const fromInput = document.getElementById("accountsFromInput");
+      const toInput = document.getElementById("accountsToInput");
       const statsWrap = document.getElementById("accountsStats");
-      const chartWrap = document.getElementById("accountsChart");
-      const barsWrap = document.getElementById("accountsBars");
       const tableBody = document.getElementById("accountsTableBody");
 
-      function getRows() {
-        return getAccountsReportRows(periodSelect.value, monthInput.value);
+      function getStatementRows() {
+        var settings = database.generalSettings || {};
+        var fromVal = fromInput.value;
+        var toVal = toInput.value;
+        function inRange(dv) {
+          if (!fromVal && !toVal) return true;
+          var d = String(dv || "").substring(0, 10);
+          if (!d) return false;
+          if (fromVal && d < fromVal) return false;
+          if (toVal && d > toVal) return false;
+          return true;
+        }
+        var rows = [];
+        (settings.accountsLedger || []).forEach(function (item) {
+          if (!inRange(item.date || item.createdAt)) return;
+          var amt = Number(item.amount || 0);
+          rows.push({
+            date: String(item.date || item.createdAt || "-").substring(0, 10),
+            description: item.description || item.note || item.category || "-",
+            debit: String(item.type || "").toLowerCase() === "expense" ? amt : 0,
+            credit: String(item.type || "").toLowerCase() === "income" ? amt : 0
+          });
+        });
+        (settings.feeCollections || []).forEach(function (item) {
+          if (!inRange(item.collectedAt || item.date || "")) return;
+          var amt = Number(item.deposit || 0);
+          rows.push({
+            date: String(item.collectedAt || item.date || "-").substring(0, 10),
+            description: "Fee added for " + (item.studentName || item.studentId || "-"),
+            debit: 0,
+            credit: amt
+          });
+        });
+        (settings.salaryPayments || []).forEach(function (item) {
+          if (!inRange(item.paymentDate || item.date || "")) return;
+          var total = Number(item.netAmount ?? (Number(item.salaryAmount || 0) + Number(item.bonus || 0) - Number(item.deduction || 0)));
+          rows.push({
+            date: String(item.paymentDate || item.date || "-").substring(0, 10),
+            description: "Salary paid to " + (item.employeeName || item.employeeId || "-"),
+            debit: total,
+            credit: 0
+          });
+        });
+        rows.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+        var balance = 0;
+        rows.forEach(function (r) {
+          balance = balance + r.credit - r.debit;
+          r.balance = balance;
+        });
+        var totalDebit = rows.reduce(function (s, r) { return s + r.debit; }, 0);
+        var totalCredit = rows.reduce(function (s, r) { return s + r.credit; }, 0);
+        return { rows: rows, totalDebit: totalDebit, totalCredit: totalCredit, netBalance: totalCredit - totalDebit };
       }
 
-      function renderRows() {
-        monthInput.disabled = periodSelect.value !== "monthly";
-        const data = getRows();
-        const total = data.income + data.expense;
-        const incomePercent = total ? Math.round((data.income / total) * 100) : 0;
-        statsWrap.innerHTML = `<article class="stat-card"><strong>Total Income</strong><span>${data.income}</span></article><article class="stat-card"><strong>Total Expense</strong><span>${data.expense}</span></article><article class="stat-card"><strong>Net Balance</strong><span>${data.net}</span></article><article class="stat-card"><strong>Transactions</strong><span>${data.rows.length}</span></article>`;
-        chartWrap.innerHTML = total ? buildCircleChart(incomePercent, `Income ${data.income} | Expense ${data.expense}`, "#1d9c61", "#d64b4b") : `<p class="empty-state">No accounts data.</p>`;
-        const bars = data.rows.slice(0, 10).map(function (row) { return { label: `${row.type}: ${row.ref}`, value: row.amount }; });
-        const max = bars.length ? Math.max.apply(null, bars.map(function (item) { return item.value; })) : 1;
-        barsWrap.innerHTML = bars.length ? buildBarChart(bars, max) : `<p class="empty-state">No transactions data.</p>`;
-        tableBody.innerHTML = data.rows.map(function (row) {
-          return `<tr><td>${escapeHtml(row.date || "-")}</td><td><span class="status-pill ${row.type === "Income" ? "active" : "inactive"}">${row.type}</span></td><td>${escapeHtml(row.source || "-")}</td><td>${escapeHtml(row.ref || "-")}</td><td>${row.amount}</td></tr>`;
+      function getDateRangeLabel() {
+        if (fromInput.value && toInput.value) return fromInput.value + " to " + toInput.value;
+        if (fromInput.value) return "From " + fromInput.value;
+        if (toInput.value) return "Until " + toInput.value;
+        return "All Time";
+      }
+
+      function renderStatement() {
+        var data = getStatementRows();
+        statsWrap.innerHTML = '<article class="stat-card"><strong>Total Credit</strong><span>' + data.totalCredit + '</span></article><article class="stat-card"><strong>Total Debit</strong><span>' + data.totalDebit + '</span></article><article class="stat-card"><strong>Net Balance</strong><span>' + data.netBalance + '</span></article><article class="stat-card"><strong>Transactions</strong><span>' + data.rows.length + '</span></article>';
+        var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
+        var tbody = data.rows.map(function (r) {
+          return '<tr><td>' + escapeHtml(r.date) + '</td><td>' + escapeHtml(r.description) + '</td><td>' + (r.debit > 0 ? r.debit : "-") + '</td><td>' + (r.credit > 0 ? r.credit : "-") + '</td><td><strong>' + currencySymbol + ' ' + r.balance + '</strong></td></tr>';
         }).join("");
+        tbody += '<tr style="font-weight:700;background:rgba(27,95,122,0.06);border-top:2px solid #1b5f7a;"><td colspan="2"><strong>Total</strong></td><td>' + data.totalDebit + '</td><td>' + data.totalCredit + '</td><td><strong>' + currencySymbol + ' ' + data.netBalance + '</strong></td></tr>';
+        tableBody.innerHTML = tbody;
+      }
+
+      function getStatementPrintData() {
+        var data = getStatementRows();
+        var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
+        return {
+          title: "Account Statement",
+          subtitle: getDateRangeLabel(),
+          headers: ["Date", "Description", "Debit", "Credit", "Net Balance"],
+          rows: data.rows.map(function (r) { return [r.date, r.description, r.debit > 0 ? r.debit : "-", r.credit > 0 ? r.credit : "-", currencySymbol + " " + r.balance]; }),
+          footerHtml: '<p style="margin-top:12px;"><strong>Total Debit:</strong> ' + data.totalDebit + ' | <strong>Total Credit:</strong> ' + data.totalCredit + ' | <strong>Net:</strong> ' + currencySymbol + " " + data.netBalance + '</p>'
+        };
       }
 
       document.getElementById("printAccountsBtn").addEventListener("click", function () {
-        const data = getRows();
-        if (!data.rows.length) {
-          return;
-        }
-        openPrintReport({
-          title: "Accounts Report",
-          subtitle: periodSelect.value === "monthly" ? `Month: ${normalizeFeeMonthLabel(monthInput.value)}` : "All Time",
-          headers: ["Date", "Type", "Source", "Reference", "Amount"],
-          rows: data.rows.map(function (row) { return [escapeHtml(row.date || "-"), row.type, escapeHtml(row.source || "-"), escapeHtml(row.ref || "-"), row.amount]; }),
-          footerHtml: `<p style="margin-top:12px;"><strong>Total Income:</strong> ${data.income} | <strong>Total Expense:</strong> ${data.expense} | <strong>Net:</strong> ${data.net}</p>`
+        var pd = getStatementPrintData();
+        if (!pd.rows.length) return;
+        openPrintReport(pd);
+      });
+
+      document.getElementById("pdfAccountsBtn").addEventListener("click", function () {
+        var pd = getStatementPrintData();
+        if (!pd.rows.length) return;
+        openPrintReport(pd);
+      });
+
+      document.getElementById("excelAccountsBtn").addEventListener("click", function () {
+        var data = getStatementRows();
+        if (!data.rows.length) return;
+        var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
+        var csvRows = [["Date", "Description", "Debit", "Credit", "Net Balance"].join(",")];
+        data.rows.forEach(function (r) {
+          csvRows.push([r.date, '"' + r.description.replace(/"/g, '""') + '"', r.debit > 0 ? r.debit : "", r.credit > 0 ? r.credit : "", r.balance].join(","));
+        });
+        csvRows.push(["Total", "", data.totalDebit, data.totalCredit, data.netBalance].join(","));
+        var csv = csvRows.join("\r\n");
+        var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "Account_Statement_" + getTodayDateISO() + ".csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      });
+
+      document.getElementById("clearAccountsHistoryBtn").addEventListener("click", function () {
+        showStyledDeleteConfirmation("all account ledger history", function () {
+          var settings = database.generalSettings || {};
+          settings.accountsLedger = [];
+          saveDatabase();
+          refreshDatabase();
+          renderStatement();
         });
       });
 
-      periodSelect.addEventListener("change", renderRows);
-      monthInput.addEventListener("change", renderRows);
-      renderRows();
+      fromInput.addEventListener("change", renderStatement);
+      toInput.addEventListener("change", renderStatement);
+      renderStatement();
       return;
     }
 
@@ -14081,7 +14121,7 @@ document.addEventListener("DOMContentLoaded", function () {
         moduleSummary.innerHTML = `
           <article>
             <strong class="module-center-title">Chart Of Account</strong>
-            <div class="toolbar toolbar--status module-toolbar">
+          <div class="toolbar module-toolbar" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;">
             </div>
             <div class="report-cards" id="chartAccountStats"></div>
             <div class="split-grid report-grid">
@@ -14143,13 +14183,14 @@ document.addEventListener("DOMContentLoaded", function () {
               settings.__accountsLedgerUserTouched = true;
               saveDatabase();
               refreshDatabase();
-              renderDynamicModuleWorkspace(route, title);
-              openAppMessageBox("Success", "Account entry deleted successfully.", "success");
-            });
-            return;
-          }
-        });
-        return;
+               renderDynamicModuleWorkspace(route, title);
+               (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
+               openAppMessageBox("Success", "Account entry deleted successfully.", "success");
+             });
+             return;
+           }
+         });
+         return;
       }
 
       if (route === "add-income" || route === "add-expense") {
@@ -14238,13 +14279,14 @@ document.addEventListener("DOMContentLoaded", function () {
               addActivity("Account entry deleted", `Ledger entry deleted: ${id}`);
               saveDatabase();
               refreshDatabase();
-              renderDynamicModuleWorkspace(route, title);
-              openAppMessageBox("Success", "Account entry deleted successfully.", "success");
-            });
-            return;
-          }
-        });
-        document.getElementById("saveLedgerBtn").addEventListener("click", function () {
+               renderDynamicModuleWorkspace(route, title);
+               (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
+               openAppMessageBox("Success", "Account entry deleted successfully.", "success");
+             });
+             return;
+           }
+         });
+         document.getElementById("saveLedgerBtn").addEventListener("click", function () {
           const date = document.getElementById("ledgerDateInput").value;
           const category = document.getElementById("ledgerCategoryInput").value.trim();
           const amount = Number(document.getElementById("ledgerAmountInput").value);
@@ -14272,6 +14314,7 @@ document.addEventListener("DOMContentLoaded", function () {
               refreshDatabase();
               openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} updated successfully.`, "success");
               renderDynamicModuleWorkspace(route, title);
+              (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
               return;
             }
           }
@@ -14291,6 +14334,7 @@ document.addEventListener("DOMContentLoaded", function () {
           refreshDatabase();
           openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} saved successfully.`, "success");
           renderDynamicModuleWorkspace(route, title);
+          (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
         });
         return;
       }
@@ -14652,79 +14696,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         function getEditorHtml() {
-          if (typeof ckEditorInstance !== "undefined" && ckEditorInstance && typeof ckEditorInstance.getData === "function") {
-            return String(ckEditorInstance.getData() || "").trim();
-          }
-          if (typeof ck5EditorInstance !== "undefined" && ck5EditorInstance && typeof ck5EditorInstance.getData === "function") {
-            return String(ck5EditorInstance.getData() || "").trim();
-          }
           return String(editorArea.innerHTML || "").trim();
         }
 
         function clearEditor() {
-          if (typeof ckEditorInstance !== "undefined" && ckEditorInstance && typeof ckEditorInstance.setData === "function") {
-            ckEditorInstance.setData("");
-          } else if (typeof ck5EditorInstance !== "undefined" && ck5EditorInstance && typeof ck5EditorInstance.setData === "function") {
-            ck5EditorInstance.setData("");
-          } else {
-            editorArea.innerHTML = "";
-          }
+          editorArea.innerHTML = "";
         }
 
         function getEditorText() {
           const html = getEditorHtml();
           return qpStripHtml(html);
-        }
-
-        function appendToFallback(htmlChunk) {
-          const chunk = String(htmlChunk || "");
-          editorArea.innerHTML = `${String(editorArea.innerHTML || "")}${chunk}`;
-          editorArea.focus();
-        }
-
-        function setupFallbackToolbar() {
-          if (!fallbackToolbar) {
-            return;
-          }
-          fallbackToolbar.querySelectorAll("[data-fb-cmd]").forEach(function (btn) {
-            btn.addEventListener("click", function () {
-              const cmd = btn.getAttribute("data-fb-cmd");
-              const selected = editorArea.value.substring(editorArea.selectionStart || 0, editorArea.selectionEnd || 0) || "Text";
-              if (cmd === "bold") appendToFallback(`<b>${selected}</b>`);
-              if (cmd === "italic") appendToFallback(`<i>${selected}</i>`);
-              if (cmd === "underline") appendToFallback(`<u>${selected}</u>`);
-            });
-          });
-          document.getElementById("qpFbApplySize").addEventListener("click", function () {
-            const px = Math.max(8, Number(document.getElementById("qpFbFontSize").value || 16));
-            appendToFallback(`<span style="font-size:${px}px;">Text</span>`);
-          });
-          document.getElementById("qpFbApplyColor").addEventListener("click", function () {
-            const color = document.getElementById("qpFbColor").value || "#0f2748";
-            appendToFallback(`<span style="color:${escapeAttr(color)};">Text</span>`);
-          });
-          document.getElementById("qpFbApplyBgColor").addEventListener("click", function () {
-            const bg = document.getElementById("qpFbBgColor").value || "#fff59d";
-            appendToFallback(`<span style="background:${escapeAttr(bg)};">Text</span>`);
-          });
-          document.getElementById("qpFbInsertShape").addEventListener("click", function () {
-            const chosen = window.prompt("Insert shape:\nâ— â—‹ â–  â–¡ â—† â—‡ â–² â–³ â˜… â˜† â˜‘ â˜’ âž¤ âž¥", "â—");
-            if (!chosen) return;
-            appendToFallback(`<span>${escapeHtml(chosen)}</span>`);
-          });
-          document.getElementById("qpFbInsertImage").addEventListener("click", function () {
-            fbImageInput.click();
-          });
-          fbImageInput.addEventListener("change", function () {
-            const file = fbImageInput.files && fbImageInput.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function () {
-              appendToFallback(`<img src="${String(reader.result || "")}" style="max-width:100%;height:auto;" alt="editor-image">`);
-            };
-            reader.readAsDataURL(file);
-            fbImageInput.value = "";
-          });
         }
 
         function renderChapterRows() {
@@ -14741,158 +14722,6 @@ document.addEventListener("DOMContentLoaded", function () {
               <td><button class="table-action-btn danger" type="button" data-qp-delete="${escapeAttr(row.id)}">Delete</button></td>
             </tr>`;
           }).join("");
-        }
-
-        function initCkEditorIfAvailable() {
-          const ck4Config = {
-            height: 360,
-            removePlugins: "elementspath",
-            resize_enabled: true,
-            extraAllowedContent: "*(*);*{*}",
-            extraPlugins: "uploadimage,image2,justify,colorbutton,font,table,tableresize,smiley,specialchar,horizontalrule,pagebreak,find,showblocks,maximize,widget,lineutils,clipboard",
-            allowedContent: true,
-            toolbarCanCollapse: true,
-            toolbarGroups: [
-              { name: "clipboard", groups: ["clipboard", "undo"] },
-              { name: "editing", groups: ["find", "selection", "spellchecker"] },
-              { name: "links" },
-              { name: "insert" },
-              { name: "forms" },
-              { name: "tools" },
-              { name: "document", groups: ["mode", "document", "doctools"] },
-              { name: "others" },
-              "/",
-              { name: "basicstyles", groups: ["basicstyles", "cleanup"] },
-              { name: "paragraph", groups: ["list", "indent", "blocks", "align", "bidi"] },
-              { name: "styles" },
-              { name: "colors" },
-              { name: "about" }
-            ],
-            removeButtons: ""
-          };
-          const ck5Config = {
-            toolbar: [
-              "undo", "redo", "|",
-              "heading", "style", "|",
-              "bold", "italic", "underline", "strikethrough", "subscript", "superscript", "code", "removeFormat", "|",
-              "fontFamily", "fontSize", "fontColor", "fontBackgroundColor", "|",
-              "alignment", "|",
-              "bulletedList", "numberedList", "todoList", "outdent", "indent", "|",
-              "link", "insertImage", "insertTable", "mediaEmbed", "horizontalLine", "specialCharacters", "blockQuote", "pageBreak", "|",
-              "findAndReplace", "selectAll", "showBlocks", "sourceEditing"
-            ],
-            image: {
-              toolbar: [
-                "imageTextAlternative",
-                "toggleImageCaption",
-                "imageStyle:inline",
-                "imageStyle:block",
-                "imageStyle:side",
-                "resizeImage"
-              ],
-              resizeOptions: [
-                { name: "resizeImage:original", value: null, label: "Original" },
-                { name: "resizeImage:25", value: "25", label: "25%" },
-                { name: "resizeImage:50", value: "50", label: "50%" },
-                { name: "resizeImage:75", value: "75", label: "75%" }
-              ]
-            },
-            table: {
-              contentToolbar: ["tableColumn", "tableRow", "mergeTableCells", "tableCellProperties", "tableProperties"]
-            },
-            fontSize: {
-              options: [8, 9, 10, 11, 12, 14, 16, 18, 20, 24, 28, 32, 40, 48, 56, 64, 72, 96],
-              supportAllValues: true
-            },
-            fontFamily: {
-              options: [
-                "default",
-                "Arial, Helvetica, sans-serif",
-                "Calibri, sans-serif",
-                "\"Times New Roman\", Times, serif",
-                "Georgia, serif",
-                "Verdana, Geneva, sans-serif",
-                "\"Courier New\", Courier, monospace",
-                "\"DotGothic16\", sans-serif"
-              ],
-              supportAllValues: true
-            }
-          };
-          function showFallbackMessage() {
-            if (editorStatus) {
-              editorStatus.textContent = "CKEditor file not found. Please add local CKEditor in assets/vendor/ckeditor/ to enable full toolbar.";
-              editorStatus.className = "form-message error";
-            }
-          }
-          if (window.CKEDITOR && typeof window.CKEDITOR.replace === "function") {
-            ckEditorInstance = window.CKEDITOR.replace("qpEditorArea", ck4Config);
-            ckEditorInstance.on("instanceReady", function () {
-              try {
-                ckEditorInstance.ui.addButton("InsertShape", {
-                  label: "Insert Shape",
-                  command: "insertShape",
-                  toolbar: "insert",
-                  icon: "templates"
-                });
-                ckEditorInstance.addCommand("insertShape", {
-                  exec: function (editorRef) {
-                    const shapes = "â— â—‹ â–  â–¡ â—† â—‡ â–² â–³ â˜… â˜† â˜‘ â˜’ âž¤ âž¥";
-                    const chosen = window.prompt(`Insert shape:\n${shapes}`, "â—");
-                    if (!chosen) {
-                      return;
-                    }
-                    editorRef.insertHtml(`<span>${escapeHtml(chosen)}</span>`);
-                  }
-                });
-              } catch (_error) {
-                // keep editor usable if custom shape button cannot be attached
-              }
-            });
-            if (editorStatus) {
-              editorStatus.textContent = "CKEditor loaded successfully.";
-              editorStatus.className = "form-message success";
-            }
-            return;
-          }
-          if (window.ClassicEditor && typeof window.ClassicEditor.create === "function") {
-            window.ClassicEditor.create(editorArea, ck5Config).then(function (instance) {
-              ck5EditorInstance = instance;
-              if (editorStatus) {
-                editorStatus.textContent = "CKEditor loaded successfully.";
-                editorStatus.className = "form-message success";
-              }
-            }).catch(function () {
-              showFallbackMessage();
-            });
-            return;
-          }
-          const localScript = document.createElement("script");
-          localScript.src = "assets/vendor/ckeditor/ckeditor.js";
-          localScript.onload = function () {
-            if (window.CKEDITOR && typeof window.CKEDITOR.replace === "function") {
-              ckEditorInstance = window.CKEDITOR.replace("qpEditorArea", ck4Config);
-              if (editorStatus) {
-                editorStatus.textContent = "CKEditor loaded successfully.";
-                editorStatus.className = "form-message success";
-              }
-            } else if (window.ClassicEditor && typeof window.ClassicEditor.create === "function") {
-              window.ClassicEditor.create(editorArea, ck5Config).then(function (instance) {
-                ck5EditorInstance = instance;
-                if (editorStatus) {
-                  editorStatus.textContent = "CKEditor loaded successfully.";
-                  editorStatus.className = "form-message success";
-                }
-              }).catch(function () {
-                showFallbackMessage();
-              });
-            } else {
-              showFallbackMessage();
-            }
-          };
-          localScript.onerror = function () {
-            showFallbackMessage();
-          };
-          document.head.appendChild(localScript);
         }
 
         document.getElementById("qpAddMcq").addEventListener("click", function () {
@@ -15076,7 +14905,10 @@ document.addEventListener("DOMContentLoaded", function () {
           menu.style.left = `${x}px`;
           menu.style.top = `${y}px`;
           menu.style.zIndex = "99999";
+          const isTableOrImage = node.tagName === "TABLE" || node.classList.contains("qp-editor-table-wrap") || node.tagName === "IMG";
           menu.innerHTML = `
+            <button type="button" class="qp-object-menu__item" data-action="moveUp">Move Up</button>
+            <button type="button" class="qp-object-menu__item" data-action="moveDown">Move Down</button>
             <button type="button" class="qp-object-menu__item" data-action="behind">Wrap Behind</button>
             <button type="button" class="qp-object-menu__item" data-action="inline">Wrap Inline</button>
             <button type="button" class="qp-object-menu__item danger" data-action="remove">Remove</button>
@@ -15085,7 +14917,13 @@ document.addEventListener("DOMContentLoaded", function () {
             const item = event.target.closest("[data-action]");
             if (!item) return;
             const action = item.getAttribute("data-action");
-            if (action === "behind") {
+            if (action === "moveUp") {
+              const prev = node.previousElementSibling;
+              if (prev) { node.parentNode.insertBefore(node, prev); }
+            } else if (action === "moveDown") {
+              const next = node.nextElementSibling;
+              if (next) { node.parentNode.insertBefore(next, node); }
+            } else if (action === "behind") {
               applyObjectWrapBehind(node);
             } else if (action === "inline") {
               applyObjectWrapInline(node);
@@ -15139,6 +14977,16 @@ document.addEventListener("DOMContentLoaded", function () {
             el.style.minWidth = "28px";
             el.style.minHeight = "28px";
           }
+          el.addEventListener("mouseenter", function () {
+            if (selectedEditorNode !== el) {
+              el.style.outline = "1px dashed #7a8da8";
+            }
+          });
+          el.addEventListener("mouseleave", function () {
+            if (selectedEditorNode !== el) {
+              el.style.outline = "";
+            }
+          });
           let dragging = false;
           let resizing = false;
           let startX = 0;
@@ -15683,6 +15531,48 @@ document.addEventListener("DOMContentLoaded", function () {
             reader.readAsDataURL(file);
             imageInput.value = "";
           };
+
+          editorToolbar.addEventListener("click", function (e) {
+            const btn = e.target.closest("[data-qp-cmd]");
+            if (!btn) return;
+            const cmd = btn.getAttribute("data-qp-cmd");
+            editorArea.focus();
+            document.execCommand(cmd, false, null);
+          });
+
+          document.getElementById("qpApplyFontSize").addEventListener("click", function () {
+            const px = Math.max(8, Number(document.getElementById("qpFontSizeInput").value || 16));
+            editorArea.focus();
+            document.execCommand("fontSize", false, false);
+            document.execCommand("insertHTML", false, `<span style="font-size:${px}px;">${window.getSelection().toString() || "Text"}</span>`);
+          });
+
+          document.getElementById("qpApplyTextColor").addEventListener("click", function () {
+            const color = document.getElementById("qpTextColorInput").value;
+            editorArea.focus();
+            document.execCommand("foreColor", false, color);
+          });
+
+          document.getElementById("qpApplyBgColor").addEventListener("click", function () {
+            const color = document.getElementById("qpBgColorInput").value;
+            editorArea.focus();
+            document.execCommand("backColor", false, color);
+          });
+
+          document.getElementById("qpInsertTable").addEventListener("click", function () {
+            openTableSizeDialog(function (rows, cols) {
+              var html = '<p><br></p><div class="qp-editor-table-wrap" contenteditable="false" data-editor-interactive="1"><table style="width:100%;border-collapse:collapse;">';
+              for (var r = 0; r < rows; r++) {
+                html += "<tr>";
+                for (var c = 0; c < cols; c++) {
+                  html += '<td style="border:1px solid #0f2748;padding:8px;" contenteditable="true">&nbsp;</td>';
+                }
+                html += "</tr>";
+              }
+              html += "</table></div><p><br></p>";
+              insertAtCursor(html);
+            });
+          });
         }
 
 
@@ -15699,9 +15589,7 @@ document.addEventListener("DOMContentLoaded", function () {
         renderTypeMode();
         renderMcqRows();
         renderChapterRows();
-        setupFallbackToolbar_DUP();
         setupAdvancedToolbar();
-        initCkEditorIfAvailable_DUP();
         return;
       }
 
@@ -16354,449 +16242,6 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    if (route === "subject-chapters" || route === "question-bank" || route === "create-question-paper") {
-      const classOptionsMarkup = classOptions.map(function (name) {
-        return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
-      }).join("");
-
-      if (route === "subject-chapters") {
-        moduleSummary.innerHTML = `
-          <article>
-            <strong class="module-center-title">Subject Chapters</strong>
-            <div class="form-grid">
-              <div class="field-group"><label for="chapterClassSelect">Select Class*</label><select id="chapterClassSelect"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
-              <div class="field-group"><label for="chapterSubjectInput">Subject*</label><input id="chapterSubjectInput" type="text" placeholder="e.g Mathematics"></div>
-              <div class="field-group"><label for="chapterSectionSelect">Section*</label><select id="chapterSectionSelect"><option value="Section A">Section A</option><option value="Section B">Section B</option><option value="Section C">Section C</option></select></div>
-              <div class="field-group"><label for="chapterQuestionTypeSelect">Question Type*</label><select id="chapterQuestionTypeSelect"><option value="mcq">MCQ</option><option value="fill">Fill In The Blanks</option><option value="truefalse">True/False</option><option value="short">Short Question</option><option value="long">Long Question</option></select></div>
-              <div class="field-group"><label for="chapterMarksInput">Marks*</label><input id="chapterMarksInput" type="number" min="1" value="5"></div>
-              <div class="field-group field-group--full"><label for="chapterTitleInput">Question / Chapter Title*</label><input id="chapterTitleInput" type="text" placeholder="e.g Choose the correct option"></div>
-              <div class="field-group field-group--full"><label for="chapterInstructionsInput">Instructions</label><textarea id="chapterInstructionsInput" class="question-rich-editor" placeholder="Add any instructions for students"></textarea></div>
-              <div class="field-group field-group--full">
-                <label>Question Editor*</label>
-                <div id="chapterRichEditor" class="question-rich-editor" contenteditable="true"></div>
-              </div>
-              <div class="field-group field-group--full" id="mcqOptionsField" hidden>
-                <label>MCQ Options</label>
-                <div id="mcqOptionsRows" class="question-options-grid"></div>
-                <div class="form-actions">
-                  <button class="table-action-btn" id="addMcqOptionBtn" type="button">Add Option</button>
-                  <button class="table-action-btn danger" id="removeMcqOptionBtn" type="button">Remove Option</button>
-                </div>
-                <div class="field-group">
-                  <label for="mcqCorrectAnswerInput">Correct Option</label>
-                  <input id="mcqCorrectAnswerInput" type="text" placeholder="e.g A or full option text">
-                </div>
-              </div>
-              <div class="field-group field-group--full" id="typeAnswerField">
-                <label for="typeAnswerInput">Expected Answer</label>
-                <input id="typeAnswerInput" type="text" placeholder="Write expected answer">
-              </div>
-              <div class="field-group" id="trueFalseAnswerField" hidden>
-                <label for="trueFalseAnswerSelect">True/False Answer</label>
-                <select id="trueFalseAnswerSelect"><option value="True">True</option><option value="False">False</option></select>
-              </div>
-            </div>
-            <div class="form-actions"><button class="primary-button" id="saveChapterBtn" type="button">Save Question</button></div>
-            <p class="form-message" id="chapterMessage"></p>
-            <div class="table-wrap"><table><thead><tr><th>Class</th><th>Subject</th><th>Section</th><th>Type</th><th>Marks</th><th>Title</th><th>Question</th><th>Action</th></tr></thead><tbody id="chapterTableBody"></tbody></table></div>
-          </article>
-        `;
-        moduleGuide.innerHTML = "";
-        const classSelect = document.getElementById("chapterClassSelect");
-        const subjectInput = document.getElementById("chapterSubjectInput");
-        const sectionSelect = document.getElementById("chapterSectionSelect");
-        const typeSelect = document.getElementById("chapterQuestionTypeSelect");
-        const marksInput = document.getElementById("chapterMarksInput");
-        const titleInput = document.getElementById("chapterTitleInput");
-        const richEditor = document.getElementById("chapterRichEditor");
-        const mcqOptionsField = document.getElementById("mcqOptionsField");
-        const mcqOptionsRows = document.getElementById("mcqOptionsRows");
-        const correctAnswerInput = document.getElementById("mcqCorrectAnswerInput");
-        const typeAnswerField = document.getElementById("typeAnswerField");
-        const typeAnswerInput = document.getElementById("typeAnswerInput");
-        const trueFalseAnswerField = document.getElementById("trueFalseAnswerField");
-        const trueFalseAnswerSelect = document.getElementById("trueFalseAnswerSelect");
-        const imageInput = document.getElementById("editorImageInput");
-        const fontSelect = document.getElementById("editorFontSelect");
-        const fontSizeInput = document.getElementById("editorFontSizeInput");
-        const body = document.getElementById("chapterTableBody");
-
-        function createMcqOptionRow(value) {
-          const row = document.createElement("div");
-          row.className = "question-option-row";
-          row.innerHTML = `<span class="menu-icon">OP</span><input type="text" class="question-option-input" value="${escapeAttr(value || "")}" placeholder="Option text">`;
-          return row;
-        }
-
-        function renderMcqOptions(initialOptions) {
-          const options = Array.isArray(initialOptions) && initialOptions.length ? initialOptions : ["", "", "", ""];
-          mcqOptionsRows.innerHTML = "";
-          options.forEach(function (item) {
-            mcqOptionsRows.appendChild(createMcqOptionRow(item));
-          });
-        }
-
-        function getMcqOptions() {
-          return Array.from(mcqOptionsRows.querySelectorAll(".question-option-input")).map(function (input) {
-            return String(input.value || "").trim();
-          }).filter(Boolean);
-        }
-
-        function applyQuestionTypeState() {
-          const typeValue = typeSelect.value;
-          const isMcq = typeValue === "mcq";
-          const isTrueFalse = typeValue === "truefalse";
-          mcqOptionsField.hidden = !isMcq;
-          typeAnswerField.hidden = isMcq || isTrueFalse;
-          trueFalseAnswerField.hidden = !isTrueFalse;
-          if (!isMcq) {
-            mcqOptionsRows.innerHTML = "";
-            correctAnswerInput.value = "";
-          } else if (!mcqOptionsRows.children.length) {
-            renderMcqOptions();
-          }
-          if (typeValue === "truefalse") {
-            richEditor.innerHTML = "<p>Statement:</p>";
-          }
-          if (typeValue === "fill") {
-            richEditor.innerHTML = "<p>Sentence with blank: __________</p>";
-          }
-        }
-
-        function execEditorCommand(command, value) {
-          richEditor.focus();
-          try {
-            document.execCommand(command, false, value || null);
-          } catch (error) {
-            // No-op fallback
-          }
-        }
-
-        moduleSummary.querySelectorAll("[data-editor-cmd]").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            execEditorCommand(btn.getAttribute("data-editor-cmd"));
-          });
-        });
-        moduleSummary.querySelectorAll("[data-editor-color]").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            execEditorCommand("foreColor", btn.getAttribute("data-editor-color"));
-          });
-        });
-        moduleSummary.querySelectorAll("[data-editor-size]").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            execEditorCommand("fontSize", btn.getAttribute("data-editor-size"));
-          });
-        });
-        moduleSummary.querySelectorAll("[data-editor-hilite]").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            execEditorCommand("hiliteColor", btn.getAttribute("data-editor-hilite"));
-          });
-        });
-        if (fontSelect) {
-          fontSelect.addEventListener("change", function () {
-            if (fontSelect.value) {
-              execEditorCommand("fontName", fontSelect.value);
-            }
-          });
-        }
-        document.getElementById("applyFontSizeBtn").addEventListener("click", function () {
-          const px = Math.max(8, Math.min(180, Number(fontSizeInput && fontSizeInput.value ? fontSizeInput.value : 16)));
-          execEditorCommand("insertHTML", `<span style="font-size:${px}px;">Text</span>`);
-        });
-        document.getElementById("insertLinkBtn").addEventListener("click", function () {
-          const link = window.prompt("Enter URL:", "https://");
-          if (!link) {
-            return;
-          }
-          execEditorCommand("createLink", link.trim());
-        });
-        document.getElementById("insertShapeBtn").addEventListener("click", function () {
-          const shape = window.prompt("Insert shape symbol (e.g â˜…, â—, â– ):", "â˜…");
-          if (!shape) {
-            return;
-          }
-          execEditorCommand("insertText", shape);
-        });
-        document.getElementById("insertImageEditorBtn").addEventListener("click", function () {
-          imageInput.click();
-        });
-        imageInput.addEventListener("change", async function () {
-          const file = imageInput.files && imageInput.files[0];
-          if (!file) {
-            return;
-          }
-          const data = await new Promise(function (resolve, reject) {
-            const reader = new FileReader();
-            reader.onload = function () { resolve(reader.result); };
-            reader.onerror = function () { reject(new Error("Unable to load image")); };
-            reader.readAsDataURL(file);
-          }).catch(function () { return ""; });
-          if (data) {
-            execEditorCommand("insertImage", data);
-          }
-          imageInput.value = "";
-        });
-
-        document.getElementById("addMcqOptionBtn").addEventListener("click", function () {
-          mcqOptionsRows.appendChild(createMcqOptionRow(""));
-        });
-        document.getElementById("removeMcqOptionBtn").addEventListener("click", function () {
-          if (mcqOptionsRows.children.length > 1) {
-            mcqOptionsRows.removeChild(mcqOptionsRows.lastElementChild);
-          }
-        });
-
-        function renderChapters() {
-          body.innerHTML = (settings.questionChapters || []).map(function (item) {
-            return `<tr><td>${escapeHtml(item.className || "-")}</td><td>${escapeHtml(item.subject || "-")}</td><td>${escapeHtml(item.section || "-")}</td><td>${escapeHtml(item.questionType || "-")}</td><td>${Number(item.marks || 0)}</td><td>${escapeHtml(item.title || "-")}</td><td>${escapeHtml((item.questionText || "").replace(/<[^>]+>/g, " ").trim().slice(0, 120) || "-")}</td><td><button class="table-action-btn danger" type="button" data-delete-chapter="${escapeAttr(item.id)}">Delete</button></td></tr>`;
-          }).join("");
-        }
-        document.getElementById("saveChapterBtn").addEventListener("click", function () {
-          const className = classSelect.value;
-          const subject = subjectInput.value.trim();
-          const section = sectionSelect.value;
-          const questionType = typeSelect.value;
-          const marks = Number(marksInput.value);
-          const titleValue = titleInput.value.trim();
-          const questionHtml = String(richEditor.innerHTML || "").trim();
-          const questionText = String(richEditor.textContent || "").trim();
-          const options = questionType === "mcq" ? getMcqOptions() : [];
-          const correctAnswer = questionType === "mcq"
-            ? correctAnswerInput.value.trim()
-            : (questionType === "truefalse" ? trueFalseAnswerSelect.value : typeAnswerInput.value.trim());
-          const message = document.getElementById("chapterMessage");
-          if (!className || !subject || !section || !questionType || !titleValue || !(marks > 0) || !questionText) {
-            message.textContent = "Please fill required fields.";
-            message.className = "form-message error";
-            return;
-          }
-          if (questionType === "mcq" && options.length < 2) {
-            message.textContent = "For MCQ, add at least two options.";
-            message.className = "form-message error";
-            return;
-          }
-          const payload = {
-            id: `CHP-${Date.now()}`,
-            className: className,
-            subject: subject,
-            section: section,
-            questionType: questionType,
-            marks: marks,
-            title: titleValue,
-            questionHtml: questionHtml,
-            questionText: questionText,
-            options: options,
-            correctAnswer: correctAnswer
-          };
-          settings.questionChapters.unshift(payload);
-          settings.questionBank.unshift({
-            id: `QBK-${Date.now()}`,
-            className: className,
-            subject: subject,
-            section: section,
-            questionType: questionType,
-            difficulty: "Medium",
-            marks: marks,
-            question: questionText,
-            questionHtml: questionHtml,
-            options: options,
-            correctAnswer: correctAnswer
-          });
-          saveDatabase();
-          message.textContent = "Question saved successfully.";
-          message.className = "form-message success";
-          richEditor.innerHTML = "";
-          titleInput.value = "";
-          correctAnswerInput.value = "";
-          typeAnswerInput.value = "";
-          trueFalseAnswerSelect.value = "True";
-          renderMcqOptions();
-          renderChapters();
-        });
-        body.addEventListener("click", function (event) {
-          const button = event.target.closest("[data-delete-chapter]");
-          if (!button) {
-            return;
-          }
-          const id = button.getAttribute("data-delete-chapter");
-          settings.questionChapters = (settings.questionChapters || []).filter(function (item) { return String(item.id) !== String(id); });
-          saveDatabase();
-          renderChapters();
-        });
-        typeSelect.addEventListener("change", applyQuestionTypeState);
-        applyQuestionTypeState();
-        renderMcqOptions();
-        renderChapters();
-        return;
-      }
-
-      moduleSummary.innerHTML = `
-        <article>
-          <strong class="module-center-title">Create Question Paper</strong>
-          <div class="form-grid">
-            <div class="field-group"><label for="paperClassSelect">Select Class*</label><select id="paperClassSelect"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
-            <div class="field-group"><label for="paperSubjectInput">Subject*</label><input id="paperSubjectInput" type="text" placeholder="e.g Science"></div>
-            <div class="field-group"><label for="paperTitleInput">Paper Title*</label><input id="paperTitleInput" type="text" placeholder="Monthly Test"></div>
-            <div class="field-group"><label for="paperDateInput">Exam Date*</label><input id="paperDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
-            <div class="field-group field-group--full"><label for="paperInstructionsInput">Instructions</label><textarea id="paperInstructionsInput" rows="3" placeholder="Write instructions for students"></textarea></div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Select</th><th>Section</th><th>Type</th><th>Question</th><th>Difficulty</th><th>Marks</th></tr></thead>
-              <tbody id="paperQuestionPickBody"></tbody>
-            </table>
-          </div>
-          <article class="panel-card question-paper-preview-card">
-            <strong>Question Paper Preview</strong>
-            <div id="questionPaperPreviewBox" class="module-preview-card"><p>Select class/subject and load questions to preview.</p></div>
-          </article>
-          <div class="form-actions">
-            <button class="table-action-btn" id="refreshPaperQuestionsBtn" type="button">Load Questions</button>
-            <button class="primary-button" id="printQuestionPaperBtn" type="button">Print Question Paper</button>
-          </div>
-          <p class="form-message" id="paperMessage"></p>
-        </article>
-      `;
-      moduleGuide.innerHTML = "";
-      const paperClassSelect = document.getElementById("paperClassSelect");
-      const paperSubjectInput = document.getElementById("paperSubjectInput");
-      const questionBody = document.getElementById("paperQuestionPickBody");
-      const paperMessage = document.getElementById("paperMessage");
-      const previewBox = document.getElementById("questionPaperPreviewBox");
-
-      function renderPaperQuestionRows() {
-        const className = paperClassSelect.value;
-        const subject = paperSubjectInput.value.trim().toLowerCase();
-        const rows = (settings.questionBank || []).filter(function (row) {
-          const classOk = !className || row.className === className;
-          const subjectOk = !subject || String(row.subject || "").toLowerCase().includes(subject);
-          return classOk && subjectOk;
-        });
-        questionBody.innerHTML = rows.map(function (row, index) {
-          return `<tr><td><input type="checkbox" data-paper-question="${escapeAttr(row.id)}" ${index < 10 ? "checked" : ""}></td><td>${escapeHtml(row.section || "-")}</td><td>${escapeHtml(row.questionType || "-")}</td><td>${escapeHtml(row.question || "-")}</td><td>${escapeHtml(row.difficulty || "-")}</td><td>${Number(row.marks || 0)}</td></tr>`;
-        }).join("");
-        if (!rows.length) {
-          questionBody.innerHTML = `<tr><td colspan="6" class="empty-state">No question found for selected class/subject.</td></tr>`;
-        }
-        renderQuestionPaperPreview();
-      }
-
-      function getSelectedPaperQuestions() {
-        const selectedIds = Array.from(questionBody.querySelectorAll("[data-paper-question]:checked")).map(function (item) { return item.getAttribute("data-paper-question"); });
-        return (settings.questionBank || []).filter(function (row) { return selectedIds.includes(String(row.id)); });
-      }
-
-      function renderQuestionPaperPreview() {
-        const className = paperClassSelect.value;
-        const subject = paperSubjectInput.value.trim();
-        const titleText = document.getElementById("paperTitleInput").value.trim();
-        const examDate = document.getElementById("paperDateInput").value;
-        const selectedQuestions = getSelectedPaperQuestions();
-        const instituteProfile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-        const schoolName = instituteProfile.name || database.school.name || "School";
-        const schoolSlogan = instituteProfile.slogan || "";
-        if (!className || !subject || !selectedQuestions.length) {
-          previewBox.innerHTML = `<p>Select class/subject and questions to preview professional paper.</p>`;
-          return;
-        }
-        const grouped = ["Section A", "Section B", "Section C"].map(function (sectionName) {
-          return {
-            name: sectionName,
-            rows: selectedQuestions.filter(function (item) { return (item.section || "Section A") === sectionName; })
-          };
-        });
-        previewBox.innerHTML = `
-          <article style="display:grid;gap:10px;">
-            <header style="text-align:center;border-bottom:1px solid rgba(16,37,66,0.2);padding-bottom:8px;">
-              <p style="margin:0;font-weight:700;">${escapeHtml(schoolName)}</p>
-              <p style="margin:2px 0 4px;color:#5f7394;">${escapeHtml(schoolSlogan || "Question Paper Preview")}</p>
-              <strong style="font-size:1.1rem;">${escapeHtml(titleText || "Question Paper")}</strong>
-              <p style="margin:4px 0 0;">Class: ${escapeHtml(className)} | Subject: ${escapeHtml(subject)} | Date: ${escapeHtml(examDate || "-")}</p>
-            </header>
-            ${grouped.map(function (group) {
-              if (!group.rows.length) {
-                return "";
-              }
-              const typeBuckets = {};
-              group.rows.forEach(function (row) {
-                const key = String(row.questionType || "short").toLowerCase();
-                if (!typeBuckets[key]) {
-                  typeBuckets[key] = [];
-                }
-                typeBuckets[key].push(row);
-              });
-              const typeLabels = {
-                mcq: "MCQ",
-                fill: "Fill In The Blanks",
-                truefalse: "True / False",
-                short: "Short Questions",
-                long: "Long Questions"
-              };
-              return `<section><strong>${escapeHtml(group.name)}</strong>${Object.keys(typeBuckets).map(function (key) {
-                const rows = typeBuckets[key];
-                const sharedTitleRow = rows.find(function (r) { return String(r.title || "").trim(); });
-                const sharedTitle = sharedTitleRow ? String(sharedTitleRow.title).trim() : (typeLabels[key] || "Questions");
-                return `<div style="margin-top:8px;"><p style="margin:0 0 6px;font-weight:700;color:#0f2748;">${escapeHtml(sharedTitle)}</p>${rows.map(function (row, index) { return `<p style="margin:6px 0;"><strong>Q${index + 1}.</strong> ${escapeHtml(row.question || "-")} <span style="color:#5f7394;">[${escapeHtml(row.questionType || "-")} | ${Number(row.marks || 0)}]</span></p>`; }).join("")}</div>`;
-              }).join("")}</section>`;
-            }).join("")}
-          </article>
-        `;
-      }
-
-      document.getElementById("refreshPaperQuestionsBtn").addEventListener("click", renderPaperQuestionRows);
-      document.getElementById("printQuestionPaperBtn").addEventListener("click", function () {
-        const className = paperClassSelect.value;
-        const subject = paperSubjectInput.value.trim();
-        const titleText = document.getElementById("paperTitleInput").value.trim();
-        const examDate = document.getElementById("paperDateInput").value;
-        const instructions = document.getElementById("paperInstructionsInput").value.trim();
-        const selectedQuestions = getSelectedPaperQuestions();
-        if (!className || !subject || !titleText || !examDate || !selectedQuestions.length) {
-          paperMessage.textContent = "Please complete required fields and select at least one question.";
-          paperMessage.className = "form-message error";
-          return;
-        }
-        const totalMarks = selectedQuestions.reduce(function (sum, row) { return sum + Number(row.marks || 0); }, 0);
-        const instituteProfile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-        const schoolName = instituteProfile.name || database.school.name || "School";
-        const schoolSlogan = instituteProfile.slogan || "";
-        settings.questionPapers.unshift({
-          id: `QP-${Date.now()}`,
-          className: className,
-          subject: subject,
-          title: titleText,
-          examDate: examDate,
-          instructions: instructions,
-          questions: selectedQuestions
-        });
-        saveDatabase();
-        openPrintReport({
-          title: "Question Paper",
-          subtitle: `${titleText} | Class: ${className} | Subject: ${subject} | Date: ${examDate} | Total Marks: ${totalMarks}`,
-          contentHtml: `<article class="report-card" style="text-align:center;"><p style="margin:0;font-weight:700;">${escapeHtml(schoolName)}</p><p style="margin:3px 0;color:#5f7394;">${escapeHtml(schoolSlogan || "Question Paper")}</p><p style="margin:0;"><strong>Class:</strong> ${escapeHtml(className)} | <strong>Subject:</strong> ${escapeHtml(subject)} | <strong>Date:</strong> ${escapeHtml(examDate)}</p></article><article class="report-card"><p><strong>Instructions:</strong> ${escapeHtml(instructions || "-")}</p></article>${["Section A", "Section B", "Section C"].map(function (sectionName) { const sectionRows = selectedQuestions.filter(function (q) { return (q.section || "Section A") === sectionName; }); if (!sectionRows.length) { return ""; } return `<article class="report-card"><h3 style="margin:0 0 8px;">${escapeHtml(sectionName)}</h3><table><thead><tr><th>Q#</th><th>Question</th><th>Type</th><th>Marks</th></tr></thead><tbody>${sectionRows.map(function (q, idx) { return `<tr><td>${idx + 1}</td><td>${escapeHtml(q.question || "-")}</td><td>${escapeHtml(q.questionType || "-")}</td><td>${Number(q.marks || 0)}</td></tr>`; }).join("")}</tbody></table></article>`; }).join("")}`
-        });
-        paperMessage.textContent = "Question paper prepared successfully.";
-        paperMessage.className = "form-message success";
-      });
-      questionBody.addEventListener("change", function (event) {
-        if (event.target && event.target.matches("[data-paper-question]")) {
-          renderQuestionPaperPreview();
-        }
-      });
-      [paperClassSelect, paperSubjectInput].forEach(function (input) {
-        input.addEventListener("change", renderPaperQuestionRows);
-        input.addEventListener("input", renderPaperQuestionRows);
-      });
-      ["paperTitleInput", "paperDateInput", "paperInstructionsInput"].forEach(function (id) {
-        const node = document.getElementById(id);
-        if (node) {
-          node.addEventListener("input", renderQuestionPaperPreview);
-          node.addEventListener("change", renderQuestionPaperPreview);
-        }
-      });
-      renderPaperQuestionRows();
-      return;
-    }
 
     if (route === "manage-test-marks" || route === "test-result") {
       const classOptionsMarkup = classOptions.map(function (name) {
@@ -16983,21 +16428,12 @@ document.addEventListener("DOMContentLoaded", function () {
               <button class="secondary-button" id="sendTestResultSmsBtn" type="button">Send SMS To All</button>
             </div>
           </div>
-          <div class="field-group field-group--full test-result-template-field">
-            <label for="testResultWhatsappTemplate">SMS / WhatsApp Template</label>
-            <textarea id="testResultWhatsappTemplate" rows="3" readonly>${escapeHtml(getSavedMessageTemplate("classTestResultMessage", getClassTestTemplateFallback()))}</textarea>
-          </div>
-          <div class="form-actions">
-            <button class="secondary-button" id="editTestResultTemplateBtn" type="button">Edit Template</button>
-            <button class="primary-button" id="saveTestResultTemplateBtn" type="button" hidden>Save Template</button>
-          </div>
           <div class="table-wrap test-result-table-wrap"><table><thead><tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Class</th><th>Subject</th><th>Test</th><th>Date</th><th>Obtained</th><th>Total</th><th>%</th><th>Grade</th><th>Status</th><th>Action</th></tr></thead><tbody id="testResultBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
       const classSelect = document.getElementById("testResultClassSelect");
       const testSelect = document.getElementById("testResultNameSelect");
-      const templateInput = document.getElementById("testResultWhatsappTemplate");
       const body = document.getElementById("testResultBody");
 
       function updateTestResultNames() {
@@ -17078,7 +16514,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!student) {
           return;
         }
-        const template = templateInput && templateInput.value.trim() ? templateInput.value : buildCommunicationTemplate("result", {});
+        const template = getSavedMessageTemplate("classTestResultMessage", getClassTestTemplateFallback());
         const text = interpolateTemplate(template, {
           prefix: getGenderPrefix(student.gender),
           name: student.name || "-",
@@ -17095,31 +16531,13 @@ document.addEventListener("DOMContentLoaded", function () {
         sendDirectWhatsappToStudent(student, student.name || "student", text);
       });
 
-      const editTestResultTemplateBtn = document.getElementById("editTestResultTemplateBtn");
-      const saveTestResultTemplateBtn = document.getElementById("saveTestResultTemplateBtn");
-      
-      editTestResultTemplateBtn.addEventListener("click", function () {
-        templateInput.readOnly = false;
-        templateInput.style.backgroundColor = "#fff";
-        editTestResultTemplateBtn.hidden = true;
-        saveTestResultTemplateBtn.hidden = false;
-      });
-
-      saveTestResultTemplateBtn.addEventListener("click", function () {
-        saveMessageTemplate("classTestResultMessage", templateInput);
-        templateInput.readOnly = true;
-        templateInput.style.backgroundColor = "#f5f5f5";
-        editTestResultTemplateBtn.hidden = false;
-        saveTestResultTemplateBtn.hidden = true;
-      });
-
       document.getElementById("sendTestResultSmsBtn").addEventListener("click", async function () {
         const rows = getTestResultRows();
         if (!rows.length) {
           alert("No test result records to send.");
           return;
         }
-        const template = templateInput && templateInput.value.trim() ? templateInput.value : getClassTestTemplateFallback();
+        const template = getSavedMessageTemplate("classTestResultMessage", getClassTestTemplateFallback());
         let success = 0;
         let failed = 0;
         for (let index = 0; index < rows.length; index += 1) {
@@ -17441,6 +16859,66 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    if (route === "sms-templates") {
+      moduleSectionLabel.textContent = "Sms/Whatsapp Templates";
+      moduleGuide.innerHTML = "";
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
+
+      var tplConfigs = [
+        { key: "defaultersSms", title: "Fee Defaulters", textareaId: "tplDefaultersSms", editBtnId: "tplEditDefaultersSms", saveBtnId: "tplSaveDefaultersSms", fallback: "Dear {prefix} {name}, fee due for {month}. Total amount: {amount}. Please submit fee as soon as possible.\nBest regards, {school}." },
+        { key: "resultCard", title: "Result Card Message", textareaId: "tplResultCard", editBtnId: "tplEditResultCard", saveBtnId: "tplSaveResultCard", fallback: "Dear student/parent {prefix} {roll},\nResult ({exam}): {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.\nBest regards,\n{school}." },
+        { key: "studentIdCard", title: "Student ID Card", textareaId: "tplStudentIdCard", editBtnId: "tplEditStudentIdCard", saveBtnId: "tplSaveStudentIdCard", fallback: getDefaultStudentIdCardTemplate() },
+        { key: "studentAbsent", title: "Students Absentee", textareaId: "tplStudentAbsent", editBtnId: "tplEditStudentAbsent", saveBtnId: "tplSaveStudentAbsent", fallback: "Dear {prefix} {name}, you are marked absent today {date}. Please contact school office.\nBest regards,\n{school}." },
+        { key: "employeeAbsent", title: "Employees Absentee", textareaId: "tplEmployeeAbsent", editBtnId: "tplEditEmployeeAbsent", saveBtnId: "tplSaveEmployeeAbsent", fallback: "Dear {prefix} {name}, you are marked absent today {date}. Please contact school office.\nBest regards,\n{school}." },
+        { key: "staffIdCardSms", title: "Staff ID Card", textareaId: "tplStaffIdCard", editBtnId: "tplEditStaffIdCard", saveBtnId: "tplSaveStaffIdCard", fallback: getDefaultStaffIdCardTemplate() },
+        { key: "jobLetterSms", title: "Job Letter", textareaId: "tplJobLetter", editBtnId: "tplEditJobLetter", saveBtnId: "tplSaveJobLetter", fallback: getDefaultJobLetterTemplate() },
+        { key: "studentReportWhatsapp", title: "Student Report (WhatsApp)", textareaId: "tplStudentReport", editBtnId: "tplEditStudentReport", saveBtnId: "tplSaveStudentReport", fallback: "Dear student/parent {prefix} {roll},\nResult ({exam}): {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.\nBest regards,\n{school}." },
+        { key: "employeeReportWhatsapp", title: "Employee Report (WhatsApp)", textareaId: "tplEmployeeReport", editBtnId: "tplEditEmployeeReport", saveBtnId: "tplSaveEmployeeReport", fallback: "Dear {prefix} {name},\nAttendance report for {month}: Present {present}, Absent {absent}, Leave {leave}, Attendance {percent}%.\nBest regards,\n{school}." },
+        { key: "classTestResultMessage", title: "Class Test Result", textareaId: "tplClassTestResult", editBtnId: "tplEditClassTestResult", saveBtnId: "tplSaveClassTestResult", fallback: "Dear student/parent {prefix} {name} (Roll No: {roll}),\nYour class test result: {subject} - {marks}/{total} ({percent}%), Grade {grade}.\nBest regards,\n{school}." },
+        { key: "homeworkWhatsapp", title: "Homework (WhatsApp)", textareaId: "tplHomework", editBtnId: "tplEditHomework", saveBtnId: "tplSaveHomework", fallback: "Dear {prefix} {name} (Roll No: {roll}),\nHomework: {subject} - {title}\nDue Date: {dueDate}\nDetails: {details}\nRegards,\n{school}" },
+        { key: "admissionLetter", title: "Admission Letter", textareaId: "tplAdmissionLetter", editBtnId: "tplEditAdmissionLetter", saveBtnId: "tplSaveAdmissionLetter", fallback: getDefaultAdmissionLetterTemplate() }
+      ];
+
+      var tplHtml = "";
+      for (var t = 0; t < tplConfigs.length; t++) {
+        var cfg = tplConfigs[t];
+        var saved = getSavedMessageTemplate(cfg.key, cfg.fallback);
+        tplHtml += '<div style="margin-bottom:1.5rem;padding:1rem;border:1px solid #dde4ea;border-radius:8px;">';
+        tplHtml += '<strong style="display:block;margin-bottom:0.5rem;">' + escapeHtml(cfg.title) + '</strong>';
+        tplHtml += '<div class="field-group field-group--full">';
+        tplHtml += '<textarea id="' + cfg.textareaId + '" rows="3" readonly>' + escapeHtml(saved) + '</textarea>';
+        tplHtml += '</div>';
+        tplHtml += '<div class="form-actions" style="margin-top:0.5rem;">';
+        tplHtml += '<button class="secondary-button" id="' + cfg.editBtnId + '" type="button">Edit Template</button>';
+        tplHtml += '<button class="primary-button" id="' + cfg.saveBtnId + '" type="button" hidden>Save Template</button>';
+        tplHtml += '</div></div>';
+      }
+
+      moduleSummary.innerHTML = '<article><strong class="module-center-title">Sms/Whatsapp Templates</strong><p class="form-message" style="margin-bottom:1rem;">Edit templates below. Changes apply to both SMS and WhatsApp buttons across all modules.</p>' + tplHtml + '</article>';
+
+      for (var t = 0; t < tplConfigs.length; t++) {
+        (function (cfg) {
+          document.getElementById(cfg.editBtnId).addEventListener("click", function () {
+            var ta = document.getElementById(cfg.textareaId);
+            ta.readOnly = false;
+            ta.style.backgroundColor = "#fff";
+            document.getElementById(cfg.editBtnId).hidden = true;
+            document.getElementById(cfg.saveBtnId).hidden = false;
+          });
+          document.getElementById(cfg.saveBtnId).addEventListener("click", function () {
+            var ta = document.getElementById(cfg.textareaId);
+            saveMessageTemplate(cfg.key, ta);
+            ta.readOnly = true;
+            ta.style.backgroundColor = "#f5f5f5";
+            document.getElementById(cfg.editBtnId).hidden = false;
+            document.getElementById(cfg.saveBtnId).hidden = true;
+          });
+        })(tplConfigs[t]);
+      }
+      return;
+    }
+
     if (route === "homework") {
       const classOptionsMarkup = classOptions.map(function (name) {
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
@@ -17471,7 +16949,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 ${classOptionsMarkup}
               </select>
             </div>
-            <div class="field-group" id="homeworkStudentField" hidden>
+            <div class="field-group" id="homeworkStudentField" style="display:none">
               <label for="homeworkStudentSearch">Search Student*</label>
               <div id="homeworkSearchContainer" style="position: relative;">
                 <input id="homeworkStudentSearch" type="search" placeholder="Search by roll no / name" style="width: 100%;">
@@ -17497,17 +16975,30 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <div class="form-actions homework-actions-row">
             <button class="primary-button" id="sendHomeworkBtn" type="button">Save Home Work</button>
+            <button class="primary-button" id="sendHomeworkSmsBatchBtn" type="button">Send SMS</button>
             <button class="table-action-btn" id="downloadHomeworkPdfBtn" type="button">Download PDF</button>
-            <div class="homework-pdf-filter-controls" aria-label="Homework PDF filters">
+            <div class="homework-pdf-filter-controls" aria-label="Homework filters">
+              <label class="homework-pdf-filter">
+                <span>Send To</span>
+                <select id="homeworkFilterTargetType">
+                  <option value="class">Class Wise</option>
+                  <option value="student">Single Student</option>
+                </select>
+              </label>
               <label class="homework-pdf-filter" for="homeworkPdfClassSelect">
-                <span>PDF Class</span>
+                <span>Class</span>
                 <select id="homeworkPdfClassSelect">
                   <option value="">Select Class</option>
                   ${classOptionsMarkup}
                 </select>
               </label>
+              <label class="homework-pdf-filter" id="homeworkFilterStudentLabel" style="display:none;position:relative;">
+                <span>Student</span>
+                <input id="homeworkFilterStudentSearch" type="search" placeholder="Search by name / roll no" style="width:160px;">
+                <div id="homeworkFilterSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:200px;overflow-y:auto;width:100%;margin-top:2px;"></div>
+              </label>
               <label class="homework-pdf-filter" for="homeworkPdfDateInput">
-                <span>PDF Date</span>
+                <span>Date</span>
                 <input id="homeworkPdfDateInput" type="date">
               </label>
             </div>
@@ -17522,7 +17013,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   <th>Subject</th>
                   <th>Title</th>
                   <th>Due Date</th>
-                  <th>Saved</th>
+                  <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -17530,25 +17021,16 @@ document.addEventListener("DOMContentLoaded", function () {
             </table>
           </div>
           <p class="empty-state" id="homeworkHistoryEmptyState" hidden>No homework sent yet.</p>
-          <div id="homeworkSelectionPreview" class="module-preview-card">
+          <div id="homeworkSelectionPreview">
             <strong>Selection Details</strong>
             <p>Select class or student to preview details here.</p>
           </div>
         </article>
       `;
-      moduleGuide.innerHTML = `
-        <article>
-          <strong>WhatsApp Template</strong>
-          <div class="field-group field-group--full">
-            <label for="homeworkWhatsappTemplateInput">Message Template*</label>
-            <textarea id="homeworkWhatsappTemplateInput" rows="6" placeholder="Message template for WhatsApp..." readonly>${escapeHtml(getSavedMessageTemplate("homeworkWhatsapp", ""))}</textarea>
-          </div>
-          <div class="form-actions">
-            <button class="secondary-button" id="editHomeworkTemplateBtn" type="button">Edit Template</button>
-            <button class="primary-button" id="saveHomeworkTemplateBtn" type="button" hidden>Save Template</button>
-          </div>
-        </article>
-      `;
+
+      moduleGuide.innerHTML = "";
+      moduleGuide.closest(".panel-card").style.display = "none";
+      moduleSummary.closest(".panel-card").style.gridColumn = "1 / -1";
 
       const targetTypeSelect = document.getElementById("homeworkTargetType");
       const classField = document.getElementById("homeworkClassField");
@@ -17577,12 +17059,12 @@ document.addEventListener("DOMContentLoaded", function () {
       const historyEmpty = document.getElementById("homeworkHistoryEmptyState");
       const pdfClassSelect = document.getElementById("homeworkPdfClassSelect");
       const pdfDateInput = document.getElementById("homeworkPdfDateInput");
-      const homeworkWhatsappTemplate = document.getElementById("homeworkWhatsappTemplateInput");
-      const editTemplateBtn = document.getElementById("editHomeworkTemplateBtn");
-      const saveTemplateBtn = document.getElementById("saveHomeworkTemplateBtn");
-      let homeworkWhatsappTemplateEditing = false;
+      const filterTargetType = document.getElementById("homeworkFilterTargetType");
+      const filterStudentLabel = document.getElementById("homeworkFilterStudentLabel");
+      const filterStudentSearch = document.getElementById("homeworkFilterStudentSearch");
       let editingHomeworkId = "";
       let selectedHomeworkPreviewId = "";
+      let filterSelectedStudentId = null;
 
       function findStudentFromSearch() {
         const typed = String(studentSearch.value || "").trim().toLowerCase();
@@ -17631,65 +17113,9 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      async function sendHomeworkSmsForRecord(homework) {
-        const targets = getHomeworkRecordTargets(homework);
-        if (!targets.length) {
-          message.textContent = "No students found for this saved homework.";
-          message.className = "form-message warning";
-          return;
-        }
-        const template = homeworkWhatsappTemplate && homeworkWhatsappTemplate.value.trim()
-          ? homeworkWhatsappTemplate.value.trim()
-          : buildCommunicationTemplate("homework", {
-            subject: homework.subject || "-",
-            title: homework.title || "-",
-            dueDate: homework.dueDate || "-",
-            details: homework.details || "-"
-          });
-        let success = 0;
-        let failed = 0;
-        for (let index = 0; index < targets.length; index += 1) {
-          const student = targets[index];
-          const normalized = normalizeStudentForPrint(student);
-          const result = await sendSmsViaConnectedGateway({
-            recipientName: normalized.name || "-",
-            recipientPhone: normalizeSmsPhone(normalized.phone || normalized.fatherPhone || ""),
-            message: interpolateTemplate(template, {
-              prefix: getGenderPrefix(normalized.gender || student.gender),
-              name: normalized.name || "-",
-              roll: normalized.admissionNo || "-",
-              rollNo: normalized.admissionNo || "-",
-              class: normalized.className || "-",
-              subject: homework.subject || "-",
-              title: homework.title || "-",
-              dueDate: homework.dueDate || "-",
-              details: homework.details || "-",
-              school: database.school.name || "School"
-            }),
-            source: "Homework SMS",
-            recipientType: "student",
-            campaignType: "homework"
-          });
-          if (result.success) {
-            success += 1;
-          } else {
-            failed += 1;
-          }
-        }
-        message.textContent = `Homework SMS processed. Success: ${success}, Failed: ${failed}.`;
-        message.className = `form-message ${failed ? "warning" : "success"}`;
-      }
-
       function buildHomeworkMessageForStudent(homework, student) {
         const normalized = normalizeStudentForPrint(student || {});
-        const template = homeworkWhatsappTemplate && homeworkWhatsappTemplate.value.trim()
-          ? homeworkWhatsappTemplate.value.trim()
-          : buildCommunicationTemplate("homework", {
-            subject: homework.subject || "-",
-            title: homework.title || "-",
-            dueDate: homework.dueDate || "-",
-            details: homework.details || "-"
-          });
+        const template = getSavedMessageTemplate("homeworkWhatsapp", "Dear {prefix} {name} (Roll No: {roll}),\nHomework: {subject} - {title}\nDue Date: {dueDate}\nDetails: {details}\nRegards,\n{school}");
         return interpolateTemplate(template, {
           prefix: getGenderPrefix(normalized.gender || student.gender),
           name: normalized.name || "-",
@@ -17714,11 +17140,10 @@ document.addEventListener("DOMContentLoaded", function () {
               <td>${escapeHtml(row.subject || "-")}</td>
               <td>${escapeHtml(row.title || "-")}</td>
               <td>${escapeHtml(row.dueDate || "-")}</td>
-              <td>${escapeHtml(row.savedLabel || "Saved")}</td>
+              <td>${escapeHtml(row.smsSent ? "Sent" : "Unsent")}</td>
               <td>
                 <button class="table-action-btn" type="button" data-homework-select="${escapeAttr(row.id || "")}">Select</button>
                 <button class="table-action-btn" type="button" data-homework-edit="${escapeAttr(row.id || "")}">Edit</button>
-                <button class="table-action-btn" type="button" data-homework-sms="${escapeAttr(row.id || "")}">SMS</button>
                 <button class="table-action-btn danger" type="button" data-homework-delete="${escapeAttr(row.id || "")}">Delete</button>
               </td>
             </tr>
@@ -17735,16 +17160,37 @@ document.addEventListener("DOMContentLoaded", function () {
         titleInput.value = "";
         dueDateInput.value = "";
         descriptionInput.value = "";
-        updateHomeworkTemplate();
       }
 
       function syncTargetFields() {
         const isStudent = targetTypeSelect.value === "student";
-        classField.hidden = isStudent;
-        studentField.hidden = !isStudent;
+        classField.style.display = isStudent ? "none" : "";
+        studentField.style.display = isStudent ? "" : "none";
       }
 
       targetTypeSelect.addEventListener("change", syncTargetFields);
+
+      function syncFilterTargetFields() {
+        const isStudent = filterTargetType.value === "student";
+        pdfClassSelect.parentElement.style.display = isStudent ? "none" : "";
+        filterStudentLabel.style.display = isStudent ? "" : "none";
+      }
+      filterTargetType.addEventListener("change", function () {
+        syncFilterTargetFields();
+        refreshHomeworkSelectionAndHistory();
+      });
+      initializeStudentProfessionalSearch(
+        "homeworkFilterStudentSearch",
+        "homeworkFilterSearchDropdown",
+        "",
+        function (student) {
+          filterSelectedStudentId = student ? student.id : null;
+          if (student) {
+            filterStudentSearch.value = student.name + " (" + (student.admissionNo || "-") + ")";
+          }
+          refreshHomeworkSelectionAndHistory();
+        }
+      );
 
       function renderHomeworkSelectionPreview() {
         if (!selectionPreview) {
@@ -17868,6 +17314,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (existingHomework) {
           Object.assign(existingHomework, homeworkRecord);
         } else {
+          homeworkRecord.smsSent = false;
           settings.homeworkAssignments.unshift(homeworkRecord);
         }
         saveDatabase();
@@ -17884,12 +17331,11 @@ document.addEventListener("DOMContentLoaded", function () {
       historyBody.addEventListener("click", function (event) {
         const selectButton = event.target.closest("[data-homework-select]");
         const editButton = event.target.closest("[data-homework-edit]");
-        const smsButton = event.target.closest("[data-homework-sms]");
         const deleteButton = event.target.closest("[data-homework-delete]");
-        if (!selectButton && !editButton && !smsButton && !deleteButton) {
+        if (!selectButton && !editButton && !deleteButton) {
           return;
         }
-        const homeworkId = (selectButton || editButton || smsButton || deleteButton).getAttribute(selectButton ? "data-homework-select" : (editButton ? "data-homework-edit" : (smsButton ? "data-homework-sms" : "data-homework-delete")));
+        const homeworkId = (selectButton || editButton || deleteButton).getAttribute(selectButton ? "data-homework-select" : (editButton ? "data-homework-edit" : "data-homework-delete"));
         const index = settings.homeworkAssignments.findIndex(function (item) {
           return item.id === homeworkId;
         });
@@ -17916,10 +17362,6 @@ document.addEventListener("DOMContentLoaded", function () {
           message.className = "form-message success";
           return;
         }
-        if (smsButton) {
-          sendHomeworkSmsForRecord(homework);
-          return;
-        }
         editingHomeworkId = homework.id;
         selectedHomeworkPreviewId = homework.id;
         targetTypeSelect.value = homework.targetType || "class";
@@ -17936,7 +17378,6 @@ document.addEventListener("DOMContentLoaded", function () {
         dueDateInput.value = homework.dueDate || "";
         descriptionInput.value = homework.details || "";
         document.getElementById("sendHomeworkBtn").textContent = "Update Home Work";
-        updateHomeworkTemplate();
         renderHomeworkSelectionPreview();
         message.textContent = "Homework loaded for editing.";
         message.className = "form-message success";
@@ -17963,67 +17404,100 @@ document.addEventListener("DOMContentLoaded", function () {
             <p style="white-space:pre-wrap;line-height:1.55;">${escapeHtml(homework.details || "-")}</p>
           </article>`;
         }).join("");
-        const printHtml = await openPrintReport({
+        await openPrintReport({
           title: "Homework Sheet",
           subtitle: `Class: ${selectedClass} | Date: ${dueDate} | Total Homework: ${homeworkRows.length}`,
-          contentHtml: contentHtml,
-          returnHtml: true
+          contentHtml: contentHtml
         });
-        const result = await saveCommunicationPdf(printHtml, `Homework-${selectedClass}-${dueDate}.pdf`);
-        if (!result || !result.success) {
-          message.textContent = "Unable to download homework PDF.";
+      });
+
+      document.getElementById("sendHomeworkSmsBatchBtn").addEventListener("click", async function () {
+        var unsent = [];
+        const selectedDate = pdfDateInput ? pdfDateInput.value : "";
+        if (!selectedDate) {
+          message.textContent = "Please select a date.";
           message.className = "form-message error";
           return;
         }
-        message.textContent = `Homework PDF downloaded: ${result.filePath}`;
-        message.className = "form-message success";
-      });
-
-      function updateHomeworkTemplate() {
-        if (!homeworkWhatsappTemplate) {
-          return;
+        if (filterTargetType.value === "class") {
+          const selectedClass = pdfClassSelect ? pdfClassSelect.value : "";
+          if (!selectedClass) {
+            message.textContent = "Please select a class.";
+            message.className = "form-message error";
+            return;
+          }
+          unsent = (settings.homeworkAssignments || []).filter(function (row) {
+            return row.className === selectedClass && row.dueDate === selectedDate && !row.smsSent;
+          });
+          if (!unsent.length) {
+            message.textContent = "No unsent homework found for selected class and date.";
+            message.className = "form-message warning";
+            return;
+          }
+        } else {
+          var filterTargets = [];
+          if (filterSelectedStudentId) {
+            var found = students.find(function (s) { return s.id === filterSelectedStudentId; });
+            if (found) { filterTargets = [found]; }
+          }
+          if (!filterTargets.length) {
+            filterTargets = getTargets();
+          }
+          if (!filterTargets.length) {
+            message.textContent = "Please select a student from the filter search or form above.";
+            message.className = "form-message warning";
+            return;
+          }
+          const subj = subjectInput.value.trim();
+          const due = dueDateInput.value;
+          if (!subj || !due) {
+            message.textContent = "Please fill subject and due date.";
+            message.className = "form-message warning";
+            return;
+          }
+          unsent = [{ _isUnsaved: true, subject: subj, title: titleInput.value.trim(), dueDate: due, details: descriptionInput.value.trim(), _targets: filterTargets, targetLabel: "Single Student" }];
         }
-        const savedHomeworkTemplate = getSavedMessageTemplate("homeworkWhatsapp", "");
-        if (savedHomeworkTemplate && !homeworkWhatsappTemplateEditing) {
-          homeworkWhatsappTemplate.value = savedHomeworkTemplate;
-          return;
+        const template = getSavedMessageTemplate("homeworkWhatsapp", "Dear {prefix} {name} (Roll No: {roll}),\nHomework: {subject} - {title}\nDue Date: {dueDate}\nDetails: {details}\nRegards,\n{school}");
+        let totalSuccess = 0;
+        let totalFailed = 0;
+        for (let i = 0; i < unsent.length; i += 1) {
+          const homework = unsent[i];
+          const targets = homework._targets || getHomeworkRecordTargets(homework);
+          if (!targets.length) { continue; }
+          for (let j = 0; j < targets.length; j += 1) {
+            const student = targets[j];
+            const normalized = normalizeStudentForPrint(student);
+            const result = await sendSmsViaConnectedGateway({
+              recipientName: normalized.name || "-",
+              recipientPhone: normalizeSmsPhone(normalized.phone || normalized.fatherPhone || ""),
+              message: interpolateTemplate(template, {
+                prefix: getGenderPrefix(normalized.gender || student.gender),
+                name: normalized.name || "-",
+                roll: normalized.admissionNo || "-",
+                rollNo: normalized.admissionNo || "-",
+                class: normalized.className || "-",
+                subject: homework.subject || "-",
+                title: homework.title || "-",
+                dueDate: homework.dueDate || "-",
+                details: homework.details || "-",
+                school: database.school.name || "School"
+              }),
+              source: "Homework SMS",
+              recipientType: "student",
+              campaignType: "homework"
+            });
+            if (result.success) { totalSuccess += 1; } else { totalFailed += 1; }
+          }
+          if (!homework._isUnsaved) {
+            homework.smsSent = true;
+          }
         }
-        const subject = subjectInput.value.trim() || "Homework";
-        const title = titleInput.value.trim() || "Assignment";
-        const dueDate = dueDateInput.value || "Not set";
-        const details = descriptionInput.value.trim() || "See details above";
-        const template = buildCommunicationTemplate("homework", {
-          prefix: "Mr./Ms.",
-          rollNo: "{roll}",
-          subject: subject,
-          title: title,
-          dueDate: dueDate,
-          details: details
-        });
-        homeworkWhatsappTemplate.value = template;
-      }
-
-      editTemplateBtn.addEventListener("click", function () {
-        homeworkWhatsappTemplateEditing = true;
-        homeworkWhatsappTemplate.readOnly = false;
-        homeworkWhatsappTemplate.style.backgroundColor = "#fff";
-        editTemplateBtn.hidden = true;
-        saveTemplateBtn.hidden = false;
+        saveDatabase();
+        renderHomeworkHistory();
+        renderHomeworkSelectionPreview();
+        message.textContent = `SMS sent. Success: ${totalSuccess}, Failed: ${totalFailed}.`;
+        message.className = "form-message " + (totalFailed ? "warning" : "success");
       });
-
-      saveTemplateBtn.addEventListener("click", function () {
-        saveMessageTemplate("homeworkWhatsapp", homeworkWhatsappTemplate);
-        homeworkWhatsappTemplateEditing = false;
-        homeworkWhatsappTemplate.readOnly = true;
-        homeworkWhatsappTemplate.style.backgroundColor = "#f5f5f5";
-        editTemplateBtn.hidden = false;
-        saveTemplateBtn.hidden = true;
-      });
-
-      subjectInput.addEventListener("input", updateHomeworkTemplate);
-      titleInput.addEventListener("input", updateHomeworkTemplate);
-      dueDateInput.addEventListener("input", updateHomeworkTemplate);
-      descriptionInput.addEventListener("input", updateHomeworkTemplate);
 
       function refreshHomeworkSelectionAndHistory() {
         selectedHomeworkPreviewId = "";
@@ -18032,7 +17506,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       syncTargetFields();
-      updateHomeworkTemplate();
       renderHomeworkSelectionPreview();
       targetTypeSelect.addEventListener("change", renderHomeworkSelectionPreview);
       classSelect.addEventListener("change", renderHomeworkSelectionPreview);
@@ -18249,15 +17722,19 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!normalizedPhone || !text) {
           return false;
         }
-        const link = getWhatsappOpenUrl(normalizedPhone, text);
         if (window.SagarSoftDesktop && typeof window.SagarSoftDesktop.openExternal === "function") {
+          var link = getWhatsappOpenUrl(normalizedPhone, text);
           window.SagarSoftDesktop.openExternal(link).catch(function () {
             return null;
           });
           return true;
         }
-        const popup = window.open(link, "_blank");
-        return Boolean(popup);
+        var encodedPhone = encodeURIComponent(normalizedPhone);
+        var encodedText = encodeURIComponent(String(text || ""));
+        return openWhatsAppWithFallback(
+          "whatsapp://send?phone=" + encodedPhone + "&text=" + encodedText,
+          "https://wa.me/" + encodedPhone + "?text=" + encodedText
+        );
       }
 
       function openWhatsappChatsBulk(recipients) {
@@ -18636,28 +18113,34 @@ document.addEventListener("DOMContentLoaded", function () {
         if (apiKey) {
           headers.Authorization = `Bearer ${apiKey}`;
         }
-        for (let index = 0; index < endpoints.length; index += 1) {
-          const endpoint = endpoints[index];
-          try {
-            const response = await fetchWithTimeout(`${baseUrl}${endpoint}`, {
-              method: "POST",
-              headers: headers,
-              body: JSON.stringify(payload)
-            }, 3500);
-            if (response.ok || response.type === "opaque") {
-              return true;
-            }
-          } catch (error) {
+        var urlsToTry = [baseUrl];
+        var m = baseUrl.match(/:(\d+)(?:\/|$)/);
+        if (m) urlsToTry.push("http://127.0.0.1:" + m[1]);
+        for (let u = 0; u < urlsToTry.length; u++) {
+          const urlBase = urlsToTry[u];
+          for (let index = 0; index < endpoints.length; index += 1) {
+            const endpoint = endpoints[index];
             try {
-              await fetchWithTimeout(`${baseUrl}${endpoint}`, {
+              const response = await fetchWithTimeout(`${urlBase}${endpoint}`, {
                 method: "POST",
-                mode: "no-cors",
-                headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                headers: headers,
                 body: JSON.stringify(payload)
               }, 3500);
-              return true;
-            } catch (innerError) {
-              // Try next endpoint.
+              if (response.ok || response.type === "opaque") {
+                return true;
+              }
+            } catch (error) {
+              try {
+                await fetchWithTimeout(`${urlBase}${endpoint}`, {
+                  method: "POST",
+                  mode: "no-cors",
+                  headers: { "Content-Type": "text/plain;charset=UTF-8" },
+                  body: JSON.stringify(payload)
+                }, 3500);
+                return true;
+              } catch (innerError) {
+                // Try next endpoint.
+              }
             }
           }
         }
@@ -19095,9 +18578,38 @@ document.addEventListener("DOMContentLoaded", function () {
         }
         return;
       }
-      moduleSummary.innerHTML = `
-        <article class="account-core-card">
-          <strong>Account details</strong>
+      if (!isSuperAdmin) {
+        moduleSummary.innerHTML = `
+        <article class="account-core-card" id="accountSettingsTop">
+          <strong>Account Settings</strong>
+          <div class="form-grid">
+            <div class="field-group">
+              <label for="schoolNameInput">School Name</label>
+              <input id="schoolNameInput" type="text" value="${escapeAttr(license.schoolName || settings.instituteProfile.name || database.school.name || "")}">
+            </div>
+            <div class="field-group">
+              <label for="accountTimezoneInput">TimeZone*</label>
+              <input id="accountTimezoneInput" type="text" value="${escapeAttr(account.timezone || "Asia/Karachi")}">
+            </div>
+            <div class="field-group">
+              <label for="accountCurrencyInput">Currency*</label>
+              <input id="accountCurrencyInput" type="text" value="${escapeAttr(account.currency || "PKR")}">
+            </div>
+            <div class="field-group">
+              <label for="accountSymbolInput">Symbol*</label>
+              <input id="accountSymbolInput" type="text" value="${escapeAttr(account.symbol || "Rs")}">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button class="primary-button" id="saveAccountBtn" type="button">Update Account</button>
+          </div>
+          <p class="form-message" id="accountMessage"></p>
+        </article>
+        `;
+      } else {
+        moduleSummary.innerHTML = `
+        <article class="account-core-card" id="accountSettingsTop">
+          <strong>Account Settings</strong>
           <div class="form-grid">
             <div class="field-group">
               <label for="accountUsernameInput">Username*</label>
@@ -19107,46 +18619,6 @@ document.addEventListener("DOMContentLoaded", function () {
               <label for="accountPasswordInput">Password*</label>
               <input id="accountPasswordInput" type="text" value="${escapeAttr(account.password)}">
             </div>
-            <div class="field-group">
-              <label for="accountTimezoneInput">TimeZone*</label>
-              <input id="accountTimezoneInput" type="text" value="${escapeAttr(account.timezone)}">
-            </div>
-            <div class="field-group">
-              <label for="accountCurrencyInput">Currency*</label>
-              <input id="accountCurrencyInput" type="text" value="${escapeAttr(account.currency)}">
-            </div>
-            <div class="field-group">
-              <label for="accountSymbolInput">Symbol*</label>
-              <input id="accountSymbolInput" type="text" value="${escapeAttr(account.symbol)}">
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveAccountBtn" type="button">Update Account</button>
-          </div>
-          <p class="form-message" id="accountMessage"></p>
-        </article>
-        ${isSuperAdmin ? `
-        <article class="super-admin-card">
-          <strong>Update Super Admin Credentials</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="superAdminEmailInput">Super Admin Email*</label>
-              <input id="superAdminEmailInput" type="email" value="${escapeAttr(currentUser.email || "")}" autocomplete="email">
-            </div>
-            <div class="field-group">
-              <label for="superAdminPasswordInput">Super Admin Password*</label>
-              <input id="superAdminPasswordInput" type="text" value="${escapeAttr(currentUser.password || "")}" autocomplete="new-password">
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveSuperAdminCredentialsBtn" type="button">Update Super Admin Credential</button>
-          </div>
-          <p class="form-message" id="superAdminCredentialMessage"></p>
-        </article>
-        ` : ""}
-        <article class="subscription-activation-card">
-          <strong>Subscription & Activation</strong>
-          <div class="form-grid">
             <div class="field-group">
               <label for="schoolIdInput">School ID</label>
               <input id="schoolIdInput" type="text" value="${escapeAttr(license.schoolId)}" readonly class="module-input--readonly">
@@ -19161,7 +18633,7 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
             <div class="field-group">
               <label for="subscriptionPlanInput">Plan</label>
-              <select id="subscriptionPlanInput" ${isSuperAdmin ? "" : "disabled"}>
+              <select id="subscriptionPlanInput">
                 <option value="monthly" ${license.subscriptionPlan === "monthly" ? "selected" : ""}>Monthly</option>
                 <option value="3-months" ${license.subscriptionPlan === "3-months" ? "selected" : ""}>3 Months</option>
                 <option value="5-months" ${license.subscriptionPlan === "5-months" ? "selected" : ""}>5 Months</option>
@@ -19171,11 +18643,11 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
             <div class="field-group">
               <label for="customDaysInput">Custom Days</label>
-              <input id="customDaysInput" type="number" min="1" value="${escapeAttr(license.customDays || 30)}" ${isSuperAdmin ? "" : "readonly"} class="${isSuperAdmin ? "" : "module-input--readonly"}">
+              <input id="customDaysInput" type="number" min="1" value="${escapeAttr(license.customDays || 30)}">
             </div>
             <div class="field-group">
               <label for="subscriptionStartInput">Start Date</label>
-              <input id="subscriptionStartInput" type="date" value="${escapeAttr(license.startDate || todayISO)}" ${isSuperAdmin ? "" : "readonly"} class="${isSuperAdmin ? "" : "module-input--readonly"}">
+              <input id="subscriptionStartInput" type="date" value="${escapeAttr(license.startDate || todayISO)}">
             </div>
             <div class="field-group">
               <label for="subscriptionExpiryInput">Expiry Date</label>
@@ -19183,22 +18655,94 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
           </div>
           <div class="form-actions">
-            ${isSuperAdmin ? '<button class="primary-button" id="activateAccountBtn" type="button">Activate Account</button>' : ""}
+            <button class="primary-button" id="activateAccountBtn" type="button">Add School</button>
           </div>
-          <article class="subscription-activation-card" style="margin-top:12px;">
-            <strong>Backup & Restore</strong>
-            <p class="helper-text">Use secure backup before reinstalling Windows or changing laptop. This file is encoded for SagarSoft restore.</p>
-            <div class="form-actions">
-              <button class="primary-button" id="exportSecureBackupBtn" type="button">Export Backup</button>
-              <button class="table-action-btn" id="importSecureBackupBtn" type="button">Import Backup</button>
-              <input type="file" id="importSecureBackupInput" accept=".ssmsbackup,application/octet-stream,text/plain" style="display:none;">
-            </div>
-            <p class="form-message" id="secureBackupMessage"></p>
-          </article>
           <p class="form-message" id="licenseMessage"></p>
-          ${!isSuperAdmin ? '<p class="helper-text">Activation controls are visible only for Super Admin login.</p>' : ""}
         </article>
-      `;
+        `;
+      }
+
+      var fullWidthEl = document.getElementById("moduleFullWidth");
+      if (fullWidthEl) {
+        if (isSuperAdmin) {
+          fullWidthEl.style.display = "block";
+          fullWidthEl.innerHTML = `
+          <article class="panel-card">
+            <div class="panel-card__header"><div><p class="panel-label">Super Admin Tools</p><h3>School Management</h3></div></div>
+            <div class="stacked-copy">
+              <article class="super-admin-card">
+                <strong>Manage Schools</strong>
+                <p class="helper-text">List of all schools. Edit, toggle status, or delete.</p>
+                <div style="overflow-x:auto;">
+                  <table class="data-table" id="schoolsTable" style="width:100%;font-size:13px;min-width:800px;">
+                    <thead>
+                      <tr>
+                        <th>School ID</th>
+                        <th>School Name</th>
+                        <th>Email</th>
+                        <th>Plan</th>
+                        <th>Start</th>
+                        <th>Expiry</th>
+                        <th>Status</th>
+                        <th>Last Seen</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="schoolsTableBody">
+                      <tr><td colspan="9" style="text-align:center;padding:16px;">Loading...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p class="form-message" id="manageSchoolsMessage"></p>
+              </article>
+              <hr style="margin:16px 0;border:none;border-top:1px solid #dde4ea;">
+              <article class="super-admin-card" style="margin-top:0;">
+                <strong>Send Notification</strong>
+                <p class="helper-text">Send a message to all schools or a specific school.</p>
+                <div class="form-grid" style="grid-template-columns:1fr 1fr;">
+                  <div class="field-group">
+                    <label for="notifTitle">Title</label>
+                    <input id="notifTitle" type="text" value="Notification from SagarSoft" placeholder="Title">
+                  </div>
+                  <div class="field-group">
+                    <label for="notifTargetSchool">Target School</label>
+                    <select id="notifTargetSchool"><option value="">All Schools</option></select>
+                  </div>
+                  <div class="field-group field-group--full" style="grid-column:1/-1;">
+                    <label for="notifMessage">Message</label>
+                    <textarea id="notifMessage" rows="3" placeholder="Type your message here..."></textarea>
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="primary-button" id="sendNotifBtn" type="button">Send Notification</button>
+                </div>
+                <p class="form-message" id="notifMessageStatus"></p>
+              </article>
+              <article class="super-admin-card" style="margin-top:16px;">
+                <strong>Notification History</strong>
+                <p class="helper-text">Recent notifications sent to schools.</p>
+                <div style="overflow-x:auto;">
+                  <table class="data-table" id="notifHistoryTable" style="width:100%;font-size:13px;min-width:500px;">
+                    <thead>
+                      <tr><th>Date</th><th>School</th><th>Title</th><th>Message</th></tr>
+                    </thead>
+                    <tbody id="notifHistoryBody">
+                      <tr><td colspan="4" style="text-align:center;padding:16px;">Loading...</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="form-actions" style="margin-top:8px;">
+                  <button class="table-action-btn" id="clearNotifHistoryBtn" type="button">Clear History</button>
+                </div>
+                <p class="form-message" id="notifHistoryMessage"></p>
+              </article>
+            </div>
+          </article>`;
+        } else {
+          fullWidthEl.style.display = "none";
+          fullWidthEl.innerHTML = "";
+        }
+      }
 
       moduleGuide.innerHTML = `
         <article>
@@ -19212,8 +18756,10 @@ document.addEventListener("DOMContentLoaded", function () {
           ${lockState.locked ? `<p style="color:#d64b4b;"><strong>Module Lock:</strong> ${escapeHtml(lockState.reason)}</p>` : '<p style="color:#1d9c61;"><strong>Module Lock:</strong> Not locked</p>'}
           <div class="form-actions">
             <button class="table-action-btn danger" id="deleteAccountBtn" type="button">Delete</button>
+            <button class="primary-button" id="exportSecureBackupBtn" type="button">Backup</button>
           </div>
         </article>
+        ${isSuperAdmin ? `<hr style="margin:12px 0;border:none;border-top:1px solid #dde4ea;">` : ""}
       `;
 
       if (false && isSuperAdmin) {
@@ -19279,80 +18825,47 @@ document.addEventListener("DOMContentLoaded", function () {
         `;
       }
 
-      document.getElementById("saveAccountBtn").addEventListener("click", function () {
-        settings.accountSettings = {
-          ...settings.accountSettings,
-          username: document.getElementById("accountUsernameInput").value.trim(),
-          password: document.getElementById("accountPasswordInput").value.trim(),
-          timezone: document.getElementById("accountTimezoneInput").value.trim(),
-          currency: document.getElementById("accountCurrencyInput").value.trim(),
-          symbol: document.getElementById("accountSymbolInput").value.trim()
-        };
-        const record = database.users.find(function (user) {
-          return user.id === currentUser.id;
-        });
-        if (record) {
-          record.email = settings.accountSettings.username || record.email;
-          record.password = settings.accountSettings.password || record.password;
-          sessionStorage.setItem(window.SagarSoftAuth.sessionKey, JSON.stringify({
-            ...currentUser,
-            email: record.email
-          }));
-        }
-        const editableSchoolNameInput = document.getElementById("schoolNameInput");
-        const editedSchoolName = editableSchoolNameInput ? editableSchoolNameInput.value.trim() : "";
-        if (editedSchoolName) {
-          const activeLicense = ensureLicenseSettings();
-          activeLicense.schoolName = editedSchoolName;
-          settings.instituteProfile.name = editedSchoolName;
-          database.school.name = editedSchoolName;
-        }
-        addActivity("Account settings updated", `${currentUser.name} account settings updated.`);
-        saveDatabase();
-        updateTopProfileIdentity();
-        renderProfileDropdownMenu();
-        applyRouteAccessVisibility();
-        const message = document.getElementById("accountMessage");
-        message.textContent = "Account settings updated successfully.";
-        message.className = "form-message success";
-      });
-
-      const saveSuperAdminCredentialsBtn = document.getElementById("saveSuperAdminCredentialsBtn");
-      if (saveSuperAdminCredentialsBtn && isSuperAdmin) {
-        saveSuperAdminCredentialsBtn.addEventListener("click", function () {
-          const emailInput = document.getElementById("superAdminEmailInput");
-          const passwordInput = document.getElementById("superAdminPasswordInput");
-          const feedback = document.getElementById("superAdminCredentialMessage");
-          const nextEmail = String((emailInput && emailInput.value) || "").trim().toLowerCase();
-          const nextPassword = String((passwordInput && passwordInput.value) || "").trim();
-          if (!nextEmail || !nextPassword) {
-            feedback.textContent = "Email and password are required.";
-            feedback.className = "form-message error";
-            openAppMessageBox("Error", feedback.textContent, "error");
-            return;
-          }
-          const superAdminRecord = (database.users || []).find(function (user) {
-            return user && user.role === superAdminRole;
-          });
-          if (!superAdminRecord) {
-            feedback.textContent = "Super Admin account not found.";
-            feedback.className = "form-message error";
-            openAppMessageBox("Error", feedback.textContent, "error");
-            return;
-          }
-          superAdminRecord.email = nextEmail;
-          superAdminRecord.password = nextPassword;
-          sessionStorage.setItem(window.SagarSoftAuth.sessionKey, JSON.stringify({
-            ...currentUser,
-            email: nextEmail,
-            password: nextPassword
-          }));
-          addActivity("Super Admin credentials updated", "Super Admin credentials were updated.");
+      var saveAccountBtn = document.getElementById("saveAccountBtn");
+      if (saveAccountBtn) {
+        saveAccountBtn.addEventListener("click", async function () {
+          var nameEl = document.getElementById("schoolNameInput");
+          var tzEl = document.getElementById("accountTimezoneInput");
+          var curEl = document.getElementById("accountCurrencyInput");
+          var symEl = document.getElementById("accountSymbolInput");
+          var msgEl = document.getElementById("accountMessage");
+          var schoolName = nameEl ? nameEl.value.trim() : "";
+          var timezone = tzEl ? tzEl.value.trim() : "Asia/Karachi";
+          var currency = curEl ? curEl.value.trim() : "PKR";
+          var symbol = symEl ? symEl.value.trim() : "Rs";
+          var activeLicense = ensureLicenseSettings();
+          activeLicense.schoolName = schoolName;
+          settings.accountSettings = settings.accountSettings || {};
+          settings.accountSettings.timezone = timezone;
+          settings.accountSettings.currency = currency;
+          settings.accountSettings.symbol = symbol;
+          settings.instituteProfile.name = schoolName || settings.instituteProfile.name;
+          database.school.name = schoolName || database.school.name;
           saveDatabase();
-          feedback.textContent = "Super Admin credentials updated successfully.";
-          feedback.className = "form-message success";
-          openAppMessageBox("Success", feedback.textContent, "success");
-          setRoute("account-settings");
+          updateTopProfileIdentity();
+          renderProfileDropdownMenu();
+          applyRouteAccessVisibility();
+          try {
+            var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(activeLicense.schoolId || ""), {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ school_name: schoolName, timezone: timezone, currency: currency, symbol: symbol })
+            });
+            var data = await resp.json().catch(function () { return {}; });
+            if (data.success && msgEl) {
+              msgEl.textContent = "Account updated successfully.";
+              msgEl.className = "form-message success";
+            } else if (msgEl) {
+              msgEl.textContent = "Saved locally, but server sync failed.";
+              msgEl.className = "form-message warning";
+            }
+          } catch (_e) {
+            if (msgEl) { msgEl.textContent = "Saved locally. Server sync unavailable."; msgEl.className = "form-message warning"; }
+          }
         });
       }
 
@@ -19525,20 +19038,64 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       function updateExpiryPreview() {
-        var plan = planInput.value;
-        var customDays = Number(customDaysInput.value || 0);
-        var startDate = startInput.value || todayISO;
-        var totalDays = getPlanDays(plan, customDays);
-        expiryInput.value = addDaysISO(startDate, totalDays);
+        if (planInput && expiryInput) {
+          var plan = planInput.value;
+          var customDays = Number(customDaysInput ? customDaysInput.value || 0 : 0);
+          var startDate = startInput ? startInput.value || todayISO : todayISO;
+          var totalDays = getPlanDays(plan, customDays);
+          expiryInput.value = addDaysISO(startDate, totalDays);
+        }
       }
 
       if (planInput) planInput.addEventListener("change", updateExpiryPreview);
       if (customDaysInput) customDaysInput.addEventListener("input", updateExpiryPreview);
       if (startInput) startInput.addEventListener("change", updateExpiryPreview);
-      updateExpiryPreview();
+      if (planInput) updateExpiryPreview();
 
       if (activateAccountBtn) {
         activateAccountBtn.addEventListener("click", async function () {
+          var editSchoolId = activateAccountBtn.getAttribute("data-edit-school-id");
+          if (editSchoolId) {
+            var nameEl = document.getElementById("schoolNameInput");
+            var emailEl = document.getElementById("accountUsernameInput");
+            var passEl = document.getElementById("accountPasswordInput");
+            var planEl = document.getElementById("subscriptionPlanInput");
+            var startEl = document.getElementById("subscriptionStartInput");
+            var expiryEl = document.getElementById("subscriptionExpiryInput");
+            var msgEl = document.getElementById("manageSchoolsMessage");
+            if (!nameEl || !nameEl.value.trim()) { if (msgEl) { msgEl.textContent = "School name required."; msgEl.className = "form-message error"; } return; }
+            if (!emailEl || !emailEl.value.trim()) { if (msgEl) { msgEl.textContent = "Email required."; msgEl.className = "form-message error"; } return; }
+            if (!passEl || !passEl.value.trim()) { if (msgEl) { msgEl.textContent = "Password required."; msgEl.className = "form-message error"; } return; }
+            var body = { school_name: nameEl.value.trim(), email: emailEl.value.trim(), password: passEl.value.trim() };
+            if (planEl && planEl.value) body.plan = planEl.value;
+            if (startEl && startEl.value) body.start_date = startEl.value;
+            if (expiryEl && expiryEl.value) body.expiry_date = expiryEl.value;
+            try {
+              var url = apiBase + "/api/admin/schools";
+              var method = "PUT";
+              if (editSchoolId === "__NEW__") {
+                method = "POST";
+              } else {
+                url += "/" + encodeURIComponent(editSchoolId);
+              }
+              var resp = await fetch(url, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+              var data = await resp.json().catch(function () { return {}; });
+              if (data.success) {
+                if (msgEl) { msgEl.textContent = editSchoolId === "__NEW__" ? "School added! ID: " + data.school_id : "School saved."; msgEl.className = "form-message success"; }
+                activateAccountBtn.textContent = "Add School";
+                activateAccountBtn.removeAttribute("data-edit-school-id");
+                if (editSchoolId === "__NEW__") {
+                  if (nameEl) nameEl.value = ""; if (emailEl) emailEl.value = ""; if (passEl) passEl.value = "";
+                }
+                loadSchools();
+              } else {
+                if (msgEl) { msgEl.textContent = data.message || "Save failed."; msgEl.className = "form-message error"; }
+              }
+            } catch (_e) {
+              if (msgEl) { msgEl.textContent = "Save failed."; msgEl.className = "form-message error"; }
+            }
+            return;
+          }
           var activeLicense = ensureLicenseSettings();
           var schoolId = activeLicense.schoolId;
           var schoolName = schoolNameInput ? schoolNameInput.value.trim() : activeLicense.schoolName;
@@ -19818,10 +19375,235 @@ document.addEventListener("DOMContentLoaded", function () {
         window.SagarSoftAuth.logout();
         window.location.href = "./login.html";
       });
+
+      if (isSuperAdmin) {
+        var apiBase = window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
+
+        async function loadSchools() {
+          var tbody = document.getElementById("schoolsTableBody");
+          var select = document.getElementById("notifTargetSchool");
+          if (!tbody) return;
+          tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:16px;">Loading...</td></tr>';
+          try {
+            var resp = await fetch(apiBase + "/api/admin/schools");
+            var data = await resp.json().catch(function () { return {}; });
+            if (!data.success || !Array.isArray(data.schools)) {
+              tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:16px;color:#d64b4b;">Failed to load schools.</td></tr>';
+              return;
+            }
+            var schools = data.schools;
+            if (!schools.length) {
+              tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:16px;">No schools found.</td></tr>';
+              return;
+            }
+            var existingOptions = '<option value="">All Schools</option>';
+            tbody.innerHTML = schools.map(function (s) {
+              var statusColor = s.status === "active" && !s.modules_locked ? "active" : "inactive";
+              var statusLabel = s.status === "active" && !s.modules_locked ? "Active" : "Inactive";
+              var lastSeen = s.last_seen ? new Date(s.last_seen).toLocaleString() : "-";
+              existingOptions += '<option value="' + escapeAttr(s.school_id) + '">' + escapeHtml(s.school_name || s.school_id) + "</option>";
+              return '<tr>' +
+                '<td style="font-family:monospace;font-size:12px;">' + escapeHtml(s.school_id || "-") + '</td>' +
+                '<td>' + escapeHtml(s.school_name || "-") + '</td>' +
+                '<td>' + escapeHtml(s.email || "-") + '</td>' +
+                '<td>' + escapeHtml(s.plan || "-") + '</td>' +
+                '<td>' + escapeHtml(s.start_date ? s.start_date.slice(0, 10) : "-") + '</td>' +
+                '<td>' + escapeHtml(s.expiry_date ? s.expiry_date.slice(0, 10) : "-") + '</td>' +
+                '<td><span class="status-pill ' + statusColor + '">' + statusLabel + '</span></td>' +
+                '<td style="font-size:12px;">' + escapeHtml(lastSeen) + '</td>' +
+                '<td>' +
+                  '<button type="button" class="table-action-btn" data-school-action="edit" data-school-id="' + escapeAttr(s.school_id) + '" style="font-size:12px;padding:2px 8px;">Edit</button> ' +
+                  '<button type="button" class="table-action-btn" data-school-action="toggle" data-school-id="' + escapeAttr(s.school_id) + '" style="font-size:12px;padding:2px 8px;">' + (s.status === "active" && !s.modules_locked ? "Deactivate" : "Activate") + '</button> ' +
+                  '<button type="button" class="table-action-btn danger" data-school-action="delete" data-school-id="' + escapeAttr(s.school_id) + '" style="font-size:12px;padding:2px 8px;">Delete</button>' +
+                '</td>' +
+              '</tr>';
+            }).join("");
+            if (select) {
+              var currentVal = select.value;
+              select.innerHTML = existingOptions;
+              if (currentVal) select.value = currentVal;
+            }
+          } catch (_e) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:16px;color:#d64b4b;">Error loading schools.</td></tr>';
+          }
+        }
+
+        var schoolsTable = document.getElementById("schoolsTable");
+        if (schoolsTable) {
+          schoolsTable.addEventListener("click", async function (e) {
+            var btn = e.target.closest("[data-school-action]");
+            if (!btn) return;
+            var action = btn.getAttribute("data-school-action");
+            var schoolId = btn.getAttribute("data-school-id");
+            var msgEl = document.getElementById("manageSchoolsMessage");
+            if (!msgEl) return;
+            if (action === "delete") {
+              if (!(await brandedConfirm("Delete school " + schoolId + "? This cannot be undone."))) return;
+              try {
+                var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(schoolId), { method: "DELETE" });
+                var data = await resp.json().catch(function () { return {}; });
+                if (data.success) {
+                  msgEl.textContent = "School deleted.";
+                  msgEl.className = "form-message success";
+                  loadSchools();
+                } else {
+                  msgEl.textContent = data.message || "Delete failed.";
+                  msgEl.className = "form-message error";
+                }
+              } catch (_e) {
+                msgEl.textContent = "Delete failed.";
+                msgEl.className = "form-message error";
+              }
+            } else if (action === "toggle") {
+              var newStatus = btn.textContent.trim() === "Activate" ? "active" : "inactive";
+              try {
+                var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(schoolId), {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ status: newStatus, modules_locked: newStatus === "inactive" })
+                });
+                var data = await resp.json().catch(function () { return {}; });
+                if (data.success) {
+                  msgEl.textContent = "Status updated.";
+                  msgEl.className = "form-message success";
+                  loadSchools();
+                } else {
+                  msgEl.textContent = data.message || "Update failed.";
+                  msgEl.className = "form-message error";
+                }
+              } catch (_e) {
+                msgEl.textContent = "Update failed.";
+                msgEl.className = "form-message error";
+              }
+            } else if (action === "edit") {
+              try {
+                var resp = await fetch(apiBase + "/api/admin/schools");
+                var data = await resp.json().catch(function () { return {}; });
+                if (data.success && Array.isArray(data.schools)) {
+                  var school = data.schools.find(function (s) { return String(s.school_id) === String(schoolId); });
+                  if (school) {
+                    var nameEl = document.getElementById("schoolNameInput");
+                    var emailEl = document.getElementById("accountUsernameInput");
+                    var passEl = document.getElementById("accountPasswordInput");
+                    var planEl = document.getElementById("subscriptionPlanInput");
+                    var startEl = document.getElementById("subscriptionStartInput");
+                    var expiryEl = document.getElementById("subscriptionExpiryInput");
+                    var sidEl = document.getElementById("schoolIdInput");
+                    var statEl = document.getElementById("licenseStatusInput");
+                    if (nameEl) nameEl.value = school.school_name || "";
+                    if (emailEl) emailEl.value = school.email || "";
+                    if (passEl) passEl.value = school.password || "";
+                    if (planEl) planEl.value = school.plan || "premium";
+                    if (startEl) startEl.value = school.start_date ? school.start_date.slice(0, 10) : "";
+                    if (expiryEl) expiryEl.value = school.expiry_date ? school.expiry_date.slice(0, 10) : "";
+                    if (sidEl) sidEl.value = school.school_id || "";
+                    if (statEl) statEl.value = school.status === "active" && !school.modules_locked ? "Active" : "Inactive";
+                    var actBtn = document.getElementById("activateAccountBtn");
+                    if (actBtn) { actBtn.textContent = "Save School"; actBtn.setAttribute("data-edit-school-id", schoolId); }
+                    msgEl.textContent = "Editing " + (school.school_name || schoolId) + ". Update fields above and click Save School.";
+                    msgEl.className = "form-message success";
+                    var topEl = document.getElementById("accountSettingsTop");
+                    if (topEl) topEl.scrollIntoView({ behavior: "smooth", block: "start" });
+                  } else {
+                    msgEl.textContent = "School not found.";
+                    msgEl.className = "form-message error";
+                  }
+                } else {
+                  msgEl.textContent = "Failed to load school details.";
+                  msgEl.className = "form-message error";
+                }
+              } catch (_e) {
+                msgEl.textContent = "Failed to load school details.";
+                msgEl.className = "form-message error";
+              }
+            }
+          });
+        }
+
+        var sendNotifBtn = document.getElementById("sendNotifBtn");
+        if (sendNotifBtn) {
+          sendNotifBtn.addEventListener("click", async function () {
+            var target = document.getElementById("notifTargetSchool");
+            var title = document.getElementById("notifTitle");
+            var message = document.getElementById("notifMessage");
+            var statusEl = document.getElementById("notifMessageStatus");
+            if (!message || !message.value.trim()) {
+              if (statusEl) { statusEl.textContent = "Message is required."; statusEl.className = "form-message error"; }
+              return;
+            }
+            try {
+              var resp = await fetch(apiBase + "/api/admin/notifications", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  school_id: target ? target.value : "",
+                  title: title ? title.value : "Notification from SagarSoft",
+                  message: message.value.trim()
+                })
+              });
+              var data = await resp.json().catch(function () { return {}; });
+              if (data.success) {
+                if (statusEl) { statusEl.textContent = "Notification sent successfully."; statusEl.className = "form-message success"; }
+                if (message) message.value = "";
+                loadNotifHistory();
+              } else {
+                if (statusEl) { statusEl.textContent = data.message || "Failed to send."; statusEl.className = "form-message error"; }
+              }
+            } catch (_e) {
+              if (statusEl) { statusEl.textContent = "Failed to send notification."; statusEl.className = "form-message error"; }
+            }
+          });
+        }
+
+        loadSchools();
+        loadNotifHistory();
+      }
       return;
     }
 
     renderModulePlaceholder(route, title);
+  }
+
+  async function loadNotifHistory() {
+    var tbody = document.getElementById("notifHistoryBody");
+    if (!tbody) return;
+    try {
+      var resp = await fetch(apiBase + "/api/admin/notifications");
+      var data = await resp.json().catch(function () { return {}; });
+      if (!data.success || !Array.isArray(data.notifications)) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notifications found.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.notifications.map(function (n) {
+        var date = n.created_at ? new Date(n.created_at).toLocaleString() : "-";
+        var school = n.school_name || n.school_id || "All Schools";
+        var title = escapeHtml(String(n.title || "Notification"));
+        var msg = escapeHtml(String(n.message || ""));
+        return '<tr><td style="white-space:nowrap;">' + date + '</td><td>' + school + '</td><td>' + title + '</td><td>' + msg + '</td></tr>';
+      }).join("") || '<tr><td colspan="4" style="text-align:center;padding:16px;">No notifications found.</td></tr>';
+    } catch (_e) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:#d64b4b;">Failed to load history.</td></tr>';
+    }
+  }
+
+  var clearNotifBtn = document.getElementById("clearNotifHistoryBtn");
+  if (clearNotifBtn) {
+    clearNotifBtn.addEventListener("click", function () {
+      if (!confirm("Clear all notification history?")) return;
+      var msgEl = document.getElementById("notifHistoryMessage");
+      fetch(apiBase + "/api/admin/notifications", { method: "DELETE" }).then(function (resp) {
+        return resp.json().catch(function () { return {}; });
+      }).then(function (data) {
+        if (data.success) {
+          if (msgEl) { msgEl.textContent = "History cleared."; msgEl.className = "form-message success"; }
+          loadNotifHistory();
+        } else {
+          if (msgEl) { msgEl.textContent = data.message || "Failed."; msgEl.className = "form-message error"; }
+        }
+      }).catch(function () {
+        if (msgEl) { msgEl.textContent = "Failed to clear history."; msgEl.className = "form-message error"; }
+      });
+    });
   }
 
   function updateHero() {
@@ -19832,8 +19614,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
     welcomeTitle.textContent = `Welcome back, ${currentUser.name}`;
     welcomeText.textContent = `You are signed in as ${currentUser.role}. Use the left sidebar to switch between dashboard sections without reloading the page.`;
-    document.getElementById("heroFeeCollection").textContent = `${currencySymbol} ${finance.totalFeeCollection}`;
-    document.getElementById("heroProfit").textContent = `${currencySymbol} ${finance.totalProfit}`;
+    const revenueEl = document.getElementById("heroRevenueValue");
+    const revenueFooter = document.getElementById("heroRevenueFooter");
+    const revenueSymbol = document.getElementById("heroRevenueSymbol");
+    const profitEl = document.getElementById("heroProfitValue");
+    const profitFooter = document.getElementById("heroProfitFooter");
+    const profitSymbol = document.getElementById("heroProfitSymbol");
+    if (revenueSymbol) revenueSymbol.textContent = currencySymbol;
+    if (profitSymbol) profitSymbol.textContent = currencySymbol;
+    if (revenueEl) {
+      revenueEl.textContent = String(Math.round(finance.totalFeeCollection));
+    }
+    if (revenueFooter) {
+      revenueFooter.textContent = `${currencySymbol} ${Math.round(finance.totalFeeCollection)}`;
+    }
+    if (profitEl) {
+      profitEl.textContent = String(Math.round(finance.totalProfit));
+    }
+    if (profitFooter) {
+      profitFooter.textContent = `${currencySymbol} ${Math.round(finance.totalProfit)}`;
+    }
   }
 
   function renderStudentsTable() {
@@ -19867,17 +19667,86 @@ document.addEventListener("DOMContentLoaded", function () {
   function openStudentModal(student) {
 
     const currencySymbol = (database.generalSettings && database.generalSettings.accountSettings && database.generalSettings.accountSettings.symbol) ? database.generalSettings.accountSettings.symbol : "Rs";
-    const feeRecords = (database.studentFees || []).filter(function (fee) { return fee.studentId === student.id; });
-    const totalFeeDue = feeRecords.reduce(function (sum, fee) { return sum + Math.max(0, Number(fee.amount || 0) - Number(fee.paid || 0)); }, 0);
-    const totalFeePaid = feeRecords.reduce(function (sum, fee) { return sum + Number(fee.paid || 0); }, 0);
-    const attendanceData = (database.attendance || []).filter(function (a) { return a.studentId === student.id && a.className === student.className; });
-    const totalPresent = attendanceData.filter(function (a) { return a.status === "present"; }).length;
-    const totalAbsent = attendanceData.filter(function (a) { return a.status === "absent"; }).length;
+    const settingsGS = (database && database.generalSettings) ? database.generalSettings : {};
+    const feeRecords = (database.fees || []).filter(function (fee) { return fee.studentId === student.id; });
+    const totalFeeDue = feeRecords.reduce(function (sum, fee) { return sum + Number(fee.remaining || fee.amount || 0); }, 0);
+    const totalFeePaid = feeRecords.reduce(function (sum, fee) { return sum + Number(fee.deposit || 0); }, 0);
+
+    const attendanceData = (database.attendance || []).filter(function (a) {
+      return a.studentId === student.id && (!a.className || a.className === student.className);
+    });
+    const totalPresent = attendanceData.filter(function (a) { return String(a.status || "").toLowerCase() === "present"; }).length;
+    const totalOnLeave = attendanceData.filter(function (a) { return String(a.status || "").toLowerCase() === "on-leave"; }).length;
+    const totalAbsent = attendanceData.filter(function (a) { return String(a.status || "").toLowerCase() === "absent"; }).length;
     const attendancePercent = attendanceData.length ? Math.round((totalPresent / attendanceData.length) * 100) : 0;
-    const examResults = (database.exams || []).map(function (exam) {
-      const marks = (database.marksRecords || []).find(function (m) { return m.studentId === student.id && m.examId === exam.id; });
-      return marks ? { exam: exam.name, obtained: marks.marksObtained, total: marks.totalMarks, percentage: Math.round((marks.marksObtained / marks.totalMarks) * 100) } : null;
+
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYearNum = now.getFullYear();
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const currentMonthName = monthNames[currentMonth];
+    const thisMonthAttendance = attendanceData.filter(function (a) {
+      if (!a.date) return false;
+      var d = new Date(a.date);
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYearNum;
+    });
+    const thisMonthPresent = thisMonthAttendance.filter(function (a) { return String(a.status || "").toLowerCase() === "present"; }).length;
+    const thisMonthLeave = thisMonthAttendance.filter(function (a) { return String(a.status || "").toLowerCase() === "on-leave"; }).length;
+    const thisMonthAbsent = thisMonthAttendance.filter(function (a) { return String(a.status || "").toLowerCase() === "absent"; }).length;
+
+    var classTestsBySubject = {};
+    (settingsGS.classTestMarks || []).forEach(function (ct) {
+      if (String(ct.studentId) === String(student.id)) {
+        if (!classTestsBySubject[ct.subjectName]) classTestsBySubject[ct.subjectName] = [];
+        classTestsBySubject[ct.subjectName].push(ct);
+      }
+    });
+    var classTestSubjectRows = Object.keys(classTestsBySubject).map(function (subject) {
+      var tests = classTestsBySubject[subject];
+      var totalTests = tests.length;
+      var totalMarks = tests.reduce(function (s, t) { return s + Number(t.total || 0); }, 0);
+      var obtainedMarks = tests.reduce(function (s, t) { return s + Number(t.obtained || 0); }, 0);
+      var pct = totalMarks ? Math.round((obtainedMarks / totalMarks) * 100) : 0;
+      return { subject: subject, totalTests: totalTests, totalMarks: totalMarks, obtainedMarks: obtainedMarks, percent: pct };
+    });
+
+    var allExams = settingsGS.exams || [];
+    var allExamMarks = settingsGS.examMarks || [];
+    var studentExamMarks = allExamMarks.filter(function (m) { return String(m.studentId) === String(student.id); });
+    var examResults = allExams.map(function (exam) {
+      var examTotalMarks = 0;
+      var examObtained = 0;
+      var examSubjectMarks = studentExamMarks.filter(function (m) { return m.examId === exam.id; });
+      examSubjectMarks.forEach(function (m) {
+        examTotalMarks += Number(m.totalMarks || 0);
+        examObtained += Number(m.obtainedMarks || 0);
+      });
+      return examSubjectMarks.length > 0 ? {
+        examName: exam.name,
+        totalMarks: examTotalMarks,
+        obtained: examObtained,
+        percentage: examTotalMarks ? Math.round((examObtained / examTotalMarks) * 100) : 0
+      } : null;
     }).filter(Boolean);
+
+    var allExamsTotalMarks = examResults.reduce(function (s, r) { return s + r.totalMarks; }, 0);
+    var allExamsObtained = examResults.reduce(function (s, r) { return s + r.obtained; }, 0);
+    var overallExamPercent = allExamsTotalMarks ? Math.round((allExamsObtained / allExamsTotalMarks) * 100) : 0;
+
+    var unpaidFeeMonths = feeRecords.filter(function (fee) { return fee.status !== "paid" || Number(fee.remaining || 0) > 0; });
+    var totalUnpaid = unpaidFeeMonths.reduce(function (sum, fee) { return sum + Number(fee.remaining || fee.amount || 0); }, 0);
+    function normalizeMonthLabel(mv) {
+      var v = String(mv || "").trim();
+      if (/^\d{4}-\d{2}$/.test(v)) {
+        var parts = v.split("-");
+        var y = Number(parts[0]), m = Number(parts[1]);
+        var mn = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+        if (m >= 1 && m <= 12) return mn[m-1] + ", " + y;
+      }
+      return v || "N/A";
+    }
+
+    var circ = 2 * Math.PI * 42;
 
     studentModal.hidden = false;
 
@@ -19890,58 +19759,160 @@ document.addEventListener("DOMContentLoaded", function () {
               <h2 style="margin: 0 0 0.5rem; font-size: 1.4rem; color: #0f2b3f;">${escapeHtml(student.name || "-")}</h2>
               <p style="margin: 0.3rem 0; color: #1b5f7a; font-weight: 600;">Roll No: ${escapeHtml(student.admissionNo || "-")}</p>
               <p style="margin: 0.3rem 0; color: #555;">Class: ${escapeHtml(student.className || "-")} ${student.section ? `- Section ${escapeHtml(student.section)}` : ""}</p>
-              <p style="margin: 0.3rem 0; color: #555;">Status: <span style="padding: 0.2rem 0.6rem; border-radius: 12px; background: ${student.status === "active" ? "rgba(29, 156, 97, 0.1)" : "rgba(214, 75, 75, 0.1)"}; color: ${student.status === "active" ? "#1d9c61" : "#d64b4b"}; font-weight: 600;">${student.status}</span></p>
+              <p style="margin: 0.3rem 0; color: #555;">Status: <span style="padding: 0.2rem 0.6rem; border-radius: 12px; background: ${String(student.status).toLowerCase() === "active" ? "rgba(29, 156, 97, 0.1)" : "rgba(214, 75, 75, 0.1)"}; color: ${String(student.status).toLowerCase() === "active" ? "#1d9c61" : "#d64b4b"}; font-weight: 600;">${student.status}</span></p>
             </div>
           </div>
 
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;">
-            <div style="padding: 1rem; border-radius: 12px; background: rgba(27, 95, 122, 0.08); border: 1px solid rgba(27, 95, 122, 0.15); text-align: center;">
-              <p style="margin: 0; color: #666; font-size: 0.9rem; font-weight: 600;">Fee Status</p>
-              <p style="margin: 0.4rem 0 0; font-size: 1.2rem; font-weight: 700; color: #0f2b3f;">${currencySymbol} ${totalFeeDue}</p>
-              <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: #888;">Pending</p>
-            </div>
-            <div style="padding: 1rem; border-radius: 12px; background: rgba(27, 95, 122, 0.08); border: 1px solid rgba(27, 95, 122, 0.15); text-align: center;">
-              <p style="margin: 0; color: #666; font-size: 0.9rem; font-weight: 600;">Attendance</p>
-              <p style="margin: 0.4rem 0 0; font-size: 1.2rem; font-weight: 700; color: #0f2b3f;">${attendancePercent}%</p>
-              <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: #888;">Present: ${totalPresent}/${attendanceData.length}</p>
-            </div>
-            <div style="padding: 1rem; border-radius: 12px; background: rgba(27, 95, 122, 0.08); border: 1px solid rgba(27, 95, 122, 0.15); text-align: center;">
-              <p style="margin: 0; color: #666; font-size: 0.9rem; font-weight: 600;">Exams</p>
-              <p style="margin: 0.4rem 0 0; font-size: 1.2rem; font-weight: 700; color: #0f2b3f;">${examResults.length}</p>
-              <p style="margin: 0.2rem 0 0; font-size: 0.85rem; color: #888;">Completed</p>
+
+          <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(27, 95, 122, 0.15);">
+            <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Admission Details</h4>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; font-size: 0.88rem;">
+              <div><strong style="color: #555;">Date of Admission:</strong> ${escapeHtml(student.dateOfAdmission || "-")}</div>
+              <div><strong style="color: #555;">Discount in Fee:</strong> ${student.discountInFee ? escapeHtml(student.discountInFee) + "%" : "-"}</div>
+              <div><strong style="color: #555;">Previous School:</strong> ${escapeHtml(student.previousSchool || "-")}</div>
+              <div><strong style="color: #555;">Previous ID / Board Roll No:</strong> ${escapeHtml(student.previousId || "-")}</div>
             </div>
           </div>
 
           <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(27, 95, 122, 0.15);">
             <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Personal Information</h4>
-            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8rem; font-size: 0.9rem;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; font-size: 0.88rem;">
               <div><strong style="color: #555;">Date of Birth:</strong> ${escapeHtml(student.dateOfBirth || "-")}</div>
               <div><strong style="color: #555;">Gender:</strong> ${escapeHtml(student.gender || "-")}</div>
               <div><strong style="color: #555;">Blood Group:</strong> ${escapeHtml(student.bloodGroup || "-")}</div>
+              <div><strong style="color: #555;">Religion:</strong> ${escapeHtml(student.religion || "-")}</div>
               <div><strong style="color: #555;">Phone:</strong> ${getStudentDisplayPhone(student)}</div>
-              <div><strong style="color: #555;">Admission Date:</strong> ${escapeHtml(student.dateOfAdmission || "-")}</div>
               <div><strong style="color: #555;">Address:</strong> ${escapeHtml(student.address || "-")}</div>
+              <div><strong style="color: #555;">Birth Form ID / NIC:</strong> ${escapeHtml(student.birthId || "-")}</div>
+              <div><strong style="color: #555;">Disease Info:</strong> ${escapeHtml(student.diseaseInfo || "-")}</div>
+              <div><strong style="color: #555;">Orphan Status:</strong> ${escapeHtml(student.orphanStatus || "-")}</div>
             </div>
           </div>
 
-          ${examResults.length > 0 ? `
           <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(27, 95, 122, 0.15);">
-            <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Exam Results</h4>
-            <div style="display: grid; gap: 0.6rem; font-size: 0.9rem;">
-              ${examResults.map(function (result) {
-                return `<div style="display: grid; grid-template-columns: 1fr auto auto; gap: 1rem; padding: 0.6rem; background: rgba(27, 95, 122, 0.04); border-radius: 8px;">
-                  <div><strong>${escapeHtml(result.exam)}</strong></div>
-                  <div><strong style="color: #1b5f7a;">${result.obtained}/${result.total}</strong></div>
-                  <div style="text-align: right; color: ${result.percentage >= 60 ? "#1d9c61" : "#d64b4b"}; font-weight: 600;">${result.percentage}%</div>
-                </div>`;
-              }).join("")}
+            <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Father / Guardian Information</h4>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; font-size: 0.88rem;">
+              <div><strong style="color: #555;">Name:</strong> ${escapeHtml(student.fatherName || "-")}</div>
+              <div><strong style="color: #555;">Education:</strong> ${escapeHtml(student.fatherEducation || "-")}</div>
+              <div><strong style="color: #555;">National ID:</strong> ${escapeHtml(student.fatherNationalId || "-")}</div>
+              <div><strong style="color: #555;">Phone:</strong> ${escapeHtml(student.fatherPhone || "-")}</div>
+              <div><strong style="color: #555;">Occupation:</strong> ${escapeHtml(student.fatherOccupation || "-")}</div>
+              <div><strong style="color: #555;">Monthly Income:</strong> ${student.fatherIncome ? currencySymbol + " " + escapeHtml(student.fatherIncome) : "-"}</div>
             </div>
           </div>
-          ` : ""}
+
+          <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(27, 95, 122, 0.15);">
+            <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Mother Information</h4>
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.6rem; font-size: 0.88rem;">
+              <div><strong style="color: #555;">Name:</strong> ${escapeHtml(student.motherName || "-")}</div>
+              <div><strong style="color: #555;">Education:</strong> ${escapeHtml(student.motherEducation || "-")}</div>
+              <div><strong style="color: #555;">National ID:</strong> ${escapeHtml(student.motherNationalId || "-")}</div>
+              <div><strong style="color: #555;">Phone:</strong> ${escapeHtml(student.motherPhone || "-")}</div>
+              <div><strong style="color: #555;">Occupation:</strong> ${escapeHtml(student.motherOccupation || "-")}</div>
+            </div>
+          </div>
+
+          <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(27, 95, 122, 0.15);">
+            <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Attendance Report</h4>
+            <div style="display: flex; gap: 1.5rem; justify-content: center; margin-bottom: 1rem;">
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="${attendancePercent >= 75 ? "#1d9c61" : attendancePercent >= 40 ? "#f0ad4e" : "#d64b4b"}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - attendancePercent / 100)}" transform="rotate(-90 50 50)" stroke-linecap="round"/>
+                <text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="18" fill="#0f2b3f">${attendancePercent}%</text>
+                <text x="50" y="66" text-anchor="middle" font-weight="500" font-size="9" fill="#888">Overall</text>
+              </svg>
+              <svg width="100" height="100" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#1b5f7a" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="0" transform="rotate(-90 50 50)" stroke-linecap="round"/>
+                <text x="50" y="44" text-anchor="middle" font-weight="700" font-size="13" fill="#0f2b3f">${currentMonthName}</text>
+                <text x="50" y="60" text-anchor="middle" font-weight="600" font-size="11" fill="#555">${currentYearNum}</text>
+              </svg>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem;">
+              <div style="padding: 0.8rem; border-radius: 10px; background: rgba(29, 156, 97, 0.1); border: 1px solid rgba(29, 156, 97, 0.2); text-align: center;">
+                <p style="margin:0; font-size:1.1rem; font-weight:700; color:#1d9c61;">${totalPresent}</p>
+                <p style="margin:0; font-size:0.8rem; color:#1d9c61; font-weight:600;">PRESENTS</p>
+                <p style="margin:0; font-size:0.75rem; color:#888;">This Month: ${thisMonthPresent}</p>
+              </div>
+              <div style="padding: 0.8rem; border-radius: 10px; background: rgba(240, 173, 78, 0.1); border: 1px solid rgba(240, 173, 78, 0.2); text-align: center;">
+                <p style="margin:0; font-size:1.1rem; font-weight:700; color:#f0ad4e;">${totalOnLeave}</p>
+                <p style="margin:0; font-size:0.8rem; color:#f0ad4e; font-weight:600;">LEAVES</p>
+                <p style="margin:0; font-size:0.75rem; color:#888;">This Month: ${thisMonthLeave}</p>
+              </div>
+              <div style="padding: 0.8rem; border-radius: 10px; background: rgba(214, 75, 75, 0.1); border: 1px solid rgba(214, 75, 75, 0.2); text-align: center;">
+                <p style="margin:0; font-size:1.1rem; font-weight:700; color:#d64b4b;">${totalAbsent}</p>
+                <p style="margin:0; font-size:0.8rem; color:#d64b4b; font-weight:600;">ABSENTS</p>
+                <p style="margin:0; font-size:0.75rem; color:#888;">This Month: ${thisMonthAbsent}</p>
+              </div>
+            </div>
+          </div>
+
+          <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(27, 95, 122, 0.15);">
+            <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Class Tests Report</h4>
+            ${classTestSubjectRows.length > 0 ? `
+            <div style="overflow-x:auto;">
+              <table style="width:100%; border-collapse:collapse; font-size:0.85rem;">
+                <thead>
+                  <tr style="background:rgba(27,95,122,0.06);">
+                    <th style="padding:8px 10px; text-align:left; border-bottom:2px solid rgba(27,95,122,0.15);">Subject</th>
+                    <th style="padding:8px 10px; text-align:center; border-bottom:2px solid rgba(27,95,122,0.15);">%</th>
+                    <th style="padding:8px 10px; text-align:center; border-bottom:2px solid rgba(27,95,122,0.15);">TOTAL CLASS TESTS</th>
+                    <th style="padding:8px 10px; text-align:center; border-bottom:2px solid rgba(27,95,122,0.15);">TOTAL MARKS</th>
+                    <th style="padding:8px 10px; text-align:center; border-bottom:2px solid rgba(27,95,122,0.15);">OBTAINED MARKS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${classTestSubjectRows.map(function (row) {
+                    return '<tr>' +
+                      '<td style="padding:8px 10px; border-bottom:1px solid rgba(27,95,122,0.08); font-weight:600;">' + escapeHtml(row.subject) + '</td>' +
+                      '<td style="padding:8px 10px; text-align:center; border-bottom:1px solid rgba(27,95,122,0.08); color:' + (row.percent >= 60 ? '#1d9c61' : '#d64b4b') + '; font-weight:600;">' + row.percent + '%</td>' +
+                      '<td style="padding:8px 10px; text-align:center; border-bottom:1px solid rgba(27,95,122,0.08);">' + row.totalTests + '</td>' +
+                      '<td style="padding:8px 10px; text-align:center; border-bottom:1px solid rgba(27,95,122,0.08);">' + row.totalMarks + '</td>' +
+                      '<td style="padding:8px 10px; text-align:center; border-bottom:1px solid rgba(27,95,122,0.08); font-weight:600;">' + row.obtainedMarks + '</td>' +
+                      '</tr>';
+                  }).join("")}
+                </tbody>
+              </table>
+            </div>
+            ` : '<p style="color:#999; font-size:0.85rem; text-align:center; padding:1rem 0; margin:0;">No class test records found.</p>'}
+          </div>
+
+          <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(27, 95, 122, 0.15);">
+            <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Examination Report</h4>
+            ${examResults.length > 0 ? `
+            <div style="display:grid; gap:0.8rem; margin-bottom:1rem;">
+              ${examResults.map(function (r) {
+                var barPct = r.totalMarks > 0 ? Math.min(100, Math.round((r.obtained / r.totalMarks) * 100)) : 0;
+                return '<div style="display:flex; align-items:center; gap:8px;">' +
+                  '<span style="flex:0 0 110px; font-size:0.82rem; font-weight:600; color:#0f2b3f; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">' + escapeHtml(r.examName) + '</span>' +
+                  '<div style="flex:1; height:22px; background:#e8edf0; border-radius:11px; overflow:hidden; position:relative;">' +
+                  '<div style="height:100%; width:' + barPct + '%; background:linear-gradient(90deg,#1b5f7a,#1d9c61); border-radius:11px; display:flex; align-items:center; justify-content:flex-end; padding-right:8px; box-sizing:border-box; min-width:0;">' +
+                  '<span style="color:#fff; font-size:0.75rem; font-weight:700; white-space:nowrap;">' + r.obtained + '/' + r.totalMarks + '</span>' +
+                  '</div></div></div>';
+              }).join("")}
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr auto; gap:1rem; align-items:center;">
+              <div style="padding:0.8rem; border-radius:10px; background:rgba(27,95,122,0.08); text-align:center;">
+                <p style="margin:0; font-size:0.8rem; color:#888; font-weight:600;">All Exams Total Marks</p>
+                <p style="margin:0.3rem 0 0; font-size:1.1rem; font-weight:700; color:#0f2b3f;">${allExamsTotalMarks}</p>
+              </div>
+              <div style="padding:0.8rem; border-radius:10px; background:rgba(29,156,97,0.08); text-align:center;">
+                <p style="margin:0; font-size:0.8rem; color:#888; font-weight:600;">Obtained Marks</p>
+                <p style="margin:0.3rem 0 0; font-size:1.1rem; font-weight:700; color:#1d9c61;">${allExamsObtained}</p>
+              </div>
+              <svg width="80" height="80" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="${overallExamPercent >= 60 ? "#1d9c61" : overallExamPercent >= 33 ? "#f0ad4e" : "#d64b4b"}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - overallExamPercent / 100)}" transform="rotate(-90 50 50)" stroke-linecap="round"/>
+                <text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="16" fill="#0f2b3f">${overallExamPercent}%</text>
+                <text x="50" y="64" text-anchor="middle" font-weight="500" font-size="8" fill="#888">Overall</text>
+              </svg>
+            </div>
+            ` : '<p style="color:#999; font-size:0.85rem; text-align:center; padding:1rem 0; margin:0;">No examination records found.</p>'}
+          </div>
 
           <div style="padding: 1rem; border-radius: 12px; border: 1px solid rgba(27, 95, 122, 0.15);">
             <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Fee Report</h4>
-            <div style="display: grid; gap: 0.6rem; font-size: 0.9rem;">
+            <div style="display: grid; gap: 0.6rem; font-size: 0.9rem; margin-bottom: 0.8rem;">
               <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; padding: 0.6rem; background: rgba(27, 95, 122, 0.04); border-radius: 8px;">
                 <span><strong>Total Due:</strong></span>
                 <span style="color: #d64b4b; font-weight: 600;">${currencySymbol} ${totalFeeDue}</span>
@@ -19950,7 +19921,24 @@ document.addEventListener("DOMContentLoaded", function () {
                 <span><strong>Total Paid:</strong></span>
                 <span style="color: #1d9c61; font-weight: 600;">${currencySymbol} ${totalFeePaid}</span>
               </div>
+              <div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; padding: 0.6rem; background: rgba(27, 95, 122, 0.04); border-radius: 8px;">
+                <span><strong>Remaining:</strong></span>
+                <span style="color: #d64b4b; font-weight: 700; font-size: 1rem;">${currencySymbol} ${totalUnpaid}</span>
+              </div>
             </div>
+            ${unpaidFeeMonths.length > 0 ? `
+            <h5 style="margin: 0 0 0.5rem; color: #d64b4b; font-size: 0.85rem;">Unpaid Months</h5>
+            <div style="display: grid; gap: 0.4rem; font-size: 0.85rem;">
+              ${unpaidFeeMonths.map(function (fee) {
+                var monthLabel = normalizeMonthLabel(fee.feeMonth || fee.month);
+                var remaining = Number(fee.remaining || fee.amount || 0);
+                return '<div style="display: grid; grid-template-columns: 1fr auto; gap: 1rem; padding: 0.4rem 0.6rem; background: rgba(214, 75, 75, 0.06); border-radius: 6px; border-left: 3px solid #d64b4b;">' +
+                  '<span style="font-weight:600; color:#333;">' + escapeHtml(monthLabel) + '</span>' +
+                  '<span style="color:#d64b4b; font-weight:600;">' + currencySymbol + ' ' + remaining + '</span>' +
+                  '</div>';
+              }).join("")}
+            </div>
+            ` : '<p style="color:#999; font-size:0.85rem; text-align:center; padding:0.5rem 0; margin:0;">All months paid.</p>'}
           </div>
         </div>
       </article>
@@ -19973,6 +19961,7 @@ document.addEventListener("DOMContentLoaded", function () {
       deleteEmployeeRecord(employeeId);
       renderDashboard();
       renderDynamicModuleWorkspace("all-employees", "All Employees");
+      (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
     });
   }
 
@@ -20070,31 +20059,190 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  function openEmployeeModal(employee) {
+  function renderEmployeeDetailView(employee) {
     const employeeModalContent = document.getElementById("employeeModalContent");
-    if (!employeeModalContent) {
-
-      return;
-    }
-
+    if (!employeeModalContent) return;
     try {
-      const generalSettings = database.generalSettings || {};
-      const currencySymbol = (generalSettings.accountSettings && generalSettings.accountSettings.symbol) ? generalSettings.accountSettings.symbol : "Rs";
-      const assignedClasses = (database.classes || []).filter(function (c) { return String(c.teacher || "").toLowerCase() === String(employee.name || "").toLowerCase(); });
-      const assignedSubjects = (database.subjects || []).filter(function (s) { return String(s.employeeName || "") === String(employee.name || ""); });
-      const salaryPayments = (generalSettings.salaryPayments || []).filter(function (s) { return s.employeeId === employee.id; }).slice(-12);
-      const totalSalary = salaryPayments.reduce(function (sum, s) { return sum + Number(s.salaryAmount || 0); }, 0);
+      var generalSettings = database.generalSettings || {};
+      var currencySymbol = (generalSettings.accountSettings && generalSettings.accountSettings.symbol) || "Rs";
+      var attendanceRecords = (database.attendance || database.attendanceRecords || []).filter(function (a) { return a.employeeId === employee.id && a.entityType === "employee"; });
+      var salaryPayments = (generalSettings.salaryPayments || []).filter(function (s) { return s.employeeId === employee.id; });
+      var classAssignments = (generalSettings.classAssignments || []).filter(function (ca) { return String(ca.teacher || "").toLowerCase() === String(employee.name || "").toLowerCase(); });
+      var subjectAssignments = (database.subjects || []).filter(function (s) { return String(s.employeeName || "").toLowerCase() === String(employee.name || "").toLowerCase(); });
+      var now = new Date();
+      var currentMonth = now.getMonth();
+      var currentYear = now.getFullYear();
+      var monthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
       
-      const profileHTML = `<div style="display:grid; gap:1.2rem;"><div style="display:grid; grid-template-columns:100px 1fr; gap:1.2rem; align-items:start; padding:1rem; border-radius:12px; background:rgba(27,95,122,0.06);">${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" style="width:100px; height:100px; border-radius:8px; object-fit:cover; border:2px solid #1b5f7a;">` : `<span style="width:100px; height:100px; border-radius:8px; background:linear-gradient(135deg,#0f2b3f,#1b5f7a); color:#fff; font-weight:700; font-size:1.4rem; display:inline-flex; align-items:center; justify-content:center;">${getInitials(employee.name || "E")}</span>`}<div><h3 style="margin:0; color:#0f2b3f; font-size:1.1rem;">${escapeHtml(employee.name || "-")}</h3><p style="margin:0.3rem 0; color:#1b5f7a; font-weight:600;">${escapeHtml(employee.designation || "-")}</p><p style="margin:0.3rem 0; color:#555; font-size:0.9rem;">Role: ${escapeHtml(employee.role || "-")}</p></div></div><div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.8rem;"><div style="padding:0.8rem; border-radius:10px; background:rgba(27,95,122,0.08); border:1px solid rgba(27,95,122,0.15);"><p style="margin:0; color:#888; font-size:0.85rem; font-weight:600;">Date of Joining</p><p style="margin:0.3rem 0 0; color:#0f2b3f; font-weight:700;">${escapeHtml(employee.dateOfJoining || "-")}</p></div><div style="padding:0.8rem; border-radius:10px; background:rgba(27,95,122,0.08); border:1px solid rgba(27,95,122,0.15);"><p style="margin:0; color:#888; font-size:0.85rem; font-weight:600;">Total Salary (Last 12M)</p><p style="margin:0.3rem 0 0; color:#0f2b3f; font-weight:700;">${currencySymbol} ${totalSalary}</p></div></div><div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Contact Information</h4><p style="margin:0.3rem 0; color:#555; font-size:0.9rem;"><strong>Email:</strong> ${escapeHtml(employee.email || "-")}</p><p style="margin:0.3rem 0; color:#555; font-size:0.9rem;"><strong>Mobile:</strong> ${escapeHtml(getEmployeeDisplayPhone(employee))}</p><p style="margin:0.3rem 0; color:#555; font-size:0.9rem;"><strong>Address:</strong> ${escapeHtml(employee.address || "-")}</p></div>${assignedClasses.length > 0 ? `<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Classes Teaching (${assignedClasses.length})</h4><div style="display:grid; gap:0.4rem; font-size:0.9rem;">${assignedClasses.slice(0,5).map(function(c){return `<span style="padding:0.4rem 0.6rem; background:rgba(27,95,122,0.1); border-radius:6px;">${escapeHtml(c.name || "-")}</span>`;}).join("")}</div></div>` : ""}${assignedSubjects.length > 0 ? `<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Subjects Assigned (${assignedSubjects.length})</h4><div style="display:grid; gap:0.4rem; font-size:0.9rem;">${assignedSubjects.slice(0,5).map(function(s){return `<span style="padding:0.4rem 0.6rem; background:rgba(27,95,122,0.1); border-radius:6px;">${escapeHtml(s.subjectName || "-")} (${escapeHtml(s.className || "-")})</span>`;}).join("")}</div></div>` : ""}${salaryPayments.length > 0 ? `<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Recent Salary Payments</h4><div style="display:grid; gap:0.6rem; font-size:0.9rem;">${salaryPayments.slice(0,6).map(function(s){return `<div style="display:grid; grid-template-columns:1fr auto; gap:1rem; padding:0.6rem; background:rgba(27,95,122,0.04); border-radius:8px;"><span><strong>${escapeHtml(s.salaryMonth || "-")}</strong></span><span style="color:#1b5f7a; font-weight:600;">${currencySymbol} ${Number(s.netSalary || 0)}</span></div>`;}).join("")}</div></div>` : ""}</div>`;
-      employeeModalContent.innerHTML = profileHTML;
-      
-      const modal = document.getElementById("employeeModal");
-      if (modal) {
-        modal.hidden = false;
+      function monthDiff(d1, d2) {
+        return (d2.getFullYear() - d1.getFullYear()) * 12 + d2.getMonth() - d1.getMonth();
       }
+      
+      function getInitials(name) {
+        return name ? name.split(" ").map(function(w){return w.charAt(0).toUpperCase();}).slice(0,2).join("") : "E";
+      }
+      
+      var attendanceThisMonth = attendanceRecords.filter(function (a) {
+        if (!a.date) return false;
+        var d = new Date(a.date);
+        return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+      });
+      var presents = attendanceRecords.filter(function (a) { return String(a.status).toLowerCase() === "present"; }).length;
+      var leaves = attendanceRecords.filter(function (a) { return String(a.status).toLowerCase() === "on-leave"; }).length;
+      var absents = attendanceRecords.filter(function (a) { return String(a.status).toLowerCase() === "absent"; }).length;
+      var presentsThisMonth = attendanceThisMonth.filter(function (a) { return String(a.status).toLowerCase() === "present"; }).length;
+      var leavesThisMonth = attendanceThisMonth.filter(function (a) { return String(a.status).toLowerCase() === "on-leave"; }).length;
+      var absentsThisMonth = attendanceThisMonth.filter(function (a) { return String(a.status).toLowerCase() === "absent"; }).length;
+      var attendanceTotal = presents + leaves + absents;
+      var attendancePct = attendanceTotal > 0 ? Math.round((presents / attendanceTotal) * 100) : 0;
+      var monthTotal = presentsThisMonth + leavesThisMonth + absentsThisMonth;
+      var monthPct = monthTotal > 0 ? Math.round((presentsThisMonth / monthTotal) * 100) : 0;
+      
+      var totalSalary = 0;
+      salaryPayments.forEach(function (s) { totalSalary += Number(s.salaryAmount || 0); });
+      var last6Payments = salaryPayments.slice(-6);
+
+      function getEmployeeDisplayPhone(emp) {
+        return emp.phone || emp.mobile || emp.contact || "-";
+      }
+
+      var sections = [];
+      
+      // Profile header
+      var profileHTML = '<div style="display:grid; grid-template-columns:80px 1fr; gap:1rem; align-items:center; padding:1rem; border-radius:12px; background:rgba(27,95,122,0.06);">';
+      if (employee.picture) {
+        profileHTML += '<img src="' + escapeAttr(employee.picture) + '" alt="' + escapeAttr(employee.name) + '" style="width:80px; height:80px; border-radius:50%; object-fit:cover; border:3px solid #1b5f7a;">';
+      } else {
+        profileHTML += '<span style="width:80px; height:80px; border-radius:50%; background:linear-gradient(135deg,#0f2b3f,#1b5f7a); color:#fff; font-weight:700; font-size:1.6rem; display:inline-flex; align-items:center; justify-content:center;">' + getInitials(employee.name) + '</span>';
+      }
+      profileHTML += '<div><h3 style="margin:0; color:#0f2b3f; font-size:1.1rem;">' + escapeHtml(employee.name || "-") + '</h3><p style="margin:0.2rem 0; color:#1b5f7a; font-weight:600;">' + escapeHtml(employee.designation || "-") + '</p><p style="margin:0; color:#888; font-size:0.85rem;">' + escapeHtml(employee.role || "") + (employee.status ? ' &middot; <span style="color:' + (String(employee.status).toLowerCase() === "active" ? "#27ae60" : "#e74c3c") + '">' + escapeHtml(employee.status) + '</span>' : '') + '</p></div></div>';
+      sections.push(profileHTML);
+      
+      // Employee Details card
+      var detailsHTML = '<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Employee Details</h4><div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.5rem;">';
+      var detailFields = [
+        ["Employee ID", employee.id],
+        ["Designation", employee.designation],
+        ["Date of Joining", employee.dateOfJoining],
+        ["Date of Birth", employee.dob || employee.dateOfBirth || "-"],
+        ["Gender", employee.gender || "-"],
+        ["Blood Group", employee.bloodGroup || "-"],
+        ["Religion", employee.religion || "-"],
+        ["Education", employee.education || "-"],
+        ["Experience", employee.experience ? employee.experience + " yrs" : "-"],
+        ["Monthly Salary", currencySymbol + " " + (employee.monthlySalary || employee.salary || "0")]
+      ];
+      detailFields.forEach(function (f) {
+        detailsHTML += '<div style="padding:0.5rem 0.6rem; border-radius:8px; background:rgba(27,95,122,0.04);"><p style="margin:0; color:#888; font-size:0.8rem; font-weight:600;">' + f[0] + '</p><p style="margin:0.2rem 0 0; color:#0f2b3f; font-weight:600;">' + escapeHtml(String(f[1])) + '</p></div>';
+      });
+      detailsHTML += '</div></div>';
+      sections.push(detailsHTML);
+      
+      // Contact Information
+      var contactHTML = '<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Contact Information</h4><div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.5rem;">';
+      var contactFields = [
+        ["Phone", getEmployeeDisplayPhone(employee)],
+        ["Email", employee.email],
+        ["Address", employee.address],
+        ["Father / Husband", employee.father || employee.fatherName || employee.husband || "-"],
+        ["National ID", employee.nic || employee.cnic || employee.nationalId || "-"],
+        ["Subject", employee.subject || "-"]
+      ];
+      contactFields.forEach(function (f) {
+        contactHTML += '<div style="padding:0.5rem 0.6rem; border-radius:8px; background:rgba(27,95,122,0.04);"><p style="margin:0; color:#888; font-size:0.8rem; font-weight:600;">' + f[0] + '</p><p style="margin:0.2rem 0 0; color:#0f2b3f; font-weight:600;">' + escapeHtml(String(f[1] || "-")) + '</p></div>';
+      });
+      contactHTML += '</div></div>';
+      sections.push(contactHTML);
+      
+      // Assigned Classes & Subjects
+      if (classAssignments.length > 0 || subjectAssignments.length > 0) {
+        var assignHTML = '<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.6rem; color:#0f2b3f; font-size:0.95rem;">Assigned Classes &amp; Subjects</h4>';
+        if (classAssignments.length > 0) {
+          assignHTML += '<div style="margin-bottom:0.5rem;"><p style="margin:0 0 0.3rem; color:#888; font-size:0.85rem; font-weight:600;">Classes:</p>';
+          assignHTML += '<div style="display:flex; flex-wrap:wrap; gap:0.4rem;">';
+          classAssignments.forEach(function (c) {
+            assignHTML += '<span style="padding:0.2rem 0.6rem; border-radius:12px; background:rgba(39,174,96,0.12); color:#27ae60; font-size:0.8rem; font-weight:600;">' + escapeHtml(c.name || c.class || "-") + '</span>';
+          });
+          assignHTML += '</div></div>';
+        }
+        if (subjectAssignments.length > 0) {
+          assignHTML += '<div><p style="margin:0 0 0.3rem; color:#888; font-size:0.85rem; font-weight:600;">Subjects:</p>';
+          assignHTML += '<div style="display:flex; flex-wrap:wrap; gap:0.4rem;">';
+          subjectAssignments.forEach(function (s) {
+            assignHTML += '<span style="padding:0.2rem 0.6rem; border-radius:12px; background:rgba(27,95,122,0.12); color:#1b5f7a; font-size:0.8rem; font-weight:600;">' + escapeHtml(s.name || s.subject || "-") + '</span>';
+          });
+          assignHTML += '</div></div>';
+        }
+        assignHTML += '</div>';
+        sections.push(assignHTML);
+      }
+      
+      // Attendance Report
+      var attHTML = '<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.8rem; color:#0f2b3f; font-size:0.95rem;">Attendance Report</h4>';
+      if (attendanceRecords.length === 0) {
+        attHTML += '<p style="color:#999; text-align:center; padding:1rem 0;">No attendance records found for this employee.</p>';
+      } else {
+        attHTML += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">';
+        // Overall circle
+        var circR = 34, circC = 2 * Math.PI * circR, circOff = circC - (circC * attendancePct / 100);
+        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#e8edf0" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#1b5f7a" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + circOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#0f2b3f">' + attendancePct + '%</text></svg><p style="margin:0.3rem 0 0; color:#666; font-size:0.8rem;">Overall</p></div>';
+        // This Month circle
+        var monthCircOff = circC - (circC * monthPct / 100);
+        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#e8edf0" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#27ae60" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + monthCircOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#0f2b3f">' + monthPct + '%</text></svg><p style="margin:0.3rem 0 0; color:#666; font-size:0.8rem;">' + monthNames[currentMonth] + " " + currentYear + '</p></div>';
+        attHTML += '</div>';
+        // 3 month cards
+        attHTML += '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.6rem;">';
+        var monthCards = [
+          { label: "Presents", totalVal: presents, monthVal: presentsThisMonth, color: "#27ae60", bg: "rgba(39,174,96,0.1)" },
+          { label: "Leaves", totalVal: leaves, monthVal: leavesThisMonth, color: "#f39c12", bg: "rgba(243,156,18,0.1)" },
+          { label: "Absents", totalVal: absents, monthVal: absentsThisMonth, color: "#e74c3c", bg: "rgba(231,76,60,0.1)" }
+        ];
+        monthCards.forEach(function (mc) {
+          attHTML += '<div style="padding:0.7rem; border-radius:10px; background:' + mc.bg + '; border:1px solid rgba(0,0,0,0.05); text-align:center;"><p style="margin:0; color:' + mc.color + '; font-weight:700; font-size:1rem;">' + mc.totalVal + '</p><p style="margin:0.2rem 0 0; color:#888; font-size:0.75rem;">' + mc.label + '</p><p style="margin:0.2rem 0 0; color:#555; font-size:0.8rem; font-weight:600;">This Month: ' + mc.monthVal + '</p></div>';
+        });
+        attHTML += '</div>';
+      }
+      attHTML += '</div>';
+      sections.push(attHTML);
+      
+      // Salary Report
+      var salHTML = '<div style="padding:1rem; border-radius:12px; border:1px solid rgba(27,95,122,0.15);"><h4 style="margin:0 0 0.8rem; color:#0f2b3f; font-size:0.95rem;">Salary Report</h4>';
+      if (salaryPayments.length === 0) {
+        salHTML += '<p style="color:#999; text-align:center; padding:1rem 0;">No salary payments recorded yet.</p>';
+      } else {
+        // Summary cards
+        salHTML += '<div style="display:grid; grid-template-columns:repeat(2,1fr); gap:0.6rem; margin-bottom:0.8rem;">';
+        salHTML += '<div style="padding:0.7rem; border-radius:10px; background:rgba(27,95,122,0.08); text-align:center;"><p style="margin:0; color:#1b5f7a; font-weight:700; font-size:1.1rem;">' + currencySymbol + ' ' + totalSalary.toLocaleString() + '</p><p style="margin:0.2rem 0 0; color:#888; font-size:0.75rem;">Total Received</p></div>';
+        salHTML += '<div style="padding:0.7rem; border-radius:10px; background:rgba(27,95,122,0.08); text-align:center;"><p style="margin:0; color:#1b5f7a; font-weight:700; font-size:1.1rem;">' + salaryPayments.length + '</p><p style="margin:0.2rem 0 0; color:#888; font-size:0.75rem;">Payments</p></div>';
+        salHTML += '</div>';
+        // Recent payments list
+        salHTML += '<p style="margin:0 0 0.5rem; color:#888; font-size:0.85rem; font-weight:600;">Recent Payments:</p>';
+        salHTML += '<div style="display:flex; flex-direction:column; gap:0.4rem;">';
+        var recentPayments = salaryPayments.slice(-6).reverse();
+        recentPayments.forEach(function (sp) {
+          var netAmount = Number(sp.salaryAmount || 0) + Number(sp.bonus || 0) - Number(sp.deductions || 0);
+          salHTML += '<div style="display:grid; grid-template-columns:1fr auto; align-items:center; padding:0.5rem 0.7rem; border-radius:8px; background:rgba(27,95,122,0.04);">';
+          salHTML += '<div><p style="margin:0; color:#0f2b3f; font-weight:600; font-size:0.85rem;">' + escapeHtml(sp.month || sp.salaryMonth || "-") + '</p>';
+          if (Number(sp.bonus || 0) > 0 || Number(sp.deductions || 0) > 0) {
+            salHTML += '<p style="margin:0.1rem 0 0; color:#888; font-size:0.75rem;">Bonus: ' + currencySymbol + ' ' + Number(sp.bonus || 0) + ' &middot; Deductions: ' + currencySymbol + ' ' + Number(sp.deductions || 0) + '</p>';
+          }
+          salHTML += '</div><p style="margin:0; color:#27ae60; font-weight:700; font-size:0.9rem;">' + currencySymbol + ' ' + netAmount.toLocaleString() + '</p></div>';
+        });
+        salHTML += '</div>';
+      }
+      salHTML += '</div>';
+      sections.push(salHTML);
+      
+      employeeModalContent.innerHTML = '<div style="display:grid; gap:1rem;">' + sections.join("") + '</div>';
+      var modal = document.getElementById("employeeModal");
+      if (modal) modal.hidden = false;
     } catch (error) {
       employeeModalContent.innerHTML = "<p style='color: red;'>Error loading profile: " + escapeHtml(error.message) + "</p>";
     }
+  }
+
+  function openEmployeeModal(employee) {
+    renderEmployeeDetailView(employee);
   }
 
   function renderAllStudentsDirectory() {
@@ -20219,15 +20367,7 @@ document.addEventListener("DOMContentLoaded", function () {
               <option value="whatsapp">WhatsApp</option>
             </select>
           </div>
-          <div class="field-group field-group--full">
-            <label for="admissionMessageText">Message</label>
-            <textarea id="admissionMessageText" rows="3" readonly>${escapeHtml(getSavedMessageTemplate("admissionLetter", getDefaultAdmissionLetterTemplate()))}</textarea>
           </div>
-          <div class="form-actions">
-            <button class="secondary-button" id="editAdmissionMessageBtn" type="button">Edit Template</button>
-            <button class="primary-button" id="saveAdmissionMessageBtn" type="button" hidden>Save Template</button>
-          </div>
-        </div>
       </article>
     `;
 
@@ -20275,6 +20415,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function renderStudentIdCards() {
     const students = getIdCardStudents();
+      const instituteLogo = (database.generalSettings && database.generalSettings.instituteProfile && database.generalSettings.instituteProfile.logo) || "";
 
     studentIdCardsGrid.innerHTML = students.map(function (student) {
       const profileMedia = student.picture
@@ -20286,7 +20427,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <div class="id-card-modern__inner">
             <div class="id-card-modern__head">
               <div class="id-card-modern__school">${database.school.name}</div>
-              <span class="id-card-modern__logo">SS</span>
+              ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
             </div>
             <div class="id-card-modern__profile">
               ${profileMedia}
@@ -20371,6 +20512,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     const cardsMarkup = safeStudents.map(function (student) {
       const photo = student.picture;
+      const qrData = encodeURIComponent("ATTEND:STUDENT:" + student.admissionNo);
+      const studentQrUrl = "https://quickchart.io/qr?text=" + qrData + "&size=80&margin=1&ecLevel=H&dark=102542";
       return `
         <article class="pvc-card pvc-card--student">
           <div class="pvc-card__topband"></div>
@@ -20394,6 +20537,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <span>Mobile: ${safeHtml(student.phone || "-", "-")}</span>
             <span>${safeHtml(profile.name || database.school.name || "School", "School")}</span>
           </footer>
+          <img src="${studentQrUrl}" alt="QR" class="pvc-card__qr">
         </article>
       `;
     }).join("");
@@ -20438,7 +20582,8 @@ document.addEventListener("DOMContentLoaded", function () {
             height: 9.5mm;
             border-radius: 2mm;
             border: 0.25mm solid rgba(255,255,255,.9);
-            object-fit: cover;
+            object-fit: contain;
+            background: #fff;
           }
           .pvc-card__logo--fallback {
             display: inline-flex;
@@ -20479,6 +20624,14 @@ document.addEventListener("DOMContentLoaded", function () {
           .pvc-card__meta { display: grid; gap: .65mm; justify-items: center; }
           .pvc-card__name { font-size: 3.2mm; line-height: 1.1; }
           .pvc-card__line { font-size: 2.35mm; line-height: 1.05; color: #274669; }
+          .pvc-card__qr {
+            position: absolute;
+            right: 2.4mm;
+            bottom: 7.2mm;
+            width: 9mm;
+            height: 9mm;
+            border-radius: 0.5mm;
+          }
           .pvc-card__footer {
             position: absolute;
             left: 3mm;
@@ -20531,6 +20684,8 @@ document.addEventListener("DOMContentLoaded", function () {
     const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
     const logo = String(profile.logo || "");
     const photo = String(normalizedStudent.picture || "");
+    const singleQrData = encodeURIComponent("ATTEND:STUDENT:" + normalizedStudent.admissionNo);
+    const singleQrUrl = "https://quickchart.io/qr?text=" + singleQrData + "&size=80&margin=1&ecLevel=H&dark=102542";
     const printHtml = `
       <!DOCTYPE html>
       <html>
@@ -20555,7 +20710,7 @@ document.addEventListener("DOMContentLoaded", function () {
             position: absolute; left: 3mm; right: 3mm; top: 1.5mm;
             display: grid; grid-template-columns: 10mm 1fr; gap: 2.2mm; align-items: center; color: #fff;
           }
-          .pvc-card__logo { width: 9.5mm; height: 9.5mm; border-radius: 2mm; border: 0.25mm solid rgba(255,255,255,.9); object-fit: cover; }
+          .pvc-card__logo { width: 9.5mm; height: 9.5mm; border-radius: 2mm; border: 0.25mm solid rgba(255,255,255,.9); object-fit: contain; background: #fff; }
           .pvc-card__logo--fallback { display:inline-flex; align-items:center; justify-content:center; font-size:2.7mm; font-weight:700; background:rgba(255,255,255,.18); }
           .pvc-card__school { display:block; font-size:2.8mm; line-height:1.1; font-weight:700; }
           .pvc-card__type { display:block; font-size:2.1mm; opacity:.96; letter-spacing:.08mm; }
@@ -20572,6 +20727,7 @@ document.addEventListener("DOMContentLoaded", function () {
             position:absolute; left:3mm; right:3mm; bottom:2.4mm;
             display:flex; justify-content:space-between; gap:2mm; font-size:2.2mm; color:#345676;
           }
+          .pvc-card__qr { position: absolute; right: 1.8mm; bottom: 5mm; width: 8mm; height: 8mm; border-radius: 1mm; }
           @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } @page { margin: 8mm; size: auto; } }
         </style>
       </head>
@@ -20598,6 +20754,7 @@ document.addEventListener("DOMContentLoaded", function () {
             <span>Mobile: ${escapePrintHtml(normalizedStudent.phone || "-")}</span>
             <span>${escapePrintHtml(profile.name || database.school.name || "School")}</span>
           </footer>
+          <img src="${singleQrUrl}" alt="QR" class="pvc-card__qr">
         </article>
         <script>
           window.addEventListener("load", function () {
@@ -20622,9 +20779,7 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Student phone number not found.");
       return;
     }
-    const printHtml = buildStudentIdCardsPrintHtml([student]);
-    const pdfResult = await saveCommunicationPdf(printHtml, `Student-ID-Card-${normalizedStudent.name || normalizedStudent.admissionNo || "Student"}.pdf`);
-    const baseText = interpolateTemplate(getDefaultStudentIdCardTemplate(), {
+    const baseText = interpolateTemplate(getSavedMessageTemplate("studentIdCard", getDefaultStudentIdCardTemplate()), {
       prefix: getGenderPrefix(normalizedStudent.gender),
       name: normalizedStudent.name || "-",
       Name: normalizedStudent.name || "-",
@@ -20632,11 +20787,10 @@ document.addEventListener("DOMContentLoaded", function () {
       class: normalizedStudent.className || "-",
       school: database.school.name || "School"
     });
-    const messageText = pdfResult && pdfResult.success ? `${baseText}\nPDF: ${pdfResult.filePath}` : baseText;
     logWhatsappCommunication({
       recipientName: normalizedStudent.name || "-",
       recipientPhone: recipientPhone,
-      message: messageText,
+      message: baseText,
       source: "Student ID Card WhatsApp",
       recipientType: "student",
       campaignType: "id-card"
@@ -20653,7 +20807,7 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Student phone number not found.");
       return;
     }
-    const messageText = interpolateTemplate(getDefaultStudentIdCardTemplate(), {
+    const messageText = interpolateTemplate(getSavedMessageTemplate("studentIdCard", getDefaultStudentIdCardTemplate()), {
       prefix: getGenderPrefix(normalizedStudent.gender),
       name: normalizedStudent.name || "-",
       Name: normalizedStudent.name || "-",
@@ -20911,13 +21065,11 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
     const channelSelect = document.getElementById("admissionMessageChannelSelect");
-    const messageInput = document.getElementById("admissionMessageText");
     const channel = channelSelect ? channelSelect.value : chooseCommunicationChannel("Admission Confirmation");
     if (!channel) {
       return;
     }
-    const defaultText = getDefaultAdmissionLetterTemplate();
-    const templateText = messageInput ? String(messageInput.value || "").trim() || defaultText : defaultText;
+    const templateText = getSavedMessageTemplate("admissionLetter", getDefaultAdmissionLetterTemplate());
     const loginInfo = getStudentLoginInfo(student);
     const messageText = interpolateTemplate(templateText, {
       prefix: getGenderPrefix(normalizedStudent.gender),
@@ -20981,9 +21133,7 @@ document.addEventListener("DOMContentLoaded", function () {
       alert("Student phone number not found.");
       return;
     }
-    const messageInput = document.getElementById("admissionMessageText");
-    const defaultText = getDefaultAdmissionLetterTemplate();
-    const templateText = messageInput ? String(messageInput.value || "").trim() || defaultText : defaultText;
+    const templateText = getSavedMessageTemplate("admissionLetter", getDefaultAdmissionLetterTemplate());
     const loginInfo = getStudentLoginInfo(student);
     const messageText = interpolateTemplate(templateText, {
       prefix: getGenderPrefix(normalizedStudent.gender),
@@ -20996,13 +21146,10 @@ document.addEventListener("DOMContentLoaded", function () {
       password: loginInfo.password || "-",
       school: database.school.name || "School"
     });
-    const pdfHtml = printAdmissionLetter(true);
-    const pdfResult = await saveCommunicationPdf(pdfHtml, `Admission-Letter-${normalizedStudent.name || normalizedStudent.admissionNo || "Student"}.pdf`);
-    const whatsappText = pdfResult && pdfResult.success ? `${messageText}\nPDF: ${pdfResult.filePath}` : messageText;
     const logged = logWhatsappCommunication({
       recipientName: normalizedStudent.name || "-",
       recipientPhone: recipientPhone,
-      message: whatsappText,
+      message: messageText,
       source: "Admission Letter WhatsApp",
       recipientType: "student",
       campaignType: "admission"
@@ -21019,9 +21166,10 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       const student = database.students.find(function (item) { return item.id === selectedAdmissionStudentId; });
-      if (!student) {
-        return;
-      }
+        if (!student) {
+          alert("No student selected");
+          return;
+        }
       const normalizedStudent = normalizeStudentForPrint(student);
 
       const loginInfo = getStudentLoginInfo(student);
@@ -21168,6 +21316,14 @@ document.addEventListener("DOMContentLoaded", function () {
     studentsSectionLabel.textContent = "Students Module";
     studentsUtilityTitle.textContent = routeTitles[route] || "Student Tool";
 
+    var _sGrid = document.getElementById("studentsSecondaryGrid");
+    if (_sGrid) {
+      var _cards = _sGrid.querySelectorAll(".panel-card");
+      if (_cards.length >= 2) { _cards[1].style.display = ""; _cards[0].style.gridColumn = ""; }
+    }
+    var _alLayout = document.querySelector(".admission-letter-layout");
+    if (_alLayout) { _alLayout.style.gridTemplateColumns = ""; }
+
     if (route === "all-students" || route === "students-add-new" || route === "students-active-inactive") {
       studentsUtilityContent.innerHTML = `
         <article>
@@ -21194,7 +21350,20 @@ document.addEventListener("DOMContentLoaded", function () {
           <p>${database.school.name}</p>
           <p>${database.school.address}</p>
         </article>
+        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;" id="studentsActivityListCopy"></div>
       ` : "<article><strong>No student available</strong><p>Add a student first to generate a letter preview.</p></article>";
+      var _actEl = document.getElementById("studentsActivityList");
+      var _actCopy = document.getElementById("studentsActivityListCopy");
+      if (_actEl && _actCopy) { _actCopy.innerHTML = '<strong>Recent Student Activity</strong>' + _actEl.innerHTML; }
+      var _sGrid = document.getElementById("studentsSecondaryGrid");
+      if (_sGrid) {
+        var _cards = _sGrid.querySelectorAll(".panel-card");
+        if (_cards.length >= 2) { _cards[1].style.display = "none"; _cards[0].style.gridColumn = "1 / -1"; }
+      }
+      var _alLayout = document.querySelector(".admission-letter-layout");
+      if (_alLayout) {
+        _alLayout.style.gridTemplateColumns = "1fr";
+      }
       return;
     }
 
@@ -21330,6 +21499,14 @@ document.addEventListener("DOMContentLoaded", function () {
     renderStudentClassOptions();
     renderAllStudentsDirectory();
 
+    var _alLayout = document.querySelector(".admission-letter-layout");
+    if (_alLayout) { _alLayout.style.gridTemplateColumns = ""; }
+    var _sGrid = document.getElementById("studentsSecondaryGrid");
+    if (_sGrid) {
+      var _cards = _sGrid.querySelectorAll(".panel-card");
+      if (_cards.length >= 2) { _cards[1].style.display = ""; _cards[0].style.gridColumn = ""; }
+    }
+
     if (currentStudentRoute === "all-students") {
       allStudentsShell.classList.remove("hidden");
       studentStatusShell.classList.add("hidden");
@@ -21458,6 +21635,13 @@ document.addEventListener("DOMContentLoaded", function () {
       studentActionRow.classList.add("hidden");
       studentLayout.classList.remove("form-only");
       renderAdmissionLetterStudents();
+      var _alLayout = document.querySelector(".admission-letter-layout");
+      if (_alLayout) { _alLayout.style.gridTemplateColumns = "1fr"; }
+      var _sGrid = document.getElementById("studentsSecondaryGrid");
+      if (_sGrid) {
+        var _cards = _sGrid.querySelectorAll(".panel-card");
+        if (_cards.length >= 2) { _cards[1].style.display = "none"; _cards[0].style.gridColumn = "1 / -1"; }
+      }
       return;
     }
 
@@ -21855,6 +22039,32 @@ document.addEventListener("DOMContentLoaded", function () {
     attendanceBars.onclick = function () { setRoute("students-attendance"); };
   }
 
+  function refreshAttendanceOverview() {
+    const el = document.getElementById("dashboardAttendanceBar");
+    if (!el) return;
+    const todayISO = getTodayDateISO();
+    const todayAttendance = (database.attendance || []).filter(function (row) {
+      const isStudentAttendance = row.studentId || !row.entityType || row.entityType === "student";
+      return isStudentAttendance && (row.date || "").substring(0, 10) === todayISO;
+    });
+    const present = todayAttendance.filter(function (r) { return r.status === "Present"; }).length;
+    const leave = todayAttendance.filter(function (r) { return r.status === "On-leave"; }).length;
+    const absent = todayAttendance.filter(function (r) { return r.status === "Absent"; }).length;
+    const totalStudents = (database.students || []).filter(function (s) { return String(s.status || "active").toLowerCase() !== "inactive"; }).length;
+    const totalAttendance = Math.max(todayAttendance.length, present + leave + absent);
+    const unmarked = Math.max(0, totalStudents - totalAttendance);
+    const attRows = [
+      { label: "Present", value: present },
+      { label: "On-leave", value: leave },
+      { label: "Absent", value: absent },
+      { label: "Unmarked", value: unmarked }
+    ];
+    el.innerHTML = (totalAttendance || unmarked)
+      ? buildDashboardBars(attRows, Math.max.apply(null, attRows.map(function (r) { return r.value; })))
+      : '<p class="empty-state">No students found for attendance overview.</p>';
+    renderDashboardTodayAttendance();
+  }
+
   function updateDashboardClock() {
     const clockEl = document.getElementById("heroLiveClock");
     const dateEl = document.getElementById("heroLiveDate");
@@ -21874,6 +22084,153 @@ document.addEventListener("DOMContentLoaded", function () {
     dashboardClockTimer = setInterval(updateDashboardClock, 1000);
   }
 
+  function renderDashboardTodayAttendance() {
+    var absentContainer = document.getElementById("dashboardAbsentStudents");
+    var presentContainer = document.getElementById("dashboardPresentEmployees");
+    if (!absentContainer || !presentContainer) return;
+
+    var todayISO = getTodayDateISO();
+    var attendanceData = database.attendance || [];
+    var students = database.students || [];
+    var teachers = database.teachers || [];
+    var classes = database.classes || [];
+
+    // Absent students today
+    var absentRecords = attendanceData.filter(function (a) {
+      var isStudent = !a.entityType || a.entityType === "student";
+      return isStudent && a.date === todayISO && String(a.status).toLowerCase() === "absent";
+    });
+
+    if (absentRecords.length === 0) {
+      absentContainer.innerHTML = '<p class="empty-state" style="padding:1rem;">No absent students today.</p>';
+    } else {
+      var absentHTML = "";
+      var shownIds = {};
+      var absCount = 0;
+      absentRecords.forEach(function (rec) {
+        if (shownIds[rec.studentId]) return;
+        if (absCount >= 5) return;
+        shownIds[rec.studentId] = true;
+        absCount++;
+        var student = students.find(function (s) { return s.id === rec.studentId; });
+        if (!student) return;
+        var initials = (student.name || "?").split(" ").map(function (w) { return (w[0] || "").toUpperCase(); }).slice(0, 2).join("");
+        absentHTML += '<div class="dashboard-attendance-item">';
+        if (student.picture) {
+          absentHTML += '<img src="' + escapeAttr(student.picture) + '" alt="" class="dashboard-attendance-item__avatar">';
+        } else {
+          absentHTML += '<span class="dashboard-attendance-item__avatar dashboard-attendance-item__avatar--initials">' + initials + '</span>';
+        }
+        absentHTML += '<div class="dashboard-attendance-item__info">';
+        absentHTML += '<p class="dashboard-attendance-item__roll">' + escapeHtml(student.admissionNo || "-") + '</p>';
+        absentHTML += '<p class="dashboard-attendance-item__name">' + escapeHtml(student.name || "-") + '</p>';
+        absentHTML += '<p class="dashboard-attendance-item__class">' + escapeHtml(student.className || "-") + '</p>';
+        absentHTML += '</div></div>';
+      });
+      absentContainer.innerHTML = (absentHTML || '<p class="empty-state" style="padding:1rem;">No absent students today.</p>');
+      var sendBtn = document.getElementById("dashboardSendAbsenteesBtnOld");
+      if (!sendBtn) {
+        var btnWrap = document.createElement("div");
+        btnWrap.style.cssText = "margin-top:0.6rem;text-align:center;";
+        btnWrap.innerHTML = '<button id="dashboardSendAbsenteesBtnOld" type="button" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.8rem;font-size:0.75rem;font-family:inherit;font-weight:600;color:#fff;background:#e74c3c;border:none;border-radius:8px;cursor:pointer;line-height:1.4;"><i class="fas fa-paper-plane"></i> Send Absentees Message</button>';
+        absentContainer.appendChild(btnWrap);
+        document.getElementById("dashboardSendAbsenteesBtnOld").addEventListener("click", async function () {
+          try {
+            var todayAttendance = database.attendance || [];
+            var absentStudents = [];
+            var seenIds = {};
+            todayAttendance.forEach(function (a) {
+              var isStudent = !a.entityType || a.entityType === "student";
+              if (isStudent && a.date === todayISO && String(a.status).toLowerCase() === "absent" && !seenIds[a.studentId]) {
+                seenIds[a.studentId] = true;
+                var s = students.find(function (st) { return st.id === a.studentId; });
+                if (s) absentStudents.push(s);
+              }
+            });
+            if (!absentStudents.length) {
+              openAppMessageBox("Warning", "No absent students found for today.", "warning");
+              return;
+            }
+            if (!(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
+              openAppMessageBox("Error", "SMS gateway is not connected. Please connect from SMS Services first.", "error");
+              return;
+            }
+            var success = 0, failed = 0, noPhone = 0;
+            for (var i = 0; i < absentStudents.length; i++) {
+              var st = absentStudents[i];
+              var normSt = normalizeStudentForPrint(st);
+              var phone = normalizeSmsPhone(normSt.phone || normSt.fatherPhone || "");
+              if (!phone) { noPhone++; failed++; continue; }
+              var template = buildCommunicationTemplate("student-absent", {
+                prefix: getGenderPrefix(normSt.gender),
+                name: normSt.name || "-",
+                rollNo: normSt.admissionNo || "-",
+                date: todayISO
+              });
+              var text = interpolateTemplate(template, {
+                name: normSt.name || "-",
+                roll: normSt.admissionNo || "-",
+                prefix: getGenderPrefix(normSt.gender),
+                class: normSt.className || "-",
+                date: todayISO,
+                school: (database.school || {}).name || "School"
+              });
+              var result = await sendSmsViaConnectedGateway({
+                recipientName: normSt.name || "-",
+                recipientPhone: phone,
+                message: text,
+                source: "Dashboard Absentees SMS",
+                recipientType: "student",
+                campaignType: "absentees"
+              });
+              if (result.success) success++; else failed++;
+            }
+            var detail = "SMS alert processed. Success: " + success + ", Failed: " + failed + (noPhone ? ", Missing Phone: " + noPhone : "") + ".";
+            openAppMessageBox(failed ? "Warning" : "Success", detail, failed ? "warning" : "success");
+          } catch (e) {
+            console.error("Send Absentees Error:", e);
+            openAppMessageBox("Error", String(e && e.message ? e.message : e), "error");
+          }
+        });
+      }
+    }
+
+    // Present employees today
+    var presentRecords = attendanceData.filter(function (a) {
+      return a.entityType === "employee" && a.date === todayISO && String(a.status).toLowerCase() === "present";
+    });
+
+    if (presentRecords.length === 0) {
+      presentContainer.innerHTML = '<p class="empty-state" style="padding:1rem;">No employees present yet today.</p>';
+    } else {
+      var presentHTML = "";
+      var shownEmpIds = {};
+      var empCount = 0;
+      presentRecords.forEach(function (rec) {
+        if (shownEmpIds[rec.employeeId]) return;
+        if (empCount >= 5) return;
+        shownEmpIds[rec.employeeId] = true;
+        empCount++;
+        var emp = teachers.find(function (e) { return e.id === rec.employeeId; });
+        if (!emp) return;
+        var empClass = classes.find(function (c) { return String(c.teacher || "").toLowerCase() === String(emp.name || "").toLowerCase(); });
+        var initials = (emp.name || "?").split(" ").map(function (w) { return (w[0] || "").toUpperCase(); }).slice(0, 2).join("");
+        presentHTML += '<div class="dashboard-attendance-item">';
+        if (emp.picture) {
+          presentHTML += '<img src="' + escapeAttr(emp.picture) + '" alt="" class="dashboard-attendance-item__avatar">';
+        } else {
+          presentHTML += '<span class="dashboard-attendance-item__avatar dashboard-attendance-item__avatar--initials">' + initials + '</span>';
+        }
+        presentHTML += '<div class="dashboard-attendance-item__info">';
+        presentHTML += '<p class="dashboard-attendance-item__roll">' + escapeHtml(emp.id || "-") + '</p>';
+        presentHTML += '<p class="dashboard-attendance-item__name">' + escapeHtml(emp.name || "-") + '</p>';
+        presentHTML += '<p class="dashboard-attendance-item__class">' + escapeHtml(empClass ? empClass.name : "-") + '</p>';
+        presentHTML += '</div></div>';
+      });
+      presentContainer.innerHTML = presentHTML || '<p class="empty-state" style="padding:1rem;">No employees present yet today.</p>';
+    }
+  }
+
   function renderDashboard() {
     refreshDatabase();
     applySavedThemeSettings();
@@ -21881,6 +22238,8 @@ document.addEventListener("DOMContentLoaded", function () {
     renderActivity();
     renderInsights();
     renderDashboardAnalytics();
+    refreshAttendanceOverview();
+    renderDashboardTodayAttendance();
     startDashboardClock();
     updateHero();
     renderStudentsWorkspace();
@@ -22216,6 +22575,35 @@ document.addEventListener("DOMContentLoaded", function () {
     window.scrollTo(0, 0);
   }
 
+  function setupRevealAnimations() {
+    if (window._revealObserver) {
+      window._revealObserver.disconnect();
+    }
+    var targets = document.querySelectorAll(".stats-grid > *, .dashboard-grid > *");
+    if (!targets.length) return;
+    var viewportH = window.innerHeight || document.documentElement.clientHeight;
+    targets.forEach(function (el) {
+      var rect = el.getBoundingClientRect();
+      if (rect.top < viewportH - 40) {
+        el.classList.add("reveal-visible");
+      }
+    });
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("reveal-visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.05, rootMargin: "0px 0px -20px 0px" });
+    targets.forEach(function (el) {
+      if (!el.classList.contains("reveal-visible")) {
+        observer.observe(el);
+      }
+    });
+    window._revealObserver = observer;
+  }
+
   function setRoute(route) {
     const normalizedRoute = route === "settings" ? "account-settings" : route;
     if (!isRouteAllowedByRole(normalizedRoute)) {
@@ -22263,12 +22651,26 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (isDashboard) {
       renderDashboard();
+      setTimeout(setupRevealAnimations, 50);
       return;
     }
 
-    if (!isDashboard) {
-      renderDynamicModuleWorkspace(normalizedRoute, title);
+    renderDynamicModuleWorkspace(normalizedRoute, title);
+    var _guide = document.getElementById("moduleGuide");
+    var _summary = document.getElementById("moduleSummary");
+    if (_guide && _summary && _guide.innerHTML.trim()) {
+      var _div = document.createElement("div");
+      _div.style.cssText = "margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;";
+      while (_guide.firstChild) {
+        _div.appendChild(_guide.firstChild);
+      }
+      _summary.appendChild(_div);
+      var _panel = _guide.closest(".panel-card");
+      if (_panel) { _panel.style.display = "none"; }
+      var _leftPanel = _summary.closest(".panel-card");
+      if (_leftPanel) { _leftPanel.style.gridColumn = "1 / -1"; }
     }
+    setTimeout(setupRevealAnimations, 50);
   }
 
   window.addEventListener("sagarsoft:database-loaded", function () {
@@ -22513,32 +22915,6 @@ document.addEventListener("DOMContentLoaded", function () {
     printAdmissionLetter();
   });
   
-  admissionLetterDetail.addEventListener("click", function (event) {
-    const editAdmissionMessageBtn = event.target.closest("#editAdmissionMessageBtn");
-    const saveAdmissionMessageBtn = event.target.closest("#saveAdmissionMessageBtn");
-    const textarea = document.getElementById("admissionMessageText");
-    if (editAdmissionMessageBtn && textarea) {
-      const saveButton = document.getElementById("saveAdmissionMessageBtn");
-      textarea.readOnly = false;
-      textarea.style.backgroundColor = "#fff";
-      editAdmissionMessageBtn.hidden = true;
-      if (saveButton) {
-        saveButton.hidden = false;
-      }
-      return;
-    }
-    if (saveAdmissionMessageBtn && textarea) {
-      const editButton = document.getElementById("editAdmissionMessageBtn");
-      saveMessageTemplate("admissionLetter", textarea);
-      textarea.readOnly = true;
-      textarea.style.backgroundColor = "#f5f5f5";
-      if (editButton) {
-        editButton.hidden = false;
-      }
-      saveAdmissionMessageBtn.hidden = true;
-    }
-  });
-  
   studentIdCardsSearchInput.addEventListener("input", renderStudentIdCards);
   studentIdCardsClassFilter.addEventListener("change", renderStudentIdCards);
   printAllStudentIdCardsBtn.addEventListener("click", function () {
@@ -22714,6 +23090,16 @@ document.addEventListener("DOMContentLoaded", function () {
       renderNotificationList();
     });
 
+    var clearNotifLocalBtn = document.getElementById("clearNotificationsBtn");
+    if (clearNotifLocalBtn) {
+      clearNotifLocalBtn.addEventListener("click", async function () {
+        if (!(await brandedConfirm("Clear all notifications?"))) return;
+        database.notifications = [];
+        saveDatabase();
+        renderNotificationList();
+      });
+    }
+
     // Dashboard search functionality
     const dashboardSearchInput = document.getElementById("dashboardSearchInput");
     const dashboardSearchDropdown = document.getElementById("dashboardSearchDropdown");
@@ -22749,6 +23135,36 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   startGlobalFormMessageObserver();
+
+  var revenueArticle = document.querySelector("#heroRevenueValue") ? document.querySelector("#heroRevenueValue").closest("article") : null;
+  if (revenueArticle) {
+    revenueArticle.style.cursor = "pointer";
+    revenueArticle.addEventListener("click", function () { setRoute("accounts-report"); });
+  }
+  var profitArticle = document.querySelector("#heroProfitValue") ? document.querySelector("#heroProfitValue").closest("article") : null;
+  if (profitArticle) {
+    profitArticle.style.cursor = "pointer";
+    profitArticle.addEventListener("click", function () { setRoute("accounts-report"); });
+  }
+
+  var dashScanBtn = document.getElementById("dashboardScanAttendanceBtn");
+  if (dashScanBtn) {
+    dashScanBtn.addEventListener("click", function () {
+      openQrAttendanceScanner(function (entityType, person, dateValue) {
+        var extraData = entityType === "student" ? { className: person.className } : { role: person.role || person.designation || "-" };
+        saveAttendanceRecord(entityType, person.id, dateValue, "Present", extraData);
+        saveDatabase();
+        refreshAttendanceOverview();
+        addActivity("Attendance via QR", person.name + " (" + entityType + ") marked Present for " + dateValue + ".");
+        if (typeof renderDashboard === "function") renderDashboard();
+      });
+    });
+  }
+
+  var downloadBtn = document.getElementById("downloadMobileAppBtn");
+  if (downloadBtn) {
+    downloadBtn.addEventListener("click", function () { openMobileAppDownloadModal(); });
+  }
 });
 
 

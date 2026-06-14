@@ -1,4 +1,4 @@
-require("dotenv").config({ path: __dirname + "/.env" });
+require("dotenv").config({ path: __dirname + "/server/.env" });
 
 const dns = require("dns");
 const express = require("express");
@@ -501,6 +501,10 @@ async function ensureSchema() {
     alter table public.activity_logs add column if not exists created_at timestamptz;
     alter table public.activity_logs add column if not exists data jsonb not null default '{}'::jsonb;
     alter table public.activity_logs add column if not exists updated_at timestamptz not null default now();
+    alter table public.license_accounts add column if not exists last_seen timestamptz;
+    alter table public.license_accounts add column if not exists timezone text not null default 'Asia/Karachi';
+    alter table public.license_accounts add column if not exists currency text not null default 'PKR';
+    alter table public.license_accounts add column if not exists symbol text not null default 'Rs';
 
     create unique index if not exists uq_employees_school_source on public.employees (school_id, source_id);
     create unique index if not exists uq_teachers_school_source on public.teachers (school_id, source_id);
@@ -1107,10 +1111,9 @@ app.post("/api/activate-school.php", async (req, res) => {
     where lower(email) = $1 and password = $2
     limit 1
   `, [email, password]);
-  if (!result.rowCount) {
-    return res.status(401).json({ success: false, message: "Invalid school credentials." });
-  }
+  if (!result.rowCount) return res.status(401).json({ success: false, message: "Invalid school credentials." });
   const row = result.rows[0];
+  await pool.query("update public.license_accounts set last_seen = now() where school_id = $1", [row.school_id]);
   const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
   return res.json(toLicensePayload(row, notes.rows));
 });
@@ -1268,6 +1271,113 @@ app.post("/api/sync-school-data.php", async (req, res) => {
   ]);
   const result = await pool.query("select * from public.license_accounts where school_id = $1", [schoolId]);
   return res.json({ success: true, license: toLicensePayload(result.rows[0], []) });
+});
+
+app.get("/api/admin/schools", async function (req, res) {
+  try {
+    var rows = await pool.query("select school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at from public.license_accounts order by updated_at desc");
+    return res.json({ success: true, schools: rows.rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post("/api/admin/schools", async function (req, res) {
+  var schoolName = String(req.body.school_name || "").trim();
+  var email = String(req.body.email || "").trim().toLowerCase();
+  var password = String(req.body.password || "").trim();
+  var plan = String(req.body.plan || "premium").trim();
+  var startDate = req.body.start_date || null;
+  var expiryDate = req.body.expiry_date || null;
+  if (!schoolName) return res.status(400).json({ success: false, message: "School name is required." });
+  if (!email) return res.status(400).json({ success: false, message: "Email is required." });
+  if (!password) return res.status(400).json({ success: false, message: "Password is required." });
+  try {
+    var prefix = "SCH";
+    var ts = Date.now().toString(36).toUpperCase();
+    var rand = Math.random().toString(36).substring(2, 6).toUpperCase();
+    var schoolId = prefix + "-" + ts + rand;
+    await pool.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now())", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
+    return res.json({ success: true, school_id: schoolId });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.put("/api/admin/schools/:schoolId", async function (req, res) {
+  var schoolId = String(req.params.schoolId || "").trim();
+  if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
+  var body = req.body || {};
+  try {
+    var sets = [];
+    var vals = [];
+    var idx = 1;
+    if (body.school_id !== undefined && String(body.school_id).trim()) { sets.push("school_id = $" + idx); vals.push(String(body.school_id).trim()); idx++; }
+    if (body.school_name !== undefined) { sets.push("school_name = $" + idx); vals.push(String(body.school_name)); idx++; }
+    if (body.email !== undefined) { sets.push("email = $" + idx); vals.push(String(body.email).trim().toLowerCase()); idx++; }
+    if (body.password !== undefined) { sets.push("password = $" + idx); vals.push(String(body.password)); idx++; }
+    if (body.status !== undefined) { sets.push("status = $" + idx); vals.push(String(body.status).trim().toLowerCase()); idx++; }
+    if (body.plan !== undefined) { sets.push("plan = $" + idx); vals.push(String(body.plan).trim()); idx++; }
+    if (body.start_date !== undefined) { sets.push("start_date = $" + idx); vals.push(body.start_date || null); idx++; }
+    if (body.expiry_date !== undefined) { sets.push("expiry_date = $" + idx); vals.push(body.expiry_date || null); idx++; }
+    if (body.modules_locked !== undefined) { sets.push("modules_locked = $" + idx); vals.push(Boolean(body.modules_locked)); idx++; }
+    if (body.timezone !== undefined) { sets.push("timezone = $" + idx); vals.push(String(body.timezone)); idx++; }
+    if (body.currency !== undefined) { sets.push("currency = $" + idx); vals.push(String(body.currency)); idx++; }
+    if (body.symbol !== undefined) { sets.push("symbol = $" + idx); vals.push(String(body.symbol)); idx++; }
+    if (!sets.length) return res.status(400).json({ success: false, message: "No fields to update." });
+    sets.push("updated_at = now()");
+    vals.push(schoolId);
+    await pool.query("update public.license_accounts set " + sets.join(", ") + " where school_id = $" + idx, vals);
+    return res.json({ success: true, school_id: schoolId });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.delete("/api/admin/schools/:schoolId", async function (req, res) {
+  var schoolId = String(req.params.schoolId || "").trim();
+  if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
+  try {
+    await pool.query("delete from public.license_accounts where school_id = $1", [schoolId]);
+    return res.json({ success: true, message: "School deleted." });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post("/api/admin/notifications", async function (req, res) {
+  var title = String(req.body.title || "Notification").trim();
+  var message = String(req.body.message || "").trim();
+  var targetSchoolId = String(req.body.school_id || "").trim();
+  if (!message) return res.status(400).json({ success: false, message: "Message is required." });
+  try {
+    if (targetSchoolId) {
+      await pool.query("insert into public.license_notifications (school_id, title, message, created_at) values ($1, $2, $3, now())", [targetSchoolId, title, message]);
+    } else {
+      await pool.query("insert into public.license_notifications (school_id, title, message, created_at) select school_id, $1, $2, now() from public.license_accounts", [title, message]);
+    }
+    return res.json({ success: true, message: "Notification sent." });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.get("/api/admin/notifications", async function (req, res) {
+  try {
+    var result = await pool.query("select n.id, n.school_id, n.title, n.message, n.created_at, coalesce(a.school_name,'') as school_name from public.license_notifications n left join public.license_accounts a on n.school_id = a.school_id order by n.created_at desc limit 100");
+    return res.json({ success: true, notifications: result.rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.delete("/api/admin/notifications", async function (req, res) {
+  try {
+    await pool.query("delete from public.license_notifications");
+    return res.json({ success: true, message: "Notification history cleared." });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
 });
 
 var ALLOWED_TABLES = {

@@ -2,7 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#08172f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SagarSoft SMS">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
+  <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
   <title>SagarSoft Management System | Login</title>
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/login.css">
@@ -52,15 +59,16 @@
         <div class="login-card__header">
           <p class="eyebrow">Welcome back</p>
           <h2>Sign in to continue</h2>
-          <p>Choose a role, then log in,thanks.</p>
+          <p>Select your role and log in to get started.</p>
         </div>
 
         <div class="demo-box">
-          <strong>Demo Mode</strong>
-          <ul> 
-            <li><span>In case of any error please</span><code>reset &amp; retry</code></li>
-            <li><span>contact super admin</span><code>support@sagarsoft.com</code></li>
-          </ul>
+          <strong>School Management System</strong>
+          <p style="margin:0.5rem 0 0;font-size:0.85rem;color:#3a5068;line-height:1.6;">
+            Streamline your school operations — attendance, fees, exams, staff &amp; more.<br>
+            Everything you need to manage your institution efficiently in one place.<br>
+            For support: <span style="color:#1b5f7a;font-weight:600;">sagarsoftsupport@gmail.com</span>
+          </p>
         </div>
 
         <form id="loginForm" class="login-form" novalidate autocomplete="on">
@@ -100,6 +108,7 @@
 
           <button type="submit" class="primary-button">Login to Dashboard</button>
           <p id="formMessage" class="form-message" aria-live="polite"></p>
+          <button id="installAppBtnLogin" type="button" class="text-button" style="display:none;margin-top:0.75rem;width:100%;text-align:center;font-size:0.85rem;font-weight:600;color:#1e5eff;background:none;border:1px solid #1e5eff;border-radius:6px;padding:0.5rem;cursor:pointer;">Install App</button>
         </form>
       </div>
     </section>
@@ -110,5 +119,38 @@
   <script src="./js/storage.js"></script>
   <script src="./js/auth.js"></script>
   <script src="./js/login.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js');
+      });
+    }
+    window.deferredPromptLogin = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.deferredPromptLogin = e;
+      var btn = document.getElementById('installAppBtnLogin');
+      if (btn) btn.style.display = 'block';
+    });
+    window.addEventListener('appinstalled', function () {
+      window.deferredPromptLogin = null;
+      var btn = document.getElementById('installAppBtnLogin');
+      if (btn) btn.style.display = 'none';
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+      var btn = document.getElementById('installAppBtnLogin');
+      if (btn) {
+        btn.addEventListener('click', async function () {
+          if (!window.deferredPromptLogin) return;
+          window.deferredPromptLogin.prompt();
+          var result = await window.deferredPromptLogin.userChoice;
+          if (result.outcome === 'accepted') {
+            this.style.display = 'none';
+          }
+          window.deferredPromptLogin = null;
+        });
+      }
+    });
+  </script>
 </body>
 </html>

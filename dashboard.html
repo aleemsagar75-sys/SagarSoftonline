@@ -2,12 +2,18 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#08172f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SagarSoft SMS">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
+  <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
   <title>SagarSoft Management System | Dashboard</title>
   <link rel="stylesheet" href="./css/base.css">
   <link rel="stylesheet" href="./css/dashboard.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script src="https://cdn.ckeditor.com/ckeditor5/41.0.0/classic/ckeditor.js"></script>
 </head>
 <body>
   <div class="app-shell" id="appShell">
@@ -305,6 +311,19 @@
               <button class="submenu-link" type="button" data-route="certificate-templates" data-title="Certificate Templates">Certificate Templates</button>
             </div>
           </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="sms-templates" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">21</span>
+                <span class="menu-label">Sms/Whatsapp Templates</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="sms-templates" data-title="Sms/Whatsapp Templates">All Templates</button>
+            </div>
+          </div>
         </nav>
 
         <section class="sidebar-card">
@@ -312,6 +331,7 @@
           <strong>All modules are cloud-connected.</strong>
           <span>Data is stored securely on Supabase cloud servers.</span>
         </section>
+        <button id="installAppBtn" type="button" style="display:none;margin:8px 12px;padding:8px 12px;font-size:0.8rem;font-family:inherit;font-weight:600;color:#fff;background:#1e5eff;border:none;border-radius:6px;cursor:pointer;text-align:center;">Install App</button>
       </div>
     </aside>
 
@@ -339,6 +359,7 @@
             <div class="notification-menu__dropdown" id="notificationDropdown">
               <div class="notification-menu__head">
                 <strong>Notifications</strong>
+                <button class="text-button" id="clearNotificationsBtn" type="button" style="color:#d64b4b;font-size:11px;margin-right:8px;">Clear</button>
                 <button class="text-button" id="markNotificationsReadBtn" type="button">Mark All Read</button>
               </div>
               <div class="notification-menu__list" id="notificationList"></div>
@@ -369,12 +390,26 @@
             </div>
             <div class="hero-metrics">
               <article>
-                <strong id="heroFeeCollection">₨0</strong>
-                <span>Total fee collection this month</span>
+                <div class="hero-stat-header">Revenue</div>
+                <div class="hero-stat-amount">
+                  <span class="hero-stat-symbol" id="heroRevenueSymbol">Rs</span>
+                  <strong class="hero-stat-value" id="heroRevenueValue">0</strong>
+                </div>
+                <div class="hero-stat-footer">
+                  <span>This Month</span>
+                  <strong class="hero-stat-footer-amount" id="heroRevenueFooter">Rs 0</strong>
+                </div>
               </article>
               <article>
-                <strong id="heroProfit">₨0</strong>
-                <span>Total profit this month</span>
+                <div class="hero-stat-header">Profit</div>
+                <div class="hero-stat-amount">
+                  <span class="hero-stat-symbol" id="heroProfitSymbol">Rs</span>
+                  <strong class="hero-stat-value" id="heroProfitValue">0</strong>
+                </div>
+                <div class="hero-stat-footer">
+                  <span>This Month</span>
+                  <strong class="hero-stat-footer-amount" id="heroProfitFooter">Rs 0</strong>
+                </div>
               </article>
               <article>
                 <strong id="heroLiveClock">--:--:--</strong>
@@ -384,6 +419,10 @@
           </div>
 
           <section class="stats-grid" id="statsGrid"></section>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <button class="primary-button" id="downloadMobileAppBtn" type="button"><i class="fas fa-mobile-alt"></i> Download Mobile App</button>
+            <button class="primary-button" id="dashboardScanAttendanceBtn" type="button"><i class="fas fa-qrcode"></i> Scan Attendance</button>
+          </div>
 
           <section class="dashboard-grid dashboard-grid--analytics">
             <article class="panel-card">
@@ -404,6 +443,28 @@
                 </div>
               </div>
               <div id="dashboardAttendanceBar" class="report-bar-list"></div>
+            </article>
+          </section>
+
+          <section class="dashboard-grid dashboard-grid--attendance-detail">
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Today Absent Students</p>
+                  <h3>Students marked absent today</h3>
+                </div>
+              </div>
+              <div id="dashboardAbsentStudents" class="dashboard-attendance-list"></div>
+            </article>
+
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Today Present Employees</p>
+                  <h3>Employees marked present today</h3>
+                </div>
+              </div>
+              <div id="dashboardPresentEmployees" class="dashboard-attendance-list"></div>
             </article>
           </section>
 
@@ -1052,16 +1113,48 @@
               <div id="moduleGuide" class="stacked-copy"></div>
             </article>
           </div>
+          <div id="moduleFullWidth" style="margin-top:16px;"></div>
         </section>
       </main>
     </div>
     <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   </div>
 
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <script src="./js/online-config.js"></script>
   <script src="./js/crypto-utils.js"></script>
   <script src="./js/storage.js"></script>
   <script src="./js/auth.js"></script>
   <script src="./js/dashboard.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js');
+      });
+    }
+    window.deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window.deferredPrompt = e;
+      var btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'block';
+    });
+    window.addEventListener('appinstalled', function () {
+      window.deferredPrompt = null;
+      var btn = document.getElementById('installAppBtn');
+      if (btn) btn.style.display = 'none';
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+      document.getElementById('installAppBtn').addEventListener('click', async function () {
+        if (!window.deferredPrompt) return;
+        window.deferredPrompt.prompt();
+        var result = await window.deferredPrompt.userChoice;
+        if (result.outcome === 'accepted') {
+          this.style.display = 'none';
+        }
+        window.deferredPrompt = null;
+      });
+    });
+  </script>
 </body>
 </html>

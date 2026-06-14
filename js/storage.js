@@ -154,6 +154,42 @@
         role: "superadmin",
         phone: "+91 90000 00000",
         active: true
+      },
+      {
+        id: "USR-ADMIN-DEMO",
+        name: "School Admin",
+        email: "admin@sagarsoft.com",
+        password: "admin123",
+        role: "admin",
+        phone: "+92 300 0000000",
+        active: true
+      },
+      {
+        id: "USR-TEACHER-DEMO",
+        name: "Demo Teacher",
+        email: "teacher@sagarsoft.com",
+        password: "teacher123",
+        role: "teacher",
+        phone: "+92 300 0000001",
+        active: true
+      },
+      {
+        id: "USR-STUDENT-DEMO",
+        name: "Demo Student",
+        email: "student@sagarsoft.com",
+        password: "student123",
+        role: "student",
+        phone: "+92 300 0000002",
+        active: true
+      },
+      {
+        id: "USR-PARENT-DEMO",
+        name: "Demo Parent",
+        email: "parent@sagarsoft.com",
+        password: "parent123",
+        role: "parent",
+        phone: "+92 300 0000003",
+        active: true
       }
     ],
     students: [],

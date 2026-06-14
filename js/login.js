@@ -16,6 +16,20 @@ document.addEventListener("DOMContentLoaded", function () {
     window.history.replaceState(null, "", "./login.html");
   }
 
+  // Crash recovery: if a demo snapshot exists but no active session, restore clean state
+  (function () {
+    try {
+      var snapRaw = sessionStorage.getItem("sagarsoft_demo_snapshot");
+      if (snapRaw && !window.SagarSoftAuth.getCurrentUser()) {
+        var snap = JSON.parse(snapRaw);
+        if (snap && window.SagarSoftDB && typeof window.SagarSoftDB.saveDatabase === "function") {
+          window.SagarSoftDB.saveDatabase(snap);
+        }
+        sessionStorage.removeItem("sagarsoft_demo_snapshot");
+      }
+    } catch (_e) {}
+  })();
+
   const demoAccounts = {
     admin: { email: "admin@sagarsoft.com", password: "admin123" },
     teacher: { email: "teacher@sagarsoft.com", password: "teacher123" },
