@@ -1,20 +1,38 @@
 {
   "expo": {
-    "name": "SagarSoft Mobile",
+    "name": "SagarSoft School Management",
     "slug": "sagarsoft-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/SagarSoft.logo.png",
     "assetBundlePatterns": [
       "**/*"
     ],
-    "android": {
-      "package": "com.sagarsoft.mobile"
+    "splash": {
+      "image": "./assets/SagarSoft.logo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0b1f3a"
     },
-    "extra": {
-      "eas": {
-        "projectId": "74c2855e-8cd1-426a-bcaf-9df009be31b7"
-      }
+    "android": {
+      "package": "com.sagarsoft.mobile",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/SagarSoft.logo.png",
+        "backgroundColor": "#0b1f3a"
+      },
+      "permissions": [
+        "INTERNET"
+      ]
+    },
+    "ios": {
+      "bundleIdentifier": "com.sagarsoft.mobile",
+      "supportsTablet": true
+    },
+    "plugins": [
+      "expo-asset"
+    ],
+    "updates": {
+      "enabled": false
     }
   }
 }
