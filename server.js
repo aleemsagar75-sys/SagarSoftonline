@@ -117,7 +117,15 @@ const webDirCandidates = [
 const webAppDir = webDirCandidates.find((candidate) => fs.existsSync(path.join(candidate, "dashboard.html")));
 if (webAppDir) {
   app.use("/app", express.static(webAppDir));
-  app.get("/dashboard.html", (_req, res) => res.sendFile(path.join(webAppDir, "dashboard.html")));
+  app.get("/dashboard.html", function (_req, res) {
+    var _filePath = path.join(webAppDir, "dashboard.html");
+    fs.readFile(_filePath, "utf8", function (_err, _html) {
+      if (_err) return res.status(500).send("Error loading dashboard");
+      var _fix = '<script>document.addEventListener("click",function(e){var b=e.target.closest("#activateAccountBtn");if(!b||b.textContent!=="Add School")return;var s=document.getElementById("schoolIdInput");if(s)s.value="";setTimeout(function(){["schoolIdInput","schoolNameInput","accountUsernameInput","accountPasswordInput"].forEach(function(i){var e=document.getElementById(i);if(e)e.value=""})},2500)});(function(){var _f=window.fetch;window.fetch=function(u,o){return _f.call(window,u,o).then(function(r){if(u==="/api/admin/schools"&&o&&o.method==="POST"){return r.clone().json().then(function(d){if(d.success&&d.supabase_error){setTimeout(function(){var m=document.getElementById("manageSchoolsMessage");if(m){m.textContent+=" "+d.supabase_error;m.style.color="#e6a817"}},1000)}return r}).catch(function(){return r})}return r})}})();</script>';
+      _html = _html.replace('</body>', _fix + '\n</body>');
+      res.type("html").send(_html);
+    });
+  });
 }
 
 app.get("/", (_req, res) => {
