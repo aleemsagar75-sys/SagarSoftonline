@@ -1307,7 +1307,7 @@ app.post("/api/admin/schools", async function (req, res) {
     var supabaseKey = process.env.SUPABASE_SECRET_KEY;
     if (supabaseUrl && supabaseKey) {
       try {
-        await fetch(supabaseUrl + "/auth/v1/admin/users", {
+        var _supaResp = await fetch(supabaseUrl + "/auth/v1/admin/users", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1324,8 +1324,14 @@ app.post("/api/admin/schools", async function (req, res) {
             }
           })
         });
+        if (!_supaResp.ok) {
+          var _supaBody = await _supaResp.text().catch(function () { return ""; });
+          console.error("Supabase user creation failed (non-fatal):", _supaResp.status, _supaBody);
+        } else {
+          console.log("Supabase user created for", email);
+        }
       } catch (_supabaseError) {
-        console.error("Supabase user creation failed (non-fatal):", _supabaseError.message);
+        console.error("Supabase user creation network error (non-fatal):", _supabaseError.message);
       }
     }
     return res.json({ success: true, school_id: schoolId });

@@ -19436,7 +19436,8 @@ ${allContent}
               activateAccountBtn.removeAttribute("data-edit-school-id");
               if (isNew) {
                 if (nameEl) nameEl.value = ""; if (emailEl) emailEl.value = ""; if (passEl) passEl.value = "";
-                if (schoolIdInput) schoolIdInput.value = data.school_id || "";
+                if (schoolIdInput) schoolIdInput.value = "";
+                if (data.school_id && msgEl) msgEl.textContent += " Created: " + data.school_id;
               }
               loadSchools();
             } else {
@@ -19444,7 +19445,6 @@ ${allContent}
             }
           } catch (_e) {
             if (msgEl) { msgEl.textContent = "Save failed."; msgEl.className = "form-message error"; }
-          }
           } finally {
             if (activateAccountBtn) activateAccountBtn.disabled = false;
           }
