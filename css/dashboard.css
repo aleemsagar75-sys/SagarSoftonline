@@ -469,6 +469,25 @@ body {
   display: none;
 }
 
+.account-core-card .data-table { min-width: 500px; width: 100%; font-size: 13px; }
+.account-core-card .data-table th,
+.account-core-card .data-table td { padding: 0.4rem 0.5rem; }
+.super-admin-card .data-table { min-width: 600px; }
+
+@media (max-width: 768px) {
+  .account-core-card .data-table { min-width: 100%; font-size: 12px; }
+  .account-core-card .data-table th,
+  .account-core-card .data-table td { padding: 0.3rem 0.35rem; white-space: nowrap; }
+  .super-admin-card .data-table { min-width: 500px; font-size: 11px; }
+}
+
+@media (max-width: 480px) {
+  .account-core-card .form-grid { grid-template-columns: 1fr !important; }
+  .account-core-card .field-group--full { grid-column: 1 !important; }
+  .super-admin-card .form-grid { grid-template-columns: 1fr !important; }
+  .super-admin-card .data-table { min-width: 400px; font-size: 10px; }
+}
+
 .notification-menu {
   position: relative;
 }
@@ -5603,7 +5622,8 @@ select:focus, input:focus, textarea:focus {
   .salary-circle { width: 50px; height: 50px; font-size: 0.7rem; }
   .salary-cards-row { grid-template-columns: 1fr 1fr !important; gap: 0.4rem; }
 
-  .notification-menu__dropdown { width: calc(100vw - 1rem) !important; }
+  .notification-menu__dropdown { width: calc(100vw - 1rem) !important; right: 0 !important; left: auto !important; }
+  .profile-menu__dropdown { right: 0 !important; left: auto !important; width: 200px !important; }
 
   .student-modal__dialog .student-layout .panel-card,
   .employee-profile-section .panel-card { padding: 0.6rem; }

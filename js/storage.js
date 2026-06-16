@@ -192,9 +192,82 @@
         active: true
       }
     ],
-    students: [],
+    students: [
+      {
+        id: "STU-DEMO-001",
+        admissionNo: "STD1001",
+        name: "Ali Raza",
+        picture: "",
+        dateOfAdmission: "2026-01-15",
+        className: "Class 5 | A",
+        discountInFee: "",
+        section: "A",
+        dateOfBirth: "2014-05-20",
+        gender: "male",
+        bloodGroup: "B+",
+        diseaseInfo: "",
+        birthId: "BIRTH-1001",
+        previousSchool: "Bright Future School",
+        previousId: "",
+        orphanStatus: "No",
+        religion: "Islam",
+        address: "123 Main Street, Lahore",
+        phone: "+92 300 1111111",
+        fatherName: "Ahmed Raza",
+        fatherEducation: "Graduate",
+        fatherNationalId: "35201-1234567-1",
+        fatherPhone: "+92 300 0000003",
+        fatherOccupation: "Businessman",
+        fatherIncome: "50000",
+        motherName: "Fatima Ahmed",
+        motherEducation: "Intermediate",
+        motherNationalId: "35201-7654321-2",
+        motherPhone: "+92 300 1111112",
+        motherOccupation: "Housewife",
+        status: "active"
+      },
+      {
+        id: "STU-DEMO-002",
+        admissionNo: "STD1002",
+        name: "Sara Ahmed",
+        picture: "",
+        dateOfAdmission: "2026-02-01",
+        className: "Class 3 | A",
+        discountInFee: "",
+        section: "A",
+        dateOfBirth: "2016-08-12",
+        gender: "female",
+        bloodGroup: "A+",
+        diseaseInfo: "",
+        birthId: "BIRTH-1002",
+        previousSchool: "The Educators School",
+        previousId: "",
+        orphanStatus: "No",
+        religion: "Islam",
+        address: "456 Garden Town, Lahore",
+        phone: "+92 300 2222222",
+        fatherName: "Ahmed Raza",
+        fatherEducation: "Graduate",
+        fatherNationalId: "35201-1234567-1",
+        fatherPhone: "+92 300 0000003",
+        fatherOccupation: "Businessman",
+        fatherIncome: "50000",
+        motherName: "Fatima Ahmed",
+        motherEducation: "Intermediate",
+        motherNationalId: "35201-7654321-2",
+        motherPhone: "+92 300 1111112",
+        motherOccupation: "Housewife",
+        status: "active"
+      }
+    ],
     teachers: [],
-    classes: [],
+    classes: [
+      { id: "CLS-DEMO-001", name: "Class 1 | A", classTeacher: "", monthlyTuitionFees: 2000 },
+      { id: "CLS-DEMO-002", name: "Class 1 | B", classTeacher: "", monthlyTuitionFees: 2000 },
+      { id: "CLS-DEMO-003", name: "Class 3 | A", classTeacher: "", monthlyTuitionFees: 3000 },
+      { id: "CLS-DEMO-004", name: "Class 5 | A", classTeacher: "", monthlyTuitionFees: 4000 },
+      { id: "CLS-DEMO-005", name: "Class 5 | B", classTeacher: "", monthlyTuitionFees: 4000 }
+    ],
     subjects: [],
     attendance: [],
     fees: [],
@@ -329,6 +402,14 @@
         motherPhone: String(pickStudentField(student, ["motherPhone"], student.motherPhone || "")),
         motherOccupation: String(pickStudentField(student, ["motherOccupation"], student.motherOccupation || "")),
         status: normalizedStatus
+      });
+    });
+
+    if (!Array.isArray(db.classes)) db.classes = [];
+    db.classes = db.classes.map(function (classItem) {
+      return Object.assign({}, classItem, {
+        monthlyTuitionFees: Number(classItem.monthlyTuitionFees || classItem.monthlyFees || 0),
+        classTeacher: classItem.classTeacher || classItem.teacherId || ""
       });
     });
 

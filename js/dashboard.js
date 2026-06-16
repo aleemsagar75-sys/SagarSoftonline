@@ -202,6 +202,98 @@ window.handleEmployeeDeleteClick = function(employeeId) {
 document.addEventListener("DOMContentLoaded", function () {
   const currentUser = window.SagarSoftAuth.requireAuth();
 
+  function isMessagingAllowed() {
+    return currentUser && (currentUser.role === "admin" || currentUser.role === "superadmin");
+  }
+
+  function applyMessagingVisibility() {
+    var allowed = isMessagingAllowed();
+    document.body.classList.toggle("role-messaging-disabled", !allowed);
+    if (allowed) return;
+    var selectors = [
+      '[data-fee-defaulter-whatsapp]',
+      '[data-attendance-wa-student]',
+      '[data-attendance-wa-employee]',
+      '[data-employee-report-wa]',
+      '[data-report-wa-student]',
+      '[data-test-result-wa]',
+      '[data-homework-wa-student]',
+      '[data-emp-action="whatsapp"]',
+      '[data-emp-action="whatsapp-employee-login"]',
+      '[data-emp-action="sms"]',
+      '[data-emp-action="sms-job-letter"]',
+      '[data-action="send-student-whatsapp"]',
+      '[data-action="whatsapp-student-id-card"]',
+      '[data-action="sms-student-id-card"]',
+      '#sendSelectedReminderBtn',
+      '#sendResultMessageBtn',
+      '#sendEmployeeAbsenteesBtn',
+      '#sendTestResultSmsBtn',
+      '#sendHomeworkSmsBatchBtn',
+      '#sendWhatsappCustomBtn',
+      '#sendSmsNowBtn',
+      '#sendNotifBtn',
+      '#dashboardSendAbsenteesBtnOld',
+      '#defaultersSendSms',
+      'label[for="defaultersSendSms"]',
+      'label[for="resultCardSendChannelSelect"]',
+      '#resultCardSendChannelSelect',
+      '#notificationBtn',
+      '#notificationDropdown',
+      '#backupNowBtn',
+      '#checkUpdateBtn',
+      '#openAccountSettingsMenuBtn',
+      '#openSettingsMenuBtn'
+    ];
+    selectors.forEach(function (sel) {
+      document.querySelectorAll(sel).forEach(function (el) {
+        el.style.display = "none";
+      });
+    });
+  }
+
+  (function injectMessagingCSS() {
+    var style = document.createElement("style");
+    style.textContent = `
+      .role-messaging-disabled [data-fee-defaulter-whatsapp],
+      .role-messaging-disabled [data-attendance-wa-student],
+      .role-messaging-disabled [data-attendance-wa-employee],
+      .role-messaging-disabled [data-employee-report-wa],
+      .role-messaging-disabled [data-report-wa-student],
+      .role-messaging-disabled [data-test-result-wa],
+      .role-messaging-disabled [data-homework-wa-student],
+      .role-messaging-disabled [data-emp-action="whatsapp"],
+      .role-messaging-disabled [data-emp-action="whatsapp-employee-login"],
+      .role-messaging-disabled [data-emp-action="sms"],
+      .role-messaging-disabled [data-emp-action="sms-job-letter"],
+      .role-messaging-disabled [data-action="send-student-whatsapp"],
+      .role-messaging-disabled [data-action="whatsapp-student-id-card"],
+      .role-messaging-disabled [data-action="sms-student-id-card"],
+      .role-messaging-disabled #sendSelectedReminderBtn,
+      .role-messaging-disabled #sendResultMessageBtn,
+      .role-messaging-disabled #sendEmployeeAbsenteesBtn,
+      .role-messaging-disabled #sendTestResultSmsBtn,
+      .role-messaging-disabled #sendHomeworkSmsBatchBtn,
+      .role-messaging-disabled #sendWhatsappCustomBtn,
+      .role-messaging-disabled #sendSmsNowBtn,
+      .role-messaging-disabled #sendNotifBtn,
+      .role-messaging-disabled #dashboardSendAbsenteesBtnOld,
+      .role-messaging-disabled #defaultersSendSms,
+      .role-messaging-disabled #resultCardSendChannelSelect,
+      .role-messaging-disabled label[for="defaultersSendSms"],
+      .role-messaging-disabled label[for="resultCardSendChannelSelect"],
+      .role-messaging-disabled #notificationBtn,
+      .role-messaging-disabled #notificationDropdown,
+      .role-messaging-disabled #backupNowBtn,
+      .role-messaging-disabled #checkUpdateBtn,
+      .role-messaging-disabled #openAccountSettingsMenuBtn,
+      .role-messaging-disabled #openSettingsMenuBtn {
+        display: none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  })();
+
   if (!currentUser) {
     return;
   }
@@ -258,6 +350,7 @@ document.addEventListener("DOMContentLoaded", function () {
     "student-id-cards",
     "print-basic-list",
     "students-manage-login",
+    "parents-manage-login",
     "promote-students"
   ];
   const classRoutes = ["all-classes", "new-class", "classes-with-subjects", "assign-subjects"];
@@ -624,7 +717,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const dateOfAdmissionInput = document.getElementById("dateOfAdmission");
   const studentClassNameInput = document.getElementById("studentClassName");
   const discountInFeeInput = document.getElementById("discountInFee");
-  const studentSectionInput = document.getElementById("studentSection");
+
   const dateOfBirthInput = document.getElementById("dateOfBirth");
   const studentGenderInput = document.getElementById("studentGender");
   const bloodGroupInput = document.getElementById("bloodGroup");
@@ -706,6 +799,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const newClassForm = document.getElementById("newClassForm");
   const newClassIdInput = document.getElementById("newClassId");
   const newClassNameInput = document.getElementById("newClassName");
+  const newClassSectionInput = document.getElementById("newClassSection");
   const newClassMonthlyFeeInput = document.getElementById("newClassMonthlyFee");
   const newClassTeacherInput = document.getElementById("newClassTeacher");
   const newClassTitle = document.getElementById("newClassTitle");
@@ -731,7 +825,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const promoteStudentsSearchInput = document.getElementById("promoteStudentsSearchInput");
   const promoteStudentsClassFilter = document.getElementById("promoteStudentsClassFilter");
   const promoteTargetClassSelect = document.getElementById("promoteTargetClassSelect");
-  const promoteTargetSectionInput = document.getElementById("promoteTargetSectionInput");
+
   const promoteSelectedStudentsBtn = document.getElementById("promoteSelectedStudentsBtn");
   const promoteStudentsTableBody = document.getElementById("promoteStudentsTableBody");
   const promoteStudentsEmptyState = document.getElementById("promoteStudentsEmptyState");
@@ -766,6 +860,7 @@ document.addEventListener("DOMContentLoaded", function () {
     "print-basic-list": "Print Basic List",
     "students-manage-login": "Manage Student Login",
     "promote-students": "Promote Students",
+    "parents-manage-login": "Manage Parent Login",
     "all-employees": "All Employees",
     "employees-add-new": "Add New Employee",
     "staff-id-cards": "Staff ID Cards",
@@ -860,8 +955,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "students-report-card",
       "students-info-report",
       "staff-monthly-attendance-report",
-      "student-progress-report",
-      "account-settings"
+      "student-progress-report"
     ],
     student: [
       "dashboard",
@@ -870,17 +964,14 @@ document.addEventListener("DOMContentLoaded", function () {
       "test-result",
       "students-report-card",
       "student-progress-report",
-      "homework",
-      "account-settings"
+      "homework"
     ],
     parent: [
       "dashboard",
       "students-report-card",
       "students-info-report",
       "fee-collection-report",
-      "student-progress-report",
-      "whatsapp",
-      "account-settings"
+      "student-progress-report"
     ]
   };
 
@@ -1193,6 +1284,21 @@ document.addEventListener("DOMContentLoaded", function () {
         generalSettingsTrigger.setAttribute("aria-expanded", "true");
       }
     }
+    document.querySelectorAll(".menu-group").forEach(function (group) {
+      var visibleRoutes = group.querySelectorAll('.submenu-link[data-route]');
+      var anyVisible = false;
+      visibleRoutes.forEach(function (btn) {
+        if (btn.style.display !== "none") anyVisible = true;
+      });
+      var accordionTrigger = group.querySelector('[data-accordion]');
+      if (visibleRoutes.length > 0 && !anyVisible) {
+        group.style.display = "none";
+        if (accordionTrigger) accordionTrigger.style.display = "none";
+      } else {
+        group.style.display = "";
+        if (accordionTrigger) accordionTrigger.style.display = "";
+      }
+    });
   }
 
   function normalizeLicenseEndpoint(value) {
@@ -1841,6 +1947,83 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  function getApiBaseUrl() {
+    return window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl
+      ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "")
+      : "https://sagarsoftonline.onrender.com";
+  }
+
+  function getLastBackupTime() {
+    var backups = database.settings && database.settings.backupHistory;
+    if (!Array.isArray(backups) || !backups.length) return null;
+    return backups[backups.length - 1].createdAt;
+  }
+
+  async function backupToSupabase() {
+    var schoolId = (ensureLicenseSettings().schoolId || "").trim();
+    var isDemo = currentUser && (currentUser.email || "").endsWith("@sagarsoft.com");
+    if (!schoolId && isDemo) {
+      schoolId = "DEMO-SCHOOL-" + Date.now();
+    }
+    if (!schoolId) {
+      openAppMessageBox("Backup Failed", "No school ID configured. Go to Account Settings to set up your school.", "error");
+      return false;
+    }
+    try {
+      var dataToSend = {};
+      try { dataToSend = JSON.parse(JSON.stringify(database)); } catch (_e) { dataToSend = database; }
+      var payload = { school_id: schoolId, database: dataToSend };
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () { controller.abort(); }, 15000);
+      var resp = await fetch(getApiBaseUrl() + "/api/backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+      var data = await resp.json().catch(function () { return {}; });
+      if (data.success) {
+        database.settings = database.settings || {};
+        database.settings.backupHistory = database.settings.backupHistory || [];
+        database.settings.backupHistory.push({ createdAt: new Date().toISOString(), sizeBytes: data.size_bytes || 0 });
+        if (database.settings.backupHistory.length > 50) database.settings.backupHistory = database.settings.backupHistory.slice(-50);
+        saveDatabase();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      if (e && e.name === "AbortError") {
+        openAppMessageBox("Backup Failed", "Request timed out. The server might be waking up. Try again in 30 seconds.", "error");
+      } else {
+        openAppMessageBox("Backup Failed", "Could not reach server. Make sure " + getApiBaseUrl() + " is accessible.", "error");
+      }
+      return false;
+    }
+  }
+
+  async function checkForUpdates() {
+    try {
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function () { controller.abort(); }, 10000);
+      var resp = await fetch(getApiBaseUrl() + "/api/version", { signal: controller.signal });
+      clearTimeout(timeoutId);
+      var data = await resp.json().catch(function () { return {}; });
+      var currentVersion = "1.0.0";
+      if (data.version && data.version !== currentVersion) {
+        openAppConfirm("Update Available", "Version " + data.version + " is available.\nRelease date: " + (data.releaseDate || "-") + "\n\n" + (data.releaseNotes || "") + "\n\nOpen the app to get the latest features?", "info").then(function (go) {
+          if (go && data.updateUrl) {
+            window.open(data.updateUrl, "_blank");
+          }
+        });
+      } else {
+        openAppMessageBox("Up to Date", "You are running the latest version (" + currentVersion + ").", "success");
+      }
+    } catch (_e) {
+      openAppMessageBox("Update Check Failed", "Could not check for updates. Make sure " + getApiBaseUrl() + " is accessible.", "error");
+    }
+  }
+
   function renderProfileDropdownMenu() {
     if (!profileDropdown) {
       return;
@@ -1848,44 +2031,47 @@ document.addEventListener("DOMContentLoaded", function () {
     const isSuperAdmin = currentUser.role === superAdminRole;
     const license = ensureLicenseSettings();
     const isUnverifiedSchool = !isSuperAdmin && !license.activated;
+    var lastBackup = getLastBackupTime();
+    var lastBackupLabel = lastBackup ? "Backup: " + new Date(lastBackup).toLocaleString() : "";
+
+    var commonButtons = `
+      <button class="dropdown-link" id="backupNowBtn" type="button">${lastBackupLabel ? "Backup (" + new Date(lastBackup).toLocaleDateString() + ")" : "Backup Data"}</button>
+      <button class="dropdown-link" id="checkUpdateBtn" type="button">Check Updates</button>
+    `;
+
     if (isUnverifiedSchool) {
       profileDropdown.innerHTML = `
+        ${commonButtons}
         <button class="dropdown-link" id="openAccountSettingsMenuBtn" type="button">Open Settings</button>
         <button class="dropdown-link danger" id="logoutBtn" type="button">Logout</button>
       `;
-      const openAccountSettingsMenuBtn = document.getElementById("openAccountSettingsMenuBtn");
-      if (openAccountSettingsMenuBtn) {
-        openAccountSettingsMenuBtn.addEventListener("click", function () {
-          setRoute("account-settings");
-        });
-      }
-      logoutButton = document.getElementById("logoutBtn");
-      if (logoutButton) {
-        logoutButton.addEventListener("click", function () {
-          window.SagarSoftAuth.logout();
-          window.location.href = "./login.html";
-        });
-      }
+      bindDropdownButtons();
       return;
     }
-    profileDropdown.innerHTML = isSuperAdmin
+    profileDropdown.innerHTML = (isSuperAdmin
       ? `
         <button class="dropdown-link" id="openSettingsMenuBtn" type="button">Open Settings</button>
         <div class="dropdown-submenu" id="settingsSubmenu" hidden>
           <button class="dropdown-link" id="activateSchoolAccountMenuBtn" type="button">Activate School Account</button>
         </div>
-        <button class="dropdown-link danger" id="logoutBtn" type="button">Logout</button>
       `
       : `
         <button class="dropdown-link" id="openAccountSettingsMenuBtn" type="button">Open Settings</button>
-        <button class="dropdown-link danger" id="logoutBtn" type="button">Logout</button>
-      `;
+      `) +
+      commonButtons +
+      `<button class="dropdown-link danger" id="logoutBtn" type="button">Logout</button>`;
 
+    bindDropdownButtons();
+  }
+
+  function bindDropdownButtons() {
     logoutButton = document.getElementById("logoutBtn");
     const openAccountSettingsMenuBtn = document.getElementById("openAccountSettingsMenuBtn");
     const openSettingsMenuBtn = document.getElementById("openSettingsMenuBtn");
     const activateSchoolAccountMenuBtn = document.getElementById("activateSchoolAccountMenuBtn");
     const settingsSubmenu = document.getElementById("settingsSubmenu");
+    const backupNowBtn = document.getElementById("backupNowBtn");
+    const checkUpdateBtn = document.getElementById("checkUpdateBtn");
 
     if (openAccountSettingsMenuBtn) {
       openAccountSettingsMenuBtn.addEventListener("click", function () {
@@ -1902,6 +2088,36 @@ document.addEventListener("DOMContentLoaded", function () {
     if (activateSchoolAccountMenuBtn) {
       activateSchoolAccountMenuBtn.addEventListener("click", function () {
         setRoute("account-settings");
+      });
+    }
+
+    if (backupNowBtn) {
+      backupNowBtn.addEventListener("click", async function () {
+        backupNowBtn.textContent = "Backing up...";
+        backupNowBtn.disabled = true;
+        var ok = await backupToSupabase();
+        backupNowBtn.textContent = ok ? "Backup Done" : "Backup Failed";
+        backupNowBtn.disabled = false;
+        if (ok) {
+          openAppMessageBox("Backup Complete", "Your data has been backed up to Supabase.", "success");
+          renderProfileDropdownMenu();
+        } else {
+          openAppMessageBox("Backup Failed", "Could not backup data. Check your internet connection.", "error");
+        }
+      });
+    }
+
+    if (checkUpdateBtn) {
+      checkUpdateBtn.addEventListener("click", function () {
+        checkUpdateBtn.textContent = "Checking...";
+        checkUpdateBtn.disabled = true;
+        checkForUpdates().then(function () {
+          checkUpdateBtn.textContent = "Check Updates";
+          checkUpdateBtn.disabled = false;
+        }).catch(function () {
+          checkUpdateBtn.textContent = "Check Updates";
+          checkUpdateBtn.disabled = false;
+        });
       });
     }
 
@@ -2279,6 +2495,137 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     saveDatabase();
     return { success: success, outboxItem: outboxItem };
+  }
+
+  var _supabase = null;
+
+  function getSupabaseConfig() {
+    return (database.generalSettings && database.generalSettings.supabaseConfig) || {};
+  }
+
+  function initSupabase() {
+    if (_supabase) return _supabase;
+    var cfg = getSupabaseConfig();
+    if (!cfg.url || !cfg.anonKey) return null;
+    try {
+      _supabase = window.supabase.createClient(cfg.url, cfg.anonKey, { auth: { persistSession: false } });
+      return _supabase;
+    } catch (e) {
+      console.error("Supabase init failed:", e);
+      return null;
+    }
+  }
+
+  async function ensureSupabaseTables() {
+    var cfg = getSupabaseConfig();
+    if (!cfg.url || !cfg.anonKey) return { ok: false, reason: "not-configured" };
+    if (cfg.tablesCreated) return { ok: true };
+    try {
+      var sb = initSupabase();
+      if (!sb) return { ok: false, reason: "init-failed" };
+      var test = await sb.from("sms_queue").select("id").limit(1);
+      if (test.error && test.error.code === "42P01") {
+        if (!cfg.serviceRoleKey) return { ok: false, reason: "tables-missing" };
+        var sql = [
+          "CREATE TABLE IF NOT EXISTS sms_queue (",
+          "  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,",
+          "  school_id UUID NOT NULL,",
+          "  device_id UUID,",
+          "  recipient_phone TEXT NOT NULL,",
+          "  message TEXT NOT NULL,",
+          "  status TEXT DEFAULT 'pending',",
+          "  source TEXT DEFAULT 'Manual SMS',",
+          "  campaign_type TEXT DEFAULT 'manual',",
+          "  recipient_name TEXT,",
+          "  recipient_type TEXT DEFAULT 'student',",
+          "  error_message TEXT,",
+          "  sent_at TIMESTAMPTZ,",
+          "  created_at TIMESTAMPTZ DEFAULT now()",
+          ");",
+          "CREATE TABLE IF NOT EXISTS devices (",
+          "  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,",
+          "  school_id UUID NOT NULL,",
+          "  device_name TEXT,",
+          "  device_id TEXT NOT NULL UNIQUE,",
+          "  is_active BOOLEAN DEFAULT false,",
+          "  sim_number TEXT,",
+          "  last_poll_at TIMESTAMPTZ,",
+          "  created_at TIMESTAMPTZ DEFAULT now()",
+          ");"
+        ].join(" ");
+        var res = await fetch(cfg.url + "/rest/v1/rpc/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": cfg.serviceRoleKey, "Authorization": "Bearer " + cfg.serviceRoleKey },
+          body: JSON.stringify({ query: sql })
+        });
+        if (!res.ok) {
+          var altRes = await fetch(cfg.url + "/rest/v1/", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates", "apikey": cfg.serviceRoleKey, "Authorization": "Bearer " + cfg.serviceRoleKey }
+          });
+        }
+      }
+      cfg.tablesCreated = true;
+      saveDatabase();
+      return { ok: true };
+    } catch (e) {
+      console.error("Table creation error:", e);
+      return { ok: false, reason: "error", error: e.message };
+    }
+  }
+
+  async function sendSmsViaQueue(payload) {
+    var sb = initSupabase();
+    if (!sb) return { success: false, reason: "supabase-not-configured" };
+    var cfg = getSupabaseConfig();
+    if (!cfg.tablesCreated) {
+      var initResult = await ensureSupabaseTables();
+      if (!initResult.success) return { success: false, reason: "table-init-failed", error: initResult.error };
+      cfg.tablesCreated = true;
+      if (database.generalSettings && database.generalSettings.supabaseConfig) {
+        database.generalSettings.supabaseConfig.tablesCreated = true;
+      }
+    }
+    try {
+      var schoolId = database.school && database.school.id;
+      if (!schoolId) return { success: false, reason: "school-id-missing" };
+      var phone = normalizeSmsPhone(payload.recipientPhone || "");
+      var messageText = String(payload.message || "").trim();
+      if (!phone) return { success: false, reason: "phone-missing" };
+      if (!messageText) return { success: false, reason: "message-missing" };
+      var { data, error } = await sb.from("sms_queue").insert({
+        school_id: schoolId,
+        recipient_phone: phone,
+        message: messageText,
+        source: payload.source || "Manual SMS",
+        campaign_type: payload.campaignType || "manual",
+        recipient_name: payload.recipientName || "-",
+        recipient_type: payload.recipientType || "student",
+        status: "pending"
+      }).select("id").single();
+      if (error) return { success: false, reason: "db-error", error: error.message };
+      var outboxItem = pushSmsOutboxEntry({
+        id: data && data.id ? String(data.id) : "",
+        recipientName: payload.recipientName || "-",
+        recipientPhone: phone,
+        message: messageText,
+        status: "queued",
+        source: payload.source || "Manual SMS",
+        recipientType: payload.recipientType || "student",
+        campaignType: payload.campaignType || "manual"
+      });
+      return { success: true, outboxItem: outboxItem };
+    } catch (e) {
+      return { success: false, reason: "exception", error: e.message };
+    }
+  }
+
+  async function sendSmsSmart(payload) {
+    var cfg = getSupabaseConfig();
+    if (cfg && cfg.url && cfg.anonKey && window.supabase) {
+      return await sendSmsViaQueue(payload);
+    }
+    return await sendSmsViaConnectedGateway(payload);
   }
 
   function openWhatsAppWithFallback(appUrl, webUrl) {
@@ -3157,6 +3504,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!classItem) {
       newClassIdInput.value = "";
       newClassNameInput.value = "";
+      newClassSectionInput.value = "";
       newClassMonthlyFeeInput.value = "";
       newClassTeacherInput.value = "";
       newClassTitle.textContent = "Create New Class";
@@ -3164,8 +3512,15 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    var pipeIdx = classItem.name.lastIndexOf(" | ");
+    if (pipeIdx > 0) {
+      newClassNameInput.value = classItem.name.slice(0, pipeIdx);
+      newClassSectionInput.value = classItem.name.slice(pipeIdx + 3);
+    } else {
+      newClassNameInput.value = classItem.name || "";
+      newClassSectionInput.value = "";
+    }
     newClassIdInput.value = classItem.id;
-    newClassNameInput.value = classItem.name || "";
     newClassMonthlyFeeInput.value = classItem.monthlyTuitionFees || "";
     newClassTeacherInput.value = classItem.classTeacher || "";
     newClassTitle.textContent = `Edit ${classItem.name}`;
@@ -3224,23 +3579,16 @@ document.addEventListener("DOMContentLoaded", function () {
     event.preventDefault();
 
     const classId = newClassIdInput.value;
-    const className = newClassNameInput.value.trim();
+    const baseName = newClassNameInput.value.trim();
+    const classSection = newClassSectionInput.value.trim();
     const monthlyTuitionFees = newClassMonthlyFeeInput.value.trim();
     const classTeacher = newClassTeacherInput.value;
-
-    if (!className || !monthlyTuitionFees || !classTeacher) {
-      setClassMessage("Please fill Class Name, Monthly Tuition Fees, and Select Class Teacher.", "error");
+    if (!baseName || !classSection || !monthlyTuitionFees || !classTeacher) {
+      setClassMessage("Please fill Class Name, Section, Monthly Tuition Fees, and Select Class Teacher.", "error");
       return;
     }
 
-    const duplicateClass = database.classes.find(function (classItem) {
-      return classItem.name.toLowerCase() === className.toLowerCase() && classItem.id !== classId;
-    });
-
-    if (duplicateClass) {
-      setClassMessage("Class name already exists. Use a unique class name.", "error");
-      return;
-    }
+    const fullName = baseName + " | " + classSection;
 
     const existingIndex = database.classes.findIndex(function (classItem) {
       return classItem.id === classId;
@@ -3250,32 +3598,31 @@ document.addEventListener("DOMContentLoaded", function () {
       const oldClassName = database.classes[existingIndex].name;
       database.classes[existingIndex] = {
         ...database.classes[existingIndex],
-        name: className,
+        name: fullName,
         monthlyTuitionFees: Number(monthlyTuitionFees),
         classTeacher: classTeacher
       };
 
-      if (oldClassName !== className) {
+      if (oldClassName !== fullName) {
         database.students = database.students.map(function (student) {
           if (student.className === oldClassName) {
-            return { ...student, className: className };
+            return { ...student, className: fullName };
           }
           return student;
         });
       }
 
-      addActivity("Class updated", `${className} was updated.`);
+      addActivity("Class updated", `${fullName} was updated.`);
       setClassMessage("Class updated successfully.", "success");
       setAllClassesMessage("Class updated successfully.", "success");
     } else {
       database.classes.unshift({
         id: generateClassId(),
-        name: className,
-        section: "A",
+        name: fullName,
         monthlyTuitionFees: Number(monthlyTuitionFees),
         classTeacher: classTeacher
       });
-      addActivity("Class created", `${className} was added with class teacher ${classTeacher}.`);
+      addActivity("Class created", `${fullName} was added with class teacher ${classTeacher}.`);
       setClassMessage("Class created successfully.", "success");
       setAllClassesMessage("Class created successfully.", "success");
     }
@@ -3491,7 +3838,6 @@ document.addEventListener("DOMContentLoaded", function () {
       dateOfAdmissionInput.value = "";
       studentClassNameInput.value = getStudentClassOptions()[0] || "";
       discountInFeeInput.value = "";
-      studentSectionInput.value = "";
       dateOfBirthInput.value = "";
       studentGenderInput.value = "";
       bloodGroupInput.value = "";
@@ -3528,7 +3874,6 @@ document.addEventListener("DOMContentLoaded", function () {
     dateOfAdmissionInput.value = student.dateOfAdmission || "";
     studentClassNameInput.value = student.className;
     discountInFeeInput.value = student.discountInFee || "";
-    studentSectionInput.value = student.section;
     dateOfBirthInput.value = student.dateOfBirth || "";
     studentGenderInput.value = student.gender || "";
     bloodGroupInput.value = student.bloodGroup || "";
@@ -3589,8 +3934,7 @@ document.addEventListener("DOMContentLoaded", function () {
         !search ||
         student.name.toLowerCase().includes(search) ||
         String(student.admissionNo || "").toLowerCase().includes(search) ||
-        student.className.toLowerCase().includes(search) ||
-        String(student.section || "").toLowerCase().includes(search);
+        student.className.toLowerCase().includes(search);
 
       const matchesClass = classFilter === "all" || student.className === classFilter;
       const matchesStatus = statusFilter === "all" || student.status === statusFilter;
@@ -4813,6 +5157,13 @@ document.addEventListener("DOMContentLoaded", function () {
         });
         settings.timetableDemoPurged = true;
       }
+
+      settings.supabaseConfig = settings.supabaseConfig || {
+        url: "https://sbxgdvmjaapwhmnmqtfa.supabase.co",
+        anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNieGdkdm1qYWFwd2htbm1xdGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg3NzA2NDMsImV4cCI6MjA5NDM0NjY0M30.Xe4Qxjk0RHHpwsbt-58VgIDnO3FaMpb4cD2euXf9IjI",
+        serviceRoleKey: "sb_secret_Xrcz9j16C1AHD0fp__s7aw_entYFA4u",
+        tablesCreated: false
+      };
 
       return settings;
     }
@@ -7313,8 +7664,10 @@ ${allContent}
         let smsFail = 0;
         let missingPhone = 0;
         if (sendSmsCheckbox.checked) {
-          if (!(settings.smsGateway && settings.smsGateway.connected)) {
-            alert("SMS gateway is not connected. Please connect from SMS Services.");
+          var _cfg = getSupabaseConfig();
+          var _queueOk = _cfg && _cfg.url && _cfg.anonKey && _cfg.tablesCreated && window.supabase ? true : false;
+          if (!_queueOk && !(settings.smsGateway && settings.smsGateway.connected)) {
+            alert("SMS gateway is not connected. Please connect from SMS Services or configure Cloud Queue.");
             return;
           }
           for (let index = 0; index < defaulters.length; index += 1) {
@@ -7335,7 +7688,7 @@ ${allContent}
               amount: getDefaulterReminderAmount(student),
               school: database.school.name || "School"
             });
-            const result = await sendSmsViaConnectedGateway({
+            const result = await sendSmsSmart({
               recipientName: normalizedStudent.name || "-",
               recipientPhone: phone,
               message: text,
@@ -8036,7 +8389,7 @@ ${allContent}
                         <p><strong>Salary:</strong> ${currencySymbol} ${Number(record.salaryAmount || 0)}</p>
                         <p><strong>Bonus:</strong> ${currencySymbol} ${Number(record.bonus || 0)}</p>
                         <p><strong>Deduction:</strong> ${currencySymbol} ${Number(record.deduction || 0)}</p>
-                      </div>
+          </div>
                     </div>
                     <table>
                       <thead><tr><th>Sr</th><th>Month</th><th>Salary</th><th>Date</th><th>Bonus</th><th>Ded.</th></tr></thead>
@@ -8587,46 +8940,6 @@ ${allContent}
       return;
     }
 
-
-
-    function getDateRangeByPreset(presetValue) {
-      const today = new Date();
-      const toISODateOnly = function (dateObj) {
-        return new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
-      };
-      const startOfMonth = function (dateObj) {
-        return new Date(dateObj.getFullYear(), dateObj.getMonth(), 1);
-      };
-      const endOfMonth = function (dateObj) {
-        return new Date(dateObj.getFullYear(), dateObj.getMonth() + 1, 0);
-      };
-
-      if (presetValue === "today") {
-        const date = toISODateOnly(today);
-        return { from: date, to: date };
-      }
-      if (presetValue === "yesterday") {
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const date = toISODateOnly(yesterday);
-        return { from: date, to: date };
-      }
-      if (presetValue === "last-30") {
-        const fromDate = new Date(today);
-        fromDate.setDate(fromDate.getDate() - 29);
-        return { from: toISODateOnly(fromDate), to: toISODateOnly(today) };
-      }
-      if (presetValue === "this-month") {
-        return { from: toISODateOnly(startOfMonth(today)), to: toISODateOnly(today) };
-      }
-      if (presetValue === "last-month") {
-        const lastMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        return { from: toISODateOnly(startOfMonth(lastMonthDate)), to: toISODateOnly(endOfMonth(lastMonthDate)) };
-      }
-      const date = toISODateOnly(today);
-      return { from: date, to: date };
-    }
-
     function isDateWithinRange(dateValue, fromDate, toDate) {
       if (!dateValue || !fromDate || !toDate) {
         return false;
@@ -8993,13 +9306,29 @@ ${allContent}
     }
 
     if (route === "class-rooms") {
+      function getRoomClassOptions() {
+        return database.classes.map(function (c) { return c.name; });
+      }
+
+      function populateRoomNameSelect() {
+        if (!nameInput) return;
+        var opts = getRoomClassOptions();
+        if (opts.length === 0) {
+          nameInput.innerHTML = '<option value="">No classes found. Create classes first.</option>';
+          return;
+        }
+        nameInput.innerHTML = '<option value="">Select Class</option>' + opts.map(function (n) {
+          return '<option value="' + n.replace(/"/g, "&quot;") + '">' + n + '</option>';
+        }).join("");
+      }
+
       moduleSummary.innerHTML = `
         <article>
           <strong class="module-center-title">Manage Class Rooms</strong>
           <div class="form-grid">
             <div class="field-group">
               <label for="roomNameInput">Room Name*</label>
-              <input id="roomNameInput" type="text" placeholder="e.g Room A">
+              <select id="roomNameInput" style="width:100%"></select>
             </div>
             <div class="field-group">
               <label for="roomCapacityInput">Capacity</label>
@@ -9040,6 +9369,7 @@ ${allContent}
       const tableBody = document.getElementById("roomTableBody");
       const message = document.getElementById("roomMessage");
       let editingId = "";
+      populateRoomNameSelect();
 
       function renderRows() {
         tableBody.innerHTML = getClassRooms().map(function (room) {
@@ -9062,7 +9392,7 @@ ${allContent}
       document.getElementById("saveRoomBtn").addEventListener("click", function () {
         const roomName = nameInput.value.trim();
         if (!roomName) {
-          message.textContent = "Please enter room name.";
+          message.textContent = "Please select a class.";
           message.className = "form-message error";
           return;
         }
@@ -10486,8 +10816,10 @@ ${allContent}
             message.className = "form-message warning";
             return;
           }
-          if (!(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
-            message.textContent = "SMS gateway is not connected. Please connect from SMS Services first.";
+          var _rcfg = getSupabaseConfig();
+          var _rqOk = _rcfg && _rcfg.url && _rcfg.anonKey && _rcfg.tablesCreated && window.supabase ? true : false;
+          if (!_rqOk && !(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
+            message.textContent = "SMS gateway is not connected. Please connect from SMS Services first or configure Cloud Queue.";
             message.className = "form-message error";
             return;
           }
@@ -10519,7 +10851,7 @@ ${allContent}
               status: dmcData.status,
               school: profile.name || database.school.name || "School"
             });
-            const result = await sendSmsViaConnectedGateway({
+            const result = await sendSmsSmart({
               recipientName: normalizedStudent.name || "-",
               recipientPhone: recipientPhone,
               message: text,
@@ -10567,7 +10899,7 @@ ${allContent}
           status: latestDmcData.status
         });
         if (channel === "sms") {
-          const result = await sendSmsViaConnectedGateway({
+          const result = await sendSmsSmart({
             recipientName: normalizedStudent.name || "-",
             recipientPhone: recipientPhone,
             message: text,
@@ -11454,8 +11786,10 @@ ${allContent}
             openAppMessageBox("Warning", detail, "warning");
             return;
           }
-          if (!(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
-            const detail = "SMS gateway is not connected. Please connect from SMS Services first.";
+          var _ecfg = getSupabaseConfig();
+          var _eqOk = _ecfg && _ecfg.url && _ecfg.anonKey && _ecfg.tablesCreated && window.supabase ? true : false;
+          if (!_eqOk && !(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
+            const detail = "SMS gateway is not connected. Please connect from SMS Services first or configure Cloud Queue.";
             message.textContent = detail;
             message.className = "form-message error";
             openAppMessageBox("Error", detail, "error");
@@ -11480,7 +11814,7 @@ ${allContent}
               date: dateInput.value,
               school: database.school.name || "School"
             });
-            const result = await sendSmsViaConnectedGateway({
+            const result = await sendSmsSmart({
               recipientName: employee.name || "-",
               recipientPhone: recipientPhone,
               message: text,
@@ -11582,16 +11916,8 @@ ${allContent}
               <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search student by roll no / name" style="width: 100%;">
               <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
-            <select id="studentsAttendanceReportPreset">
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="last-30">Last 30 Days</option>
-              <option value="this-month">This Month</option>
-              <option value="last-month">Last Month</option>
-              <option value="custom">Custom Range</option>
-            </select>
-            <input id="studentsAttendanceReportFromDate" type="date">
-            <input id="studentsAttendanceReportToDate" type="date">
+            <label style="white-space:nowrap">From: <input id="studentsAttendanceReportFromDate" type="date"></label>
+            <label style="white-space:nowrap">To: <input id="studentsAttendanceReportToDate" type="date"></label>
             <button class="primary-button" id="downloadStudentsAttendancePdfBtn" type="button">Download PDF</button>
           </div>
           <div class="table-wrap">
@@ -11619,7 +11945,6 @@ ${allContent}
       const searchInput = document.getElementById("studentsAttendanceReportSearchInput");
       const searchDropdown = document.getElementById("studentsAttendanceReportSearchDropdown");
       const searchContainer = document.getElementById("studentsAttendanceReportSearchContainer");
-      const presetSelect = document.getElementById("studentsAttendanceReportPreset");
       const fromDateInput = document.getElementById("studentsAttendanceReportFromDate");
       const toDateInput = document.getElementById("studentsAttendanceReportToDate");
       const tableBody = document.getElementById("studentsAttendanceReportTableBody");
@@ -11634,18 +11959,6 @@ ${allContent}
           renderTable();
         }
       );
-
-      function syncDateInputsByPreset() {
-        const preset = presetSelect.value;
-        if (preset !== "custom") {
-          const range = getDateRangeByPreset(preset);
-          fromDateInput.value = range.from;
-          toDateInput.value = range.to;
-        }
-        const isCustom = preset === "custom";
-        fromDateInput.disabled = !isCustom;
-        toDateInput.disabled = !isCustom;
-      }
 
       function getRows() {
         const search = searchInput.value.trim().toLowerCase();
@@ -11721,17 +12034,23 @@ ${allContent}
         });
       });
 
-      [searchInput, presetSelect, fromDateInput, toDateInput].forEach(function (input) {
-        input.addEventListener("input", renderTable);
-        input.addEventListener("change", function () {
-          if (input === presetSelect) {
-            syncDateInputsByPreset();
-          }
-          renderTable();
-        });
-      });
+      function initDates() {
+        var today = new Date();
+        var first = new Date(today.getFullYear(), today.getMonth(), 1);
+        var toISODate = function (d) {
+          return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        };
+        fromDateInput.value = toISODate(first);
+        toDateInput.value = toISODate(today);
+      }
 
-      syncDateInputsByPreset();
+      fromDateInput.addEventListener("input", renderTable);
+      fromDateInput.addEventListener("change", renderTable);
+      toDateInput.addEventListener("input", renderTable);
+      toDateInput.addEventListener("change", renderTable);
+      searchInput.addEventListener("input", renderTable);
+
+      initDates();
       renderTable();
       return;
     }
@@ -11745,16 +12064,8 @@ ${allContent}
               <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search employee by name / phone" style="width: 100%;">
               <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
-            <select id="employeesAttendanceReportPreset">
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="last-30">Last 30 Days</option>
-              <option value="this-month">This Month</option>
-              <option value="last-month">Last Month</option>
-              <option value="custom">Custom Range</option>
-            </select>
-            <input id="employeesAttendanceReportFromDate" type="date">
-            <input id="employeesAttendanceReportToDate" type="date">
+            <label style="white-space:nowrap">From: <input id="employeesAttendanceReportFromDate" type="date"></label>
+            <label style="white-space:nowrap">To: <input id="employeesAttendanceReportToDate" type="date"></label>
             <button class="primary-button" id="downloadEmployeesAttendancePdfBtn" type="button">Download PDF</button>
           </div>
           <div class="table-wrap">
@@ -11781,7 +12092,6 @@ ${allContent}
       const searchInput = document.getElementById("employeesAttendanceReportSearchInput");
       const searchDropdown = document.getElementById("employeesAttendanceReportSearchDropdown");
       const searchContainer = document.getElementById("employeesAttendanceReportSearchContainer");
-      const presetSelect = document.getElementById("employeesAttendanceReportPreset");
       const fromDateInput = document.getElementById("employeesAttendanceReportFromDate");
       const toDateInput = document.getElementById("employeesAttendanceReportToDate");
       const tableBody = document.getElementById("employeesAttendanceReportTableBody");
@@ -11796,18 +12106,6 @@ ${allContent}
           renderTable();
         }
       );
-
-      function syncDateInputsByPreset() {
-        const preset = presetSelect.value;
-        if (preset !== "custom") {
-          const range = getDateRangeByPreset(preset);
-          fromDateInput.value = range.from;
-          toDateInput.value = range.to;
-        }
-        const isCustom = preset === "custom";
-        fromDateInput.disabled = !isCustom;
-        toDateInput.disabled = !isCustom;
-      }
 
       function getRows() {
         const search = searchInput.value.trim().toLowerCase();
@@ -11882,17 +12180,23 @@ ${allContent}
         });
       });
 
-      [searchInput, presetSelect, fromDateInput, toDateInput].forEach(function (input) {
-        input.addEventListener("input", renderTable);
-        input.addEventListener("change", function () {
-          if (input === presetSelect) {
-            syncDateInputsByPreset();
-          }
-          renderTable();
-        });
-      });
+      function initDates() {
+        var today = new Date();
+        var first = new Date(today.getFullYear(), today.getMonth(), 1);
+        var toISODate = function (d) {
+          return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+        };
+        fromDateInput.value = toISODate(first);
+        toDateInput.value = toISODate(today);
+      }
 
-      syncDateInputsByPreset();
+      fromDateInput.addEventListener("input", renderTable);
+      fromDateInput.addEventListener("change", renderTable);
+      toDateInput.addEventListener("input", renderTable);
+      toDateInput.addEventListener("change", renderTable);
+      searchInput.addEventListener("input", renderTable);
+
+      initDates();
       renderTable();
       return;
     }
@@ -12538,7 +12842,7 @@ ${allContent}
 
       async function sendStaffIdCardSms(employee) {
         const text = interpolateTemplate(getSavedMessageTemplate("staffIdCardSms", getDefaultStaffIdCardTemplate()), getEmployeeTemplateData(employee));
-        const result = await sendSmsViaConnectedGateway({
+        const result = await sendSmsSmart({
           recipientName: employee.name || "-",
           recipientPhone: getEmployeeDisplayPhone(employee),
           message: text,
@@ -12705,7 +13009,7 @@ ${allContent}
 
       async function sendJobLetterSms(employee) {
         const text = interpolateTemplate(getSavedMessageTemplate("jobLetterSms", getDefaultJobLetterTemplate()), getJobLetterTemplateData(employee));
-        const result = await sendSmsViaConnectedGateway({
+        const result = await sendSmsSmart({
           recipientName: employee.name || "-",
           recipientPhone: getEmployeeDisplayPhone(employee),
           message: text,
@@ -13290,7 +13594,7 @@ ${allContent}
       return { rows: rows, income: incomeTotal, expense: expenseTotal, net: incomeTotal - expenseTotal };
     }
 
-    if (route === "students-report-card" || route === "student-progress-report") {
+    if (route === "students-report-card") {
       const examOptionsMarkup = getExams().map(function (exam) {
         return `<option value="${exam.id}">${escapeHtml(exam.name)}</option>`;
       }).join("");
@@ -13299,7 +13603,7 @@ ${allContent}
       }).join("");
       moduleSummary.innerHTML = `
         <article>
-          <strong class="module-center-title">${route === "students-report-card" ? "Students Report Card" : "Student Progress Report"}</strong>
+          <strong class="module-center-title">Students Report Card</strong>
           <div class="toolbar toolbar--promote module-toolbar">
             <select id="reportExamSelect"><option value="">Select Exam</option>${examOptionsMarkup}</select>
             <select id="reportClassSelect"><option value="all">All Classes</option>${classOptionsMarkup}</select>
@@ -13385,7 +13689,7 @@ ${allContent}
           return;
         }
         openPrintReport({
-          title: route === "students-report-card" ? "Students Report Card" : "Student Progress Report",
+          title: "Students Report Card",
           subtitle: `Exam: ${exam ? exam.name : "-"} | Class: ${classSelect.value}`,
           headers: ["Roll No", "Name", "Class", "Total", "Obtain", "%", "Grade", "Status"],
           rows: rows.map(function (row) {
@@ -13428,6 +13732,223 @@ ${allContent}
       });
 
       renderRows();
+      return;
+    }
+
+    if (route === "student-progress-report") {
+      var _progressStudentId = "";
+
+      function getProgressAttend(sid, from, to) {
+        return (database.attendance || []).filter(function (a) {
+          return (!a.entityType || a.entityType === "student") && String(a.studentId || "") === String(sid) && a.date >= from && a.date <= to;
+        });
+      }
+
+      function getProgressTests(sid, from, to) {
+        return (settings.classTestMarks || []).filter(function (t) {
+          return String(t.studentId || "") === String(sid) && (t.testDate || t.date) >= from && (t.testDate || t.date) <= to;
+        }).map(function (t) {
+          var ttl = Number(t.total || t.totalMarks || 1);
+          var obt = Number(t.obtained || t.obtainedMarks || 0);
+          return { test: t, pct: ttl > 0 ? Math.round((obt / ttl) * 100) : 0, ttl: ttl, obt: obt };
+        });
+      }
+
+      function getProgressExams(sid, cls, from, to) {
+        return (settings.exams || []).filter(function (ex) {
+          var inRange = true;
+          if (ex.startDate || ex.endDate) {
+            var s = ex.startDate || "0000-00-00";
+            var e = ex.endDate || "9999-99-99";
+            inRange = !(e < from || s > to);
+          }
+          if (!inRange) return false;
+          var marks = (settings.examMarks || []).filter(function (m) {
+            return m.examId === ex.id && m.className === cls && m.studentId === sid;
+          });
+          return marks.length > 0;
+        }).map(function (ex) {
+          var result = evaluateExamResult(ex.id, cls, sid);
+          return { exam: ex, result: result };
+        }).filter(function (item) { return item.result.totalMarks > 0; });
+      }
+
+      function gradeCol(g) {
+        var x = String(g || "").trim();
+        if (/^A\+?$/.test(x)) return "#1d9c61";
+        if (/^[AB]\+?$/.test(x)) return "#2e86de";
+        if (/^[BC]\+?$/.test(x)) return "#f39c12";
+        return "#e74c3c";
+      }
+
+      function trendChart(pts, color) {
+        if (!pts || pts.length < 2) return '<p class="empty-state" style="text-align:center;padding:20px;color:#999;">Not enough data for trend chart.</p>';
+        var w = 600, h = 200, pad = 30;
+        var maxV = Math.max(100, Math.ceil(Math.max.apply(null, pts.map(function (p) { return p.value; })) / 10) * 10);
+        var step = (w - pad * 2) / (pts.length - 1);
+        var arr = pts.map(function (p, i) {
+          return { x: pad + i * step, y: h - pad - ((p.value / maxV) * (h - pad * 2)), label: p.label, value: p.value };
+        });
+        var d = arr.map(function (p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" ");
+        var area = d + " L" + arr[arr.length - 1].x.toFixed(1) + " " + (h - pad) + " L" + arr[0].x.toFixed(1) + " " + (h - pad) + " Z";
+        return '<svg width="100%" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="overflow:visible">' +
+          '<defs><linearGradient id="tg"><stop offset="0%" stop-color="' + color + '" stop-opacity="0.15"/><stop offset="100%" stop-color="' + color + '" stop-opacity="0.01"/></linearGradient></defs>' +
+          '<path d="' + area + '" fill="url(#tg)"/>' +
+          '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round"/>' +
+          arr.map(function (p) { return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="' + color + '" stroke="#fff" stroke-width="2"/>'; }).join("") +
+          arr.map(function (p) {
+            return '<text x="' + p.x.toFixed(1) + '" y="' + (h - 5) + '" text-anchor="middle" font-size="10" fill="#6b7a8d">' + escapeHtml(String(p.label).slice(0, 8)) + '</text>' +
+              '<text x="' + p.x.toFixed(1) + '" y="' + (p.y - 10) + '" text-anchor="middle" font-size="11" font-weight="600" fill="' + color + '">' + p.value + '%</text>';
+          }).join("") + '</svg>';
+      }
+
+      function emptyRow(colspan) {
+        return '<tr><td colspan="' + (colspan || 1) + '" style="text-align:center;padding:20px;color:#999;">No data available</td></tr>';
+      }
+
+      var today = new Date();
+      var defFrom = new Date(today.getFullYear(), today.getMonth(), 1);
+      defFrom.setMonth(defFrom.getMonth() - 5);
+      var defFromStr = defFrom.toISOString().slice(0, 10);
+      var todayStr = today.toISOString().slice(0, 10);
+
+      moduleSummary.innerHTML = `
+        <article>
+          <strong class="module-center-title">Student Progress Report</strong>
+          <div class="toolbar toolbar--promote module-toolbar" style="flex-wrap:wrap;gap:8px;">
+            <div id="progressSearchC" style="position:relative;flex:1;min-width:180px;">
+              <input id="progressSearchI" type="search" placeholder="Search student by name / roll" style="width:100%;">
+              <div id="progressSearchD" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
+            </div>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;color:#6b7a8d;">From: <input id="progressFrom" type="date" value="${defFromStr}" style="height:40px;border:1.5px solid #dde4ea;border-radius:8px;padding:0 8px;"></label>
+            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;color:#6b7a8d;">To: <input id="progressTo" type="date" value="${todayStr}" style="height:40px;border:1.5px solid #dde4ea;border-radius:8px;padding:0 8px;"></label>
+            <button class="primary-button" id="progressShowBtn" type="button" style="white-space:nowrap;">Show Report</button>
+            <button class="primary-button" id="progressPrintBtn" type="button" style="white-space:nowrap;background:#2e86de;">Print</button>
+          </div>
+          <div id="progressContent" style="margin-top:16px;"></div>
+        </article>
+      `;
+      moduleGuide.innerHTML = "";
+
+      initializeStudentProfessionalSearch("progressSearchI", "progressSearchD", "progressSearchC", function (student) {
+        document.getElementById("progressSearchI").value = student.name || "";
+        _progressStudentId = student.id || "";
+      });
+
+      var pc = document.getElementById("progressContent");
+
+      function renderPR() {
+        var sid = _progressStudentId;
+        if (!sid) {
+          pc.innerHTML = '<p class="empty-state">Search and select a student to view progress report.</p>';
+          return;
+        }
+        var stu = database.students.find(function (s) { return String(s.id) === String(sid); });
+        if (!stu) {
+          pc.innerHTML = '<p class="empty-state">Student not found. Please search again.</p>';
+          return;
+        }
+        var from = document.getElementById("progressFrom").value || defFromStr;
+        var to = document.getElementById("progressTo").value || todayStr;
+        var cls = stu.className || "";
+
+        var exams = getProgressExams(sid, cls, from, to);
+        var tests = getProgressTests(sid, from, to);
+        var att = getProgressAttend(sid, from, to);
+
+        var eAvg = exams.length ? Math.round(exams.reduce(function (s, r) { return s + r.result.percentage; }, 0) / exams.length) : 0;
+        var tAvg = tests.length ? Math.round(tests.reduce(function (s, r) { return s + r.pct; }, 0) / tests.length) : 0;
+        var oAvg = (exams.length + tests.length) ? Math.round(((eAvg * exams.length) + (tAvg * tests.length)) / (exams.length + tests.length)) : 0;
+        var pres = att.filter(function (a) { return a.status === "Present"; }).length;
+        var aPct = att.length ? Math.round((pres / att.length) * 100) : 0;
+
+        var ePts = exams.map(function (r) { return { label: r.exam.name || "E", value: r.result.percentage }; });
+        var tPts = tests.map(function (r) { return { label: r.test.testName || "T", value: r.pct }; });
+
+        var lastPts = [];
+        exams.forEach(function (r) { lastPts.push({ label: r.exam.name || "E", value: r.result.percentage }); });
+        tests.forEach(function (r) { lastPts.push({ label: r.test.testName || "T", value: r.pct }); });
+        var trendDir = "stable", trendIcon = "\u2796", trendColor = "#6b7a8d";
+        if (lastPts.length >= 2) {
+          var first = lastPts[0].value, last = lastPts[lastPts.length - 1].value;
+          trendDir = last > first ? "up" : (last < first ? "down" : "stable");
+          trendIcon = trendDir === "up" ? "\u2B06" : (trendDir === "down" ? "\u2B07" : "\u2796");
+          trendColor = trendDir === "up" ? "#1d9c61" : (trendDir === "down" ? "#e74c3c" : "#6b7a8d");
+        }
+
+        var months = {};
+        att.forEach(function (a) {
+          var m = (a.date || "").slice(0, 7);
+          if (!months[m]) months[m] = { total: 0, present: 0 };
+          months[m].total++;
+          if (a.status === "Present") months[m].present++;
+        });
+        var mKeys = Object.keys(months).sort();
+
+        pc.innerHTML = '<div class="progress-report" style="display:flex;flex-direction:column;gap:16px;">' +
+          '<div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,#f0f4f8,#e8edf4);border-radius:12px;">' +
+          '<div style="width:56px;height:56px;border-radius:50%;background:#1b5f7a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;">' + escapeHtml((stu.name || "?").charAt(0).toUpperCase()) + '</div>' +
+          '<div style="flex:1;"><h3 style="margin:0;font-size:1.1rem;color:#0f2b3f;">' + escapeHtml(stu.name || "-") + '</h3>' +
+          '<p style="margin:2px 0 0;font-size:0.85rem;color:#6b7a8d;">Roll: ' + escapeHtml(stu.admissionNo || "-") + ' | Class: ' + escapeHtml(stu.className || "-") + ' | Father: ' + escapeHtml(stu.fatherName || "-") + '</p></div></div>' +
+
+          '<div class="report-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">' +
+          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Exams Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#1e5eff;">' + eAvg + '%</span></article>' +
+          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Tests Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#1d9c61;">' + tAvg + '%</span></article>' +
+          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Overall</strong><span style="font-size:1.6rem;font-weight:700;color:#0f2b3f;">' + oAvg + '%</span></article>' +
+          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Attendance</strong><span style="font-size:1.6rem;font-weight:700;color:#f39c12;">' + aPct + '%</span></article>' +
+          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Trend</strong><span style="font-size:1.6rem;font-weight:700;color:' + trendColor + ';">' + trendIcon + '</span></article></div>' +
+
+          (ePts.length >= 2 || tPts.length >= 2 ? '<div class="split-grid report-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
+            (ePts.length >= 2 ? '<article class="panel-card"><strong style="font-size:0.9rem;">Exam Trend</strong><div style="margin-top:8px;">' + trendChart(ePts, "#1e5eff") + '</div></article>' : '') +
+            (tPts.length >= 2 ? '<article class="panel-card"><strong style="font-size:0.9rem;">Test Trend</strong><div style="margin-top:8px;">' + trendChart(tPts, "#1d9c61") + '</div></article>' : '') +
+            '</div>' : '') +
+
+          '<article class="panel-card"><strong style="font-size:0.9rem;">Exam Results</strong>' +
+          '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Exam</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' +
+          (exams.length ? exams.map(function (r) {
+            return '<tr><td>' + escapeHtml(r.exam.name || "-") + '</td><td>' + r.result.totalMarks + '</td><td>' + r.result.obtainedMarks + '</td><td>' + r.result.percentage + '%</td><td><span class="status-pill" style="background:' + gradeCol(r.result.grade) + '20;color:' + gradeCol(r.result.grade) + ';">' + escapeHtml(r.result.grade) + '</span></td><td><span class="status-pill ' + (r.result.status === "Pass" ? "active" : "inactive") + '">' + escapeHtml(r.result.status) + '</span></td></tr>';
+          }).join("") : emptyRow(6)) + '</tbody></table></div></article>' +
+
+          '<article class="panel-card"><strong style="font-size:0.9rem;">Class Tests</strong>' +
+          '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Test</th><th>Subject</th><th>Date</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' +
+          (tests.length ? tests.map(function (r) {
+            return '<tr><td>' + escapeHtml(r.test.testName || "-") + '</td><td>' + escapeHtml(r.test.subjectName || "-") + '</td><td>' + escapeHtml(r.test.testDate || r.test.date || "-") + '</td><td>' + r.ttl + '</td><td>' + r.obt + '</td><td>' + r.pct + '%</td><td><span class="status-pill" style="background:' + gradeCol(r.test.grade) + '20;color:' + gradeCol(r.test.grade) + ';">' + escapeHtml(r.test.grade || "-") + '</span></td><td><span class="status-pill ' + (String(r.test.status || "").toLowerCase() === "pass" ? "active" : "inactive") + '">' + escapeHtml(r.test.status || "-") + '</span></td></tr>';
+          }).join("") : emptyRow(8)) + '</tbody></table></div></article>' +
+
+          '<article class="panel-card"><strong style="font-size:0.9rem;">Monthly Attendance</strong>' +
+          '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Month</th><th>Present</th><th>Absent</th><th>Leave</th><th>%</th></tr></thead><tbody>' +
+          (mKeys.length ? mKeys.map(function (k) {
+            var m = months[k], abs = m.total - m.present, pct = Math.round((m.present / m.total) * 100);
+            return '<tr><td>' + k + '</td><td>' + m.present + '</td><td>' + abs + '</td><td>0</td><td><span style="color:' + (pct >= 80 ? '#1d9c61' : (pct >= 60 ? '#f39c12' : '#e74c3c')) + ';font-weight:600;">' + pct + '%</span></td></tr>';
+          }).join("") : emptyRow(5)) + '</tbody></table></div></article>' +
+
+          '<article class="panel-card" style="background:#fef9e7;border-left:4px solid #f39c12;">' +
+          '<strong style="font-size:0.9rem;color:#0f2b3f;">Summary & Remarks</strong><p style="margin:8px 0 0;font-size:0.85rem;color:#555;line-height:1.6;">' +
+          (exams.length ? '<span style="display:block;">\uD83D\uDCD8 <strong>Exams</strong>: ' + exams.length + ' exams, Avg ' + eAvg + '%</span>' : '<span style="display:block;">\uD83D\uDCD8 <strong>Exams</strong>: No exams in this period.</span>') +
+          (tests.length ? '<span style="display:block;">\uD83D\uDCDD <strong>Class Tests</strong>: ' + tests.length + ' tests, Avg ' + tAvg + '%</span>' : '<span style="display:block;">\uD83D\uDCDD <strong>Class Tests</strong>: No tests in this period.</span>') +
+          (att.length ? '<span style="display:block;">\uD83D\uDCC5 <strong>Attendance</strong>: ' + pres + '/' + att.length + ' days present (' + aPct + '%)</span>' : '<span style="display:block;">\uD83D\uDCC5 <strong>Attendance</strong>: No attendance records in this period.</span>') +
+          (lastPts.length >= 2 ? '<span style="display:block;margin-top:4px;">' + (trendDir === "up" ? '\u2705 <strong>Improving trend</strong> \u2014 consistent progress.' : (trendDir === "down" ? '\u26A0 <strong>Declining trend</strong> \u2014 needs attention.' : '\u2796 <strong>Stable performance</strong> \u2014 maintaining consistency.')) + '</span>' : '') +
+          '</p></article></div>';
+      }
+
+      document.getElementById("progressShowBtn").addEventListener("click", renderPR);
+      document.getElementById("progressPrintBtn").addEventListener("click", function () {
+        var c = document.getElementById("progressContent");
+        if (!c || !c.innerHTML.trim() || c.innerHTML.includes("empty-state")) return;
+        var w = window.open("", "_blank", "width=900,height=700");
+        if (!w) { alert("Please allow popups for printing."); return; }
+        w.document.write('<!DOCTYPE html><html><head><title>Student Progress Report</title><style>body{font-family:Segoe UI,system-ui,sans-serif;padding:40px;color:#0f2b3f;}table{width:100%;border-collapse:collapse;margin:12px 0;}th{background:#1b5f7a;color:#fff;padding:8px 12px;text-align:left;font-size:13px;}td{padding:8px 12px;border-bottom:1px solid #e9edf2;font-size:13px;}tr:nth-child(even){background:#f8fafc;}h2{color:#0f2b3f;margin:0 0 4px;}</style></head><body>');
+        var hdr = c.querySelector("h3");
+        w.document.write('<h2>Student Progress Report</h2><p style="color:#6b7a8d;">' + (hdr ? escapeHtml(hdr.textContent || "") : "") + '</p>');
+        c.querySelectorAll("table").forEach(function (t) { w.document.write(t.outerHTML); });
+        var rm = c.querySelector('[style*="background:#fef9e7"]');
+        if (rm) w.document.write('<div style="background:#fef9e7;border-left:4px solid #f39c12;padding:16px;border-radius:4px;margin-top:16px;">' + rm.innerHTML + '</div>');
+        w.document.write('</body></html>');
+        w.document.close();
+        setTimeout(function () { w.print(); }, 500);
+      });
+
+      renderPR();
       return;
     }
 
@@ -16543,7 +17064,7 @@ ${allContent}
         for (let index = 0; index < rows.length; index += 1) {
           const row = rows[index];
           const student = row.student || {};
-          const result = await sendSmsViaConnectedGateway({
+          const result = await sendSmsSmart({
             recipientName: student.name || "-",
             recipientPhone: normalizeSmsPhone(student.phone || student.fatherPhone || ""),
             message: interpolateTemplate(template, {
@@ -17467,7 +17988,7 @@ ${allContent}
           for (let j = 0; j < targets.length; j += 1) {
             const student = targets[j];
             const normalized = normalizeStudentForPrint(student);
-            const result = await sendSmsViaConnectedGateway({
+            const result = await sendSmsSmart({
               recipientName: normalized.name || "-",
               recipientPhone: normalizeSmsPhone(normalized.phone || normalized.fatherPhone || ""),
               message: interpolateTemplate(template, {
@@ -17950,32 +18471,7 @@ ${allContent}
       moduleSectionLabel.textContent = "Communication Module";
       moduleSummary.innerHTML = `
         <article>
-          <strong>Connect Your Number</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="smsGatewayProvider">SMS Gateway App*</label>
-              <select id="smsGatewayProvider">
-                <option value="simple-sms-gateway">Simple SMS Gateway (Recommended)</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="smsConnectedNumber">SIM Number*</label>
-              <input id="smsConnectedNumber" type="text" inputmode="numeric" placeholder="e.g. +923001234567" value="${escapeAttr(smsGateway.connectedNumber || "")}">
-            </div>
-            <div class="field-group">
-              <label for="smsGatewayUrl">Gateway URL*</label>
-              <input id="smsGatewayUrl" type="text" placeholder="e.g. http://192.168.1.20:8080" value="${escapeAttr(smsGateway.baseUrl || "")}">
-            </div>
-            <div class="field-group">
-              <label for="smsGatewayApiKey">API Key (Optional)</label>
-              <input id="smsGatewayApiKey" type="text" placeholder="Leave blank if app does not require key" value="${escapeAttr(smsGateway.apiKey || "")}">
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="table-action-btn" id="testSmsConnectionBtn" type="button">Test Connection</button>
-            <button class="primary-button" id="connectSmsGatewayBtn" type="button">Connect</button>
-            <button class="table-action-btn danger" id="disconnectSmsGatewayBtn" type="button">Disconnect</button>
-          </div>
+          <strong>SagarSoft SMS Agent</strong>
           <p class="form-message" id="smsConnectMessage"></p>
         </article>
         <article>
@@ -18034,16 +18530,15 @@ ${allContent}
 
       moduleGuide.innerHTML = `
         <article class="sms-guide-card">
-          <strong>Setup Instructions (English)</strong>
-          <ol class="sms-guide-list">
-            <li>Install <strong>Simple SMS Gateway</strong> by <strong>Pabrik Aplikasi</strong> from Google Play Store.</li>
-            <li>Insert SIM in Android phone and grant SMS permissions inside the app.</li>
-            <li>Start server in app and copy the shown local URL (example: <code>http://192.168.1.20:8080</code>).</li>
-            <li>Connect phone and computer on the same Wi-Fi network.</li>
-            <li>Paste URL here, click <strong>Test Connection</strong>, then click <strong>Connect</strong>.</li>
-            <li>After connection, search recipient and send SMS directly from this software.</li>
-          </ol>
-          <p class="sms-guide-link-row"><a href="https://play.google.com/store/apps/details?id=com.pabrikaplikasi.simplesmsgateway" target="_blank" rel="noopener">Open Simple SMS Gateway on Play Store</a></p>
+          <div style="background:#fef9e7;border-left:4px solid #f39c12;padding:10px 12px;border-radius:6px;margin:8px 0;">
+            <strong>SagarSoft SMS Agent (Recommended)</strong>
+            <ol class="sms-guide-list" style="margin:6px 0 0;">
+              <li>Install <strong>SagarSoft SMS Agent</strong> app on phone → Login with school credentials.</li>
+              <li>In app, go to <strong>SIM Registration</strong> → enter SIM number → tap <strong>Register SIM</strong>.</li>
+              <li>Tap <strong>Start Service</strong> — it will auto-send queued SMS.</li>
+              <li>Works from <strong>any network</strong> — WiFi, mobile data, different locations, no setup needed.</li>
+            </ol>
+          </div>
         </article>
         <article>
           <strong>Connection Status</strong>
@@ -18051,10 +18546,6 @@ ${allContent}
         </article>
       `;
 
-      const providerInput = document.getElementById("smsGatewayProvider");
-      const connectedNumberInput = document.getElementById("smsConnectedNumber");
-      const gatewayUrlInput = document.getElementById("smsGatewayUrl");
-      const apiKeyInput = document.getElementById("smsGatewayApiKey");
       const connectMessage = document.getElementById("smsConnectMessage");
       const sendMessage = document.getElementById("smsSendMessage");
       const recipientSearchInput = document.getElementById("smsRecipientSearchInput");
@@ -18071,85 +18562,6 @@ ${allContent}
 
       function normalizePhoneNumber(value) {
         return String(value || "").replace(/[^\d+]/g, "");
-      }
-
-      function normalizeGatewayUrl(value) {
-        const raw = String(value || "").trim().replace(/\/+$/, "");
-        if (!raw) {
-          return "";
-        }
-        if (/^https?:\/\//i.test(raw)) {
-          return raw;
-        }
-        return `http://${raw}`;
-      }
-
-      async function checkGatewayReachable(baseUrl) {
-        const endpoints = ["/health", "/status", "/"];
-        for (let index = 0; index < endpoints.length; index += 1) {
-          const endpoint = endpoints[index];
-          try {
-            const response = await fetchWithTimeout(`${baseUrl}${endpoint}`, { method: "GET" }, 2500);
-            if (response.ok || response.type === "opaque") {
-              return true;
-            }
-          } catch (error) {
-            try {
-              const fallbackResponse = await fetchWithTimeout(`${baseUrl}${endpoint}`, { method: "GET", mode: "no-cors" }, 2500);
-              if (fallbackResponse.type === "opaque") {
-                return true;
-              }
-            } catch (innerError) {
-              // Try next endpoint.
-            }
-          }
-        }
-        return false;
-      }
-
-      async function sendToGateway(baseUrl, payload, apiKey) {
-        const endpoints = ["/send-sms", "/send", "/api/send-sms"];
-        const headers = { "Content-Type": "application/json" };
-        if (apiKey) {
-          headers.Authorization = `Bearer ${apiKey}`;
-        }
-        var urlsToTry = [baseUrl];
-        var m = baseUrl.match(/:(\d+)(?:\/|$)/);
-        if (m) urlsToTry.push("http://127.0.0.1:" + m[1]);
-        for (let u = 0; u < urlsToTry.length; u++) {
-          const urlBase = urlsToTry[u];
-          for (let index = 0; index < endpoints.length; index += 1) {
-            const endpoint = endpoints[index];
-            try {
-              const response = await fetchWithTimeout(`${urlBase}${endpoint}`, {
-                method: "POST",
-                headers: headers,
-                body: JSON.stringify(payload)
-              }, 3500);
-              if (response.ok || response.type === "opaque") {
-                return true;
-              }
-            } catch (error) {
-              try {
-                await fetchWithTimeout(`${urlBase}${endpoint}`, {
-                  method: "POST",
-                  mode: "no-cors",
-                  headers: { "Content-Type": "text/plain;charset=UTF-8" },
-                  body: JSON.stringify(payload)
-                }, 3500);
-                return true;
-              } catch (innerError) {
-                // Try next endpoint.
-              }
-            }
-          }
-        }
-        return false;
-      }
-
-      function setConnectionMessage(message, type) {
-        connectMessage.textContent = message;
-        connectMessage.className = "form-message" + (type ? ` ${type}` : "");
       }
 
       function setSendMessage(message, type) {
@@ -18268,15 +18680,60 @@ ${allContent}
       }
 
       function renderConnectionStatus() {
-        const isConnected = Boolean(settings.smsGateway.connected);
-        const statusClass = isConnected ? "active" : "inactive";
+        var cfg = getSupabaseConfig();
+        var agentReady = cfg && cfg.url && cfg.anonKey && cfg.tablesCreated ? true : false;
+        var simDisplay = escapeHtml(settings.smsGateway.connectedNumber || "-");
+        var lastPollDisplay = "-";
+        var connStatus = "Disconnected";
+        var connClass = "inactive";
+        var deviceRegistered = false;
+        var isActive = false;
+
+        if (currentUser && currentUser.school_id && cfg.tablesCreated) {
+          (async function() {
+            try {
+              var sb = initSupabase();
+              if (!sb) return;
+              var { data } = await sb.from("devices").select("sim_number, last_poll_at, is_active, device_id, created_at").eq("school_id", currentUser.school_id).maybeSingle();
+              if (data) {
+                deviceRegistered = true;
+                isActive = data.is_active || false;
+                if (data.sim_number) {
+                  simDisplay = escapeHtml(data.sim_number);
+                  settings.smsGateway.connectedNumber = data.sim_number;
+                }
+                if (data.last_poll_at) {
+                  var lastPoll = new Date(data.last_poll_at);
+                  var now = new Date();
+                  var diff = (now - lastPoll) / 1000;
+                  lastPollDisplay = lastPoll.toLocaleString();
+                  if (diff < 300) {
+                    connStatus = "Connected";
+                    connClass = "active";
+                  } else if (diff < 3600) {
+                    connStatus = "Disconnected (" + Math.floor(diff / 60) + "m ago)";
+                  }
+                }
+              }
+            } catch(e) { console.error("Device fetch error", e); }
+            var regStatus = deviceRegistered
+              ? '<span style="color:#4CAF50;">&#10003; Registered</span>'
+              : '<span style="color:#999;">Not Registered</span>';
+            statusCard.innerHTML = `
+              <p><span class="status-pill ${connClass}">${connStatus}</span> | Device: ${regStatus}</p>
+              <p><strong>Agent:</strong> SagarSoft SMS Agent</p>
+              <p><strong>SIM Number:</strong> ${simDisplay}</p>
+              <p><strong>Last Poll:</strong> ${lastPollDisplay}</p>
+            `;
+          })();
+          return;
+        }
+
         statusCard.innerHTML = `
-          <p><span class="status-pill ${statusClass}">${isConnected ? "Connected" : "Disconnected"}</span></p>
-          <p><strong>Provider:</strong> ${escapeHtml(settings.smsGateway.provider || "-")}</p>
-          <p><strong>SIM Number:</strong> ${escapeHtml(settings.smsGateway.connectedNumber || "-")}</p>
-          <p><strong>Gateway URL:</strong> ${escapeHtml(settings.smsGateway.baseUrl || "-")}</p>
-          <p><strong>Connected At:</strong> ${escapeHtml(settings.smsGateway.connectedAt || "-")}</p>
-          <p><strong>Last Heartbeat:</strong> ${escapeHtml(settings.smsGateway.lastHeartbeat || "-")}</p>
+          <p><span class="status-pill ${agentReady ? "active" : "inactive"}">${agentReady ? "Connected" : "Not Configured"}</span></p>
+          <p><strong>Agent:</strong> SagarSoft SMS Agent</p>
+          <p><strong>SIM Number:</strong> ${simDisplay}</p>
+          <p><strong>Status:</strong> Setup Supabase in General Settings first</p>
         `;
       }
 
@@ -18313,109 +18770,7 @@ ${allContent}
         outboxEmptyState.hidden = rows.length !== 0;
       }
 
-      function updateGatewaySettings(isConnected) {
-        settings.smsGateway = {
-          ...settings.smsGateway,
-          provider: providerInput.value || "simple-sms-gateway",
-          connectedNumber: connectedNumberInput.value.trim(),
-          baseUrl: normalizeGatewayUrl(gatewayUrlInput.value),
-          apiKey: apiKeyInput.value.trim(),
-          connected: Boolean(isConnected),
-          connectedAt: isConnected ? new Date().toLocaleString() : "",
-          lastHeartbeat: settings.smsGateway.lastHeartbeat || ""
-        };
-        saveDatabase();
-        renderConnectionStatus();
-      }
-
-      async function dispatchSmsBatch(messages, sourceLabel, onProgress) {
-        const baseUrl = normalizeGatewayUrl(settings.smsGateway.baseUrl);
-        let successCount = 0;
-        let failCount = 0;
-        for (let index = 0; index < messages.length; index += 1) {
-          const row = messages[index];
-          const outboxItem = {
-            id: `SMS-${Date.now()}-${index}`,
-            recipientName: row.recipientName || "-",
-            recipientPhone: row.recipientPhone || "",
-            message: row.message || "",
-            status: "queued",
-            source: sourceLabel || "Manual SMS",
-            recipientType: row.recipientType || (String(sourceLabel || "").toLowerCase().includes("employee") ? "employee" : "student"),
-            campaignType: row.campaignType || inferCampaignType({ source: sourceLabel || "Manual SMS" }),
-            createdAt: new Date().toLocaleString()
-          };
-          settings.smsOutbox.unshift(outboxItem);
-          saveDatabase();
-          renderOutbox();
-          try {
-            const delivered = await sendToGateway(baseUrl, { phone: row.recipientPhone, message: row.message }, settings.smsGateway.apiKey || "");
-            if (!delivered) {
-              throw new Error("send-failed");
-            }
-            outboxItem.status = "sent";
-            successCount += 1;
-          } catch (error) {
-            outboxItem.status = "failed";
-            failCount += 1;
-          }
-          if (typeof onProgress === "function") {
-            onProgress(index + 1, messages.length);
-          }
-        }
-        settings.smsGateway.lastHeartbeat = new Date().toLocaleString();
-        saveDatabase();
-        renderOutbox();
-        renderConnectionStatus();
-        return { successCount: successCount, failCount: failCount };
-      }
-
-      document.getElementById("testSmsConnectionBtn").addEventListener("click", async function () {
-        const baseUrl = normalizeGatewayUrl(gatewayUrlInput.value);
-        gatewayUrlInput.value = baseUrl;
-        if (!baseUrl) {
-          setConnectionMessage("Gateway URL is required for test.", "error");
-          return;
-        }
-        setConnectionMessage("Checking gateway health...", "");
-        try {          
-          const isReachable = await checkGatewayReachable(baseUrl);
-          if (!isReachable) {
-            throw new Error("unreachable");
-          }
-          settings.smsGateway.lastHeartbeat = new Date().toLocaleString();
-          saveDatabase();
-          renderConnectionStatus();
-          setConnectionMessage("Gateway is reachable. You can now connect this number.", "success");
-        } catch (error) {
-          setConnectionMessage("Health check failed. Make sure server is ON, URL is correct, same Wi-Fi, and phone permissions are allowed.", "error");
-        }
-      });
-
-      document.getElementById("connectSmsGatewayBtn").addEventListener("click", function () {
-        const simNumber = normalizePhoneNumber(connectedNumberInput.value);
-        const baseUrl = normalizeGatewayUrl(gatewayUrlInput.value);
-        gatewayUrlInput.value = baseUrl;
-        if (!simNumber || !baseUrl) {
-          setConnectionMessage("SIM Number and Gateway URL are required.", "error");
-          return;
-        }
-        updateGatewaySettings(true);
-        addActivity("SMS gateway connected", `SMS gateway connected with number ${simNumber}.`);
-        setConnectionMessage("Number connected successfully. You can now send SMS.", "success");
-      });
-
-      document.getElementById("disconnectSmsGatewayBtn").addEventListener("click", function () {
-        settings.smsGateway = {
-          ...settings.smsGateway,
-          connected: false,
-          connectedAt: "",
-          lastHeartbeat: ""
-        };
-        saveDatabase();
-        renderConnectionStatus();
-        setConnectionMessage("Gateway disconnected.", "");
-      });
+      // SIM number is now registered from the SMS Agent app
 
       recipientSearchInput.addEventListener("input", function () {
         selectedRecipient = null;
@@ -18442,31 +18797,41 @@ ${allContent}
       });
 
       document.getElementById("sendSmsNowBtn").addEventListener("click", async function () {
-        if (!settings.smsGateway.connected) {
-          setSendMessage("Please connect a SIM number first.", "error");
+        var cfg = getSupabaseConfig();
+        if (!cfg.url || !cfg.anonKey) {
+          setSendMessage("SagarSoft SMS Agent is not configured. Please contact administrator.", "error");
           return;
         }
-        const recipientPhone = normalizePhoneNumber(recipientNumberInput.value);
-        const messageText = messageInput.value.trim();
+        if (!cfg.tablesCreated) {
+          var initResult = await ensureSupabaseTables();
+          if (!initResult.success) {
+            setSendMessage("Table initialization failed. Please contact admin.", "error");
+            return;
+          }
+          cfg.tablesCreated = true;
+          settings.supabaseConfig.tablesCreated = true;
+          saveDatabase();
+        }
+        var recipientPhone = normalizePhoneNumber(recipientNumberInput.value);
+        var messageText = messageInput.value.trim();
         if (!recipientPhone || !messageText) {
           setSendMessage("Recipient number and message are required.", "error");
           return;
         }
-        setSendMessage("Message queued. Trying to send via gateway...", "");
-        const result = await dispatchSmsBatch([{
+        setSendMessage("Queuing SMS via SagarSoft SMS Agent...", "");
+        var result = await sendSmsViaQueue({
           recipientName: selectedRecipient ? selectedRecipient.name : "Manual Recipient",
           recipientPhone: recipientPhone,
           message: messageText,
+          source: "Manual SMS",
           recipientType: selectedRecipient ? selectedRecipient.type : "student",
           campaignType: "manual"
-        }], "Manual SMS");
-        if (result.successCount > 0 && result.failCount === 0) {
-          setSendMessage("SMS sent successfully.", "success");
-          addActivity("SMS sent", `SMS sent to ${recipientPhone}.`);
-        } else if (result.successCount > 0) {
-          setSendMessage(`Partially sent. Success: ${result.successCount}, Failed: ${result.failCount}.`, "warning");
+        });
+        if (result.success) {
+          setSendMessage("SMS queued. Agent will send shortly.", "success");
+          addActivity("SMS queued", `SMS queued for ${recipientPhone}.`);
         } else {
-          setSendMessage("Could not send. Verify gateway URL, app permissions, default SMS app setting, and local network.", "error");
+          setSendMessage("Could not queue: " + (result.reason || result.error || "unknown"), "error");
         }
       });
 
@@ -18483,29 +18848,24 @@ ${allContent}
           setSendMessage("Failed message not found for retry.", "error");
           return;
         }
-        if (!(settings.smsGateway && settings.smsGateway.connected)) {
-          setSendMessage("SMS gateway is not connected. Please connect first.", "error");
-          return;
-        }
         retryButton.disabled = true;
-        setSendMessage("Retrying failed message...", "");
+        setSendMessage("Retrying message via SagarSoft SMS Agent...", "");
         try {
-          const delivered = await sendToGateway(
-            normalizeGatewayUrl(settings.smsGateway.baseUrl || ""),
-            { phone: entry.recipientPhone || "", message: entry.message || "" },
-            settings.smsGateway.apiKey || ""
-          );
-          entry.status = delivered ? "sent" : "failed";
+          var retryResult = await sendSmsViaQueue({
+            recipientName: entry.recipientName || "-",
+            recipientPhone: entry.recipientPhone || "",
+            message: entry.message || "",
+            source: entry.source || "Retry",
+            recipientType: entry.recipientType || "student",
+            campaignType: entry.campaignType || "manual"
+          });
+          entry.status = retryResult.success ? "queued" : "failed";
           entry.retriedAt = new Date().toLocaleString();
-          if (delivered) {
-            settings.smsGateway.lastHeartbeat = new Date().toLocaleString();
-          }
           saveDatabase();
-          renderConnectionStatus();
           renderOutbox();
-          const retryMessage = delivered ? "Message sent successfully on retry." : "Retry failed. Please verify gateway URL/permissions.";
-          setSendMessage(retryMessage, delivered ? "success" : "error");
-          openAppMessageBox(delivered ? "Success" : "Error", retryMessage, delivered ? "success" : "error");
+          var retryMessage = retryResult.success ? "Message queued for retry." : "Retry failed.";
+          setSendMessage(retryMessage, retryResult.success ? "success" : "error");
+          openAppMessageBox(retryResult.success ? "Success" : "Error", retryMessage, retryResult.success ? "success" : "error");
         } catch (error) {
           entry.status = "failed";
           entry.retriedAt = new Date().toLocaleString();
@@ -18527,6 +18887,7 @@ ${allContent}
         renderOutbox();
         setSendMessage("SMS history cleared.", "success");
       });
+
       renderConnectionStatus();
       renderOutbox();
       return;
@@ -18558,8 +18919,6 @@ ${allContent}
                 <input type="text" value="Inactive" readonly class="module-input--readonly">
               </div>
             </div>
-            <div class="form-actions">
-              <button class="table-action-btn danger" id="lockModeLogoutBtn" type="button">Logout</button>
             </div>
           </article>
         `;
@@ -18569,13 +18928,6 @@ ${allContent}
             <p>Contact Super Admin to activate your school account.</p>
           </article>
         `;
-        const lockModeLogoutBtn = document.getElementById("lockModeLogoutBtn");
-        if (lockModeLogoutBtn) {
-          lockModeLogoutBtn.addEventListener("click", function () {
-            window.SagarSoftAuth.logout();
-            window.location.href = "./login.html";
-          });
-        }
         return;
       }
       if (!isSuperAdmin) {
@@ -18621,7 +18973,7 @@ ${allContent}
             </div>
             <div class="field-group">
               <label for="schoolIdInput">School ID</label>
-              <input id="schoolIdInput" type="text" value="${escapeAttr(license.schoolId)}" readonly class="module-input--readonly">
+              <input id="schoolIdInput" type="text" value="${escapeAttr(license.schoolId)}">
             </div>
             <div class="field-group">
               <label for="schoolNameInput">School Name</label>
@@ -19413,6 +19765,7 @@ ${allContent}
                 '<td style="font-size:12px;">' + escapeHtml(lastSeen) + '</td>' +
                 '<td>' +
                   '<button type="button" class="table-action-btn" data-school-action="edit" data-school-id="' + escapeAttr(s.school_id) + '" style="font-size:12px;padding:2px 8px;">Edit</button> ' +
+                  '<button type="button" class="table-action-btn" data-school-action="reset-tokens" data-school-id="' + escapeAttr(s.school_id) + '" style="font-size:12px;padding:2px 8px;">Reset Tokens</button> ' +
                   '<button type="button" class="table-action-btn" data-school-action="toggle" data-school-id="' + escapeAttr(s.school_id) + '" style="font-size:12px;padding:2px 8px;">' + (s.status === "active" && !s.modules_locked ? "Deactivate" : "Activate") + '</button> ' +
                   '<button type="button" class="table-action-btn danger" data-school-action="delete" data-school-id="' + escapeAttr(s.school_id) + '" style="font-size:12px;padding:2px 8px;">Delete</button>' +
                 '</td>' +
@@ -19473,6 +19826,22 @@ ${allContent}
                 }
               } catch (_e) {
                 msgEl.textContent = "Update failed.";
+                msgEl.className = "form-message error";
+              }
+            } else if (action === "reset-tokens") {
+              if (!(await brandedConfirm("Reset API tokens for " + schoolId + "? All current sessions will be invalidated."))) return;
+              try {
+                var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(schoolId) + "/reset-tokens", { method: "POST" });
+                var data = await resp.json().catch(function () { return {}; });
+                if (data.success) {
+                  msgEl.textContent = "Tokens reset successfully.";
+                  msgEl.className = "form-message success";
+                } else {
+                  msgEl.textContent = data.message || "Reset failed.";
+                  msgEl.className = "form-message error";
+                }
+              } catch (_e) {
+                msgEl.textContent = "Reset failed.";
                 msgEl.className = "form-message error";
               }
             } else if (action === "edit") {
@@ -19645,7 +20014,6 @@ ${allContent}
           <td>${student.admissionNo}</td>
           <td>${student.name}</td>
           <td>${student.className}</td>
-          <td>${student.section}</td>
           <td>${getStudentDisplayPhone(student)}</td>
           <td><span class="status-pill ${formatStatus(student.status)}">${student.status}</span></td>
           <td>
@@ -19758,7 +20126,7 @@ ${allContent}
             <div>
               <h2 style="margin: 0 0 0.5rem; font-size: 1.4rem; color: #0f2b3f;">${escapeHtml(student.name || "-")}</h2>
               <p style="margin: 0.3rem 0; color: #1b5f7a; font-weight: 600;">Roll No: ${escapeHtml(student.admissionNo || "-")}</p>
-              <p style="margin: 0.3rem 0; color: #555;">Class: ${escapeHtml(student.className || "-")} ${student.section ? `- Section ${escapeHtml(student.section)}` : ""}</p>
+              <p style="margin: 0.3rem 0; color: #555;">Class: ${escapeHtml(student.className || "-")}</p>
               <p style="margin: 0.3rem 0; color: #555;">Status: <span style="padding: 0.2rem 0.6rem; border-radius: 12px; background: ${String(student.status).toLowerCase() === "active" ? "rgba(29, 156, 97, 0.1)" : "rgba(214, 75, 75, 0.1)"}; color: ${String(student.status).toLowerCase() === "active" ? "#1d9c61" : "#d64b4b"}; font-weight: 600;">${student.status}</span></p>
             </div>
           </div>
@@ -20295,7 +20663,7 @@ ${allContent}
               <h4>${student.name}</h4>
               <p>Roll No: ${student.admissionNo || "-"}</p>
               <p>Father Name: ${student.fatherName || "-"}</p>
-              <p>Class: ${student.className || "-"}${student.section ? ` - ${student.section}` : ""}</p>
+              <p>Class: ${student.className || "-"}</p>
             </div>
           </div>
           <div class="status-toggle-row">
@@ -20353,7 +20721,7 @@ ${allContent}
         </div>
         <div class="admission-grid">
           <div class="admission-field"><strong>Roll Number</strong><span>${student.admissionNo || "-"}</span></div>
-          <div class="admission-field"><strong>Class</strong><span>${student.className || "-"} ${student.section ? `- ${student.section}` : ""}</span></div>
+          <div class="admission-field"><strong>Class</strong><span>${student.className || "-"}</span></div>
           <div class="admission-field"><strong>Admission Date</strong><span>${student.dateOfAdmission || "-"}</span></div>
           <div class="admission-field"><strong>Account Status</strong><span>${loginInfo.status}</span></div>
           <div class="admission-field"><strong>Username</strong><span>${loginInfo.username}</span></div>
@@ -20438,7 +20806,7 @@ ${allContent}
             </div>
             <div class="id-card-modern__rows">
               <article><strong>Father Name</strong><span>${student.fatherName || "-"}</span></article>
-              <article><strong>Class</strong><span>${student.className || "-"} ${student.section ? `- ${student.section}` : ""}</span></article>
+              <article><strong>Class</strong><span>${student.className || "-"}</span></article>
               <article><strong>Mobile</strong><span>${getStudentDisplayPhone(student)}</span></article>
             </div>
             <div class="form-actions">
@@ -20505,7 +20873,7 @@ ${allContent}
         name: normalized.name,
         picture: normalized.picture,
         admissionNo: normalized.admissionNo,
-        className: normalized.className + (normalized.section ? ` - ${normalized.section}` : ""),
+        className: normalized.className,
         fatherName: normalized.fatherName,
         phone: normalized.phone
       };
@@ -20746,7 +21114,7 @@ ${allContent}
             <div class="pvc-card__meta">
               <strong class="pvc-card__name">${escapePrintHtml(normalizedStudent.name || "-")}</strong>
               <span class="pvc-card__line">Roll: ${escapePrintHtml(normalizedStudent.admissionNo || "-")}</span>
-              <span class="pvc-card__line">Class: ${escapePrintHtml(normalizedStudent.className || "-")}${normalizedStudent.section ? ` - ${escapePrintHtml(normalizedStudent.section)}` : ""}</span>
+              <span class="pvc-card__line">Class: ${escapePrintHtml(normalizedStudent.className || "-")}</span>
               <span class="pvc-card__line">Father: ${escapePrintHtml(normalizedStudent.fatherName || "-")}</span>
             </div>
           </section>
@@ -20815,7 +21183,7 @@ ${allContent}
       class: normalizedStudent.className || "-",
       school: database.school.name || "School"
     });
-    const result = await sendSmsViaConnectedGateway({
+    const result = await sendSmsSmart({
       recipientName: normalizedStudent.name || "-",
       recipientPhone: recipientPhone,
       message: messageText,
@@ -20836,7 +21204,7 @@ ${allContent}
           <td>${student.admissionNo || "-"}</td>
           <td>${student.name || "-"}</td>
           <td>${student.fatherName || "-"}</td>
-          <td>${student.className || "-"}${student.section ? ` - ${student.section}` : ""}</td>
+          <td>${student.className || "-"}</td>
           <td>${student.phone || "-"}</td>
           <td><span class="status-pill ${formatStatus(student.status)}">${student.status}</span></td>
         </tr>
@@ -20883,7 +21251,7 @@ ${allContent}
           <td>${student.admissionNo || "-"}</td>
           <td>${student.name || "-"}</td>
           <td>${student.fatherName || "-"}</td>
-          <td>${student.className || "-"}${student.section ? ` - ${student.section}` : ""}</td>
+          <td>${student.className || "-"}</td>
         </tr>
       `;
     }).join("");
@@ -20909,7 +21277,7 @@ ${allContent}
           <td>${escapePrintHtml(normalizedStudent.admissionNo || "-")}</td>
           <td>${escapePrintHtml(normalizedStudent.name || "-")}</td>
           <td>${escapePrintHtml(normalizedStudent.fatherName || "-")}</td>
-          <td>${escapePrintHtml(`${normalizedStudent.className || "-"}${normalizedStudent.section ? ` - ${normalizedStudent.section}` : ""}`)}</td>
+          <td>${escapePrintHtml(normalizedStudent.className || "-")}</td>
           <td>${escapePrintHtml(normalizedStudent.phone || "-")}</td>
           <td>${escapePrintHtml(normalizedStudent.status || "-")}</td>
         </tr>`;
@@ -21010,9 +21378,94 @@ ${allContent}
     setStudentRoute("students-manage-login");
   }
 
+  function getParentLoginId(student) {
+    var parentPhone = student.fatherPhone || student.motherPhone || "";
+    var normalizedPhone = parentPhone.replace(/[\s-]/g, "").toLowerCase();
+    return normalizedPhone ? "PARENT-" + normalizedPhone : "PARENT-STU-" + student.id;
+  }
+
+  function renderParentLoginTable() {
+    var searchValue = document.getElementById("parentLoginSearchInput");
+    var query = searchValue ? searchValue.value.trim().toLowerCase() : "";
+    var allStudents = database.students;
+    if (query) {
+      allStudents = allStudents.filter(function (s) {
+        return (s.fatherName || "").toLowerCase().includes(query) ||
+               (s.name || "").toLowerCase().includes(query);
+      });
+    }
+    var tbody = document.getElementById("parentLoginTableBody");
+    if (!tbody) return;
+    tbody.innerHTML = allStudents.map(function (student) {
+      var loginId = getParentLoginId(student);
+      var existingUser = database.users.find(function (user) {
+        return user.role === "parent" && user.id === loginId;
+      });
+      var isActive = existingUser && existingUser.active !== false;
+      return [
+        "<tr>",
+        "<td>" + (student.fatherName || "-") + "</td>",
+        "<td>" + (student.name || "-") + "</td>",
+        "<td><input class=\"table-inline-input parent-login-cred-input\" type=\"text\" value=\"" + (existingUser ? existingUser.email : "") + "\" data-pl-field=\"username\" data-id=\"" + student.id + "\" disabled></td>",
+        "<td><input class=\"table-inline-input parent-login-cred-input\" type=\"text\" value=\"" + (existingUser ? existingUser.password : "") + "\" data-pl-field=\"password\" data-id=\"" + student.id + "\" disabled></td>",
+        "<td><label class=\"status-switch\"><input type=\"checkbox\" class=\"parent-login-toggle\" data-id=\"" + student.id + "\"" + (isActive ? " checked" : "") + " disabled><span>" + (isActive ? "Active" : "Inactive") + "</span></label></td>",
+        "<td><button class=\"table-action-btn\" type=\"button\" data-action=\"edit-parent-login\" data-id=\"" + student.id + "\">Edit</button><button class=\"table-action-btn\" type=\"button\" data-action=\"save-parent-login\" data-id=\"" + student.id + "\" style=\"display:none\">Save</button></td>",
+        "</tr>"
+      ].join("");
+    }).join("");
+    var emptyState = document.getElementById("parentLoginEmptyState");
+    if (emptyState) emptyState.hidden = allStudents.length !== 0;
+  }
+
+  function saveParentLoginCredentials(studentId) {
+    var student = database.students.find(function (item) { return item.id === studentId; });
+    if (!student) { openAppMessageBox("Error", "Student not found.", "error"); return; }
+    var tbody = document.getElementById("parentLoginTableBody");
+    if (!tbody) { openAppMessageBox("Error", "Table not found.", "error"); return; }
+    var usernameInput = tbody.querySelector('[data-pl-field="username"][data-id="' + studentId + '"]');
+    var passwordInput = tbody.querySelector('[data-pl-field="password"][data-id="' + studentId + '"]');
+    if (!usernameInput || !passwordInput) { openAppMessageBox("Error", "Input fields not found.", "error"); return; }
+    var username = usernameInput.value.trim();
+    var password = passwordInput.value.trim();
+    if (!username || !password) {
+      openAppMessageBox("Error", "Username and password are required.", "error");
+      return;
+    }
+    var loginId = getParentLoginId(student);
+    var existingIndex = database.users.findIndex(function (user) {
+      return user.role === "parent" && user.id === loginId;
+    });
+    var toggleCheckbox = tbody.querySelector('.parent-login-toggle[data-id="' + studentId + '"]');
+    var isActive = toggleCheckbox ? toggleCheckbox.checked : true;
+    var parentPhone = student.fatherPhone || student.motherPhone || "";
+    var loginUser = {
+      id: loginId,
+      name: student.fatherName || student.motherName || student.name + "'s Parent",
+      email: username,
+      password: password,
+      role: "parent",
+      phone: parentPhone,
+      active: isActive
+    };
+    var savedMsg;
+    if (existingIndex >= 0) {
+      database.users[existingIndex] = loginUser;
+      addActivity("Parent login updated", student.fatherName + " login credentials were updated.");
+      savedMsg = "Parent login updated successfully.";
+    } else {
+      database.users.push(loginUser);
+      addActivity("Parent login created", student.fatherName + " received a new parent login.");
+      savedMsg = "Parent login created successfully.";
+    }
+    saveDatabase();
+    refreshDatabase();
+    openAppMessageBox("Success", savedMsg, "success");
+    renderDashboard();
+    setStudentRoute("parents-manage-login");
+  }
+
   function promoteSelectedStudents() {
     const targetClass = promoteTargetClassSelect.value;
-    const targetSection = promoteTargetSectionInput.value.trim() || "A";
     const filteredStudents = getPromoteStudents();
     const selectedStudents = filteredStudents.filter(function (student) {
       return promoteSelectionState[student.id];
@@ -21032,10 +21485,9 @@ ${allContent}
 
     selectedStudents.forEach(function (student) {
       student.className = targetClass;
-      student.section = targetSection;
     });
 
-    addActivity("Students promoted", `${selectedStudents.length} student(s) promoted to ${targetClass} - Section ${targetSection}.`);
+    addActivity("Students promoted", `${selectedStudents.length} student(s) promoted to ${targetClass}.`);
     saveDatabase();
     refreshDatabase();
     promoteStudentsMessage.textContent = `${selectedStudents.length} student(s) promoted successfully.`;
@@ -21083,7 +21535,7 @@ ${allContent}
       school: database.school.name || "School"
     });
     if (channel === "sms") {
-      const result = await sendSmsViaConnectedGateway({
+      const result = await sendSmsSmart({
         recipientName: normalizedStudent.name || "-",
         recipientPhone: recipientPhone,
         message: messageText,
@@ -21179,7 +21631,7 @@ ${allContent}
         { label: "Student Name", value: normalizedStudent.name || "-" },
         { label: "Registration / Roll Number", value: normalizedStudent.admissionNo || "-" },
         { label: "Date of Admission", value: normalizedStudent.dateOfAdmission || "-" },
-        { label: "Class", value: `${normalizedStudent.className || "-"} ${normalizedStudent.section ? `- ${normalizedStudent.section}` : ""}`.trim() },
+        { label: "Class", value: normalizedStudent.className || "-" },
         { label: "Discount In Fee", value: normalizedStudent.discountInFee ? `${normalizedStudent.discountInFee}%` : "-" },
         { label: "Mobile No", value: normalizedStudent.phone || "-" },
         { label: "Date of Birth", value: normalizedStudent.dateOfBirth || "-" },
@@ -21342,7 +21794,7 @@ ${allContent}
       studentsUtilityContent.innerHTML = primaryStudent ? `
         <article>
           <strong>Admission Letter Preview</strong>
-          <p>This is to certify that <strong>${primaryStudent.name}</strong> has been admitted to <strong>${primaryStudent.className}</strong>, Section <strong>${primaryStudent.section}</strong>.</p>
+          <p>This is to certify that <strong>${primaryStudent.name}</strong> has been admitted to <strong>${primaryStudent.className}</strong>.</p>
           <p>Admission No: ${primaryStudent.admissionNo}</p>
         </article>
         <article>
@@ -21378,7 +21830,6 @@ ${allContent}
                   <span class="id-card__badge">${student.className}</span>
                 </div>
                 <p>Admission: ${student.admissionNo}</p>
-                <p>Section: ${student.section}</p>
                 <p>Phone: ${student.phone}</p>
               </article>
             `;
@@ -21400,7 +21851,6 @@ ${allContent}
                 </div>
                 <div>
                   <strong>${student.className}</strong>
-                  <span>Section ${student.section}</span>
                 </div>
               </article>
             `;
@@ -21434,62 +21884,46 @@ ${allContent}
       return;
     }
 
-    if (route === "promote-students") {
+    if (route === "parents-manage-login") {
+      var _psActivity2 = document.getElementById("studentsActivityList");
+      if (_psActivity2) {
+        var _psActivityCard2 = _psActivity2.closest(".panel-card");
+        if (_psActivityCard2) _psActivityCard2.style.display = "none";
+      }
+      var _psUtilityCard2 = document.getElementById("studentsUtilityCard");
+      if (_psUtilityCard2) _psUtilityCard2.style.gridColumn = "1 / -1";
       studentsUtilityContent.innerHTML = `
-        <form id="promoteStudentsForm" class="promote-form">
-          <div class="promote-row">
-            <div class="field-group">
-              <label for="promoteStudentSelect">Student</label>
-              <select id="promoteStudentSelect">
-                ${database.students.map(function (student) {
-                  return `<option value="${student.id}">${student.name} - ${student.className}</option>`;
-                }).join("")}
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="promoteClassSelect">New Class</label>
-              <select id="promoteClassSelect">
-                ${getStudentClassOptions().map(function (className) {
-                  return `<option value="${className}">${className}</option>`;
-                }).join("")}
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="promoteSectionInput">New Section</label>
-              <input id="promoteSectionInput" type="text" value="A">
-            </div>
-          </div>
-          <div class="form-actions">
-            <button class="primary-button" type="submit">Promote Student</button>
-          </div>
-          <p class="form-message" id="promoteMessage"></p>
-        </form>
+        <div class="toolbar" style="margin-bottom:12px">
+          <input id="parentLoginSearchInput" type="search" placeholder="Search by father name or student name">
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Father Name</th>
+                <th>Student Name</th>
+                <th>Parent Username</th>
+                <th>Parent Password</th>
+                <th>Account Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="parentLoginTableBody"></tbody>
+          </table>
+        </div>
+        <p class="empty-state" id="parentLoginEmptyState" hidden>No parent records found.</p>
       `;
-
-      const promoteForm = document.getElementById("promoteStudentsForm");
-      promoteForm.addEventListener("submit", function (event) {
-        event.preventDefault();
-        const studentId = document.getElementById("promoteStudentSelect").value;
-        const newClass = document.getElementById("promoteClassSelect").value;
-        const newSection = document.getElementById("promoteSectionInput").value.trim() || "A";
-        const student = database.students.find(function (item) { return item.id === studentId; });
-        const promoteMessage = document.getElementById("promoteMessage");
-
-        if (!student) {
-          promoteMessage.textContent = "Student not found.";
-          promoteMessage.className = "form-message error";
-          return;
+      renderParentLoginTable();
+      var searchInput = document.getElementById("parentLoginSearchInput");
+      if (searchInput) {
+        searchInput.addEventListener("input", renderParentLoginTable);
+      }
+      studentsUtilityContent.addEventListener("change", function (ev) {
+        var toggle = ev.target.closest(".parent-login-toggle");
+        if (toggle) {
+          var span = toggle.nextElementSibling;
+          if (span) span.textContent = toggle.checked ? "Active" : "Inactive";
         }
-
-        student.className = newClass;
-        student.section = newSection;
-        addActivity("Student promoted", `${student.name} moved to ${newClass}, Section ${newSection}.`);
-        saveDatabase();
-        refreshDatabase();
-        renderDashboard();
-        setStudentRoute("promote-students");
-        promoteMessage.textContent = "Student promoted successfully.";
-        promoteMessage.className = "form-message success";
       });
       return;
     }
@@ -21499,6 +21933,8 @@ ${allContent}
     renderStudentClassOptions();
     renderAllStudentsDirectory();
 
+    studentsViewTitle.textContent = routeTitles[currentStudentRoute] || "Students";
+    studentsSectionLabel.textContent = "Students Module";
     var _alLayout = document.querySelector(".admission-letter-layout");
     if (_alLayout) { _alLayout.style.gridTemplateColumns = ""; }
     var _sGrid = document.getElementById("studentsSecondaryGrid");
@@ -21741,6 +22177,30 @@ ${allContent}
       return;
     }
 
+    if (currentStudentRoute === "parents-manage-login") {
+      allStudentsShell.classList.add("hidden");
+      studentStatusShell.classList.add("hidden");
+      admissionLetterShell.classList.add("hidden");
+      studentIdCardsShell.classList.add("hidden");
+      printBasicListShell.classList.add("hidden");
+      allClassesShell.classList.add("hidden");
+      newClassShell.classList.add("hidden");
+      classesWithSubjectsShell.classList.add("hidden");
+      assignSubjectsShell.classList.add("hidden");
+      studentsManageLoginShell.classList.add("hidden");
+      promoteStudentsShell.classList.add("hidden");
+      studentToolsShell.classList.remove("hidden");
+      studentActionRow.classList.add("hidden");
+      studentLayout.classList.remove("form-only");
+      studentStatsGrid.classList.add("hidden");
+      var _psTableCard2 = document.querySelector(".student-table-card");
+      if (_psTableCard2) _psTableCard2.classList.add("hidden");
+      var _psFormCard2 = document.querySelector(".student-form-card");
+      if (_psFormCard2) _psFormCard2.classList.add("hidden");
+      renderStudentUtility(currentStudentRoute);
+      return;
+    }
+
     allStudentsShell.classList.add("hidden");
     studentStatusShell.classList.add("hidden");
     admissionLetterShell.classList.add("hidden");
@@ -21819,10 +22279,13 @@ ${allContent}
       promoteStudentsSearchInput.value = "";
       promoteStudentsClassFilter.value = "all";
       promoteTargetClassSelect.value = "";
-      promoteTargetSectionInput.value = "";
       promoteStudentsMessage.textContent = "";
       promoteStudentsMessage.className = "form-message";
       promoteSelectionState = {};
+    }
+
+    if (route === "parents-manage-login") {
+      // No specific initialization needed
     }
 
     renderStudentsWorkspace();
@@ -22151,8 +22614,10 @@ ${allContent}
               openAppMessageBox("Warning", "No absent students found for today.", "warning");
               return;
             }
-            if (!(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
-              openAppMessageBox("Error", "SMS gateway is not connected. Please connect from SMS Services first.", "error");
+            var _dacfg = getSupabaseConfig();
+            var _daqOk = _dacfg && _dacfg.url && _dacfg.anonKey && _dacfg.tablesCreated && window.supabase ? true : false;
+            if (!_daqOk && !(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
+              openAppMessageBox("Error", "SMS gateway is not connected. Please connect from SMS Services first or configure Cloud Queue.", "error");
               return;
             }
             var success = 0, failed = 0, noPhone = 0;
@@ -22175,7 +22640,7 @@ ${allContent}
                 date: todayISO,
                 school: (database.school || {}).name || "School"
               });
-              var result = await sendSmsViaConnectedGateway({
+              var result = await sendSmsSmart({
                 recipientName: normSt.name || "-",
                 recipientPhone: phone,
                 message: text,
@@ -22231,9 +22696,63 @@ ${allContent}
     }
   }
 
+  function getParentChildren() {
+    var parentPhone = String(currentUser.phone || "").trim();
+    if (!parentPhone) return [];
+    var normalized = parentPhone.replace(/[\s\-]/g, "").toLowerCase();
+    return (database.students || []).filter(function (s) {
+      var fp = String(s.fatherPhone || "").replace(/[\s\-]/g, "").toLowerCase();
+      var mp = String(s.motherPhone || "").replace(/[\s\-]/g, "").toLowerCase();
+      return fp === normalized || mp === normalized;
+    });
+  }
+
+  function renderParentDashboard() {
+    var children = getParentChildren();
+    var container = document.getElementById("moduleSummary");
+    if (!container) return;
+    if (!children.length) {
+      container.innerHTML = '<article class="panel-card"><div class="panel-card__header"><div><p class="panel-label">My Children</p><h3>No children found</h3></div></div><div class="panel-card__body"><p class="helper-text">No student records are linked to your account.</p></div></article>';
+      return;
+    }
+    container.innerHTML = '<article class="panel-card"><div class="panel-card__header"><div><p class="panel-label">My Children</p><h3>' + children.length + ' child' + (children.length > 1 ? "ren" : "") + ' enrolled</h3></div></div><div class="panel-card__body"><div class="stacked-copy" style="display:grid;gap:0.75rem;">' +
+      children.map(function (child) {
+        var genderLabel = child.gender === "male" ? "Son" : "Daughter";
+        return '<div class="compact-list" style="border:1px solid var(--border-color);border-radius:12px;padding:0.75rem;background:#fff;">' +
+          '<div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.5rem;">' +
+          '<div class="profile-avatar" style="width:44px;height:44px;border-radius:50%;background:#1e5eff;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;">' + getInitials(child.name) + '</div>' +
+          '<div><strong style="font-size:1rem;">' + escapeHtml(child.name) + '</strong><br><span style="font-size:0.82rem;color:var(--text-muted);">' + escapeHtml(child.className || "") + " | Roll: " + escapeHtml(child.admissionNo || "") + '</span></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:0.4rem;flex-wrap:wrap;">' +
+          '<button type="button" class="table-action-btn" data-parent-view="attendance" data-student-id="' + escapeAttr(child.id) + '">Attendance</button>' +
+          '<button type="button" class="table-action-btn" data-parent-view="fees" data-student-id="' + escapeAttr(child.id) + '">Fees</button>' +
+          '<button type="button" class="table-action-btn" data-parent-view="report" data-student-id="' + escapeAttr(child.id) + '">Report Card</button>' +
+          '<button type="button" class="table-action-btn" data-parent-view="details" data-student-id="' + escapeAttr(child.id) + '">Details</button>' +
+          '</div></div>';
+      }).join("") +
+      '</div></div></article>';
+    container.querySelectorAll("[data-parent-view]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var action = btn.getAttribute("data-parent-view");
+        var studentId = btn.getAttribute("data-student-id");
+        var student = database.students.find(function (s) { return s.id === studentId; });
+        if (!student) return;
+        if (action === "attendance") openStudentModal(student, "attendance");
+        else if (action === "fees") openStudentModal(student, "fees");
+        else if (action === "report") openStudentModal(student, "report");
+        else if (action === "details") openStudentModal(student);
+      });
+    });
+  }
+
   function renderDashboard() {
     refreshDatabase();
     applySavedThemeSettings();
+    if (currentUser.role === "parent") {
+      renderParentDashboard();
+      applyMessagingVisibility();
+      return;
+    }
     renderStats();
     renderActivity();
     renderInsights();
@@ -22243,6 +22762,7 @@ ${allContent}
     startDashboardClock();
     updateHero();
     renderStudentsWorkspace();
+    applyMessagingVisibility();
   }
 
   function generateStudentId() {
@@ -22280,6 +22800,43 @@ ${allContent}
     setStudentRoute("students-manage-login");
   }
 
+  function createParentLogin(student) {
+    var loginId = getParentLoginId(student);
+    var parentPhone = student.fatherPhone || student.motherPhone || "";
+    var normalizedPhone = parentPhone.replace(/[\s-]/g, "").toLowerCase();
+    var email, password;
+    if (normalizedPhone) {
+      email = normalizedPhone + "@parent.local";
+      password = "parent" + normalizedPhone.replace(/[^0-9]/g, "").slice(-4);
+    } else {
+      email = "parent." + student.id + "@parent.local";
+      password = "parent" + (student.id.replace(/[^0-9]/g, "").slice(-4) || "1234");
+    }
+    var existingUserIndex = database.users.findIndex(function (user) {
+      return user.role === "parent" && user.id === loginId;
+    });
+    var loginUser = {
+      id: loginId,
+      name: student.fatherName || student.motherName || student.name + "'s Parent",
+      email: email,
+      password: password,
+      role: "parent",
+      phone: parentPhone,
+      active: true
+    };
+    if (existingUserIndex >= 0) {
+      database.users[existingUserIndex] = loginUser;
+      addActivity("Parent login updated", `${loginUser.name} login credentials were refreshed.`);
+    } else {
+      database.users.push(loginUser);
+      addActivity("Parent login created", `${loginUser.name} received a new parent login.`);
+    }
+    saveDatabase();
+    refreshDatabase();
+    renderDashboard();
+    setStudentRoute("parents-manage-login");
+  }
+
   async function handleStudentFormSubmit(event) {
     event.preventDefault();
 
@@ -22302,7 +22859,6 @@ ${allContent}
       dateOfAdmission: dateOfAdmissionInput.value,
       className: studentClassNameInput.value,
       discountInFee: discountInFeeInput.value.trim(),
-      section: studentSectionInput.value.trim(),
       dateOfBirth: dateOfBirthInput.value,
       gender: studentGenderInput.value,
       bloodGroup: bloodGroupInput.value.trim(),
@@ -22363,6 +22919,26 @@ ${allContent}
       setFormMessage("Student added successfully.", "success");
     }
 
+    // Auto-create parent login if fatherPhone or motherPhone is set
+    if (studentRecord.fatherPhone || studentRecord.motherPhone) {
+      var parentPhone = studentRecord.fatherPhone || studentRecord.motherPhone || "";
+      var normalizedPhone = parentPhone.replace(/[\s-]/g, "").toLowerCase();
+      var existingParentIndex = database.users.findIndex(function (u) {
+        return u.role === "parent" && u.id === "PARENT-" + normalizedPhone;
+      });
+      if (existingParentIndex < 0) {
+        database.users.push({
+          id: "PARENT-" + normalizedPhone,
+          name: studentRecord.fatherName || studentRecord.motherName || studentRecord.name + "'s Parent",
+          email: normalizedPhone + "@parent.local",
+          password: "parent" + normalizedPhone.replace(/[^0-9]/g, "").slice(-4),
+          role: "parent",
+          phone: parentPhone,
+          active: true
+        });
+      }
+    }
+
     saveDatabase();
     renderDashboard();
     populateStudentForm(null);
@@ -22381,7 +22957,7 @@ ${allContent}
     const student = database.students.find(function (item) { return item.id === studentId; });
 
 
-    if (!student && action !== "create-student-login") {
+    if (!student && action !== "create-student-login" && action !== "create-parent-login" && action !== "toggle-promote-selection" && action !== "edit-parent-login" && action !== "save-parent-login") {
       return;
     }
 
@@ -22452,6 +23028,32 @@ ${allContent}
       if (loginStudent) {
         createStudentLogin(loginStudent);
       }
+    }
+
+    if (action === "create-parent-login") {
+      const parentStudent = database.students.find(function (item) { return item.id === studentId; });
+      if (parentStudent) {
+        createParentLogin(parentStudent);
+      }
+    }
+
+    if (action === "edit-parent-login") {
+      var tr = actionButton.closest("tr");
+      if (tr) {
+        var inputs = tr.querySelectorAll(".parent-login-cred-input");
+        inputs.forEach(function (inp) { inp.disabled = false; });
+        var toggle = tr.querySelector(".parent-login-toggle");
+        if (toggle) toggle.disabled = false;
+        actionButton.style.display = "none";
+        var saveBtn = tr.querySelector('[data-action="save-parent-login"]');
+        if (saveBtn) saveBtn.style.display = "";
+      }
+      return;
+    }
+
+    if (action === "save-parent-login") {
+      saveParentLoginCredentials(studentId);
+      return;
     }
 
     if (action === "save-student-login") {
@@ -22671,6 +23273,7 @@ ${allContent}
       if (_leftPanel) { _leftPanel.style.gridColumn = "1 / -1"; }
     }
     setTimeout(setupRevealAnimations, 50);
+    applyMessagingVisibility();
   }
 
   window.addEventListener("sagarsoft:database-loaded", function () {
@@ -22786,6 +23389,8 @@ ${allContent}
 
   studentForm.addEventListener("submit", handleStudentFormSubmit);
   newClassForm.addEventListener("submit", handleClassFormSubmit);
+
+
   assignSubjectsForm.addEventListener("submit", handleAssignSubjectsSubmit);
   studentsTableBody.addEventListener("click", handleTableActionClick);
   studentDirectoryGrid.addEventListener("click", handleTableActionClick);
@@ -22994,7 +23599,6 @@ ${allContent}
     printBasicListClassFilter.value = "all";
     promoteStudentsClassFilter.value = "all";
     promoteTargetClassSelect.value = "";
-    promoteTargetSectionInput.value = "";
     assignSubjectsClassInput.value = "";
     assignSubjectsRows.innerHTML = "";
     ensureSubjectRowExists();
@@ -23165,6 +23769,27 @@ ${allContent}
   if (downloadBtn) {
     downloadBtn.addEventListener("click", function () { openMobileAppDownloadModal(); });
   }
+
+  window.addEventListener("popstate", function () {
+    if (window.location.pathname.includes("dashboard.html")) {
+      openAppConfirm("Logout?", "Are you sure you want to go back? You will be logged out.", "warning").then(function (confirmed) {
+        if (confirmed) {
+          window.SagarSoftAuth.logout();
+          window.location.href = "./login.html?freshStart=1";
+        } else {
+          window.history.pushState(null, "", window.location.href);
+        }
+      });
+    }
+  });
+  window.history.pushState(null, "", window.location.href);
+
+  // Auto backup every 30 minutes
+  setInterval(function () {
+    if (navigator.onLine !== false) {
+      backupToSupabase();
+    }
+  }, 30 * 60 * 1000);
 });
 
 

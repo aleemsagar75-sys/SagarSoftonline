@@ -16,6 +16,10 @@ document.addEventListener("DOMContentLoaded", function () {
     window.history.replaceState(null, "", "./login.html");
   }
 
+  // Clear form fields on every load (prevents cached values from back navigation)
+  if (loginForm) loginForm.reset();
+  if (formMessage) { formMessage.textContent = ""; formMessage.className = "form-message"; }
+
   // Crash recovery: if a demo snapshot exists but no active session, restore clean state
   (function () {
     try {
