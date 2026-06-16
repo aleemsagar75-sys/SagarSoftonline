@@ -1336,12 +1336,13 @@ app.post("/api/admin/schools", async function (req, res) {
         } else {
           var _supaBody = await _supaResp.text().catch(function () { return ""; });
           console.error("Supabase Auth user creation failed:", _supaResp.status, _supaBody);
+          try { var _supaParsed = JSON.parse(_supaBody); _supaBody = _supaParsed.msg || _supaParsed.error_description || _supaParsed.message || _supaBody; } catch (e) {}
         }
       } catch (_supabaseError) {
         console.error("Supabase Auth user creation network error:", _supabaseError.message);
       }
     }
-    return res.json({ success: true, school_id: schoolId, supabase_user_created: _supaOk, version: "v2.0-fixed" });
+    return res.json({ success: true, school_id: schoolId, supabase_user_created: _supaOk, supabase_error: !_supaOk && supabaseUrl ? "Supabase Auth failed — check Render server logs" : undefined, version: "v2.0-fixed" });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

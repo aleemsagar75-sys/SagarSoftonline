@@ -1127,8 +1127,53 @@
   <script src="./js/crypto-utils.js"></script>
   <script src="./js/storage.js"></script>
   <script src="./js/auth.js"></script>
-  <script src="./js/dashboard.js?v=20260614"></script>
+  <script src="./js/dashboard.js?v=20260615"></script>
   <script>
+    // FIX: School creation — clear school_id when adding new, clear form after success
+    var _origFetch = window.fetch;
+    window.fetch = function () {
+      var args = arguments;
+      var url = typeof args[0] === "string" ? args[0] : (args[0] && args[0].url || "");
+      var opts = args[1] || {};
+      var method = opts.method || "GET";
+      // Before POST (new school): clear pre-filled school_id so server generates a new one
+      if (url.indexOf("/api/admin/schools") > -1 && method === "POST") {
+        var body = {};
+        try { body = JSON.parse(opts.body || "{}"); } catch (e) {}
+        var btn = document.getElementById("activateAccountBtn");
+        var isNew = btn && !btn.getAttribute("data-edit-school-id");
+        if (isNew && body.school_id && body.school_id.indexOf("SCH-") !== 0) {
+          delete body.school_id;
+          var newBody = JSON.stringify(body);
+          if (typeof args[0] === "string") {
+            args = [args[0], Object.assign({}, opts, { body: newBody })];
+          } else {
+            args[0] = Object.assign({}, args[0], { body: newBody });
+            args = [args[0], args[1]];
+          }
+        }
+      }
+      return _origFetch.apply(this, args).then(function (r) {
+        if (url.indexOf("/api/admin/schools") > -1 && method === "POST") {
+          var clone = r.clone();
+          clone.json().then(function (d) {
+            if (d && d.success && d.school_id) {
+              ["schoolIdInput","schoolNameInput","accountUsernameInput","accountPasswordInput"].forEach(function (id) {
+                var el = document.getElementById(id); if (el) el.value = "";
+              });
+              if (d.supabase_error) {
+                var msg = document.getElementById("manageSchoolsMessage");
+                if (msg) { msg.textContent = "School added! WARNING: " + d.supabase_error; msg.className = "form-message warning"; }
+              }
+            } else if (d && !d.success && d.message) {
+              var msg = document.getElementById("manageSchoolsMessage");
+              if (msg) { msg.textContent = d.message; msg.className = "form-message error"; }
+            }
+          }).catch(function () {});
+        }
+        return r;
+      });
+    };
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('./sw.js');
