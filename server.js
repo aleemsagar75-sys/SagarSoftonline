@@ -1302,9 +1302,14 @@ app.post("/api/admin/schools", async function (req, res) {
   if (!password) return res.status(400).json({ success: false, message: "Password is required." });
   try {
     var schoolId = customId || ("SCH-" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase());
+    var _dupCheck = await pool.query("select school_id from public.license_accounts where school_id = $1", [schoolId]);
+    if (_dupCheck.rows.length > 0) {
+      return res.status(409).json({ success: false, message: "School ID '" + schoolId + "' already exists. Please use a different ID." });
+    }
     await pool.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now())", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
     var supabaseUrl = process.env.SUPABASE_URL;
     var supabaseKey = process.env.SUPABASE_SECRET_KEY;
+    var _supaOk = false;
     if (supabaseUrl && supabaseKey) {
       try {
         var _supaResp = await fetch(supabaseUrl + "/auth/v1/admin/users", {
@@ -1324,17 +1329,18 @@ app.post("/api/admin/schools", async function (req, res) {
             }
           })
         });
-        if (!_supaResp.ok) {
-          var _supaBody = await _supaResp.text().catch(function () { return ""; });
-          console.error("Supabase user creation failed (non-fatal):", _supaResp.status, _supaBody);
+        if (_supaResp.ok) {
+          _supaOk = true;
+          console.log("Supabase Auth user created for", email);
         } else {
-          console.log("Supabase user created for", email);
+          var _supaBody = await _supaResp.text().catch(function () { return ""; });
+          console.error("Supabase Auth user creation failed:", _supaResp.status, _supaBody);
         }
       } catch (_supabaseError) {
-        console.error("Supabase user creation network error (non-fatal):", _supabaseError.message);
+        console.error("Supabase Auth user creation network error:", _supabaseError.message);
       }
     }
-    return res.json({ success: true, school_id: schoolId });
+    return res.json({ success: true, school_id: schoolId, supabase_user_created: _supaOk });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }

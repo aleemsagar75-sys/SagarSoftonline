@@ -19404,6 +19404,13 @@ ${allContent}
       if (startInput) startInput.addEventListener("change", updateExpiryPreview);
       if (planInput) updateExpiryPreview();
 
+      function clearSchoolForm() {
+        var _els = ["schoolNameInput","accountUsernameInput","accountPasswordInput","schoolIdInput"];
+        _els.forEach(function (_id) { var _e = document.getElementById(_id); if (_e) _e.value = ""; });
+        var _msg = document.getElementById("manageSchoolsMessage");
+        if (_msg) { _msg.textContent = ""; _msg.className = "form-message"; }
+      }
+
       if (activateAccountBtn) {
         activateAccountBtn.addEventListener("click", async function () {
           var editSchoolId = activateAccountBtn.getAttribute("data-edit-school-id");
@@ -19415,6 +19422,7 @@ ${allContent}
           var startEl = document.getElementById("subscriptionStartInput");
           var expiryEl = document.getElementById("subscriptionExpiryInput");
           var msgEl = document.getElementById("manageSchoolsMessage") || document.getElementById("licenseMessage");
+          var isNew = !editSchoolId || editSchoolId === "__NEW__";
           if (!nameEl || !nameEl.value.trim()) { if (msgEl) { msgEl.textContent = "School name required."; msgEl.className = "form-message error"; } return; }
           if (!emailEl || !emailEl.value.trim()) { if (msgEl) { msgEl.textContent = "Email required."; msgEl.className = "form-message error"; } return; }
           if (!passEl || !passEl.value.trim()) { if (msgEl) { msgEl.textContent = "Password required."; msgEl.className = "form-message error"; } return; }
@@ -19425,20 +19433,15 @@ ${allContent}
           if (expiryEl && expiryEl.value) body.expiry_date = expiryEl.value;
           try {
             var url = apiBase + "/api/admin/schools";
-            var isNew = !editSchoolId || editSchoolId === "__NEW__";
             var method = isNew ? "POST" : "PUT";
             if (!isNew) url += "/" + encodeURIComponent(editSchoolId);
             var resp = await fetch(url, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
             var data = await resp.json().catch(function () { return {}; });
             if (data.success) {
-              if (msgEl) { msgEl.textContent = isNew ? "School added! ID: " + data.school_id : "School saved."; msgEl.className = "form-message success"; }
+              if (msgEl) { msgEl.textContent = isNew ? "School added!" : "School saved."; msgEl.className = "form-message success"; }
               activateAccountBtn.textContent = "Add School";
               activateAccountBtn.removeAttribute("data-edit-school-id");
-              if (isNew) {
-                if (nameEl) nameEl.value = ""; if (emailEl) emailEl.value = ""; if (passEl) passEl.value = "";
-                if (schoolIdInput) schoolIdInput.value = "";
-                if (data.school_id && msgEl) msgEl.textContent += " Created: " + data.school_id;
-              }
+              if (isNew) clearSchoolForm();
               loadSchools();
             } else {
               if (msgEl) { msgEl.textContent = data.message || "Save failed."; msgEl.className = "form-message error"; }
