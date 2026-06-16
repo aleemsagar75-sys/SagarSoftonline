@@ -1,4 +1,4 @@
-require("dotenv").config({ path: __dirname + "/.env" });
+require("dotenv").config({ path: __dirname + "/server/.env" });
 
 const dns = require("dns");
 const express = require("express");
@@ -110,7 +110,6 @@ app.use(express.json({ limit: "50mb" }));
 
 const webDirCandidates = [
   process.env.SAGARSOFT_WEB_DIR,
-  path.resolve(__dirname, "..", "sagarsoft"),
   path.resolve(__dirname, ".."),
   __dirname
 ].filter(Boolean);
@@ -201,15 +200,6 @@ async function ensureSchema() {
       data jsonb,
       created_at timestamptz not null default now()
     );
-
-    create table if not exists public.school_backups (
-      id bigserial primary key,
-      school_id text not null,
-      database jsonb not null default '{}'::jsonb,
-      size_bytes bigint not null default 0,
-      created_at timestamptz not null default now()
-    );
-    create index if not exists idx_school_backups_school_id on public.school_backups(school_id);
 
     create table if not exists public.teachers (
       id text primary key,
@@ -1387,18 +1377,6 @@ app.delete("/api/admin/schools/:schoolId", async function (req, res) {
   }
 });
 
-app.post("/api/admin/schools/:schoolId/reset-tokens", async function (req, res) {
-  var schoolId = String(req.params.schoolId || "").trim();
-  if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
-  try {
-    var newToken = "sft-" + Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36);
-    await pool.query("update public.license_accounts set api_token = $1 where school_id = $2", [newToken, schoolId]);
-    return res.json({ success: true, message: "Tokens reset.", token: newToken });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-});
-
 app.post("/api/admin/notifications", async function (req, res) {
   var title = String(req.body.title || "Notification").trim();
   var message = String(req.body.message || "").trim();
@@ -1532,35 +1510,6 @@ app.delete("/api/data/:schoolId/:table/:id", requireApiKey, async function (req,
     return res.json({ success: true, message: "Record deleted." });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-app.post("/api/backup", async function (req, res) {
-  var schoolId = String(req.body.school_id || "").trim();
-  var database = req.body.database || {};
-  if (!schoolId) return res.status(400).json({ success: false, message: "School ID required." });
-  try {
-    var jsonStr = JSON.stringify(database);
-    var sizeBytes = Buffer.byteLength(jsonStr, "utf8");
-    await pool.query("insert into public.school_backups (school_id, database, size_bytes, created_at) values ($1, $2::jsonb, $3, now())", [schoolId, jsonStr, sizeBytes]);
-    return res.json({ success: true, message: "Backup saved.", size_bytes: sizeBytes });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-app.get("/api/version", function (_req, res) {
-  var versionPath = path.resolve(__dirname, "..", "version.json");
-  if (versionPath) {
-    fs.readFile(versionPath, "utf8", function (err, data) {
-      if (err) {
-        return res.json({ version: "1.0.0", releaseDate: "", updateUrl: "", message: "No version info" });
-      }
-      try { return res.json(JSON.parse(data)); }
-      catch (_e) { return res.json({ version: "1.0.0", releaseDate: "", updateUrl: "", message: "Invalid version file" }); }
-    });
-  } else {
-    return res.json({ version: "1.0.0", releaseDate: "", updateUrl: "" });
   }
 });
 
