@@ -223,7 +223,6 @@ async function ensureSchema() {
       picture text,
       date_of_admission date,
       class_name text,
-      section text,
       discount_in_fee numeric,
       date_of_birth date,
       gender text,
@@ -640,7 +639,7 @@ async function syncStudentMirrorTable(client, schoolId, database) {
     const ids = scopedMirrorId(schoolId, student.id, "STU");
     await client.query(`
       insert into public.students (
-        id, school_id, source_id, admission_no, name, picture, date_of_admission, class_name, section,
+        id, school_id, source_id, admission_no, name, picture, date_of_admission, class_name,
         discount_in_fee, date_of_birth, gender, blood_group, disease_info,
         birth_id, previous_school, previous_id, orphan_status, religion, address,
         phone, father_name, father_education, father_national_id, father_phone,
@@ -648,12 +647,12 @@ async function syncStudentMirrorTable(client, schoolId, database) {
         mother_national_id, mother_phone, mother_occupation, status, data, created_at
       )
       values (
-        $1, $2, $3, $4, $5, $6, $7, $8, $9,
-        $10, $11, $12, $13, $14,
-        $15, $16, $17, $18, $19, $20,
-        $21, $22, $23, $24, $25,
-        $26, $27, $28, $29,
-        $30, $31, $32, $33, $34::jsonb, now()
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12, $13,
+        $14, $15, $16, $17, $18, $19,
+        $20, $21, $22, $23, $24,
+        $25, $26, $27, $28,
+        $29, $30, $31, $32, $33::jsonb, now()
       )
       on conflict (id)
       do update set
@@ -664,7 +663,6 @@ async function syncStudentMirrorTable(client, schoolId, database) {
         picture = excluded.picture,
         date_of_admission = excluded.date_of_admission,
         class_name = excluded.class_name,
-        section = excluded.section,
         discount_in_fee = excluded.discount_in_fee,
         date_of_birth = excluded.date_of_birth,
         gender = excluded.gender,
@@ -699,7 +697,6 @@ async function syncStudentMirrorTable(client, schoolId, database) {
       String(student.picture || ""),
       emptyToNullDate(student.dateOfAdmission),
       String(student.className || ""),
-      String(student.section || ""),
       Number(student.discountInFee || 0),
       emptyToNullDate(student.dateOfBirth),
       String(student.gender || ""),

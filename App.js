@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ActivityIndicator, Linking, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Image, Linking, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { WebView } from "react-native-webview";
 
@@ -14,6 +14,7 @@ export default function App() {
     return (
       <SafeAreaView style={styles.centerPage}>
         <StatusBar style="light" />
+        <Image source={require("./assets/SagarSoft.logo.png")} style={styles.logo} />
         <Text style={styles.brand}>SagarSoft</Text>
         <Text style={styles.title}>Unable to load app</Text>
         <Text style={styles.message}>Please check internet connection and make sure the web app is deployed.</Text>
@@ -36,8 +37,10 @@ export default function App() {
       <StatusBar style="dark" />
       {loading && (
         <View style={styles.loader}>
-          <ActivityIndicator size="large" color="#0e8a72" />
-          <Text style={styles.loadingText}>Loading SagarSoft...</Text>
+          <Image source={require("./assets/SagarSoft.logo.png")} style={styles.splashLogo} />
+          <Text style={styles.brandDark}>SagarSoft</Text>
+          <ActivityIndicator size="large" color="#0e8a72" style={{ marginTop: 20 }} />
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       )}
       <WebView
@@ -86,11 +89,14 @@ const styles = StyleSheet.create({
   loader: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 2,
-    backgroundColor: "#eef6f8",
+    backgroundColor: "#0b1f3a",
     alignItems: "center",
     justifyContent: "center"
   },
-  loadingText: { marginTop: 12, color: "#0f314a", fontWeight: "800" },
+  splashLogo: { width: 96, height: 96, marginBottom: 8 },
+  logo: { width: 72, height: 72, marginBottom: 8 },
+  brandDark: { color: "#fff", fontSize: 22, fontWeight: "900", marginBottom: 4 },
+  loadingText: { marginTop: 8, color: "#a0b8cc", fontWeight: "600", fontSize: 14 },
   centerPage: { flex: 1, backgroundColor: "#0b1f3a", alignItems: "center", justifyContent: "center", padding: 24 },
   brand: { color: "#fff", fontSize: 28, fontWeight: "900" },
   title: { color: "#fff", fontSize: 20, fontWeight: "800", marginTop: 14 },

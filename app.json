@@ -33,6 +33,11 @@
     ],
     "updates": {
       "enabled": false
+    },
+    "extra": {
+      "eas": {
+        "projectId": "aa7b9d59-803b-4b0e-8530-b6d9faf82f91"
+      }
     }
   }
 }

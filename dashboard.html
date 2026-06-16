@@ -106,6 +106,7 @@
               <button class="submenu-link" type="button" data-route="print-basic-list" data-title="Print Basic List">Print Basic List</button>
               <button class="submenu-link" type="button" data-route="students-manage-login" data-title="Manage Login">Manage Login</button>
               <button class="submenu-link" type="button" data-route="promote-students" data-title="Promote Students">Promote Students</button>
+              <button class="submenu-link" type="button" data-route="parents-manage-login" data-title="Manage Parent Login">Manage Parent Login</button>
             </div>
           </div>
 
@@ -331,7 +332,6 @@
           <strong>All modules are cloud-connected.</strong>
           <span>Data is stored securely on Supabase cloud servers.</span>
         </section>
-        <button id="installAppBtn" type="button" style="display:none;margin:8px 12px;padding:8px 12px;font-size:0.8rem;font-family:inherit;font-weight:600;color:#fff;background:#1e5eff;border:none;border-radius:6px;cursor:pointer;text-align:center;">Install App</button>
       </div>
     </aside>
 
@@ -676,19 +676,23 @@
               <div class="form-grid">
                 <div class="field-group">
                   <label for="newClassName">Class Name*</label>
-                  <input id="newClassName" type="text" placeholder="e.g Grade 7" required>
+                  <input id="newClassName" type="text" placeholder="e.g Play Group" required>
+                </div>
+                <div class="field-group">
+                  <label for="newClassSection">Section</label>
+                  <input id="newClassSection" type="text" placeholder="e.g A" required>
                 </div>
                 <div class="field-group">
                   <label for="newClassMonthlyFee">Monthly Tuition Fees*</label>
                   <input id="newClassMonthlyFee" type="number" min="0" placeholder="e.g 1800" required>
                 </div>
                 <div class="field-group">
-                  <label for="newClassTeacher">Select Class Teacher*</label>
-                  <select id="newClassTeacher" required>
-                    <option value="">Select</option>
-                  </select>
-                </div>
-              </div>
+          <label for="newClassTeacher">Select Class Teacher*</label>
+          <select id="newClassTeacher" required>
+            <option value="">Select</option>
+          </select>
+        </div>
+      </div>
               <div class="form-actions">
                 <button class="primary-button" type="submit">Save Class</button>
                 <button class="secondary-button" id="clearClassFormBtn" type="button">Clear</button>
@@ -792,7 +796,7 @@
               <select id="promoteTargetClassSelect">
                 <option value="">Select Target Class</option>
               </select>
-              <input id="promoteTargetSectionInput" type="text" placeholder="Target Section (A)">
+
             </div>
 
             <div class="table-wrap">
@@ -826,7 +830,7 @@
               </div>
 
               <div class="toolbar toolbar--students">
-                <input id="studentSearchInput" type="search" placeholder="Search by name, admission no, class, section">
+                <input id="studentSearchInput" type="search" placeholder="Search by name, admission no, or class">
                 <select id="studentClassFilter">
                   <option value="all">All Classes</option>
                 </select>
@@ -844,7 +848,7 @@
                       <th>Admission No</th>
                       <th>Name</th>
                       <th>Class</th>
-                      <th>Section</th>
+
                       <th>Phone</th>
                       <th>Status</th>
                       <th>Actions</th>
@@ -907,10 +911,7 @@
                       <label for="studentPhone">Mobile No. for SMS/WhatsApp</label>
                       <input id="studentPhone" type="text" inputmode="numeric" placeholder="e.g 03444444444">
                     </div>
-                    <div class="field-group">
-                      <label for="studentSection">Section</label>
-                      <input id="studentSection" type="text" placeholder="A">
-                    </div>
+
                   </div>
                 </section>
 
@@ -1121,40 +1122,19 @@
   </div>
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="./js/online-config.js"></script>
   <script src="./js/crypto-utils.js"></script>
   <script src="./js/storage.js"></script>
   <script src="./js/auth.js"></script>
-  <script src="./js/dashboard.js"></script>
+  <script src="./js/dashboard.js?v=20260614"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('./sw.js');
       });
     }
-    window.deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', function (e) {
-      e.preventDefault();
-      window.deferredPrompt = e;
-      var btn = document.getElementById('installAppBtn');
-      if (btn) btn.style.display = 'block';
-    });
-    window.addEventListener('appinstalled', function () {
-      window.deferredPrompt = null;
-      var btn = document.getElementById('installAppBtn');
-      if (btn) btn.style.display = 'none';
-    });
-    document.addEventListener('DOMContentLoaded', function () {
-      document.getElementById('installAppBtn').addEventListener('click', async function () {
-        if (!window.deferredPrompt) return;
-        window.deferredPrompt.prompt();
-        var result = await window.deferredPrompt.userChoice;
-        if (result.outcome === 'accepted') {
-          this.style.display = 'none';
-        }
-        window.deferredPrompt = null;
-      });
-    });
+
   </script>
 </body>
 </html>
