@@ -121,7 +121,7 @@ if (webAppDir) {
     var _filePath = path.join(webAppDir, "dashboard.html");
     fs.readFile(_filePath, "utf8", function (_err, _html) {
       if (_err) return res.status(500).send("Error loading dashboard");
-      var _fix = '<script>document.addEventListener("click",function(e){var b=e.target.closest("#activateAccountBtn");if(!b)return;b.removeAttribute("data-edit-school-id");var s=document.getElementById("schoolIdInput");if(s)s.value=""},!0);(function(){var _f=window.fetch;window.fetch=function(u,o){return _f.call(window,u,o).then(function(r){if(u==="/api/admin/schools"&&o&&o.method==="POST"){return r.clone().json().then(function(d){if(d.success&&d.school_id){setTimeout(function(){var s=document.getElementById("schoolIdInput");if(s)s.value=d.school_id},200)}if(d.success&&d.supabase_error){setTimeout(function(){var m=document.getElementById("manageSchoolsMessage");if(m){m.textContent+=" "+d.supabase_error;m.style.color="#e6a817"}},1000)}return r}).catch(function(){return r})}return r})}})();</script>';
+      var _fix = '<script>document.addEventListener("click",function(e){var b=e.target.closest("#activateAccountBtn");if(!b||b.textContent!=="Add School")return;if(!b._o)b._o=b.getAttribute.bind(b);b.getAttribute=function(n){return n==="data-edit-school-id"?null:b._o(n)};if(b.dataset)delete b.dataset.editSchoolId;var s=document.getElementById("schoolIdInput");if(s)s.value=""},!0);(function(){var _f=window.fetch;window.fetch=function(u,o){if(typeof u==="string"&&u.indexOf("/api/admin/schools")>=0&&o&&(o.method==="POST"||o.method==="PUT")){if(o.body&&typeof o.body==="string"){try{var _b=JSON.parse(o.body);delete _b.school_id;o.body=JSON.stringify(_b)}catch(e){}}}return _f.call(window,u,o).then(function(r){if(typeof u==="string"&&u.indexOf("/api/admin/schools")>=0&&o&&o.method==="POST"){return r.clone().json().then(function(d){if(d.success&&d.school_id){var btn=document.getElementById("activateAccountBtn");if(btn){btn.textContent="Add School";btn.removeAttribute("data-edit-school-id");if(btn._o){btn.getAttribute=btn._o;delete btn._o}}setTimeout(function(){var s=document.getElementById("schoolIdInput");if(s)s.value=d.school_id},200)}if(d.success&&d.supabase_error){setTimeout(function(){var m=document.getElementById("manageSchoolsMessage");if(m){m.textContent+=" "+d.supabase_error;m.style.color="#e6a817"}},1000)}return r}).catch(function(){return r})}return r})}})();</script>';
       _html = _html.replace('</body>', _fix + '\n</body>');
       res.type("html").send(_html);
     });
@@ -1398,7 +1398,7 @@ app.post("/api/admin/schools", async function (req, res) {
 
 app.get("/api/debug", function (req, res) {
   res.json({
-    version: "v2.0-fixed",
+    version: "v2.1-getattr-override",
     supabase_url_set: !!process.env.SUPABASE_URL,
     supabase_key_set: !!process.env.SUPABASE_SECRET_KEY,
     node_version: process.version
@@ -1418,6 +1418,7 @@ app.put("/api/admin/schools/:schoolId", async function (req, res) {
   var schoolId = String(req.params.schoolId || "").trim();
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
   var body = req.body || {};
+  console.log("PUT /api/admin/schools/" + schoolId + ": method=PUT body keys:", Object.keys(body), "school_name:", body.school_name, "email:", body.email, "body.school_id:", body.school_id);
   try {
     var sets = [];
     var vals = [];
@@ -1635,7 +1636,8 @@ app.get("/api/version", function (_req, res) {
 ensureSchema()
   .then(function () {
     app.listen(port, function () {
-      console.log(`SagarSoft online API listening on ${port}`);
+      console.log("SagarSoft online API listening on " + port + " [fix: v2.1-getattr-override]");
+      console.log("Fix injected into /dashboard.html?inline-getattr-override-active");
     });
   })
   .catch(function (error) {
