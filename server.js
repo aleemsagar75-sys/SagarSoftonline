@@ -1320,16 +1320,18 @@ app.post("/api/admin/schools", async function (req, res) {
   var plan = String(req.body.plan || "premium").trim();
   var startDate = req.body.start_date || null;
   var expiryDate = req.body.expiry_date || null;
-  var customId = req.body.school_id ? String(req.body.school_id).trim() : "";
   if (!schoolName) return res.status(400).json({ success: false, message: "School name is required." });
   if (!email) return res.status(400).json({ success: false, message: "Email is required." });
   if (!password) return res.status(400).json({ success: false, message: "Password is required." });
   try {
-    var schoolId = customId || ("SCH-" + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 6).toUpperCase());
-    var _dupCheck = await pool.query("select school_id from public.license_accounts where school_id = $1", [schoolId]);
-    if (_dupCheck.rows.length > 0) {
-      return res.status(409).json({ success: false, message: "School ID '" + schoolId + "' already exists. Please use a different ID." });
+    var _maxResult = await pool.query("select max(school_id) as max_id from public.super_admin_activation where school_id ~ '^SCH-'");
+    var _lastId = _maxResult.rows[0].max_id;
+    var _num = 1;
+    if (_lastId) {
+      var _parts = _lastId.split('-');
+      _num = parseInt(_parts[_parts.length - 1], 10) + 1;
     }
+    var schoolId = "SCH-" + String(_num).padStart(3, '0');
     await pool.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now())", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
     await pool.query("insert into public.super_admin_activation (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now()) on conflict (school_id) do update set school_name=excluded.school_name, email=excluded.email, password=excluded.password, plan=excluded.plan, status='active', start_date=coalesce(excluded.start_date,super_admin_activation.start_date), expiry_date=coalesce(excluded.expiry_date,super_admin_activation.expiry_date), modules_locked=false, updated_at=now()", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
     var supabaseUrl = process.env.SUPABASE_URL;
