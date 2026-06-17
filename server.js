@@ -121,7 +121,7 @@ if (webAppDir) {
     var _filePath = path.join(webAppDir, "dashboard.html");
     fs.readFile(_filePath, "utf8", function (_err, _html) {
       if (_err) return res.status(500).send("Error loading dashboard");
-      var _fix = '<script>(function(){if("caches" in window){caches.keys().then(function(ks){ks.forEach(function(k){if(k.indexOf("sagarsoft")>=0)caches.delete(k)})})}if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})})}})();document.addEventListener("click",function(e){var b=e.target.closest("#activateAccountBtn");if(!b||b.textContent!=="Add School")return;if(!b._o)b._o=b.getAttribute.bind(b);b.getAttribute=function(n){return n==="data-edit-school-id"?null:b._o(n)};if(b.dataset)delete b.dataset.editSchoolId;var s=document.getElementById("schoolIdInput");if(s)s.value=""},!0);(function(){var _f=window.fetch;window.fetch=function(u,o){if(typeof u==="string"&&u.indexOf("/api/admin/schools")>=0&&o){if(o.method==="PUT"){var _b2=document.getElementById("activateAccountBtn");if(_b2&&_b2.textContent==="Add School"){console.log("FIX PUT2POST for schools");o.method="POST";u=""+u.replace(/\\/api\\/admin\\/schools\\/[^\\/]+$/,"/api/admin/schools")}}if(o.body&&typeof o.body==="string"&&(o.method==="POST"||o.method==="PUT")){try{var _b=JSON.parse(o.body);delete _b.school_id;o.body=JSON.stringify(_b)}catch(e){}}}return _f.call(window,u,o).then(function(r){if(typeof u==="string"&&u.indexOf("/api/admin/schools")>=0&&o&&o.method==="POST"){return r.clone().json().then(function(d){if(d.success&&d.school_id){var btn=document.getElementById("activateAccountBtn");if(btn){btn.textContent="Add School";btn.removeAttribute("data-edit-school-id");if(btn._o){btn.getAttribute=btn._o;delete btn._o}}setTimeout(function(){var s=document.getElementById("schoolIdInput");if(s)s.value=d.school_id},200)}if(d.success&&d.supabase_error){setTimeout(function(){var m=document.getElementById("manageSchoolsMessage");if(m){m.textContent+=" "+d.supabase_error;m.style.color="#e6a817"}},1000)}return r}).catch(function(){return r})}return r})}})();</script>';
+      var _fix = '<script>(function(){if("caches" in window){caches.keys().then(function(ks){ks.forEach(function(k){if(k.indexOf("sagarsoft")>=0)caches.delete(k)})})}if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})})}})();(function(){var _g=Element.prototype.getAttribute;Element.prototype.getAttribute=function(n){if(n==="data-edit-school-id"&&this.id==="activateAccountBtn"&&(this.textContent||"").trim()==="Add School")return null;return _g.call(this,n)}})();document.addEventListener("click",function(e){var b=e.target.closest("#activateAccountBtn");if(!b||(b.textContent||"").trim()!=="Add School")return;if(b.dataset)delete b.dataset.editSchoolId;var s=document.getElementById("schoolIdInput");if(s)s.value=""},!0);(function(){var _f=window.fetch;window.fetch=function(u,o){if(typeof u==="string"&&u.indexOf("/api/admin/schools")>=0&&o){if(o.method==="PUT"){var _b2=document.getElementById("activateAccountBtn");if(_b2&&(_b2.textContent||"").trim()==="Add School"){console.log("FIX PUT2POST");o.method="POST";u=""+u.replace(/\\/api\\/admin\\/schools\\/[^\\/]+$/,"/api/admin/schools")}}if(o.body&&typeof o.body==="string"&&(o.method==="POST"||o.method==="PUT")){try{var _b=JSON.parse(o.body);delete _b.school_id;o.body=JSON.stringify(_b)}catch(e){}}}return _f.call(window,u,o).then(function(r){if(typeof u==="string"&&u.indexOf("/api/admin/schools")>=0&&o&&o.method==="POST"){return r.clone().json().then(function(d){if(d.success&&d.school_id){var btn=document.getElementById("activateAccountBtn");if(btn){btn.textContent="Add School";btn.removeAttribute("data-edit-school-id")}setTimeout(function(){var s=document.getElementById("schoolIdInput");if(s)s.value=d.school_id},200)}if(d.success&&d.supabase_error){setTimeout(function(){var m=document.getElementById("manageSchoolsMessage");if(m){m.textContent+=" "+d.supabase_error;m.style.color="#e6a817"}},1000)}return r}).catch(function(){return r})}return r})}})();</script>';
       _html = _html.replace('</body>', _fix + '\n</body>');
       res.type("html").send(_html);
     });
@@ -1390,7 +1390,7 @@ app.post("/api/admin/schools", async function (req, res) {
         console.error("Supabase Auth user creation network error:", _supabaseError.message);
       }
     }
-    return res.json({ success: true, school_id: schoolId, supabase_user_created: _supaOk, supabase_error: !_supaOk && supabaseUrl ? "Supabase Auth failed — check Render server logs" : undefined, version: "v2.0-fixed" });
+    return res.json({ success: true, school_id: schoolId, supabase_user_created: _supaOk, supabase_error: !_supaOk && supabaseUrl ? "Supabase Auth failed — check Render server logs" : undefined, version: "v2.1-getattr-override" });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -1420,6 +1420,12 @@ app.put("/api/admin/schools/:schoolId", async function (req, res) {
   var body = req.body || {};
   console.log("PUT /api/admin/schools/" + schoolId + ": method=PUT body keys:", Object.keys(body), "school_name:", body.school_name, "email:", body.email, "body.school_id:", body.school_id);
   try {
+    var _existing = await pool.query("select school_name,email from license_accounts where school_id=$1", [schoolId]);
+    if (_existing.rows.length > 0) {
+      var _old = _existing.rows[0];
+      if (body.school_name && body.school_name !== _old.school_name) { console.log("PUT WARNING: school_name differs! old=" + _old.school_name + " new=" + body.school_name); }
+      if (body.email && body.email.trim().toLowerCase() !== _old.email) { console.log("PUT WARNING: email differs! old=" + _old.email + " new=" + body.email); }
+    }
     var sets = [];
     var vals = [];
     var idx = 1;
