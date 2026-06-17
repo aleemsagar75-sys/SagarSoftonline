@@ -99,7 +99,7 @@ if (cors) {
       res.setHeader("Access-Control-Allow-Origin", "https://sagarsoftonline.onrender.com");
     }
     res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-sagarsoft-api-key, x-license-token");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
     if (req.method === "OPTIONS") {
       return res.sendStatus(204);
     }
@@ -540,7 +540,11 @@ async function ensureSchema() {
     create index if not exists idx_salary_payments_school_id on public.salary_payments (school_id);
     create index if not exists idx_accounts_ledger_school_id on public.accounts_ledger (school_id);
     create index if not exists idx_activity_logs_school_id on public.activity_logs (school_id);
+
+    create table if not exists public.super_admin_activation (school_id text primary key, school_name text, email text, password text, status text default 'active', plan text default 'premium', start_date date, expiry_date date, modules_locked boolean default false, last_seen timestamptz, timezone text default 'Asia/Karachi', currency text default 'PKR', symbol text default 'Rs', created_at timestamptz default now(), updated_at timestamptz default now());
+    insert into public.super_admin_activation (school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at) select school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at from public.license_accounts on conflict (school_id) do nothing;
   `);
+  console.log("Schema ready, super_admin_activation table ensured");
 }
 
 function normalizeSchoolId(value) {
@@ -1288,20 +1292,7 @@ app.post("/api/sync-school-data.php", async (req, res) => {
   return res.json({ success: true, license: toLicensePayload(result.rows[0], []) });
 });
 
-async function ensureSuperAdminActivationTable() {
-  try {
-    await pool.query("create table if not exists public.super_admin_activation (school_id text primary key, school_name text, email text, password text, status text default 'active', plan text default 'premium', start_date date, expiry_date date, modules_locked boolean default false, last_seen timestamptz, timezone text default 'Asia/Karachi', currency text default 'PKR', symbol text default 'Rs', created_at timestamptz default now(), updated_at timestamptz default now())");
-    var count = await pool.query("select count(*) as c from public.super_admin_activation");
-    if (parseInt(count.rows[0].c) === 0) {
-      await pool.query("insert into public.super_admin_activation (school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at) select school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at from public.license_accounts on conflict (school_id) do nothing");
-      console.log("Migrated existing schools to super_admin_activation");
-    }
-    console.log("super_admin_activation table ready");
-  } catch (e) {
-    console.error("super_admin_activation table error:", e.message);
-  }
-}
-ensureSuperAdminActivationTable();
+
 
 app.get("/api/admin/schools", async function (req, res) {
   try {
