@@ -1296,8 +1296,8 @@ app.post("/api/sync-school-data.php", async (req, res) => {
 
 app.get("/api/admin/schools", async function (req, res) {
   try {
-    var rows = await pool.query("select school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at from public.super_admin_activation order by updated_at desc");
-    console.log("GET /api/admin/schools: returning", rows.rows.length, "schools from super_admin_activation");
+    var rows = await pool.query("select school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at from public.license_accounts order by updated_at desc");
+    console.log("GET /api/admin/schools: returning", rows.rows.length, "schools");
     return res.json({ success: true, schools: rows.rows });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -1315,7 +1315,7 @@ app.post("/api/admin/schools", async function (req, res) {
   if (!email) return res.status(400).json({ success: false, message: "Email is required." });
   if (!password) return res.status(400).json({ success: false, message: "Password is required." });
   try {
-    var _maxResult = await pool.query("select max(school_id) as max_id from public.super_admin_activation where school_id ~ '^SCH-'");
+    var _maxResult = await pool.query("select max(school_id) as max_id from public.license_accounts where school_id ~ '^SCH-'");
     var _lastId = _maxResult.rows[0].max_id;
     var _num = 1;
     if (_lastId) {
@@ -1324,7 +1324,6 @@ app.post("/api/admin/schools", async function (req, res) {
     }
     var schoolId = "SCH-" + String(_num).padStart(3, '0');
     await pool.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now())", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
-    await pool.query("insert into public.super_admin_activation (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now()) on conflict (school_id) do update set school_name=excluded.school_name, email=excluded.email, password=excluded.password, plan=excluded.plan, status='active', start_date=coalesce(excluded.start_date,super_admin_activation.start_date), expiry_date=coalesce(excluded.expiry_date,super_admin_activation.expiry_date), modules_locked=false, updated_at=now()", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
     var supabaseUrl = process.env.SUPABASE_URL;
     var supabaseKey = process.env.SUPABASE_SECRET_KEY;
     var _supaOk = false;
@@ -1398,7 +1397,6 @@ app.put("/api/admin/schools/:schoolId", async function (req, res) {
     sets.push("updated_at = now()");
     vals.push(schoolId);
     await pool.query("update public.license_accounts set " + sets.join(", ") + " where school_id = $" + idx, vals);
-    await pool.query("update public.super_admin_activation set " + sets.join(", ") + " where school_id = $" + idx, vals);
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -1410,7 +1408,6 @@ app.delete("/api/admin/schools/:schoolId", async function (req, res) {
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
   try {
     await pool.query("delete from public.license_accounts where school_id = $1", [schoolId]);
-    await pool.query("delete from public.super_admin_activation where school_id = $1", [schoolId]);
     return res.json({ success: true, message: "School deleted." });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
