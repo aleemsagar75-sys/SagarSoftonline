@@ -181,6 +181,10 @@ async function ensureSchema() {
       license_token text unique,
       internet_required_after_days integer not null default 20,
       modules_locked boolean not null default false,
+      last_seen timestamptz,
+      timezone text default 'Asia/Karachi',
+      currency text default 'PKR',
+      symbol text default 'Rs',
       created_at timestamptz not null default now(),
       updated_at timestamptz not null default now()
     );
@@ -540,11 +544,8 @@ async function ensureSchema() {
     create index if not exists idx_salary_payments_school_id on public.salary_payments (school_id);
     create index if not exists idx_accounts_ledger_school_id on public.accounts_ledger (school_id);
     create index if not exists idx_activity_logs_school_id on public.activity_logs (school_id);
-
-    create table if not exists public.super_admin_activation (school_id text primary key, school_name text, email text, password text, status text default 'active', plan text default 'premium', start_date date, expiry_date date, modules_locked boolean default false, last_seen timestamptz, timezone text default 'Asia/Karachi', currency text default 'PKR', symbol text default 'Rs', created_at timestamptz default now(), updated_at timestamptz default now());
-    insert into public.super_admin_activation (school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at) select school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at from public.license_accounts on conflict (school_id) do nothing;
   `);
-  console.log("Schema ready, super_admin_activation table ensured");
+  console.log("Schema ready");
 }
 
 function normalizeSchoolId(value) {
@@ -1122,16 +1123,33 @@ app.post("/api/admin/license", requireApiKey, async (req, res) => {
   return res.json({ success: true, school_id: schoolId, license_token: String(body.license_token || `LIC-${schoolId}`) });
 });
 
+async function verifySupabaseAuth(email, password) {
+  var supaUrl = process.env.SUPABASE_URL;
+  var supaKey = process.env.SUPABASE_SECRET_KEY;
+  if (!supaUrl || !supaKey) return "unavailable";
+  try {
+    var resp = await fetch(supaUrl + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": supaKey },
+      body: JSON.stringify({ email: email, password: password, gotrue_meta_security: {} })
+    });
+    return resp.ok ? true : false;
+  } catch (_e) {
+    return "unavailable";
+  }
+}
+
 app.post("/api/activate-school.php", async (req, res) => {
   const email = String(req.body.email || "").trim().toLowerCase();
   const password = String(req.body.password || "");
-  const result = await pool.query(`
-    select * from public.license_accounts
-    where lower(email) = $1 and password = $2
-    limit 1
-  `, [email, password]);
-  if (!result.rowCount) return res.status(401).json({ success: false, message: "Invalid school credentials." });
-  const row = result.rows[0];
+  var supaOk = await verifySupabaseAuth(email, password);
+  if (supaOk === false) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+  if (supaOk === "unavailable") {
+    var _r = await pool.query("select * from public.license_accounts where lower(email) = $1 and password = $2 limit 1", [email, password]);
+    if (!_r.rowCount) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+  }
+  const row = (supaOk === true) ? (await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email])).rows[0] : _r.rows[0];
+  if (!row) return res.status(401).json({ success: false, message: "Invalid school credentials." });
   await pool.query("update public.license_accounts set last_seen = now() where school_id = $1", [row.school_id]);
   const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
   return res.json(toLicensePayload(row, notes.rows));
@@ -1144,6 +1162,14 @@ app.post("/api/mobile/login", async (req, res) => {
   const requestedRole = String(req.body.role || "admin").trim().toLowerCase();
   if (!identifier || !password) {
     return res.status(400).json({ success: false, message: "School email / ID and password are required." });
+  }
+  var _resolveEmail = await pool.query("select email from public.license_accounts where lower(email) = $1 or lower(school_id) = $1 limit 1", [email]);
+  var _authEmail = _resolveEmail.rowCount ? _resolveEmail.rows[0].email : email;
+  var supaOk = await verifySupabaseAuth(_authEmail, password);
+  if (supaOk === false) return res.status(401).json({ success: false, message: "Invalid credentials." });
+  if (supaOk === "unavailable") {
+    var _licCheck = await pool.query("select school_id from public.license_accounts where (lower(email) = $1 or lower(school_id) = $1) and password = $2 limit 1", [email, password]);
+    if (!_licCheck.rowCount) return res.status(401).json({ success: false, message: "Invalid credentials." });
   }
   if (!["admin", "superadmin"].includes(requestedRole)) {
     const userResult = await pool.query(`
@@ -1188,9 +1214,9 @@ app.post("/api/mobile/login", async (req, res) => {
   }
   const result = await pool.query(`
     select * from public.license_accounts
-    where (lower(email) = $1 or lower(school_id) = $1) and password = $2
+    where lower(email) = $1 or lower(school_id) = $1
     limit 1
-  `, [email, password]);
+  `, [email]);
   if (!result.rowCount) {
     return res.status(401).json({ success: false, message: "Invalid school credentials." });
   }
