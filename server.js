@@ -121,7 +121,7 @@ if (webAppDir) {
     var _filePath = path.join(webAppDir, "dashboard.html");
     fs.readFile(_filePath, "utf8", function (_err, _html) {
       if (_err) return res.status(500).send("Error loading dashboard");
-      var _fix = '<script>document.addEventListener("click",function(e){var b=e.target.closest("#activateAccountBtn");if(!b||b.textContent!=="Add School")return;var s=document.getElementById("schoolIdInput");if(s)s.value=""},!0);(function(){var _f=window.fetch;window.fetch=function(u,o){return _f.call(window,u,o).then(function(r){if(u==="/api/admin/schools"&&o&&o.method==="POST"){return r.clone().json().then(function(d){if(d.success&&d.supabase_error){setTimeout(function(){var m=document.getElementById("manageSchoolsMessage");if(m){m.textContent+=" "+d.supabase_error;m.style.color="#e6a817"}},1000)}return r}).catch(function(){return r})}return r})}})();</script>';
+      var _fix = '<script>(function(){var _f=window.fetch;window.fetch=function(u,o){return _f.call(window,u,o).then(function(r){if(u==="/api/admin/schools"&&o&&o.method==="POST"){return r.clone().json().then(function(d){if(d.success&&d.school_id){setTimeout(function(){var s=document.getElementById("schoolIdInput");if(s)s.value=d.school_id},100)}if(d.success&&d.supabase_error){setTimeout(function(){var m=document.getElementById("manageSchoolsMessage");if(m){m.textContent+=" "+d.supabase_error;m.style.color="#e6a817"}},1000)}return r}).catch(function(){return r})}return r})}})();</script>';
       _html = _html.replace('</body>', _fix + '\n</body>');
       res.type("html").send(_html);
     });
@@ -172,7 +172,7 @@ async function ensureSchema() {
     create table if not exists public.license_accounts (
       school_id text primary key,
       school_name text not null default '',
-      email text unique,
+      email text,
       password text,
       status text not null default 'inactive',
       plan text not null default 'monthly',
@@ -544,6 +544,7 @@ async function ensureSchema() {
     create index if not exists idx_salary_payments_school_id on public.salary_payments (school_id);
     create index if not exists idx_accounts_ledger_school_id on public.accounts_ledger (school_id);
     create index if not exists idx_activity_logs_school_id on public.activity_logs (school_id);
+    alter table if exists public.license_accounts drop constraint if exists license_accounts_email_key;
   `);
   console.log("Schema ready");
 }
