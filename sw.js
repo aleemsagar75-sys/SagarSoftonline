@@ -1,4 +1,4 @@
-const CACHE = "sagarsoft-v2";
+var CACHE = "sagarsoft-v3";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
@@ -44,6 +44,17 @@ self.addEventListener("fetch", function (event) {
   var url = new URL(event.request.url);
   if (url.pathname.match(/\.(?:png|ico|svg|jpg|jpeg|gif|woff2?|ttf|eot)$/)) {
     event.respondWith(caches.match(event.request).then(function (hit) { return hit || fetch(event.request); }));
+    return;
+  }
+  if (url.pathname.indexOf(".html") >= 0 || url.pathname === "/" || url.pathname === "") {
+    event.respondWith(
+      fetch(event.request).then(function (response) {
+        return caches.open(CACHE).then(function (cache) {
+          if (response && response.status === 200) { cache.put(event.request, response.clone()); }
+          return response;
+        });
+      }).catch(function () { return caches.match(event.request); })
+    );
     return;
   }
   event.respondWith(
