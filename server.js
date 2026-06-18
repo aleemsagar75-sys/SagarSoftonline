@@ -1358,53 +1358,36 @@ app.post("/api/admin/schools", async function (req, res) {
     var schoolId = "SCH-" + String(_num).padStart(3, '0');
     console.log("POST /api/admin/schools: body.school_id sent:", req.body.school_id, "| auto-generated:", schoolId, "| name:", schoolName, "| email:", email);
     await pool.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now())", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
+    res.json({ success: true, school_id: schoolId, version: "v2.2-auth-fix" });
     var supabaseUrl = process.env.SUPABASE_URL;
     var supabaseKey = process.env.SUPABASE_SECRET_KEY;
-    var _supaOk = false;
     if (supabaseUrl && supabaseKey) {
-      try {
-        var _supaResp = await fetch(supabaseUrl + "/auth/v1/admin/users", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": supabaseKey,
-            "Authorization": "Bearer " + supabaseKey
-          },
-          body: JSON.stringify({
-            email: email,
-            password: password,
-            email_confirm: true,
-            user_metadata: {
-              school_id: schoolId,
-              school_name: schoolName
-            }
-          })
-        });
-        if (_supaResp.ok) {
-          _supaOk = true;
-          console.log("Supabase Auth user created for", email);
-        } else {
-          try {
-            var _errBody = await _supaResp.text().catch(function () { return ""; });
-            console.error("Supabase Auth user creation failed:", _supaResp.status, _errBody);
+      (async function () {
+        try {
+          var _supaResp = await fetch(supabaseUrl + "/auth/v1/admin/users", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey },
+            body: JSON.stringify({ email: email, password: password, email_confirm: true, user_metadata: { school_id: schoolId, school_name: schoolName } })
+          });
+          if (_supaResp.ok) { console.log("Supabase Auth user created for", email); }
+          else {
+            console.error("Supabase Auth user creation failed:", _supaResp.status);
             if (_supaResp.status === 422 || _supaResp.status === 409) {
-              var _listResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(email), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
-              if (_listResp.ok) {
-                var _listData = await _listResp.json();
-                if (_listData.users && _listData.users.length > 0) {
-                  var _uid = _listData.users[0].id;
-                  var _updResp = await fetch(supabaseUrl + "/auth/v1/admin/users/" + _uid, { method: "PUT", headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: "Bearer " + supabaseKey }, body: JSON.stringify({ user_metadata: { school_id: schoolId, school_name: schoolName }, email_confirm: true }) });
-                  if (_updResp.ok) { _supaOk = true; console.log("Supabase Auth user updated for " + email + " to school:" + schoolId); } else { console.error("Supabase Auth user update failed:", _updResp.status); }
+              try {
+                var _listResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(email), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
+                if (_listResp.ok) {
+                  var _listData = await _listResp.json();
+                  if (_listData.users && _listData.users.length > 0) {
+                    await fetch(supabaseUrl + "/auth/v1/admin/users/" + _listData.users[0].id, { method: "PUT", headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: "Bearer " + supabaseKey }, body: JSON.stringify({ user_metadata: { school_id: schoolId, school_name: schoolName }, email_confirm: true }) });
+                    console.log("Supabase Auth user updated for " + email + " to school:" + schoolId);
+                  }
                 }
-              }
+              } catch (_e2) { console.error("Supabase Auth fallback error:", _e2.message); }
             }
-          } catch (_e2) { console.error("Supabase Auth fallback error:", _e2.message); }
-        }
-      } catch (_supabaseError) {
-        console.error("Supabase Auth user creation network error:", _supabaseError.message);
-      }
+          }
+        } catch (_supabaseError) { console.error("Supabase Auth error:", _supabaseError.message); }
+      })();
     }
-    return res.json({ success: true, school_id: schoolId, supabase_user_created: _supaOk, supabase_error: !_supaOk && supabaseUrl ? "Supabase Auth failed — check Render server logs" : undefined, version: "v2.2-auth-fix" });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
