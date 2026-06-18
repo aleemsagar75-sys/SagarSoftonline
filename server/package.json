@@ -1,0 +1,10 @@
+{
+  "name": "sagarsoft-server",
+  "version": "1.0.0",
+  "dependencies": {
+    "express": "^4.21.0",
+    "pg": "^8.13.0",
+    "dotenv": "^16.4.0",
+    "cors": "^2.8.5"
+  }
+}
