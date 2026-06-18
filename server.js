@@ -1404,7 +1404,7 @@ app.post("/api/admin/schools", async function (req, res) {
         console.error("Supabase Auth user creation network error:", _supabaseError.message);
       }
     }
-    return res.json({ success: true, school_id: schoolId, supabase_user_created: _supaOk, supabase_error: !_supaOk && supabaseUrl ? "Supabase Auth failed — check Render server logs" : undefined, version: "v2.1-getattr-override" });
+    return res.json({ success: true, school_id: schoolId, supabase_user_created: _supaOk, supabase_error: !_supaOk && supabaseUrl ? "Supabase Auth failed — check Render server logs" : undefined, version: "v2.2-auth-fix" });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -1412,7 +1412,7 @@ app.post("/api/admin/schools", async function (req, res) {
 
 app.get("/api/debug", function (req, res) {
   res.json({
-    version: "v2.1-getattr-override",
+    version: "v2.2-auth-fix",
     supabase_url_set: !!process.env.SUPABASE_URL,
     supabase_key_set: !!process.env.SUPABASE_SECRET_KEY,
     node_version: process.version
