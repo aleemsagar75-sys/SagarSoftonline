@@ -121,7 +121,7 @@ if (webAppDir) {
     var _filePath = path.join(webAppDir, "dashboard.html");
     fs.readFile(_filePath, "utf8", function (_err, _html) {
       if (_err) return res.status(500).send("Error loading dashboard");
-      var _fix = '<script>(function(){if("caches" in window){caches.keys().then(function(ks){ks.forEach(function(k){if(k.indexOf("sagarsoft")>=0)caches.delete(k)})})}if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})})}})();(function(){var _g=Element.prototype.getAttribute;Element.prototype.getAttribute=function(n){if(n==="data-edit-school-id"&&this.id==="activateAccountBtn"&&(this.textContent||"").trim()==="Add School")return null;return _g.call(this,n)}})();document.addEventListener("click",function(e){var b=e.target.closest("#activateAccountBtn");if(!b||(b.textContent||"").trim()!=="Add School")return;if(b.dataset)delete b.dataset.editSchoolId;var s=document.getElementById("schoolIdInput");if(s)s.value=""},!0);(function(){var _f=window.fetch;window.fetch=function(u,o){if(typeof u==="string"&&u.indexOf("/api/admin/schools")>=0&&o){if(o.method==="PUT"){var _b2=document.getElementById("activateAccountBtn");if(_b2&&(_b2.textContent||"").trim()==="Add School"){console.log("FIX PUT2POST");o.method="POST";u=""+u.replace(/\\/api\\/admin\\/schools\\/[^\\/]+$/,"/api/admin/schools")}}if(o.body&&typeof o.body==="string"&&(o.method==="POST"||o.method==="PUT")){try{var _b=JSON.parse(o.body);delete _b.school_id;o.body=JSON.stringify(_b)}catch(e){}}}return _f.call(window,u,o).then(function(r){if(typeof u==="string"&&u.indexOf("/api/admin/schools")>=0&&o&&o.method==="POST"){return r.clone().json().then(function(d){if(d.success&&d.school_id){var btn=document.getElementById("activateAccountBtn");if(btn){btn.textContent="Add School";btn.removeAttribute("data-edit-school-id")}setTimeout(function(){var s=document.getElementById("schoolIdInput");if(s)s.value=d.school_id},200)}if(d.success&&d.supabase_error){setTimeout(function(){var m=document.getElementById("manageSchoolsMessage");if(m){m.textContent+=" "+d.supabase_error;m.style.color="#e6a817"}},1000)}return r}).catch(function(){return r})}return r})}})();</script>';
+      var _fix = '<script>(function(){if("caches" in window){caches.keys().then(function(ks){ks.forEach(function(k){if(k.indexOf("sagarsoft")>=0)caches.delete(k)})})}if("serviceWorker" in navigator){navigator.serviceWorker.getRegistrations().then(function(rs){rs.forEach(function(r){r.unregister()})})}})();(function(){var _g=Element.prototype.getAttribute;Element.prototype.getAttribute=function(n){if(n==="data-edit-school-id"&&this.id==="activateAccountBtn"&&(this.textContent||"").trim()==="Add School")return null;return _g.call(this,n)}})();(function(){var _f=window.fetch;window.fetch=function(u,o){if(typeof u==="string"&&u.indexOf("/api/admin/schools")>=0&&o){if(o.method==="PUT"){var _b2=document.getElementById("activateAccountBtn");if(_b2&&(_b2.textContent||"").trim()==="Add School"){o.method="POST";u=""+u.replace(/\\/api\\/admin\\/schools\\/[^\\/]+$/,"/api/admin/schools")}}if(o.body&&typeof o.body==="string"&&(o.method==="POST"||o.method==="PUT")){try{var _b=JSON.parse(o.body);delete _b.school_id;o.body=JSON.stringify(_b)}catch(e){}}}return _f.call(window,u,o)}})();</script>';
       _html = _html.replace('</body>', _fix + '\n</body>');
       _html = _html.replace(/(href|src)="\.\//g, '$1="/app/');
       res.type("html").send(_html);
@@ -1348,15 +1348,14 @@ app.post("/api/admin/schools", async function (req, res) {
   if (!email) return res.status(400).json({ success: false, message: "Email is required." });
   if (!password) return res.status(400).json({ success: false, message: "Password is required." });
   try {
-    var _maxResult = await pool.query("select max(school_id) as max_id from public.license_accounts where school_id ~ '^SCH-'");
+    var _dupCheck = await pool.query("select school_id from public.license_accounts where email = $1", [email]);
+    if (_dupCheck.rows.length > 0) return res.status(409).json({ success: false, message: "This email is already registered with school: " + _dupCheck.rows[0].school_id + ". Use a different email." });
+    var _year = new Date().getFullYear();
+    var _maxResult = await pool.query("select max(school_id) as max_id from public.license_accounts where school_id like 'SCH-" + _year + "-%'");
     var _lastId = _maxResult.rows[0].max_id;
     var _num = 1;
-    if (_lastId) {
-      var _parts = _lastId.split('-');
-      _num = parseInt(_parts[_parts.length - 1], 10) + 1;
-    }
-    var schoolId = "SCH-" + String(_num).padStart(3, '0');
-    console.log("POST /api/admin/schools: body.school_id sent:", req.body.school_id, "| auto-generated:", schoolId, "| name:", schoolName, "| email:", email);
+    if (_lastId) { var _parts = _lastId.split('-'); _num = parseInt(_parts[_parts.length - 1], 10) + 1; }
+    var schoolId = "SCH-" + _year + "-" + String(_num).padStart(3, '0');
     await pool.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now())", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
     res.json({ success: true, school_id: schoolId, version: "v2.2-auth-fix" });
     var supabaseUrl = process.env.SUPABASE_URL;
