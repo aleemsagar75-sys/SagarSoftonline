@@ -127,6 +127,7 @@ if (webAppDir) {
       res.type("html").send(_html);
     });
   });
+  app.use(express.static(webAppDir));
 }
 
 app.get("/", (_req, res) => {
