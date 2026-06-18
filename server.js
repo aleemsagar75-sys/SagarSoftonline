@@ -1384,9 +1384,21 @@ app.post("/api/admin/schools", async function (req, res) {
           _supaOk = true;
           console.log("Supabase Auth user created for", email);
         } else {
-          var _supaBody = await _supaResp.text().catch(function () { return ""; });
-          console.error("Supabase Auth user creation failed:", _supaResp.status, _supaBody);
-          try { var _supaParsed = JSON.parse(_supaBody); _supaBody = _supaParsed.msg || _supaParsed.error_description || _supaParsed.message || _supaBody; } catch (e) {}
+          try {
+            var _errBody = await _supaResp.text().catch(function () { return ""; });
+            console.error("Supabase Auth user creation failed:", _supaResp.status, _errBody);
+            if (_supaResp.status === 422 || _supaResp.status === 409) {
+              var _listResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(email), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
+              if (_listResp.ok) {
+                var _listData = await _listResp.json();
+                if (_listData.users && _listData.users.length > 0) {
+                  var _uid = _listData.users[0].id;
+                  var _updResp = await fetch(supabaseUrl + "/auth/v1/admin/users/" + _uid, { method: "PUT", headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: "Bearer " + supabaseKey }, body: JSON.stringify({ user_metadata: { school_id: schoolId, school_name: schoolName }, email_confirm: true }) });
+                  if (_updResp.ok) { _supaOk = true; console.log("Supabase Auth user updated for " + email + " to school:" + schoolId); } else { console.error("Supabase Auth user update failed:", _updResp.status); }
+                }
+              }
+            }
+          } catch (_e2) { console.error("Supabase Auth fallback error:", _e2.message); }
         }
       } catch (_supabaseError) {
         console.error("Supabase Auth user creation network error:", _supabaseError.message);
@@ -1456,7 +1468,23 @@ app.delete("/api/admin/schools/:schoolId", async function (req, res) {
   var schoolId = String(req.params.schoolId || "").trim();
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
   try {
+    var _delResult = await pool.query("select email from public.license_accounts where school_id = $1", [schoolId]);
+    var _delEmail = _delResult.rows.length > 0 ? _delResult.rows[0].email : null;
     await pool.query("delete from public.license_accounts where school_id = $1", [schoolId]);
+    var _delSupaUrl = process.env.SUPABASE_URL, _delSupaKey = process.env.SUPABASE_SECRET_KEY;
+    if (_delEmail && _delSupaUrl && _delSupaKey) {
+      try {
+        var _delListResp = await fetch(_delSupaUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(_delEmail), { headers: { apikey: _delSupaKey, Authorization: "Bearer " + _delSupaKey } });
+        if (_delListResp.ok) {
+          var _delListData = await _delListResp.json();
+          if (_delListData.users && _delListData.users.length > 0) {
+            var _delUid = _delListData.users[0].id;
+            await fetch(_delSupaUrl + "/auth/v1/admin/users/" + _delUid, { method: "DELETE", headers: { apikey: _delSupaKey, Authorization: "Bearer " + _delSupaKey } });
+            console.log("Supabase Auth user deleted for", _delEmail);
+          }
+        }
+      } catch (_delSupaErr) { console.error("Supabase Auth delete error:", _delSupaErr.message); }
+    }
     return res.json({ success: true, message: "School deleted." });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
