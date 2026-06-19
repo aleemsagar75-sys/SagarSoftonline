@@ -1651,5 +1651,3 @@ ensureSchema()
     console.error("Unable to start SagarSoft online API:", error);
     process.exit(1);
   });
-
-app.get("/api/test-deploy", (_r, _s) => _s.json({ ok: true, time: "15:01:16", sha: "3084f7bc267d" }));
