@@ -1,436 +1,1185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>SagarSoft - Dashboard</title>
-<link rel="stylesheet" href="./css/base.css">
-<link rel="stylesheet" href="./css/admin.css">
-<style>
-:root{--nav-h:48px;--sidebar-w:220px}
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
-.topnav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:#fff;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;padding:0 20px;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.topnav .logo{font-weight:700;font-size:16px;color:#1a1a2e;display:flex;align-items:center;gap:8px}
-.topnav .logo img{height:28px;width:auto}
-.topnav .spacer{flex:1}
-.topnav .user-info{font-size:13px;color:#555;display:flex;align-items:center;gap:12px}
-.topnav .user-info .role-badge{background:#1e5eff;color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600}
-.topnav .user-info .logout-btn{background:none;border:1px solid #ddd;padding:4px 14px;border-radius:6px;cursor:pointer;font-size:12px;color:#555;transition:.15s}
-.topnav .user-info .logout-btn:hover{background:#f5f5f5;border-color:#ccc}
-.layout{display:flex;margin-top:var(--nav-h);min-height:calc(100vh - var(--nav-h))}
-.sidebar{width:var(--sidebar-w);background:#1a1a2e;color:#fff;padding:12px 0;flex-shrink:0;position:sticky;top:var(--nav-h);height:calc(100vh - var(--nav-h));overflow-y:auto}
-.sidebar .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:#aaa;cursor:pointer;font-size:13px;transition:.15s;border-left:3px solid transparent}
-.sidebar .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
-.sidebar .nav-item.active{background:rgba(30,94,255,.15);color:#fff;border-left-color:#1e5eff}
-.sidebar .nav-item .icon{width:18px;text-align:center;font-size:15px}
-.main{flex:1;padding:24px;overflow-y:auto}
-.page-header{margin-bottom:20px}
-.page-header h1{font-size:22px;font-weight:700}
-.page-header p{color:#666;font-size:13px;margin-top:4px}
-.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
-.stat-card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.stat-card .stat-label{font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.5px}
-.stat-card .stat-value{font-size:24px;font-weight:700;margin-top:4px;color:#1a1a2e}
-.stat-card .stat-sub{font-size:12px;color:#888;margin-top:2px}
-.card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;margin-bottom:20px}
-.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #f0f0f0}
-.card-header h2{font-size:14px;font-weight:600}
-.card-body{padding:18px;overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:10px 12px;border-bottom:2px solid #f0f0f0;color:#666;font-weight:600;white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
-td{padding:10px 12px;border-bottom:1px solid #f5f5f5}
-tr:hover td{background:#fafbfc}
-.badge{padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600}
-.badge.active{background:#e6f7e6;color:#1a7d1a}
-.badge.inactive{background:#ffe6e6;color:#cc0000}
-.btn{padding:6px 16px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:5px}
-.btn-primary{background:#1e5eff;color:#fff}
-.btn-primary:hover{background:#1648cc}
-.btn-success{background:#1a7d1a;color:#fff}
-.btn-success:hover{background:#146414}
-.btn-danger{background:#dc3545;color:#fff}
-.btn-danger:hover{background:#b02a37}
-.btn-warning{background:#f59e0b;color:#fff}
-.btn-warning:hover{background:#d48a08}
-.btn-outline{background:transparent;border:1px solid #ddd;color:#555}
-.btn-outline:hover{background:#f5f5f5}
-.btn-sm{padding:4px 10px;font-size:11px}
-.action-cell{display:flex;gap:4px;flex-wrap:wrap}
-.empty-state{text-align:center;padding:40px 20px;color:#999}
-.empty-state .icon{font-size:40px;margin-bottom:10px}
-.role-dashboard{padding:20px}
-.role-dashboard h2{font-size:20px;margin-bottom:8px}
-.role-dashboard .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:16px}
-.role-dashboard .info-card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
-.info-card .label{font-size:11px;text-transform:uppercase;color:#888;margin-bottom:4px}
-.info-card .value{font-size:15px;font-weight:600;color:#1a1a2e}
-.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
-.modal-overlay.open{opacity:1;pointer-events:auto}
-.modal{background:#fff;border-radius:12px;width:92%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);transform:translateY(10px);transition:transform .2s}
-.modal-overlay.open .modal{transform:translateY(0)}
-.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f0f0f0}
-.modal-header h3{font-size:15px;font-weight:700}
-.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#999;padding:0;line-height:1}
-.modal-body{padding:20px}
-.form-group{margin-bottom:14px}
-.form-group label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px}
-.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;transition:.15s}
-.form-group input:focus,.form-group select:focus{border-color:#1e5eff;box-shadow:0 0 0 3px rgba(30,94,255,.1)}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 20px;border-top:1px solid #f0f0f0}
-.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:13px;font-weight:600;z-index:300;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
-.toast.show{opacity:1;transform:translateY(0)}
-.toast.success{background:#1a7d1a}
-.toast.error{background:#dc3545}
-.toast.info{background:#1e5eff}
-.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.7);z-index:250;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
-.loading-overlay.show{opacity:1;pointer-events:auto}
-.spinner{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#1e5eff;border-radius:50%;animation:spin .7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.confirm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:210;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
-.confirm-overlay.open{opacity:1;pointer-events:auto}
-.confirm-box{background:#fff;border-radius:12px;width:340px;padding:24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2)}
-.confirm-box h4{font-size:15px;margin-bottom:8px}
-.confirm-box p{font-size:13px;color:#666;margin-bottom:18px}
-.confirm-box .btns{display:flex;gap:8px;justify-content:center}
-@media(max-width:768px){
-  .sidebar{display:none}
-  .layout{margin-top:var(--nav-h)}
-  .main{padding:12px}
-  .form-row{grid-template-columns:1fr}
-  .stats-row{grid-template-columns:repeat(2,1fr)}
-}
-@media(max-width:480px){
-  .topnav .user-info .role-badge{display:none}
-  .stats-row{grid-template-columns:1fr}
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#08172f">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="SagarSoft SMS">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
+  <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
+  <title>SagarSoft Management System | Dashboard</title>
+  <link rel="stylesheet" href="./css/base.css">
+  <link rel="stylesheet" href="./css/dashboard.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar__header">
+        <div class="brand-mark">
+          <img src="./assets/SagarSoft.logo.png" alt="SagarSoft Logo" class="brand-mark__img">
+        </div>
+        <div class="brand-copy">
+          <strong>SagarSoft</strong>
+          <span>School Management</span>
+        </div>
+        <button class="icon-button sidebar-collapse" id="sidebarCollapseBtn" type="button" aria-label="Toggle sidebar">
+          <span></span>
+        </button>
+      </div>
 
-<!-- Top Nav -->
-<nav class="topnav">
-  <div class="logo">
-    <img src="./assets/SagarSoft.logo.png" alt="SagarSoft" onerror="this.style.display='none'">
-    SagarSoft
-  </div>
-  <div class="spacer"></div>
-  <div class="user-info">
-    <span id="userName"></span>
-    <span class="role-badge" id="userRole"></span>
-    <button class="logout-btn" onclick="handleLogout()">Logout</button>
-  </div>
-</nav>
+      <div class="sidebar__body">
+        <nav class="menu" aria-label="Sidebar Navigation">
+          <button class="menu-link active" type="button" data-route="dashboard" data-title="Dashboard">
+            <span class="menu-link__left">
+              <span class="menu-icon">01</span>
+              <span class="menu-label">Dashboard</span>
+            </span>
+          </button>
 
-<!-- Layout -->
-<div class="layout">
-  <!-- Sidebar -->
-  <aside class="sidebar" id="sidebar"></aside>
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="general-settings" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">02</span>
+                <span class="menu-label">General Settings</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="institute-profile" data-title="Institute Profile">Institute Profile</button>
+              <button class="submenu-link" type="button" data-route="fees-particulars" data-title="Fees Particulars">Fees Particulars</button>
+              <button class="submenu-link" type="button" data-route="fees-structure" data-title="Fees Structure">Fees Structure</button>
+              <button class="submenu-link" type="button" data-route="discount-type" data-title="Discount Type">Discount Type</button>
+              <button class="submenu-link" type="button" data-route="accounts-for-fees-invoice" data-title="Accounts For Fees Invoice">Accounts For Fees Invoice</button>
+              <button class="submenu-link" type="button" data-route="rules-regulations" data-title="Rules & Regulations">Rules & Regulations</button>
+              <button class="submenu-link" type="button" data-route="marks-grading" data-title="Marks Grading">Marks Grading</button>
+              <button class="submenu-link" type="button" data-route="theme-language" data-title="Theme & Language">Theme & Language</button>
+              <button class="submenu-link" type="button" data-route="account-settings" data-title="Account Settings">Account Settings</button>
+            </div>
+          </div>
 
-  <!-- Main Content -->
-  <main class="main" id="mainContent"></main>
-</div>
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="classes" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">03</span>
+                <span class="menu-label">Classes</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="all-classes" data-title="All Classes">All Classes</button>
+              <button class="submenu-link" type="button" data-route="new-class" data-title="New Class">New Class</button>
+            </div>
+          </div>
 
-<!-- Modal -->
-<div class="modal-overlay" id="modalOverlay">
-  <div class="modal">
-    <div class="modal-header">
-      <h3 id="modalTitle"></h3>
-      <button class="modal-close" onclick="closeModal()">&times;</button>
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="subjects" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">04</span>
+                <span class="menu-label">Subjects</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="classes-with-subjects" data-title="Classes With Subjects">Classes With Subjects</button>
+              <button class="submenu-link" type="button" data-route="assign-subjects" data-title="Assign Subjects">Assign Subjects</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="students" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">05</span>
+                <span class="menu-label">Students</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="all-students" data-title="All Students">All Students</button>
+              <button class="submenu-link" type="button" data-route="students-add-new" data-title="Add New">Add New</button>
+              <button class="submenu-link" type="button" data-route="students-active-inactive" data-title="Active / Inactive">Active / Inactive</button>
+              <button class="submenu-link" type="button" data-route="admission-letter" data-title="Admission Letter">Admission Letter</button>
+              <button class="submenu-link" type="button" data-route="student-id-cards" data-title="Student ID Cards">Student ID Cards</button>
+              <button class="submenu-link" type="button" data-route="print-basic-list" data-title="Print Basic List">Print Basic List</button>
+              <button class="submenu-link" type="button" data-route="students-manage-login" data-title="Manage Login">Manage Login</button>
+              <button class="submenu-link" type="button" data-route="promote-students" data-title="Promote Students">Promote Students</button>
+              <button class="submenu-link" type="button" data-route="parents-manage-login" data-title="Manage Parent Login">Manage Parent Login</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="employees" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">06</span>
+                <span class="menu-label">Employees</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="all-employees" data-title="All Employees">All Employees</button>
+              <button class="submenu-link" type="button" data-route="employees-add-new" data-title="Add New">Add New</button>
+              <button class="submenu-link" type="button" data-route="staff-id-cards" data-title="Staff ID Cards">Staff ID Cards</button>
+              <button class="submenu-link" type="button" data-route="job-letter" data-title="Job Letter">Job Letter</button>
+              <button class="submenu-link" type="button" data-route="employees-manage-login" data-title="Manage Login">Manage Login</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="accounts" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">07</span>
+                <span class="menu-label">Accounts</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="chart-of-account" data-title="Chart Of Account">Chart Of Account</button>
+              <button class="submenu-link" type="button" data-route="add-income" data-title="Add Income">Add Income</button>
+              <button class="submenu-link" type="button" data-route="add-expense" data-title="Add Expense">Add Expense</button>
+              <button class="submenu-link" type="button" data-route="account-statement" data-title="Account Statement">Account Statement</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="fees" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">08</span>
+                <span class="menu-label">Fees</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="generate-fees-invoice" data-title="Generate Fees Invoice">Generate Fees Invoice</button>
+              <button class="submenu-link" type="button" data-route="collect-fees" data-title="Collect Fees">Collect Fees</button>
+              <button class="submenu-link" type="button" data-route="fees-defaulters" data-title="Fees Defaulters">Fees Defaulters</button>
+              <button class="submenu-link" type="button" data-route="fees-report" data-title="Fees Report">Fees Report</button>
+              <button class="submenu-link" type="button" data-route="delete-fees" data-title="Delete Fees">Delete Fees</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="salary" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">09</span>
+                <span class="menu-label">Salary</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="salary-paid-slip" data-title="Salary Paid Slip">Salary Paid Slip</button>
+              <button class="submenu-link" type="button" data-route="salary-report" data-title="Salary Report">Salary Report</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="attendance" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">10</span>
+                <span class="menu-label">Attendance</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="students-attendance" data-title="Students Attendance">Students Attendance</button>
+              <button class="submenu-link" type="button" data-route="employees-attendance" data-title="Employees Attendance">Employees Attendance</button>
+              <button class="submenu-link" type="button" data-route="class-wise-report" data-title="Class wise Report">Class wise Report</button>
+              <button class="submenu-link" type="button" data-route="students-attendance-report" data-title="Students Attendance Report">Students Attendance Report</button>
+              <button class="submenu-link" type="button" data-route="employees-attendance-report" data-title="Employees Attendance Report">Employees Attendance Report</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="timetable" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">11</span>
+                <span class="menu-label">Timetable</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="weekdays" data-title="Weekdays">Weekdays</button>
+              <button class="submenu-link" type="button" data-route="time-periods" data-title="Time Periods">Time Periods</button>
+              <button class="submenu-link" type="button" data-route="class-rooms" data-title="Class Rooms">Class Rooms</button>
+              <button class="submenu-link" type="button" data-route="create-timetable" data-title="Create Timetable">Create Timetable</button>
+              <button class="submenu-link" type="button" data-route="generate-for-class" data-title="Generate For Class">Generate For Class</button>
+              <button class="submenu-link" type="button" data-route="generate-for-teacher" data-title="Generate For Teacher">Generate For Teacher</button>
+            </div>
+          </div>
+
+          <button class="menu-link" type="button" data-route="homework" data-title="Homework">
+            <span class="menu-link__left">
+              <span class="menu-icon">12</span>
+              <span class="menu-label">Homework</span>
+            </span>
+          </button>
+
+          <button class="menu-link" type="button" data-route="whatsapp" data-title="WhatsApp">
+            <span class="menu-link__left">
+              <span class="menu-icon">13</span>
+              <span class="menu-label">WhatsApp</span>
+            </span>
+          </button>
+
+          <button class="menu-link" type="button" data-route="sms-services" data-title="SMS Services">
+            <span class="menu-link__left">
+              <span class="menu-icon">15</span>
+              <span class="menu-label">SMS Services</span>
+            </span>
+          </button>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="question-paper" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">16</span>
+                <span class="menu-label">Question Paper</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="subject-chapters" data-title="Subject Chapters">Subject Chapters</button>
+              <button class="submenu-link" type="button" data-route="question-bank" data-title="Question Bank">Question Bank</button>
+              <button class="submenu-link" type="button" data-route="create-question-paper" data-title="Create Question Paper">Create Question Paper</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="exams" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">17</span>
+                <span class="menu-label">Exams</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="create-new-exam" data-title="Create New Exam">Create New Exam</button>
+              <button class="submenu-link" type="button" data-route="add-update-exam-marks" data-title="Add / update Exam Marks">Add / update Exam Marks</button>
+              <button class="submenu-link" type="button" data-route="result-card" data-title="Result Card">Result Card</button>
+              <button class="submenu-link" type="button" data-route="result-sheet" data-title="Result Sheet">Result Sheet</button>
+              <button class="submenu-link" type="button" data-route="exam-schedule" data-title="Exam Schedule">Exam Schedule</button>
+              <button class="submenu-link" type="button" data-route="date-sheet" data-title="Date Sheet">Date Sheet</button>
+              <button class="submenu-link" type="button" data-route="blank-award-list" data-title="Blank Award List">Blank Award List</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="class-tests" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">18</span>
+                <span class="menu-label">Class Tests</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="manage-test-marks" data-title="Manage Test Marks">Manage Test Marks</button>
+              <button class="submenu-link" type="button" data-route="test-result" data-title="Test Result">Test Result</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="reports" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">19</span>
+                <span class="menu-label">Reports</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="students-report-card" data-title="Students report Card">Students report Card</button>
+              <button class="submenu-link" type="button" data-route="students-info-report" data-title="Students info report">Students info report</button>
+              <button class="submenu-link" type="button" data-route="parents-info-report" data-title="Parents info report">Parents info report</button>
+              <button class="submenu-link" type="button" data-route="students-monthly-attendance-report" data-title="Students Monthly Attendance Report">Students Monthly Attendance Report</button>
+              <button class="submenu-link" type="button" data-route="staff-monthly-attendance-report" data-title="Staff Monthly Attendance Report">Staff Monthly Attendance Report</button>
+              <button class="submenu-link" type="button" data-route="fee-collection-report" data-title="Fee Collection Report">Fee Collection Report</button>
+              <button class="submenu-link" type="button" data-route="student-progress-report" data-title="Student Progress Report">Student Progress Report</button>
+              <button class="submenu-link" type="button" data-route="accounts-report" data-title="Accounts Report">Accounts Report</button>
+              <button class="submenu-link" type="button" data-route="customised-reports" data-title="Customised Reports">Customised Reports</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="certificates" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">20</span>
+                <span class="menu-label">Certificates</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="generate-certificate" data-title="Generate Certificate">Generate Certificate</button>
+              <button class="submenu-link" type="button" data-route="certificate-templates" data-title="Certificate Templates">Certificate Templates</button>
+            </div>
+          </div>
+
+          <div class="menu-group">
+            <button class="menu-group__trigger" type="button" data-accordion="sms-templates" aria-expanded="false">
+              <span class="menu-link__left">
+                <span class="menu-icon">21</span>
+                <span class="menu-label">Sms/Whatsapp Templates</span>
+              </span>
+              <span class="menu-arrow"></span>
+            </button>
+            <div class="menu-group__panel">
+              <button class="submenu-link" type="button" data-route="sms-templates" data-title="Sms/Whatsapp Templates">All Templates</button>
+            </div>
+          </div>
+        </nav>
+
+        <section class="sidebar-card">
+          <p class="sidebar-card__label">Online Mode</p>
+          <strong>All modules are cloud-connected.</strong>
+          <span>Data is stored securely on Supabase cloud servers.</span>
+        </section>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="topbar">
+        <div class="topbar__left">
+          <button class="icon-button mobile-menu-button" id="mobileMenuBtn" type="button" aria-label="Open sidebar">
+            <span></span>
+          </button>
+          <div>
+            <p class="page-tag">School Dashboard</p>
+            <h1 id="pageTitle">Dashboard Overview</h1>
+          </div>
+          <div class="topbar-search" id="topbarSearch">
+            <input id="dashboardSearchInput" type="search" placeholder="Search student by name or roll number...">
+            <div id="dashboardSearchDropdown"></div>
+          </div>
+        </div>
+
+        <div class="topbar__right">
+          <div class="notification-menu" id="notificationMenu">
+            <button class="icon-button notification-button" id="notificationBtn" type="button" aria-label="Notifications">
+              <span class="notification-dot" id="notificationDot"></span>
+            </button>
+            <div class="notification-menu__dropdown" id="notificationDropdown">
+              <div class="notification-menu__head">
+                <strong>Notifications</strong>
+                <button class="text-button" id="clearNotificationsBtn" type="button" style="color:#d64b4b;font-size:11px;margin-right:8px;">Clear</button>
+                <button class="text-button" id="markNotificationsReadBtn" type="button">Mark All Read</button>
+              </div>
+              <div class="notification-menu__list" id="notificationList"></div>
+            </div>
+          </div>
+
+          <div class="profile-menu" id="profileMenu">
+            <button class="profile-menu__trigger" id="profileMenuBtn" type="button" aria-expanded="false">
+              <div class="profile-avatar" id="profileAvatar">SA</div>
+              <div class="profile-copy">
+                <strong id="profileName">System Admin</strong>
+                <span id="profileRole">Admin</span>
+              </div>
+            </button>
+
+            <div class="profile-menu__dropdown" id="profileDropdown"></div>
+          </div>
+        </div>
+      </header>
+
+      <main class="content-area">
+        <section class="view active" id="view-dashboard" data-view="dashboard">
+          <div class="hero-panel">
+            <div>
+              <span class="hero-chip">Realtime Local Snapshot</span>
+              <h2 id="welcomeTitle">Welcome back</h2>
+              <p id="welcomeText">Your school data is available locally and ready for today's work.</p>
+            </div>
+            <div class="hero-metrics">
+              <article>
+                <div class="hero-stat-header">Revenue</div>
+                <div class="hero-stat-amount">
+                  <span class="hero-stat-symbol" id="heroRevenueSymbol">Rs</span>
+                  <strong class="hero-stat-value" id="heroRevenueValue">0</strong>
+                </div>
+                <div class="hero-stat-footer">
+                  <span>This Month</span>
+                  <strong class="hero-stat-footer-amount" id="heroRevenueFooter">Rs 0</strong>
+                </div>
+              </article>
+              <article>
+                <div class="hero-stat-header">Profit</div>
+                <div class="hero-stat-amount">
+                  <span class="hero-stat-symbol" id="heroProfitSymbol">Rs</span>
+                  <strong class="hero-stat-value" id="heroProfitValue">0</strong>
+                </div>
+                <div class="hero-stat-footer">
+                  <span>This Month</span>
+                  <strong class="hero-stat-footer-amount" id="heroProfitFooter">Rs 0</strong>
+                </div>
+              </article>
+              <article>
+                <strong id="heroLiveClock">--:--:--</strong>
+                <span id="heroLiveDate">Live date</span>
+              </article>
+            </div>
+          </div>
+
+          <section class="stats-grid" id="statsGrid"></section>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <button class="primary-button" id="downloadMobileAppBtn" type="button"><i class="fas fa-mobile-alt"></i> Download Mobile App</button>
+            <button class="primary-button" id="dashboardScanAttendanceBtn" type="button"><i class="fas fa-qrcode"></i> Scan Attendance</button>
+          </div>
+
+          <section class="dashboard-grid dashboard-grid--analytics">
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Finance Overview</p>
+                  <h3>Income vs Expense</h3>
+                </div>
+              </div>
+              <div id="dashboardFinanceChart" class="report-chart-box"></div>
+            </article>
+
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Attendance Overview</p>
+                  <h3>Present / Leave / Absent</h3>
+                </div>
+              </div>
+              <div id="dashboardAttendanceBar" class="report-bar-list"></div>
+            </article>
+          </section>
+
+          <section class="dashboard-grid dashboard-grid--attendance-detail">
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Today Absent Students</p>
+                  <h3>Students marked absent today</h3>
+                </div>
+              </div>
+              <div id="dashboardAbsentStudents" class="dashboard-attendance-list"></div>
+            </article>
+
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Today Present Employees</p>
+                  <h3>Employees marked present today</h3>
+                </div>
+              </div>
+              <div id="dashboardPresentEmployees" class="dashboard-attendance-list"></div>
+            </article>
+          </section>
+
+          <section class="dashboard-grid">
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Recent Activity</p>
+                  <h3>Latest school actions</h3>
+                </div>
+              </div>
+              <div class="activity-list" id="activityList"></div>
+            </article>
+
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Quick Insights</p>
+                  <h3>What needs attention</h3>
+                </div>
+              </div>
+              <div class="insight-list" id="insightList"></div>
+            </article>
+          </section>
+        </section>
+
+        <section class="view" id="view-students-workspace" data-view="students-workspace">
+          <div class="section-head">
+            <div>
+              <p class="panel-label" id="studentsSectionLabel">Students Module</p>
+              <h2 id="studentsViewTitle">All Students</h2>
+            </div>
+            <div class="action-row">
+              <button class="secondary-button" id="resetStudentFiltersBtn" type="button">Reset Filters</button>
+              <button class="primary-button" id="openStudentFormBtn" type="button">Add Student</button>
+            </div>
+          </div>
+
+          <section class="panel-card all-students-shell" id="allStudentsShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">Enrolled Students</p>
+                <h3>Search by name or roll number</h3>
+              </div>
+            </div>
+
+            <div class="toolbar toolbar--simple">
+              <div class="search-wrap">
+                <input id="allStudentsSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap">
+                <div id="allStudentsSearchDropdown" class="search-dropdown"></div>
+              </div>
+              <select id="allStudentsClassFilter">
+                <option value="all">All Classes</option>
+              </select>
+              <select id="allStudentsGenderFilter">
+                <option value="all">All Gender</option>
+                <option value="Male">Boys</option>
+                <option value="Female">Girls</option>
+              </select>
+            </div>
+
+            <div class="student-directory-grid" id="studentDirectoryGrid"></div>
+            <p class="empty-state" id="studentDirectoryEmptyState" hidden>No enrolled student found.</p>
+          </section>
+
+          <section class="panel-card all-students-shell" id="studentStatusShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">Student Status</p>
+                <h3>Manage active and inactive students</h3>
+              </div>
+            </div>
+
+            <div class="toolbar toolbar--status">
+              <div class="search-wrap">
+                <input id="studentStatusSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap">
+                <div id="studentStatusSearchDropdown" class="search-dropdown"></div>
+              </div>
+              <select id="studentStatusClassFilter">
+                <option value="all">All Classes</option>
+              </select>
+            </div>
+
+            <div class="student-directory-grid" id="studentStatusGrid"></div>
+            <p class="empty-state" id="studentStatusEmptyState" hidden>No student found for this search or class filter.</p>
+          </section>
+
+          <section class="panel-card all-students-shell" id="admissionLetterShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">Admission Letter</p>
+                <h3>Search and generate student admission form</h3>
+              </div>
+            </div>
+
+            <div class="toolbar toolbar--simple">
+              <div class="search-wrap">
+                <input id="admissionLetterSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap">
+                <div id="admissionLetterSearchDropdown" class="search-dropdown"></div>
+              </div>
+            </div>
+
+            <div class="admission-letter-layout">
+              <article class="panel-card admission-search-card">
+                <div class="panel-card__header">
+                  <div>
+                    <p class="panel-label">Students</p>
+                    <h3>Select student</h3>
+                  </div>
+                </div>
+                <div id="admissionLetterStudentList" class="compact-list"></div>
+                <p class="empty-state" id="admissionLetterEmptyState" hidden>No student found for this search.</p>
+              </article>
+
+              <article class="panel-card admission-detail-card">
+                <div class="panel-card__header">
+                  <div>
+                    <p class="panel-label">Selected Student</p>
+                    <h3>Admission details</h3>
+                  </div>
+                  <div class="form-actions">
+                    <button class="table-action-btn" id="sendAdmissionMessageBtn" type="button">Send Message</button>
+                    <button class="table-action-btn" id="sendAdmissionWhatsappBtn" type="button">WhatsApp</button>
+                    <button class="primary-button" id="printAdmissionLetterBtn" type="button">Print Admission Letter</button>
+                  </div>
+                </div>
+                <div id="admissionLetterDetail" class="stacked-copy"></div>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel-card all-students-shell" id="studentIdCardsShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">Student ID Cards</p>
+                <h3>Modern school ID cards for enrolled students</h3>
+              </div>
+              <button class="primary-button" id="printAllStudentIdCardsBtn" type="button">Print All Cards</button>
+            </div>
+
+            <div class="toolbar toolbar--status">
+              <input id="studentIdCardsSearchInput" type="search" placeholder="Search by student name or roll number">
+              <select id="studentIdCardsClassFilter">
+                <option value="all">All Classes</option>
+              </select>
+              <button class="secondary-button" id="printClasswiseStudentIdCardsBtn" type="button">Print Classwise</button>
+            </div>
+
+            <div class="id-cards-grid" id="studentIdCardsGrid"></div>
+            <p class="empty-state" id="studentIdCardsEmptyState" hidden>No enrolled student found for this filter.</p>
+          </section>
+
+          <section class="panel-card all-students-shell" id="printBasicListShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">Print Basic List</p>
+                <h3>Class-wise enrolled student list</h3>
+              </div>
+              <button class="primary-button" id="printBasicListBtn" type="button">Print List</button>
+            </div>
+
+            <div class="toolbar toolbar--status">
+              <input id="printBasicListSearchInput" type="search" placeholder="Search by student name or roll number">
+              <select id="printBasicListClassFilter">
+                <option value="all">All Classes</option>
+              </select>
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Sr. No</th>
+                    <th>Roll Number</th>
+                    <th>Name</th>
+                    <th>Father Name</th>
+                    <th>Class</th>
+                    <th>Phone Number</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="printBasicListTableBody"></tbody>
+              </table>
+            </div>
+            <p class="empty-state" id="printBasicListEmptyState" hidden>No student found for this filter.</p>
+          </section>
+
+          <section class="panel-card all-students-shell" id="allClassesShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">All Classes</p>
+                <h3>Class analytics and quick actions</h3>
+              </div>
+            </div>
+            <div id="allClassesContainer" class="classes-card-grid"></div>
+            <p class="empty-state" id="allClassesEmptyState" hidden>No class created yet.</p>
+            <p class="form-message" id="allClassesMessage"></p>
+          </section>
+
+          <section class="panel-card all-students-shell" id="newClassShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">New Class</p>
+                <h3 id="newClassTitle">Create New Class</h3>
+              </div>
+            </div>
+            <form id="newClassForm" class="student-form" novalidate>
+              <input id="newClassId" type="hidden">
+              <div class="form-grid">
+                <div class="field-group">
+                  <label for="newClassName">Class Name*</label>
+                  <input id="newClassName" type="text" placeholder="e.g Play Group" required>
+                </div>
+                <div class="field-group">
+                  <label for="newClassSection">Section</label>
+                  <input id="newClassSection" type="text" placeholder="e.g A" required>
+                </div>
+                <div class="field-group">
+                  <label for="newClassMonthlyFee">Monthly Tuition Fees*</label>
+                  <input id="newClassMonthlyFee" type="number" min="0" placeholder="e.g 1800" required>
+                </div>
+                <div class="field-group">
+          <label for="newClassTeacher">Select Class Teacher*</label>
+          <select id="newClassTeacher" required>
+            <option value="">Select</option>
+          </select>
+        </div>
+      </div>
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Save Class</button>
+                <button class="secondary-button" id="clearClassFormBtn" type="button">Clear</button>
+              </div>
+              <p class="form-message" id="newClassFormMessage"></p>
+            </form>
+          </section>
+
+          <section class="panel-card all-students-shell" id="classesWithSubjectsShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">Classes With Subjects</p>
+                <h3>Class wise subjects and marks overview</h3>
+              </div>
+            </div>
+            <div class="class-subjects-grid" id="classesWithSubjectsGrid"></div>
+            <p class="empty-state" id="classesWithSubjectsEmptyState" hidden>No classes or subjects found yet.</p>
+            <p class="form-message" id="classesWithSubjectsMessage"></p>
+          </section>
+
+          <section class="panel-card all-students-shell" id="assignSubjectsShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label" id="assignSubjectsHeading">Create Subjects</p>
+                <h3 id="assignSubjectsTitle">Assign Subjects</h3>
+              </div>
+            </div>
+            <form id="assignSubjectsForm" class="student-form" novalidate>
+              <div class="form-grid">
+                <div class="field-group">
+                  <label for="assignSubjectsClass">Select Class*</label>
+                  <select id="assignSubjectsClass" required>
+                    <option value="">Select*</option>
+                  </select>
+                </div>
+              </div>
+
+              <section class="form-section">
+                <div class="form-section__header">
+                  <p class="panel-label">Subject Rows</p>
+                  <h4>Add subjects with marks</h4>
+                </div>
+                <div class="subjects-rows" id="assignSubjectsRows"></div>
+                <div class="form-actions">
+                  <button class="secondary-button" id="addSubjectRowBtn" type="button">Add Fields</button>
+                  <button class="secondary-button" id="removeSubjectRowBtn" type="button">Remove Field</button>
+                </div>
+              </section>
+
+              <div class="form-actions">
+                <button class="primary-button" type="submit">Assign Subjects</button>
+              </div>
+              <p class="form-message" id="assignSubjectsMessage"></p>
+            </form>
+          </section>
+
+          <section class="panel-card all-students-shell" id="studentsManageLoginShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">Manage Student Login</p>
+                <h3>Search and update username/password</h3>
+              </div>
+            </div>
+
+            <div class="toolbar toolbar--simple">
+              <input id="studentsManageLoginSearchInput" type="search" placeholder="Search by student name or roll number">
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Roll No</th>
+                    <th>Name</th>
+                    <th>Username</th>
+                    <th>Password</th>
+                    <th>Account Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="studentsManageLoginTableBody"></tbody>
+              </table>
+            </div>
+            <p class="empty-state" id="studentsManageLoginEmptyState" hidden>No student found for login update.</p>
+          </section>
+
+          <section class="panel-card all-students-shell" id="promoteStudentsShell">
+            <div class="panel-card__header">
+              <div>
+                <p class="panel-label">Promote Students</p>
+                <h3>Class-wise student promotion</h3>
+              </div>
+              <button class="primary-button" id="promoteSelectedStudentsBtn" type="button">Promote Selected</button>
+            </div>
+
+            <div class="toolbar toolbar--promote">
+              <input id="promoteStudentsSearchInput" type="search" placeholder="Search by student name or roll number">
+              <select id="promoteStudentsClassFilter">
+                <option value="all">All Classes</option>
+              </select>
+              <select id="promoteTargetClassSelect">
+                <option value="">Select Target Class</option>
+              </select>
+
+            </div>
+
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Select</th>
+                    <th>Roll No</th>
+                    <th>Name</th>
+                    <th>Father Name</th>
+                    <th>Class</th>
+                  </tr>
+                </thead>
+                <tbody id="promoteStudentsTableBody"></tbody>
+              </table>
+            </div>
+            <p class="empty-state" id="promoteStudentsEmptyState" hidden>No student found for this class/search.</p>
+            <p class="form-message" id="promoteStudentsMessage"></p>
+          </section>
+
+          <section class="student-tools-shell" id="studentToolsShell">
+          <section class="stats-grid stats-grid--students" id="studentStatsGrid"></section>
+
+          <section class="student-layout">
+            <article class="panel-card student-table-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Student Directory</p>
+                  <h3>Search, filter, edit, and delete</h3>
+                </div>
+              </div>
+
+              <div class="toolbar toolbar--students">
+                <input id="studentSearchInput" type="search" placeholder="Search by name, admission no, or class">
+                <select id="studentClassFilter">
+                  <option value="all">All Classes</option>
+                </select>
+                <select id="studentStatusFilter">
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Admission No</th>
+                      <th>Name</th>
+                      <th>Class</th>
+
+                      <th>Phone</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="studentsTableBody"></tbody>
+                </table>
+              </div>
+              <p class="empty-state" id="studentsEmptyState" hidden>No students match the current filters.</p>
+            </article>
+
+            <article class="panel-card student-form-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Student Form</p>
+                  <h3 id="studentFormTitle">Admission Form</h3>
+                </div>
+              </div>
+
+              <form id="studentForm" class="student-form" novalidate>
+                <input id="studentId" type="hidden">
+                <input id="studentStatus" type="hidden" value="active">
+                <section class="form-section">
+                  <div class="form-section__header">
+                    <p class="panel-label">1 Student Information</p>
+                    <h4>Admission details</h4>
+                  </div>
+
+                  <div class="form-grid">
+                    <div class="field-group">
+                      <label for="studentName">Student Name*</label>
+                      <input id="studentName" type="text" placeholder="Name of Student" required>
+                    </div>
+                    <div class="field-group">
+                      <label for="studentPicture">Picture - Optional</label>
+                      <input id="studentPicture" type="file" accept="image/*">
+                      <small class="helper-text">Max size 100KB</small>
+                    </div>
+                    <div class="field-group">
+                      <label for="admissionNo">Roll No*</label>
+                      <div class="input-prefix-group">
+                        <span class="input-prefix">STD</span>
+                        <input id="admissionNo" type="text" inputmode="numeric" pattern="[0-9]+" placeholder="001" required class="input-prefix-field">
+                      </div>
+                      <small id="admissionNoWarning" class="warning-text">Roll No already exists</small>
+                    </div>
+                    <div class="field-group">
+                      <label for="dateOfAdmission">Date of Admission*</label>
+                      <input id="dateOfAdmission" type="date" required>
+                    </div>
+                    <div class="field-group">
+                      <label for="studentClassName">Select Class*</label>
+                      <select id="studentClassName" required></select>
+                    </div>
+                    <div class="field-group">
+                      <label for="discountInFee">Discount In Fee*</label>
+                      <input id="discountInFee" type="number" min="0" max="100" placeholder="In %">
+                    </div>
+                    <div class="field-group">
+                      <label for="studentPhone">Mobile No. for SMS/WhatsApp</label>
+                      <input id="studentPhone" type="text" inputmode="numeric" placeholder="e.g 03444444444">
+                    </div>
+
+                  </div>
+                </section>
+
+                <section class="form-section">
+                  <div class="form-section__header">
+                    <p class="panel-label">2 Other Information</p>
+                    <h4>Student profile</h4>
+                  </div>
+
+                  <div class="form-grid">
+                    <div class="field-group">
+                      <label for="dateOfBirth">Date Of Birth</label>
+                      <input id="dateOfBirth" type="date">
+                    </div>
+                    <div class="field-group">
+                      <label for="studentGender">Gender</label>
+                      <select id="studentGender">
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    <div class="field-group">
+                      <label for="bloodGroup">Blood Group</label>
+                      <input id="bloodGroup" type="text" placeholder="B+">
+                    </div>
+                    <div class="field-group">
+                      <label for="diseaseInfo">Disease If Any?</label>
+                      <input id="diseaseInfo" type="text" placeholder="Optional">
+                    </div>
+                    <div class="field-group">
+                      <label for="birthId">Student Birth Form ID / NIC</label>
+                      <input id="birthId" type="text" inputmode="numeric" placeholder="Enter ID / NIC">
+                    </div>
+                    <div class="field-group">
+                      <label for="previousSchool">Previous School</label>
+                      <input id="previousSchool" type="text" placeholder="School name">
+                    </div>
+                    <div class="field-group">
+                      <label for="previousId">Previous ID / Board Roll No</label>
+                      <input id="previousId" type="text" inputmode="numeric" placeholder="Enter roll no">
+                    </div>
+                    <div class="field-group">
+                      <label for="orphanStatus">Orphan Student</label>
+                      <select id="orphanStatus">
+                        <option value="">Select</option>
+                        <option value="No">No</option>
+                        <option value="Yes">Yes</option>
+                      </select>
+                    </div>
+                    <div class="field-group">
+                      <label for="religion">Religion</label>
+                      <input id="religion" type="text" placeholder="Religion">
+                    </div>
+                    <div class="field-group field-group--full">
+                      <label for="studentAddress">Address</label>
+                      <textarea id="studentAddress" rows="3" placeholder="Full address"></textarea>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="form-section">
+                  <div class="form-section__header">
+                    <p class="panel-label">3 Father/Guardian Information</p>
+                    <h4>Guardian details</h4>
+                  </div>
+
+                  <div class="form-grid">
+                    <div class="field-group">
+                      <label for="fatherName">Father Name</label>
+                      <input id="fatherName" type="text" placeholder="Father name">
+                    </div>
+                    <div class="field-group">
+                      <label for="fatherEducation">Education</label>
+                      <input id="fatherEducation" type="text" placeholder="Education">
+                    </div>
+                    <div class="field-group">
+                      <label for="fatherNationalId">Father National ID</label>
+                      <input id="fatherNationalId" type="text" inputmode="numeric" placeholder="National ID">
+                    </div>
+                    <div class="field-group">
+                      <label for="fatherPhone">Mobile No</label>
+                      <input id="fatherPhone" type="text" inputmode="numeric" placeholder="Mobile number">
+                    </div>
+                    <div class="field-group">
+                      <label for="fatherOccupation">Occupation</label>
+                      <input id="fatherOccupation" type="text" placeholder="Occupation">
+                    </div>
+                    <div class="field-group">
+                      <label for="fatherIncome">Income</label>
+                      <input id="fatherIncome" type="text" inputmode="numeric" placeholder="Monthly income">
+                    </div>
+                  </div>
+                </section>
+
+                <section class="form-section">
+                  <div class="form-section__header">
+                    <p class="panel-label">4 Mother Information</p>
+                    <h4>Mother details</h4>
+                  </div>
+
+                  <div class="form-grid">
+                    <div class="field-group">
+                      <label for="motherName">Mother Name</label>
+                      <input id="motherName" type="text" placeholder="Mother name">
+                    </div>
+                    <div class="field-group">
+                      <label for="motherEducation">Education</label>
+                      <input id="motherEducation" type="text" placeholder="Education">
+                    </div>
+                    <div class="field-group">
+                      <label for="motherNationalId">Mother National ID</label>
+                      <input id="motherNationalId" type="text" inputmode="numeric" placeholder="National ID">
+                    </div>
+                    <div class="field-group">
+                      <label for="motherPhone">Mobile No</label>
+                      <input id="motherPhone" type="text" inputmode="numeric" placeholder="Mobile number">
+                    </div>
+                    <div class="field-group">
+                      <label for="motherOccupation">Occupation</label>
+                      <input id="motherOccupation" type="text" placeholder="Occupation">
+                    </div>
+                  </div>
+                </section>
+
+                <div class="form-actions">
+                  <button class="primary-button" id="saveStudentBtn" type="submit">Save Student</button>
+                  <button class="secondary-button" id="cancelStudentEditBtn" type="button">Clear</button>
+                </div>
+                <p class="form-message" id="studentFormMessage" aria-live="polite"></p>
+              </form>
+            </article>
+          </section>
+
+          <section class="split-grid" id="studentsSecondaryGrid">
+            <article class="panel-card" id="studentsUtilityCard">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Student Tool</p>
+                  <h3 id="studentsUtilityTitle">All Students View</h3>
+                </div>
+              </div>
+              <div id="studentsUtilityContent" class="stacked-copy"></div>
+            </article>
+
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Recent Student Activity</p>
+                  <h3>Latest updates</h3>
+                </div>
+              </div>
+              <div id="studentsActivityList" class="activity-list"></div>
+            </article>
+          </section>
+          </section>
+        </section>
+
+        <div class="student-modal" id="studentModal" hidden>
+          <div class="student-modal__backdrop" data-modal-close="true"></div>
+          <div class="student-modal__dialog">
+            <button class="student-modal__close" id="closeStudentModalBtn" type="button" aria-label="Close student details">Close</button>
+            <div id="studentModalContent" class="stacked-copy"></div>
+          </div>
+        </div>
+
+        <div class="student-modal" id="employeeModal" hidden>
+          <div class="student-modal__backdrop" data-modal-close="true"></div>
+          <div class="student-modal__dialog">
+            <button class="student-modal__close" id="closeEmployeeModalBtn" type="button" aria-label="Close employee details">Close</button>
+            <div id="employeeModalContent" class="stacked-copy"></div>
+          </div>
+        </div>
+
+        <section class="view" id="view-module" data-view="module">
+          <div class="section-head">
+            <div>
+              <p class="panel-label" id="moduleSectionLabel">Selected Module</p>
+              <h2 id="moduleTitle">Module Workspace</h2>
+            </div>
+          </div>
+          <div class="split-grid">
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Current Selection</p>
+                  <h3 id="moduleCardTitle">Module Placeholder</h3>
+                </div>
+              </div>
+              <div id="moduleSummary" class="stacked-copy"></div>
+            </article>
+            <article class="panel-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label" id="moduleGuideLabel">Build Status</p>
+                  <h3 id="moduleGuideTitle">Next implementation step</h3>
+                </div>
+              </div>
+              <div id="moduleGuide" class="stacked-copy"></div>
+            </article>
+          </div>
+          <div id="moduleFullWidth" style="margin-top:16px;"></div>
+        </section>
+      </main>
     </div>
-    <div class="modal-body" id="modalBody"></div>
-    <div class="modal-footer" id="modalFooter"></div>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   </div>
-</div>
 
-<!-- Confirm -->
-<div class="confirm-overlay" id="confirmOverlay">
-  <div class="confirm-box">
-    <h4 id="confirmTitle"></h4>
-    <p id="confirmMessage"></p>
-    <div class="btns">
-      <button class="btn btn-outline" onclick="closeConfirm()">Cancel</button>
-      <button class="btn btn-danger" id="confirmBtn">Confirm</button>
-    </div>
-  </div>
-</div>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="./js/online-config.js"></script>
+  <script src="./js/crypto-utils.js"></script>
+  <script src="./js/storage.js"></script>
+  <script src="./js/auth.js"></script>
+  <script src="./js/dashboard.js?v=20260615"></script>
+  <script>
+    // FIX: School creation — clear school_id when adding new, clear form after success
+    var _origFetch = window.fetch;
+    window.fetch = function () {
+      var args = arguments;
+      var url = typeof args[0] === "string" ? args[0] : (args[0] && args[0].url || "");
+      var opts = args[1] || {};
+      var method = opts.method || "GET";
+      // Before POST (new school): clear pre-filled school_id so server generates a new one
+      if (url.indexOf("/api/admin/schools") > -1 && method === "POST") {
+        var body = {};
+        try { body = JSON.parse(opts.body || "{}"); } catch (e) {}
+        var btn = document.getElementById("activateAccountBtn");
+        var isNew = btn && !btn.getAttribute("data-edit-school-id");
+        if (isNew && body.school_id && body.school_id.indexOf("SCH-") !== 0) {
+          delete body.school_id;
+          var newBody = JSON.stringify(body);
+          if (typeof args[0] === "string") {
+            args = [args[0], Object.assign({}, opts, { body: newBody })];
+          } else {
+            args[0] = Object.assign({}, args[0], { body: newBody });
+            args = [args[0], args[1]];
+          }
+        }
+      }
+      return _origFetch.apply(this, args).then(function (r) {
+        if (url.indexOf("/api/admin/schools") > -1 && method === "POST") {
+          var clone = r.clone();
+          clone.json().then(function (d) {
+            if (d && d.success && d.school_id) {
+              ["schoolIdInput","schoolNameInput","accountUsernameInput","accountPasswordInput"].forEach(function (id) {
+                var el = document.getElementById(id); if (el) el.value = "";
+              });
+              if (d.supabase_error) {
+                var msg = document.getElementById("manageSchoolsMessage");
+                if (msg) { msg.textContent = "School added! WARNING: " + d.supabase_error; msg.className = "form-message warning"; }
+              }
+            } else if (d && !d.success && d.message) {
+              var msg = document.getElementById("manageSchoolsMessage");
+              if (msg) { msg.textContent = d.message; msg.className = "form-message error"; }
+            }
+          }).catch(function () {});
+        }
+        return r;
+      });
+    };
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js');
+      });
+    }
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
-
-<!-- Loading -->
-<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
-
-<script>
-/* ====== CONFIG ====== */
-var API = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
-
-/* ====== TOAST ====== */
-function showToast(msg, type) {
-  var el = document.getElementById("toast");
-  el.textContent = msg; el.className = "toast " + type + " show";
-  clearTimeout(el._t); el._t = setTimeout(function(){ el.className = "toast"; }, 3000);
-}
-
-/* ====== LOADING ====== */
-function showLoading(v) { document.getElementById("loadingOverlay").className = "loading-overlay" + (v?" show":""); }
-
-/* ====== MODAL ====== */
-function openModal(title, bodyHtml, footerHtml) {
-  document.getElementById("modalTitle").textContent = title;
-  document.getElementById("modalBody").innerHTML = bodyHtml;
-  document.getElementById("modalFooter").innerHTML = footerHtml || "";
-  document.getElementById("modalOverlay").className = "modal-overlay open";
-}
-function closeModal() { document.getElementById("modalOverlay").className = "modal-overlay"; }
-
-/* ====== CONFIRM ====== */
-var _confirmCb = null;
-function openConfirm(title, msg, cb) {
-  document.getElementById("confirmTitle").textContent = title;
-  document.getElementById("confirmMessage").textContent = msg;
-  document.getElementById("confirmOverlay").className = "confirm-overlay open";
-  _confirmCb = cb;
-}
-function closeConfirm() { document.getElementById("confirmOverlay").className = "confirm-overlay"; _confirmCb = null; }
-document.getElementById("confirmBtn").onclick = function() {
-  if (_confirmCb) _confirmCb();
-  closeConfirm();
-};
-
-/* ====== AUTH ====== */
-var user = (window.SagarSoftAuth && window.SagarSoftAuth.requireAuth()) || null;
-if (!user) { /* requireAuth already redirects */ }
-
-document.getElementById("userName").textContent = user ? user.name : "";
-document.getElementById("userRole").textContent = user ? user.role : "";
-
-function handleLogout() {
-  if (window.SagarSoftAuth) { window.SagarSoftAuth.logout(); }
-  window.location.href = "./login.html";
-}
-
-/* ====== SIDEBAR ====== */
-var sidebarNav = [
-  { id: "dashboard", icon: "?", label: "Dashboard", roles: ["superadmin","admin","teacher","student","parent"] },
-  { id: "schools", icon: "?", label: "Schools", roles: ["superadmin"] }
-];
-
-function buildSidebar() {
-  var html = "";
-  sidebarNav.forEach(function(item) {
-    if (item.roles.indexOf(user.role) === -1) return;
-    html += '<div class="nav-item" data-page="'+item.id+'" onclick="switchPage(\''+item.id+'\')">'+
-      '<span class="icon">'+item.icon+'</span>'+item.label+'</div>';
-  });
-  document.getElementById("sidebar").innerHTML = html;
-}
-
-function setActiveNav(id) {
-  var items = document.querySelectorAll(".sidebar .nav-item");
-  items.forEach(function(el) { el.className = "nav-item" + (el.dataset.page === id ? " active" : ""); });
-}
-
-/* ====== PAGE ROUTER ====== */
-function switchPage(page) {
-  setActiveNav(page);
-  if (page === "dashboard") renderDashboard();
-  else if (page === "schools") renderSchools();
-}
-
-/* ====== ROLE DASHBOARD ====== */
-function renderDashboard() {
-  var html = "";
-  if (user.role === "superadmin") {
-    html = '<div class="page-header"><h1>Dashboard</h1><p>Welcome back, '+user.name+'</p></div>'+
-      '<div class="stats-row" id="statsRow"></div>'+
-      '<div class="card"><div class="card-header"><h2>Recent Schools</h2></div><div class="card-body" id="recentSchools"></div></div>';
-    document.getElementById("mainContent").innerHTML = html;
-    loadStatsAndRecent();
-  } else {
-    var db = window.SagarSoftDB ? window.SagarSoftDB.getDatabase() : null;
-    var schoolName = "SagarSoft Public School";
-    var schoolId = db && db.generalSettings && db.generalSettings.licenseSettings ? db.generalSettings.licenseSettings.schoolName : "";
-    if (schoolId) schoolName = schoolId;
-    var roleLabels = { admin:"School Admin", teacher:"Teacher", student:"Student", parent:"Parent" };
-    html = '<div class="page-header"><h1>'+schoolName+'</h1><p>Welcome, '+user.name+' ('+(roleLabels[user.role]||user.role)+')</p></div>'+
-      '<div class="role-dashboard">'+
-      '<div class="info-grid">'+
-      '<div class="info-card"><div class="label">Name</div><div class="value">'+user.name+'</div></div>'+
-      '<div class="info-card"><div class="label">Email</div><div class="value">'+user.email+'</div></div>'+
-      '<div class="info-card"><div class="label">Role</div><div class="value" style="text-transform:capitalize">'+(roleLabels[user.role]||user.role)+'</div></div>'+
-      '<div class="info-card"><div class="label">Login Time</div><div class="value">'+new Date(user.loginAt).toLocaleString()+'</div></div>'+
-      '</div></div>';
-    document.getElementById("mainContent").innerHTML = html;
-  }
-}
-
-/* ====== SUPER ADMIN STATS ====== */
-function loadStatsAndRecent() {
-  fetch(API+"/api/admin/schools").then(function(r){return r.json()}).then(function(d){
-    if (!d.success) return;
-    var s = d.schools || [];
-    var active = s.filter(function(x){return x.status === "active"}).length;
-    var total = s.length;
-    document.getElementById("statsRow").innerHTML =
-      '<div class="stat-card"><div class="stat-label">Total Schools</div><div class="stat-value">'+total+'</div></div>'+
-      '<div class="stat-card"><div class="stat-label">Active</div><div class="stat-value">'+active+'</div><div class="stat-sub">'+Math.round(active/total*100||0)+'%</div></div>'+
-      '<div class="stat-card"><div class="stat-label">Inactive</div><div class="stat-value">'+(total-active)+'</div></div>';
-    var recent = s.slice(-5).reverse();
-    var h = '<table><thead><tr><th>ID</th><th>Name</th><th>Status</th></tr></thead><tbody>';
-    recent.forEach(function(x){ h += '<tr><td>'+x.school_id+'</td><td>'+x.school_name+'</td><td><span class="badge '+(x.status==="active"?"active":"inactive")+'">'+x.status+'</span></td></tr>'; });
-    h += '</tbody></table>';
-    document.getElementById("recentSchools").innerHTML = h;
-  }).catch(function(){});
-}
-
-/* ====== SCHOOLS PAGE (Super Admin) ====== */
-function renderSchools() {
-  var html = '<div class="page-header"><h1>School Management</h1><p>Manage all registered schools</p></div>'+
-    '<div class="card"><div class="card-header"><h2>All Schools</h2><button class="btn btn-primary btn-sm" onclick="showAddSchool()">+ Add School</button></div>'+
-    '<div class="card-body"><div id="schoolsTable"><div class="empty-state"><div class="icon">?</div><p>Loading schools...</p></div></div></div></div>';
-  document.getElementById("mainContent").innerHTML = html;
-  loadSchools();
-}
-
-function loadSchools() {
-  showLoading(true);
-  fetch(API+"/api/admin/schools").then(function(r){return r.json()}).then(function(d){
-    showLoading(false);
-    if (!d.success) { document.getElementById("schoolsTable").innerHTML = '<div class="empty-state"><p>Failed to load schools.</p></div>'; return; }
-    var s = d.schools || [];
-    if (!s.length) { document.getElementById("schoolsTable").innerHTML = '<div class="empty-state"><div class="icon">?</div><p>No schools registered yet.</p></div>'; return; }
-    var h = '<table><thead><tr><th>School ID</th><th>Name</th><th>Email</th><th>Plan</th><th>Created</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-    s.forEach(function(x){
-      var statusClass = x.status === "active" ? "active" : "inactive";
-      h += '<tr><td><strong>'+x.school_id+'</strong></td><td>'+x.school_name+'</td><td>'+x.email+'</td><td>'+x.plan+'</td>'+
-        '<td>'+(x.created_at ? new Date(x.created_at).toLocaleDateString() : '-')+'</td>'+
-        '<td><span class="badge '+statusClass+'">'+x.status+'</span></td>'+
-        '<td class="action-cell">'+
-        '<button class="btn btn-outline btn-sm" onclick="editSchool(\''+x.school_id+'\')">Edit</button>'+
-        (x.status === "active"
-          ? '<button class="btn btn-warning btn-sm" onclick="toggleStatus(\''+x.school_id+'\',\'inactive\')">Deactivate</button>'
-          : '<button class="btn btn-success btn-sm" onclick="toggleStatus(\''+x.school_id+'\',\'active\')">Activate</button>')+
-        '<button class="btn btn-danger btn-sm" onclick="confirmDelete(\''+x.school_id+'\')">Delete</button>'+
-        '</td></tr>';
-    });
-    h += '</tbody></table>';
-    document.getElementById("schoolsTable").innerHTML = h;
-  }).catch(function(e){
-    showLoading(false);
-    document.getElementById("schoolsTable").innerHTML = '<div class="empty-state"><p>Error: '+e.message+'</p></div>';
-  });
-}
-
-/* ====== ADD SCHOOL ====== */
-function showAddSchool() {
-  var html = '<div class="form-group"><label>School Name</label><input id="f_name" placeholder="e.g. Bright Future School"></div>'+
-    '<div class="form-group"><label>Email</label><input id="f_email" type="email" placeholder="admin@school.com"></div>'+
-    '<div class="form-group"><label>Password</label><input id="f_pass" type="password" placeholder="Set password"></div>'+
-    '<div class="form-row"><div class="form-group"><label>Plan</label><select id="f_plan"><option value="premium">Premium</option><option value="standard">Standard</option><option value="basic">Basic</option></select></div>'+
-    '<div class="form-group"><label class="label-note">School ID is auto-generated</label></div></div>';
-  openModal("Add New School", html,
-    '<button class="btn btn-outline" onclick="closeModal()">Cancel</button>'+
-    '<button class="btn btn-primary" onclick="addSchool()">Add School</button>');
-}
-
-function addSchool() {
-  var name = document.getElementById("f_name").value.trim();
-  var email = document.getElementById("f_email").value.trim();
-  var pass = document.getElementById("f_pass").value.trim();
-  var plan = document.getElementById("f_plan").value;
-  if (!name || !email || !pass) { showToast("Please fill all fields", "error"); return; }
-  showLoading(true);
-  fetch(API+"/api/admin/schools", {
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({school_name:name, email:email, password:pass, plan:plan})
-  }).then(function(r){return r.json()}).then(function(d){
-    showLoading(false);
-    if (!d.success) { showToast(d.message||"Failed to add school", "error"); return; }
-    showToast("School added: "+d.school_id, "success");
-    closeModal();
-    loadSchools();
-  }).catch(function(e){ showLoading(false); showToast("Error: "+e.message, "error"); });
-}
-
-/* ====== EDIT SCHOOL ====== */
-var _editId = null;
-function editSchool(id) {
-  _editId = id;
-  fetch(API+"/api/admin/schools").then(function(r){return r.json()}).then(function(d){
-    if (!d.success) return;
-    var school = (d.schools || []).find(function(x){return x.school_id === id});
-    if (!school) { showToast("School not found", "error"); return; }
-    var html = '<div class="form-group"><label>School Name</label><input id="e_name" value="'+school.school_name.replace(/"/g,'&quot;')+'"></div>'+
-      '<div class="form-group"><label>Email</label><input id="e_email" type="email" value="'+school.email.replace(/"/g,'&quot;')+'"></div>'+
-      '<div class="form-group"><label>New Password (leave blank to keep)</label><input id="e_pass" type="password" placeholder="Leave blank to keep current"></div>'+
-      '<div class="form-row"><div class="form-group"><label>Plan</label><select id="e_plan"><option value="premium"'+(school.plan==="premium"?" selected":"")+'>Premium</option><option value="standard"'+(school.plan==="standard"?" selected":"")+'>Standard</option><option value="basic"'+(school.plan==="basic"?" selected":"")+'>Basic</option></select></div>'+
-      '<div class="form-group"><label>Status</label><select id="e_status"><option value="active"'+(school.status==="active"?" selected":"")+'>Active</option><option value="inactive"'+(school.status==="inactive"?" selected":"")+'>Inactive</option></select></div></div>'+
-      '<div class="form-row"><div class="form-group"><label>Start Date</label><input id="e_start" type="date" value="'+(school.start_date||'')+'"></div>'+
-      '<div class="form-group"><label>Expiry Date</label><input id="e_expiry" type="date" value="'+(school.expiry_date||'')+'"></div></div>';
-    openModal("Edit School - "+id, html,
-      '<button class="btn btn-outline" onclick="closeModal()">Cancel</button>'+
-      '<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>');
-  }).catch(function(e){ showToast("Error: "+e.message, "error"); });
-}
-
-function saveEdit() {
-  var body = {school_name: document.getElementById("e_name").value.trim()};
-  body.email = document.getElementById("e_email").value.trim();
-  var pass = document.getElementById("e_pass").value.trim();
-  if (pass) body.password = pass;
-  body.plan = document.getElementById("e_plan").value;
-  body.status = document.getElementById("e_status").value;
-  body.start_date = document.getElementById("e_start").value || null;
-  body.expiry_date = document.getElementById("e_expiry").value || null;
-  if (!body.school_name || !body.email) { showToast("Name and email are required", "error"); return; }
-  showLoading(true);
-  fetch(API+"/api/admin/schools/"+_editId, {
-    method:"PUT",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(body)
-  }).then(function(r){return r.json()}).then(function(d){
-    showLoading(false);
-    if (!d.success) { showToast(d.message||"Failed to update", "error"); return; }
-    showToast("School updated", "success");
-    closeModal();
-    loadSchools();
-  }).catch(function(e){ showLoading(false); showToast("Error: "+e.message, "error"); });
-}
-
-/* ====== TOGGLE STATUS ====== */
-function toggleStatus(id, status) {
-  showLoading(true);
-  fetch(API+"/api/admin/schools/"+id, {
-    method:"PUT",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({status:status})
-  }).then(function(r){return r.json()}).then(function(d){
-    showLoading(false);
-    if (!d.success) { showToast(d.message||"Failed", "error"); return; }
-    showToast("School "+ (status === "active" ? "activated" : "deactivated"), "success");
-    loadSchools();
-  }).catch(function(e){ showLoading(false); showToast("Error: "+e.message, "error"); });
-}
-
-/* ====== DELETE SCHOOL ====== */
-function confirmDelete(id) {
-  openConfirm("Delete School", "Are you sure you want to delete "+id+"? This cannot be undone.", function(){
-    showLoading(true);
-    fetch(API+"/api/admin/schools/"+id, {method:"DELETE"}).then(function(r){return r.json()}).then(function(d){
-      showLoading(false);
-      if (!d.success) { showToast(d.message||"Failed to delete", "error"); return; }
-      showToast("School deleted", "success");
-      loadSchools();
-    }).catch(function(e){ showLoading(false); showToast("Error: "+e.message, "error"); });
-  });
-}
-
-/* ====== INIT ====== */
-buildSidebar();
-switchPage("dashboard");
-</script>
+  </script>
 </body>
 </html>
