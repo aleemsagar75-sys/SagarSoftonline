@@ -19413,6 +19413,8 @@ ${allContent}
 
       if (activateAccountBtn) {
         activateAccountBtn.addEventListener("click", async function () {
+          if (activateAccountBtn.disabled) return;
+          activateAccountBtn.disabled = true;
           var editSchoolId = activateAccountBtn.getAttribute("data-edit-school-id");
           var schoolIdInput = document.getElementById("schoolIdInput");
           var nameEl = document.getElementById("schoolNameInput");
