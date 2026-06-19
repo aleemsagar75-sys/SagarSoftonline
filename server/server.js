@@ -1053,7 +1053,7 @@ function isLicenseUsable(row) {
 
 app.get("/health", async (_req, res) => {
   await pool.query("select 1");
-  res.json({ success: true, version: "v3-modern", message: "SagarSoft online API is running." });
+  res.json({ success: true, message: "SagarSoft online API is running." });
 });
 
 app.get("/api/database/:schoolId", async (req, res) => {
@@ -1651,3 +1651,5 @@ ensureSchema()
     console.error("Unable to start SagarSoft online API:", error);
     process.exit(1);
   });
+
+app.get("/api/test-deploy", (_r, _s) => _s.json({ ok: true, time: "15:01:16", sha: "3084f7bc267d" }));
