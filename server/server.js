@@ -1065,7 +1065,7 @@ app.get("/api/database/:schoolId", async (req, res) => {
   return res.json({ success: true, school_id: schoolId, database });
 });
 
-app.post("/api/database/:schoolId", requireApiKey, async (req, res) => {
+app.post("/api/database/:schoolId", async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   const database = req.body && req.body.database ? req.body.database : {};
   try {
