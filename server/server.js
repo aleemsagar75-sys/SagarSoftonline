@@ -1053,7 +1053,7 @@ function isLicenseUsable(row) {
 
 app.get("/health", async (_req, res) => {
   await pool.query("select 1");
-  res.json({ success: true, message: "SagarSoft online API is running." });
+  res.json({ success: true, version: "v3-modern", message: "SagarSoft online API is running." });
 });
 
 app.get("/api/database/:schoolId", async (req, res) => {
