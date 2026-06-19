@@ -2,126 +2,435 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SagarSoft Admin Panel</title>
-<link rel="stylesheet" href="/css/admin.css">
-<script>
-(function(){
-  if ("caches" in window) {
-    caches.keys().then(function(ks) {
-      ks.forEach(function(k) { if (k.indexOf("sagarsoft") >= 0) caches.delete(k); });
-    });
-  }
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.getRegistrations().then(function(rs) {
-      rs.forEach(function(r) { r.unregister(); });
-    });
-    navigator.serviceWorker.register = function() { return Promise.reject(); };
-  }
-})();
-</script>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SagarSoft - Dashboard</title>
+<link rel="stylesheet" href="./css/base.css">
+<link rel="stylesheet" href="./css/admin.css">
+<style>
+:root{--nav-h:48px;--sidebar-w:220px}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;color:#1a1a2e;min-height:100vh}
+.topnav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:#fff;border-bottom:1px solid #e0e0e0;display:flex;align-items:center;padding:0 20px;z-index:100;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.topnav .logo{font-weight:700;font-size:16px;color:#1a1a2e;display:flex;align-items:center;gap:8px}
+.topnav .logo img{height:28px;width:auto}
+.topnav .spacer{flex:1}
+.topnav .user-info{font-size:13px;color:#555;display:flex;align-items:center;gap:12px}
+.topnav .user-info .role-badge{background:#1e5eff;color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.topnav .user-info .logout-btn{background:none;border:1px solid #ddd;padding:4px 14px;border-radius:6px;cursor:pointer;font-size:12px;color:#555;transition:.15s}
+.topnav .user-info .logout-btn:hover{background:#f5f5f5;border-color:#ccc}
+.layout{display:flex;margin-top:var(--nav-h);min-height:calc(100vh - var(--nav-h))}
+.sidebar{width:var(--sidebar-w);background:#1a1a2e;color:#fff;padding:12px 0;flex-shrink:0;position:sticky;top:var(--nav-h);height:calc(100vh - var(--nav-h));overflow-y:auto}
+.sidebar .nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;color:#aaa;cursor:pointer;font-size:13px;transition:.15s;border-left:3px solid transparent}
+.sidebar .nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.sidebar .nav-item.active{background:rgba(30,94,255,.15);color:#fff;border-left-color:#1e5eff}
+.sidebar .nav-item .icon{width:18px;text-align:center;font-size:15px}
+.main{flex:1;padding:24px;overflow-y:auto}
+.page-header{margin-bottom:20px}
+.page-header h1{font-size:22px;font-weight:700}
+.page-header p{color:#666;font-size:13px;margin-top:4px}
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:22px}
+.stat-card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.stat-card .stat-label{font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.5px}
+.stat-card .stat-value{font-size:24px;font-weight:700;margin-top:4px;color:#1a1a2e}
+.stat-card .stat-sub{font-size:12px;color:#888;margin-top:2px}
+.card{background:#fff;border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);overflow:hidden;margin-bottom:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #f0f0f0}
+.card-header h2{font-size:14px;font-weight:600}
+.card-body{padding:18px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:10px 12px;border-bottom:2px solid #f0f0f0;color:#666;font-weight:600;white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:.3px}
+td{padding:10px 12px;border-bottom:1px solid #f5f5f5}
+tr:hover td{background:#fafbfc}
+.badge{padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600}
+.badge.active{background:#e6f7e6;color:#1a7d1a}
+.badge.inactive{background:#ffe6e6;color:#cc0000}
+.btn{padding:6px 16px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:.15s;display:inline-flex;align-items:center;gap:5px}
+.btn-primary{background:#1e5eff;color:#fff}
+.btn-primary:hover{background:#1648cc}
+.btn-success{background:#1a7d1a;color:#fff}
+.btn-success:hover{background:#146414}
+.btn-danger{background:#dc3545;color:#fff}
+.btn-danger:hover{background:#b02a37}
+.btn-warning{background:#f59e0b;color:#fff}
+.btn-warning:hover{background:#d48a08}
+.btn-outline{background:transparent;border:1px solid #ddd;color:#555}
+.btn-outline:hover{background:#f5f5f5}
+.btn-sm{padding:4px 10px;font-size:11px}
+.action-cell{display:flex;gap:4px;flex-wrap:wrap}
+.empty-state{text-align:center;padding:40px 20px;color:#999}
+.empty-state .icon{font-size:40px;margin-bottom:10px}
+.role-dashboard{padding:20px}
+.role-dashboard h2{font-size:20px;margin-bottom:8px}
+.role-dashboard .info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:16px}
+.role-dashboard .info-card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.info-card .label{font-size:11px;text-transform:uppercase;color:#888;margin-bottom:4px}
+.info-card .value{font-size:15px;font-weight:600;color:#1a1a2e}
+.modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal{background:#fff;border-radius:12px;width:92%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2);transform:translateY(10px);transition:transform .2s}
+.modal-overlay.open .modal{transform:translateY(0)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f0f0f0}
+.modal-header h3{font-size:15px;font-weight:700}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:#999;padding:0;line-height:1}
+.modal-body{padding:20px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;font-weight:600;color:#555;margin-bottom:4px}
+.form-group input,.form-group select{width:100%;padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:13px;outline:none;transition:.15s}
+.form-group input:focus,.form-group select:focus{border-color:#1e5eff;box-shadow:0 0 0 3px rgba(30,94,255,.1)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:16px 20px;border-top:1px solid #f0f0f0}
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:13px;font-weight:600;z-index:300;opacity:0;transform:translateY(10px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{background:#1a7d1a}
+.toast.error{background:#dc3545}
+.toast.info{background:#1e5eff}
+.loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(255,255,255,.7);z-index:250;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.loading-overlay.show{opacity:1;pointer-events:auto}
+.spinner{width:36px;height:36px;border:3px solid #e0e0e0;border-top-color:#1e5eff;border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.confirm-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);z-index:210;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.confirm-overlay.open{opacity:1;pointer-events:auto}
+.confirm-box{background:#fff;border-radius:12px;width:340px;padding:24px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.confirm-box h4{font-size:15px;margin-bottom:8px}
+.confirm-box p{font-size:13px;color:#666;margin-bottom:18px}
+.confirm-box .btns{display:flex;gap:8px;justify-content:center}
+@media(max-width:768px){
+  .sidebar{display:none}
+  .layout{margin-top:var(--nav-h)}
+  .main{padding:12px}
+  .form-row{grid-template-columns:1fr}
+  .stats-row{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:480px){
+  .topnav .user-info .role-badge{display:none}
+  .stats-row{grid-template-columns:1fr}
+}
+</style>
 </head>
 <body>
-<div class="app">
-  <aside class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-      <div class="logo">S</div>
-      <div class="brand-text">
-        <strong>SagarSoft</strong>
-        <span>Super Admin</span>
-      </div>
-    </div>
-    <nav class="sidebar-nav">
-      <button class="nav-item active">
-        <span class="nav-icon">&#9632;</span>
-        Dashboard
-      </button>
-    </nav>
-    <div class="sidebar-footer">
-      <button class="nav-item" onclick="App.loadSchools()">
-        <span class="nav-icon">&#8635;</span>
-        Refresh
-      </button>
-    </div>
-  </aside>
 
-  <main class="main">
-    <header class="header">
-      <h1>School Management</h1>
-      <div class="header-right">
-        <span class="connection-status">
-          <span class="dot" id="connDot"></span>
-          <span id="connText">Checking...</span>
-        </span>
-      </div>
-    </header>
+<!-- Top Nav -->
+<nav class="topnav">
+  <div class="logo">
+    <img src="./assets/SagarSoft.logo.png" alt="SagarSoft" onerror="this.style.display='none'">
+    SagarSoft
+  </div>
+  <div class="spacer"></div>
+  <div class="user-info">
+    <span id="userName"></span>
+    <span class="role-badge" id="userRole"></span>
+    <button class="logout-btn" onclick="handleLogout()">Logout</button>
+  </div>
+</nav>
 
-    <div class="content">
-      <div class="stats">
-        <div class="stat-card">
-          <div class="label">Total Schools</div>
-          <div class="value blue" id="statTotal">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Active</div>
-          <div class="value green" id="statActive">0</div>
-        </div>
-        <div class="stat-card">
-          <div class="label">Inactive / Locked</div>
-          <div class="value amber" id="statInactive">0</div>
-        </div>
-      </div>
+<!-- Layout -->
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar"></aside>
 
-      <div class="card">
-        <div class="card-header">
-          <h2>Schools</h2>
-          <div class="toolbar">
-            <div class="search-box">
-              <span class="search-icon">&#128269;</span>
-              <input type="text" id="searchInput" placeholder="Search schools..." autocomplete="off">
-            </div>
-            <button class="btn btn-primary" id="addSchoolBtn">+ Add School</button>
-          </div>
-        </div>
-        <div class="card-body">
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>School ID</th>
-                  <th>Name</th>
-                  <th>Email</th>
-                  <th>Plan</th>
-                  <th>Start Date</th>
-                  <th>Expiry</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="schoolsTableBody">
-                <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">&#8987;</div><p>Loading schools...</p></div></td></tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </div>
-  </main>
+  <!-- Main Content -->
+  <main class="main" id="mainContent"></main>
 </div>
 
-<div id="modalOverlay" class="modal-overlay">
+<!-- Modal -->
+<div class="modal-overlay" id="modalOverlay">
   <div class="modal">
     <div class="modal-header">
       <h3 id="modalTitle"></h3>
-      <button class="modal-close" onclick="Modal.close()">&times;</button>
+      <button class="modal-close" onclick="closeModal()">&times;</button>
     </div>
     <div class="modal-body" id="modalBody"></div>
     <div class="modal-footer" id="modalFooter"></div>
   </div>
 </div>
 
-<div id="loadingOverlay" class="loading-overlay"><div class="spinner"></div></div>
+<!-- Confirm -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <h4 id="confirmTitle"></h4>
+    <p id="confirmMessage"></p>
+    <div class="btns">
+      <button class="btn btn-outline" onclick="closeConfirm()">Cancel</button>
+      <button class="btn btn-danger" id="confirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
 
-<script src="/js/admin.js"></script>
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
+
+<script>
+/* ====== CONFIG ====== */
+var API = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
+
+/* ====== TOAST ====== */
+function showToast(msg, type) {
+  var el = document.getElementById("toast");
+  el.textContent = msg; el.className = "toast " + type + " show";
+  clearTimeout(el._t); el._t = setTimeout(function(){ el.className = "toast"; }, 3000);
+}
+
+/* ====== LOADING ====== */
+function showLoading(v) { document.getElementById("loadingOverlay").className = "loading-overlay" + (v?" show":""); }
+
+/* ====== MODAL ====== */
+function openModal(title, bodyHtml, footerHtml) {
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalBody").innerHTML = bodyHtml;
+  document.getElementById("modalFooter").innerHTML = footerHtml || "";
+  document.getElementById("modalOverlay").className = "modal-overlay open";
+}
+function closeModal() { document.getElementById("modalOverlay").className = "modal-overlay"; }
+
+/* ====== CONFIRM ====== */
+var _confirmCb = null;
+function openConfirm(title, msg, cb) {
+  document.getElementById("confirmTitle").textContent = title;
+  document.getElementById("confirmMessage").textContent = msg;
+  document.getElementById("confirmOverlay").className = "confirm-overlay open";
+  _confirmCb = cb;
+}
+function closeConfirm() { document.getElementById("confirmOverlay").className = "confirm-overlay"; _confirmCb = null; }
+document.getElementById("confirmBtn").onclick = function() {
+  if (_confirmCb) _confirmCb();
+  closeConfirm();
+};
+
+/* ====== AUTH ====== */
+var user = (window.SagarSoftAuth && window.SagarSoftAuth.requireAuth()) || null;
+if (!user) { /* requireAuth already redirects */ }
+
+document.getElementById("userName").textContent = user ? user.name : "";
+document.getElementById("userRole").textContent = user ? user.role : "";
+
+function handleLogout() {
+  if (window.SagarSoftAuth) { window.SagarSoftAuth.logout(); }
+  window.location.href = "./login.html";
+}
+
+/* ====== SIDEBAR ====== */
+var sidebarNav = [
+  { id: "dashboard", icon: "?", label: "Dashboard", roles: ["superadmin","admin","teacher","student","parent"] },
+  { id: "schools", icon: "?", label: "Schools", roles: ["superadmin"] }
+];
+
+function buildSidebar() {
+  var html = "";
+  sidebarNav.forEach(function(item) {
+    if (item.roles.indexOf(user.role) === -1) return;
+    html += '<div class="nav-item" data-page="'+item.id+'" onclick="switchPage(\''+item.id+'\')">'+
+      '<span class="icon">'+item.icon+'</span>'+item.label+'</div>';
+  });
+  document.getElementById("sidebar").innerHTML = html;
+}
+
+function setActiveNav(id) {
+  var items = document.querySelectorAll(".sidebar .nav-item");
+  items.forEach(function(el) { el.className = "nav-item" + (el.dataset.page === id ? " active" : ""); });
+}
+
+/* ====== PAGE ROUTER ====== */
+function switchPage(page) {
+  setActiveNav(page);
+  if (page === "dashboard") renderDashboard();
+  else if (page === "schools") renderSchools();
+}
+
+/* ====== ROLE DASHBOARD ====== */
+function renderDashboard() {
+  var html = "";
+  if (user.role === "superadmin") {
+    html = '<div class="page-header"><h1>Dashboard</h1><p>Welcome back, '+user.name+'</p></div>'+
+      '<div class="stats-row" id="statsRow"></div>'+
+      '<div class="card"><div class="card-header"><h2>Recent Schools</h2></div><div class="card-body" id="recentSchools"></div></div>';
+    document.getElementById("mainContent").innerHTML = html;
+    loadStatsAndRecent();
+  } else {
+    var db = window.SagarSoftDB ? window.SagarSoftDB.getDatabase() : null;
+    var schoolName = "SagarSoft Public School";
+    var schoolId = db && db.generalSettings && db.generalSettings.licenseSettings ? db.generalSettings.licenseSettings.schoolName : "";
+    if (schoolId) schoolName = schoolId;
+    var roleLabels = { admin:"School Admin", teacher:"Teacher", student:"Student", parent:"Parent" };
+    html = '<div class="page-header"><h1>'+schoolName+'</h1><p>Welcome, '+user.name+' ('+(roleLabels[user.role]||user.role)+')</p></div>'+
+      '<div class="role-dashboard">'+
+      '<div class="info-grid">'+
+      '<div class="info-card"><div class="label">Name</div><div class="value">'+user.name+'</div></div>'+
+      '<div class="info-card"><div class="label">Email</div><div class="value">'+user.email+'</div></div>'+
+      '<div class="info-card"><div class="label">Role</div><div class="value" style="text-transform:capitalize">'+(roleLabels[user.role]||user.role)+'</div></div>'+
+      '<div class="info-card"><div class="label">Login Time</div><div class="value">'+new Date(user.loginAt).toLocaleString()+'</div></div>'+
+      '</div></div>';
+    document.getElementById("mainContent").innerHTML = html;
+  }
+}
+
+/* ====== SUPER ADMIN STATS ====== */
+function loadStatsAndRecent() {
+  fetch(API+"/api/admin/schools").then(function(r){return r.json()}).then(function(d){
+    if (!d.success) return;
+    var s = d.schools || [];
+    var active = s.filter(function(x){return x.status === "active"}).length;
+    var total = s.length;
+    document.getElementById("statsRow").innerHTML =
+      '<div class="stat-card"><div class="stat-label">Total Schools</div><div class="stat-value">'+total+'</div></div>'+
+      '<div class="stat-card"><div class="stat-label">Active</div><div class="stat-value">'+active+'</div><div class="stat-sub">'+Math.round(active/total*100||0)+'%</div></div>'+
+      '<div class="stat-card"><div class="stat-label">Inactive</div><div class="stat-value">'+(total-active)+'</div></div>';
+    var recent = s.slice(-5).reverse();
+    var h = '<table><thead><tr><th>ID</th><th>Name</th><th>Status</th></tr></thead><tbody>';
+    recent.forEach(function(x){ h += '<tr><td>'+x.school_id+'</td><td>'+x.school_name+'</td><td><span class="badge '+(x.status==="active"?"active":"inactive")+'">'+x.status+'</span></td></tr>'; });
+    h += '</tbody></table>';
+    document.getElementById("recentSchools").innerHTML = h;
+  }).catch(function(){});
+}
+
+/* ====== SCHOOLS PAGE (Super Admin) ====== */
+function renderSchools() {
+  var html = '<div class="page-header"><h1>School Management</h1><p>Manage all registered schools</p></div>'+
+    '<div class="card"><div class="card-header"><h2>All Schools</h2><button class="btn btn-primary btn-sm" onclick="showAddSchool()">+ Add School</button></div>'+
+    '<div class="card-body"><div id="schoolsTable"><div class="empty-state"><div class="icon">?</div><p>Loading schools...</p></div></div></div></div>';
+  document.getElementById("mainContent").innerHTML = html;
+  loadSchools();
+}
+
+function loadSchools() {
+  showLoading(true);
+  fetch(API+"/api/admin/schools").then(function(r){return r.json()}).then(function(d){
+    showLoading(false);
+    if (!d.success) { document.getElementById("schoolsTable").innerHTML = '<div class="empty-state"><p>Failed to load schools.</p></div>'; return; }
+    var s = d.schools || [];
+    if (!s.length) { document.getElementById("schoolsTable").innerHTML = '<div class="empty-state"><div class="icon">?</div><p>No schools registered yet.</p></div>'; return; }
+    var h = '<table><thead><tr><th>School ID</th><th>Name</th><th>Email</th><th>Plan</th><th>Created</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+    s.forEach(function(x){
+      var statusClass = x.status === "active" ? "active" : "inactive";
+      h += '<tr><td><strong>'+x.school_id+'</strong></td><td>'+x.school_name+'</td><td>'+x.email+'</td><td>'+x.plan+'</td>'+
+        '<td>'+(x.created_at ? new Date(x.created_at).toLocaleDateString() : '-')+'</td>'+
+        '<td><span class="badge '+statusClass+'">'+x.status+'</span></td>'+
+        '<td class="action-cell">'+
+        '<button class="btn btn-outline btn-sm" onclick="editSchool(\''+x.school_id+'\')">Edit</button>'+
+        (x.status === "active"
+          ? '<button class="btn btn-warning btn-sm" onclick="toggleStatus(\''+x.school_id+'\',\'inactive\')">Deactivate</button>'
+          : '<button class="btn btn-success btn-sm" onclick="toggleStatus(\''+x.school_id+'\',\'active\')">Activate</button>')+
+        '<button class="btn btn-danger btn-sm" onclick="confirmDelete(\''+x.school_id+'\')">Delete</button>'+
+        '</td></tr>';
+    });
+    h += '</tbody></table>';
+    document.getElementById("schoolsTable").innerHTML = h;
+  }).catch(function(e){
+    showLoading(false);
+    document.getElementById("schoolsTable").innerHTML = '<div class="empty-state"><p>Error: '+e.message+'</p></div>';
+  });
+}
+
+/* ====== ADD SCHOOL ====== */
+function showAddSchool() {
+  var html = '<div class="form-group"><label>School Name</label><input id="f_name" placeholder="e.g. Bright Future School"></div>'+
+    '<div class="form-group"><label>Email</label><input id="f_email" type="email" placeholder="admin@school.com"></div>'+
+    '<div class="form-group"><label>Password</label><input id="f_pass" type="password" placeholder="Set password"></div>'+
+    '<div class="form-row"><div class="form-group"><label>Plan</label><select id="f_plan"><option value="premium">Premium</option><option value="standard">Standard</option><option value="basic">Basic</option></select></div>'+
+    '<div class="form-group"><label class="label-note">School ID is auto-generated</label></div></div>';
+  openModal("Add New School", html,
+    '<button class="btn btn-outline" onclick="closeModal()">Cancel</button>'+
+    '<button class="btn btn-primary" onclick="addSchool()">Add School</button>');
+}
+
+function addSchool() {
+  var name = document.getElementById("f_name").value.trim();
+  var email = document.getElementById("f_email").value.trim();
+  var pass = document.getElementById("f_pass").value.trim();
+  var plan = document.getElementById("f_plan").value;
+  if (!name || !email || !pass) { showToast("Please fill all fields", "error"); return; }
+  showLoading(true);
+  fetch(API+"/api/admin/schools", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({school_name:name, email:email, password:pass, plan:plan})
+  }).then(function(r){return r.json()}).then(function(d){
+    showLoading(false);
+    if (!d.success) { showToast(d.message||"Failed to add school", "error"); return; }
+    showToast("School added: "+d.school_id, "success");
+    closeModal();
+    loadSchools();
+  }).catch(function(e){ showLoading(false); showToast("Error: "+e.message, "error"); });
+}
+
+/* ====== EDIT SCHOOL ====== */
+var _editId = null;
+function editSchool(id) {
+  _editId = id;
+  fetch(API+"/api/admin/schools").then(function(r){return r.json()}).then(function(d){
+    if (!d.success) return;
+    var school = (d.schools || []).find(function(x){return x.school_id === id});
+    if (!school) { showToast("School not found", "error"); return; }
+    var html = '<div class="form-group"><label>School Name</label><input id="e_name" value="'+school.school_name.replace(/"/g,'&quot;')+'"></div>'+
+      '<div class="form-group"><label>Email</label><input id="e_email" type="email" value="'+school.email.replace(/"/g,'&quot;')+'"></div>'+
+      '<div class="form-group"><label>New Password (leave blank to keep)</label><input id="e_pass" type="password" placeholder="Leave blank to keep current"></div>'+
+      '<div class="form-row"><div class="form-group"><label>Plan</label><select id="e_plan"><option value="premium"'+(school.plan==="premium"?" selected":"")+'>Premium</option><option value="standard"'+(school.plan==="standard"?" selected":"")+'>Standard</option><option value="basic"'+(school.plan==="basic"?" selected":"")+'>Basic</option></select></div>'+
+      '<div class="form-group"><label>Status</label><select id="e_status"><option value="active"'+(school.status==="active"?" selected":"")+'>Active</option><option value="inactive"'+(school.status==="inactive"?" selected":"")+'>Inactive</option></select></div></div>'+
+      '<div class="form-row"><div class="form-group"><label>Start Date</label><input id="e_start" type="date" value="'+(school.start_date||'')+'"></div>'+
+      '<div class="form-group"><label>Expiry Date</label><input id="e_expiry" type="date" value="'+(school.expiry_date||'')+'"></div></div>';
+    openModal("Edit School - "+id, html,
+      '<button class="btn btn-outline" onclick="closeModal()">Cancel</button>'+
+      '<button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>');
+  }).catch(function(e){ showToast("Error: "+e.message, "error"); });
+}
+
+function saveEdit() {
+  var body = {school_name: document.getElementById("e_name").value.trim()};
+  body.email = document.getElementById("e_email").value.trim();
+  var pass = document.getElementById("e_pass").value.trim();
+  if (pass) body.password = pass;
+  body.plan = document.getElementById("e_plan").value;
+  body.status = document.getElementById("e_status").value;
+  body.start_date = document.getElementById("e_start").value || null;
+  body.expiry_date = document.getElementById("e_expiry").value || null;
+  if (!body.school_name || !body.email) { showToast("Name and email are required", "error"); return; }
+  showLoading(true);
+  fetch(API+"/api/admin/schools/"+_editId, {
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(body)
+  }).then(function(r){return r.json()}).then(function(d){
+    showLoading(false);
+    if (!d.success) { showToast(d.message||"Failed to update", "error"); return; }
+    showToast("School updated", "success");
+    closeModal();
+    loadSchools();
+  }).catch(function(e){ showLoading(false); showToast("Error: "+e.message, "error"); });
+}
+
+/* ====== TOGGLE STATUS ====== */
+function toggleStatus(id, status) {
+  showLoading(true);
+  fetch(API+"/api/admin/schools/"+id, {
+    method:"PUT",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({status:status})
+  }).then(function(r){return r.json()}).then(function(d){
+    showLoading(false);
+    if (!d.success) { showToast(d.message||"Failed", "error"); return; }
+    showToast("School "+ (status === "active" ? "activated" : "deactivated"), "success");
+    loadSchools();
+  }).catch(function(e){ showLoading(false); showToast("Error: "+e.message, "error"); });
+}
+
+/* ====== DELETE SCHOOL ====== */
+function confirmDelete(id) {
+  openConfirm("Delete School", "Are you sure you want to delete "+id+"? This cannot be undone.", function(){
+    showLoading(true);
+    fetch(API+"/api/admin/schools/"+id, {method:"DELETE"}).then(function(r){return r.json()}).then(function(d){
+      showLoading(false);
+      if (!d.success) { showToast(d.message||"Failed to delete", "error"); return; }
+      showToast("School deleted", "success");
+      loadSchools();
+    }).catch(function(e){ showLoading(false); showToast("Error: "+e.message, "error"); });
+  });
+}
+
+/* ====== INIT ====== */
+buildSidebar();
+switchPage("dashboard");
+</script>
 </body>
 </html>
