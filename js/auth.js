@@ -28,7 +28,7 @@
   }
 
   function saveSession(session) {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (_e) {}
   }
 
   function clearSession() {
@@ -133,7 +133,6 @@
     license.expiryDate = formatDateInput(payload.expiry_date || license.expiryDate || new Date().toISOString().slice(0, 10));
     license.status = status || (license.activated ? "active" : "inactive");
     license.lastVerifiedAt = new Date().toISOString();
-    license.verificationIntervalDays = Number(payload.internet_required_after_days || license.verificationIntervalDays || 20);
     license.websiteEndpoint = normalizePortalEndpoint(license.websiteEndpoint);
     license.licenseToken = String(payload.license_token || license.licenseToken || "").trim();
     license.lastServerResponse = JSON.stringify(payload);
@@ -218,7 +217,7 @@
     };
   }
 
-  var SUPER_ADMIN_HASH = "76a429a6f769dda0fa388cafe2a6e0f0f451f9eeb6d308d13aaadbf1ad4ab39f";
+  var SUPER_ADMIN_SESSION_TOKEN = null;
 
   async function migratePassword(user) {
     if (user && user.password && !window.SagarSoftCrypto.isHash(user.password)) {
@@ -234,45 +233,48 @@
     var normalizedEmail = String(email).trim().toLowerCase();
     var enteredPassword = String(password || "");
 
-    var superUserIndex = Array.isArray(database.users)
-      ? database.users.findIndex(function (entry) { return entry && entry.id === "USR-SUPER-001"; })
-      : -1;
-    var superUserRecord = {
-      id: "USR-SUPER-001",
-      name: "SagarSoft Super Admin",
-      email: "aleemsagar@gmail.com",
-      password: SUPER_ADMIN_HASH,
-      role: "superadmin",
-      phone: "+91 90000 00000",
-      active: true
-    };
-    if (!Array.isArray(database.users)) {
-      database.users = [];
-    }
-    if (superUserIndex >= 0) {
-      database.users[superUserIndex] = {
-        ...database.users[superUserIndex],
-        ...superUserRecord
-      };
-    } else {
-      database.users.push(superUserRecord);
-    }
-    window.SagarSoftDB.saveDatabase(database);
-    var superEmail = String(superUserRecord.email || "").toLowerCase();
+    var superEmail = "aleemsagar@gmail.com";
 
     if (normalizedEmail === superEmail) {
-      var superPasswordMatch = enteredPassword === "Google112233";
-      if (!superPasswordMatch && window.SagarSoftCrypto) {
-        superPasswordMatch = await window.SagarSoftCrypto.verifyPassword(enteredPassword, superUserRecord.password);
-      }
-      if (superPasswordMatch) {
+      try {
+        var portalUrl = (database.generalSettings && database.generalSettings.licenseSettings
+          && database.generalSettings.licenseSettings.websiteEndpoint)
+          ? normalizePortalEndpoint(database.generalSettings.licenseSettings.websiteEndpoint)
+          : DEFAULT_PORTAL_URL;
+        var resp = await fetch(portalUrl + "/api/auth/superadmin", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: normalizedEmail, password: enteredPassword })
+        });
+        var payload = await resp.json().catch(function () { return {}; });
+        if (!resp.ok || !payload.success) {
+          return { success: false, message: (payload && payload.message) || "Invalid super admin credentials." };
+        }
+        SUPER_ADMIN_SESSION_TOKEN = payload.token;
+        var superUserRecord = payload.user || {
+          id: "USR-SUPER-001",
+          name: "SagarSoft Super Admin",
+          email: normalizedEmail,
+          role: "superadmin"
+        };
+        var superUserIndex = Array.isArray(database.users)
+          ? database.users.findIndex(function (entry) { return entry && entry.id === "USR-SUPER-001"; })
+          : -1;
+        if (!Array.isArray(database.users)) database.users = [];
+        if (superUserIndex >= 0) {
+          database.users[superUserIndex] = { ...database.users[superUserIndex], ...superUserRecord, active: true };
+        } else {
+          database.users.push({ ...superUserRecord, active: true });
+        }
+        window.SagarSoftDB.saveDatabase(database);
         var session = {
           id: superUserRecord.id,
           name: superUserRecord.name,
           email: superUserRecord.email,
-          role: superUserRecord.role,
+          role: "superadmin",
           rememberMe: Boolean(rememberMe),
-          loginAt: new Date().toISOString()
+          loginAt: new Date().toISOString(),
+          serverToken: payload.token
         };
         saveSession(session);
         window.SagarSoftDB.updateDatabase(function (databaseSnapshot) {
@@ -284,11 +286,9 @@
           });
           return databaseSnapshot;
         });
-        return {
-          success: true,
-          message: "Login successful.",
-          user: session
-        };
+        return { success: true, message: "Login successful.", user: session };
+      } catch (networkError) {
+        return { success: false, message: "Unable to connect to server for super admin authentication. Check your internet connection." };
       }
     }
 
@@ -470,12 +470,18 @@
     return currentUser;
   }
 
+  function getServerToken() {
+    var session = getCurrentUser();
+    return (session && session.serverToken) || SUPER_ADMIN_SESSION_TOKEN || null;
+  }
+
   window.SagarSoftAuth = {
     login,
     loginWithOnlineFallback,
     logout,
     getCurrentUser,
     requireAuth,
+    getServerToken,
     sessionKey: SESSION_KEY
   };
 })();
