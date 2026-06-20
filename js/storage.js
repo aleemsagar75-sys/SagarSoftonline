@@ -123,7 +123,7 @@
         expiryDate: "",
         status: "inactive",
         lastVerifiedAt: "",
-        verificationIntervalDays: 25,
+        verificationIntervalDays: 9999,
         websiteEndpoint: "",
         websiteApiKey: "",
         lastServerResponse: ""
