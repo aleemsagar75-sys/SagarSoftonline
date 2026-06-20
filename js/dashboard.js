@@ -19454,8 +19454,11 @@ ${allContent}
             }
           } catch (_e) {
             console.error("[SagarSoft] School save error:", _e);
-            if (msgEl) { msgEl.textContent = "Save failed. Network error."; msgEl.className = "form-message error"; }
-            openAppMessageBox("Error", "Save failed. Network or server error. Check console.", "error");
+            var errDetail = (_e && _e.message) ? _e.message : String(_e);
+            var diagMsg = "Save failed: " + errDetail + " | URL: " + apiBase + " | apiBase defined: " + (typeof apiBase !== "undefined");
+            console.error("[SagarSoft] DIAG:", diagMsg);
+            if (msgEl) { msgEl.textContent = diagMsg; msgEl.className = "form-message error"; }
+            openAppMessageBox("Error", diagMsg, "error");
           } finally {
             if (activateAccountBtn) { activateAccountBtn.disabled = false; activateAccountBtn.textContent = isNew ? "Add School" : "Update School"; }
           }
