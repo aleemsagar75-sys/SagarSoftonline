@@ -1,6 +1,7 @@
 require("dotenv").config({ path: __dirname + "/.env" });
 
 const dns = require("dns");
+const crypto = require("crypto");
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
@@ -17,6 +18,75 @@ const app = express();
 const port = Number(process.env.PORT || 10000);
 const apiKey = String(process.env.SAGARSOFT_API_KEY || "").trim();
 const defaultSchoolId = String(process.env.DEFAULT_SCHOOL_ID || "SCH-2026-001").trim();
+
+const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL || "aleemsagar@gmail.com").trim().toLowerCase();
+const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH || "").trim();
+const SUPERADMIN_SESSION_SECRET = String(process.env.SUPERADMIN_SESSION_SECRET || "").trim();
+if (!SUPERADMIN_SESSION_SECRET) {
+  console.error("WARNING: SUPERADMIN_SESSION_SECRET not set. All superadmin tokens will be invalidated on server restart. Set this env var for production.");
+}
+const SESSION_SECRET_KEY = SUPERADMIN_SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+const SUPERADMIN_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+function sha256(input) {
+  return crypto.createHash("sha256").update(String(input)).digest("hex");
+}
+
+function signToken(payload) {
+  var data = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  var sig = crypto.createHmac("sha256", SESSION_SECRET_KEY).update(data).digest("base64url");
+  return data + "." + sig;
+}
+
+function verifyToken(token) {
+  try {
+    var parts = String(token || "").split(".");
+    if (parts.length !== 2) return null;
+    var expectedSig = crypto.createHmac("sha256", SESSION_SECRET_KEY).update(parts[0]).digest("base64url");
+    var sigBuf = Buffer.from(parts[1]);
+    var expectedBuf = Buffer.from(expectedSig);
+    if (sigBuf.length !== expectedBuf.length) return null;
+    if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
+    var payload = JSON.parse(Buffer.from(parts[0], "base64url").toString());
+    if (payload.exp && Date.now() > payload.exp) return null;
+    return payload;
+  } catch (_e) {
+    return null;
+  }
+}
+
+const loginRateLimit = {};
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT_MAX = 10;
+function checkRateLimit(key) {
+  var now = Date.now();
+  if (!loginRateLimit[key] || now - loginRateLimit[key].start > RATE_LIMIT_WINDOW_MS) {
+    loginRateLimit[key] = { start: now, count: 1 };
+    return true;
+  }
+  loginRateLimit[key].count++;
+  return loginRateLimit[key].count <= RATE_LIMIT_MAX;
+}
+setInterval(function () {
+  var now = Date.now();
+  Object.keys(loginRateLimit).forEach(function (key) {
+    if (now - loginRateLimit[key].start > RATE_LIMIT_WINDOW_MS) delete loginRateLimit[key];
+  });
+}, 60000);
+
+function requireSuperAdmin(req, res, next) {
+  var authHeader = String(req.headers["authorization"] || "").trim();
+  var token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Super admin authentication required." });
+  }
+  var payload = verifyToken(token);
+  if (!payload || payload.role !== "superadmin") {
+    return res.status(401).json({ success: false, message: "Invalid or expired session." });
+  }
+  req.superAdmin = payload;
+  return next();
+}
 
 if (!process.env.SUPABASE_DB_URL) {
   throw new Error("SUPABASE_DB_URL is required.");
@@ -74,31 +144,35 @@ var allowedOrigins = [
   "https://sagarsoftonline.onrender.com",
   "https://sagarsoftadmin.onrender.com",
   "http://localhost:10000",
-  "http://localhost:3000",
-  "file://",
-  "null"
+  "http://localhost:3000"
 ];
+
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  return allowedOrigins.some(function (o) { return origin === o || origin === o + "/"; });
+}
 
 if (cors) {
   app.use(cors({
     origin: function (origin, callback) {
-      if (!origin || allowedOrigins.some(function (o) { return origin.startsWith(o); })) {
+      if (isOriginAllowed(origin)) {
         callback(null, true);
       } else {
         callback(null, false);
       }
-    }
+    },
+    allowedHeaders: ["Content-Type", "x-sagarsoft-api-key", "x-license-token", "Authorization"]
   }));
 } else {
   app.use(function (req, res, next) {
     var origin = req.headers.origin || "";
-    var allowed = !origin || allowedOrigins.some(function (o) { return origin.startsWith(o); });
+    var allowed = isOriginAllowed(origin);
     if (allowed) {
       res.setHeader("Access-Control-Allow-Origin", origin || "*");
     } else {
       res.setHeader("Access-Control-Allow-Origin", "https://sagarsoftonline.onrender.com");
     }
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-sagarsoft-api-key, x-license-token");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-sagarsoft-api-key, x-license-token, Authorization");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
     if (req.method === "OPTIONS") {
       return res.sendStatus(204);
@@ -107,6 +181,15 @@ if (cors) {
   });
 }
 app.use(express.json({ limit: "50mb" }));
+
+app.use(function (_req, res, next) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:;");
+  return next();
+});
 
 const webDirCandidates = [
   process.env.SAGARSOFT_WEB_DIR,
@@ -171,7 +254,7 @@ async function ensureSchema() {
       start_date date,
       expiry_date date,
       license_token text unique,
-      internet_required_after_days integer not null default 20,
+      internet_required_after_days integer not null default 9999,
       modules_locked boolean not null default false,
       last_seen timestamptz,
       timezone text default 'Asia/Karachi',
@@ -1056,7 +1139,7 @@ app.get("/health", async (_req, res) => {
   res.json({ success: true, message: "SagarSoft online API is running." });
 });
 
-app.get("/api/database/:schoolId", async (req, res) => {
+app.get("/api/database/:schoolId", requireApiKey, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   const database = await getSchoolDatabase(schoolId);
   if (!database) {
@@ -1065,7 +1148,7 @@ app.get("/api/database/:schoolId", async (req, res) => {
   return res.json({ success: true, school_id: schoolId, database });
 });
 
-app.post("/api/database/:schoolId", async (req, res) => {
+app.post("/api/database/:schoolId", requireApiKey, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   const database = req.body && req.body.database ? req.body.database : {};
   try {
@@ -1137,15 +1220,23 @@ async function verifySupabaseAuth(email, password) {
 }
 
 app.post("/api/activate-school.php", async (req, res) => {
+  var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+  var rateKey = "activate:" + clientIp;
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+  }
   const email = String(req.body.email || "").trim().toLowerCase();
   const password = String(req.body.password || "");
   var supaOk = await verifySupabaseAuth(email, password);
   if (supaOk === false) return res.status(401).json({ success: false, message: "Invalid school credentials." });
-  if (supaOk === "unavailable") {
+  var row = null;
+  if (supaOk === true) {
+    row = (await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email])).rows[0];
+  } else {
     var _r = await pool.query("select * from public.license_accounts where lower(email) = $1 and password = $2 limit 1", [email, password]);
     if (!_r.rowCount) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+    row = _r.rows[0];
   }
-  const row = (supaOk === true) ? (await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email])).rows[0] : _r.rows[0];
   if (!row) return res.status(401).json({ success: false, message: "Invalid school credentials." });
   await pool.query("update public.license_accounts set last_seen = now() where school_id = $1", [row.school_id]);
   const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
@@ -1153,6 +1244,11 @@ app.post("/api/activate-school.php", async (req, res) => {
 });
 
 app.post("/api/mobile/login", async (req, res) => {
+  var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+  var rateKey = "mobile:" + clientIp;
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+  }
   const identifier = String(req.body.identifier || req.body.email || req.body.school_id || "").trim();
   const email = identifier.toLowerCase();
   const password = String(req.body.password || "");
@@ -1317,17 +1413,47 @@ app.post("/api/sync-school-data.php", async (req, res) => {
 
 
 
-app.get("/api/admin/schools", async function (req, res) {
+app.get("/api/admin/schools", requireSuperAdmin, async function (req, res) {
   try {
     var rows = await pool.query("select school_id, school_name, email, password, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at from public.license_accounts order by updated_at desc");
-    console.log("GET /api/admin/schools: returning", rows.rows.length, "schools");
     return res.json({ success: true, schools: rows.rows });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-app.post("/api/admin/schools", async function (req, res) {
+app.post("/api/admin/schools/resequence", requireSuperAdmin, async function (req, res) {
+  try {
+    await pool.query("ALTER TABLE public.license_notifications DROP CONSTRAINT IF EXISTS license_notifications_school_id_fkey");
+    await pool.query("ALTER TABLE public.school_databases DROP CONSTRAINT IF EXISTS school_databases_school_id_fkey");
+    await pool.query("DELETE FROM public.license_notifications WHERE school_id NOT IN (SELECT school_id FROM public.license_accounts)");
+    var _rows = await pool.query("SELECT school_id FROM public.license_accounts ORDER BY created_at asc");
+    var _year = new Date().getFullYear();
+    var _updates = [];
+    for (var _i = 0; _i < _rows.rows.length; _i++) {
+      var _temp = "__TEMP_RESEQ_" + _i + "__";
+      await pool.query("UPDATE public.license_accounts SET school_id = $1 WHERE school_id = $2", [_temp, _rows.rows[_i].school_id]);
+      await pool.query("UPDATE public.school_databases SET school_id = $1 WHERE school_id = $2", [_temp, _rows.rows[_i].school_id]);
+      await pool.query("UPDATE public.license_notifications SET school_id = $1 WHERE school_id = $2", [_temp, _rows.rows[_i].school_id]);
+      _updates.push({ old: _rows.rows[_i].school_id, temp: _temp });
+    }
+    for (var _j = 0; _j < _updates.length; _j++) {
+      var _newId = "SCH-" + _year + "-" + String(_j + 1).padStart(3, '0');
+      await pool.query("UPDATE public.license_accounts SET school_id = $1 WHERE school_id = $2", [_newId, _updates[_j].temp]);
+      await pool.query("UPDATE public.school_databases SET school_id = $1 WHERE school_id = $2", [_newId, _updates[_j].temp]);
+      await pool.query("UPDATE public.license_notifications SET school_id = $1 WHERE school_id = $2", [_newId, _updates[_j].temp]);
+      _updates[_j].new_id = _newId;
+    }
+    await pool.query("ALTER TABLE public.license_notifications ADD CONSTRAINT license_notifications_school_id_fkey FOREIGN KEY (school_id) REFERENCES public.license_accounts(school_id) ON DELETE CASCADE");
+    var _result = await pool.query("SELECT school_id FROM public.license_accounts ORDER BY school_id asc");
+    return res.json({ success: true, schools: _result.rows, updated: _updates.length });
+  } catch (error) {
+    console.error("POST /api/admin/schools/resequence error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.post("/api/admin/schools", requireSuperAdmin, async function (req, res) {
   var schoolName = String(req.body.school_name || "").trim();
   var email = String(req.body.email || "").trim().toLowerCase();
   var password = String(req.body.password || "").trim();
@@ -1337,81 +1463,100 @@ app.post("/api/admin/schools", async function (req, res) {
   if (!schoolName) return res.status(400).json({ success: false, message: "School name is required." });
   if (!email) return res.status(400).json({ success: false, message: "Email is required." });
   if (!password) return res.status(400).json({ success: false, message: "Password is required." });
+  var _client = await pool.connect();
   try {
-    var _dupCheck = await pool.query("select school_id from public.license_accounts where email = $1", [email]);
-    if (_dupCheck.rows.length > 0) return res.status(409).json({ success: false, message: "This email is already registered with school: " + _dupCheck.rows[0].school_id + ". Use a different email." });
+    var _dupCheck = await _client.query("select school_id from public.license_accounts where email = $1", [email]);
+    if (_dupCheck.rows.length > 0) { _client.release(); return res.status(409).json({ success: false, message: "This email is already registered with school: " + _dupCheck.rows[0].school_id + ". Use a different email." }); }
     var _year = new Date().getFullYear();
-    var _maxResult = await pool.query("select max(school_id) as max_id from public.license_accounts where school_id like 'SCH-" + _year + "-%'");
+    var _maxResult = await _client.query("select max(school_id) as max_id from public.license_accounts where school_id like $1", ["SCH-" + _year + "-%"]);
     var _lastId = _maxResult.rows[0].max_id;
     var _num = 1;
     if (_lastId) { var _parts = _lastId.split('-'); _num = parseInt(_parts[_parts.length - 1], 10) + 1; }
     var schoolId = "SCH-" + _year + "-" + String(_num).padStart(3, '0');
-    await pool.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now())", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
-    res.json({ success: true, school_id: schoolId, version: "v2.2-auth-fix" });
+    await _client.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',now(),now())", [schoolId, schoolName, email, password, plan, startDate, expiryDate]);
+    _client.release();
+
     var supabaseUrl = process.env.SUPABASE_URL;
     var supabaseKey = process.env.SUPABASE_SECRET_KEY;
     if (supabaseUrl && supabaseKey) {
-      (async function () {
-        try {
-          var _supaResp = await fetch(supabaseUrl + "/auth/v1/admin/users", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey },
-            body: JSON.stringify({ email: email, password: password, email_confirm: true, user_metadata: { school_id: schoolId, school_name: schoolName } })
-          });
-          if (_supaResp.ok) { console.log("Supabase Auth user created for", email); }
-          else {
-            console.error("Supabase Auth user creation failed:", _supaResp.status);
-            if (_supaResp.status === 422 || _supaResp.status === 409) {
-              try {
-                var _listResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(email), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
-                if (_listResp.ok) {
-                  var _listData = await _listResp.json();
-                  if (_listData.users && _listData.users.length > 0) {
-                    await fetch(supabaseUrl + "/auth/v1/admin/users/" + _listData.users[0].id, { method: "PUT", headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: "Bearer " + supabaseKey }, body: JSON.stringify({ user_metadata: { school_id: schoolId, school_name: schoolName }, email_confirm: true }) });
-                    console.log("Supabase Auth user updated for " + email + " to school:" + schoolId);
-                  }
+      try {
+        var _supaResp = await fetch(supabaseUrl + "/auth/v1/admin/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey },
+          body: JSON.stringify({ email: email, password: password, email_confirm: true, user_metadata: { school_id: schoolId, school_name: schoolName } })
+        });
+        if (_supaResp.ok) { console.log("Supabase Auth user created for", email); }
+        else {
+          console.error("Supabase Auth user creation failed:", _supaResp.status);
+          if (_supaResp.status === 422 || _supaResp.status === 409) {
+            try {
+              var _listResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(email), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
+              if (_listResp.ok) {
+                var _listData = await _listResp.json();
+                if (_listData.users && _listData.users.length > 0) {
+                  await fetch(supabaseUrl + "/auth/v1/admin/users/" + _listData.users[0].id, { method: "PUT", headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: "Bearer " + supabaseKey }, body: JSON.stringify({ user_metadata: { school_id: schoolId, school_name: schoolName }, email_confirm: true }) });
+                  console.log("Supabase Auth user updated for " + email + " to school:" + schoolId);
                 }
-              } catch (_e2) { console.error("Supabase Auth fallback error:", _e2.message); }
-            }
+              }
+            } catch (_e2) { console.error("Supabase Auth fallback error:", _e2.message); }
           }
-        } catch (_supabaseError) { console.error("Supabase Auth error:", _supabaseError.message); }
-      })();
+        }
+      } catch (_supabaseError) { console.error("Supabase Auth error:", _supabaseError.message); }
     }
+
+    return res.json({ success: true, school_id: schoolId, version: "v2.2-auth-fix" });
   } catch (error) {
+    try { _client.release(); } catch (_e4) {}
+    console.error("POST /api/admin/schools error:", error.message);
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-app.get("/api/debug", function (req, res) {
-  res.json({
-    version: "v2.2-auth-fix",
-    supabase_url_set: !!process.env.SUPABASE_URL,
-    supabase_key_set: !!process.env.SUPABASE_SECRET_KEY,
-    node_version: process.version
+app.post("/api/auth/superadmin", async function (req, res) {
+  var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+  var rateKey = "superadmin:" + clientIp;
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+  }
+  var email = String(req.body.email || "").trim().toLowerCase();
+  var password = String(req.body.password || "");
+  if (!email || !password) {
+    return res.status(400).json({ success: false, message: "Email and password are required." });
+  }
+  if (email !== SUPERADMIN_EMAIL) {
+    return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
+  }
+  var passwordHash = sha256(password);
+  var storedHash = SUPERADMIN_PASSWORD_HASH;
+  if (!storedHash) {
+    return res.status(500).json({ success: false, message: "Server misconfiguration. SUPERADMIN_PASSWORD_HASH not set." });
+  }
+  var hashBuf = Buffer.from(passwordHash);
+  var storedBuf = Buffer.from(storedHash);
+  if (hashBuf.length !== storedBuf.length || !crypto.timingSafeEqual(hashBuf, storedBuf)) {
+    return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
+  }
+  var tokenPayload = {
+    role: "superadmin",
+    email: email,
+    name: "SagarSoft Super Admin",
+    iat: Date.now(),
+    exp: Date.now() + SUPERADMIN_TOKEN_EXPIRY_MS
+  };
+  var token = signToken(tokenPayload);
+  return res.json({
+    success: true,
+    message: "Login successful.",
+    token: token,
+    user: { id: "USR-SUPER-001", name: tokenPayload.name, email: email, role: "superadmin" }
   });
 });
 
-app.get("/api/debug/schools", async function (req, res) {
-  try {
-    var _r = await pool.query("select school_id, school_name, email, status, plan, created_at from public.license_accounts order by created_at");
-    return res.json({ count: _r.rows.length, schools: _r.rows });
-  } catch (e) {
-    return res.json({ error: e.message });
-  }
-});
-
-app.put("/api/admin/schools/:schoolId", async function (req, res) {
+app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, res) {
   var schoolId = String(req.params.schoolId || "").trim();
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
   var body = req.body || {};
-  console.log("PUT /api/admin/schools/" + schoolId + ": method=PUT body keys:", Object.keys(body), "school_name:", body.school_name, "email:", body.email, "body.school_id:", body.school_id);
   try {
-    var _existing = await pool.query("select school_name,email from license_accounts where school_id=$1", [schoolId]);
-    if (_existing.rows.length > 0) {
-      var _old = _existing.rows[0];
-      if (body.school_name && body.school_name !== _old.school_name) { console.log("PUT WARNING: school_name differs! old=" + _old.school_name + " new=" + body.school_name); }
-      if (body.email && body.email.trim().toLowerCase() !== _old.email) { console.log("PUT WARNING: email differs! old=" + _old.email + " new=" + body.email); }
-    }
     var sets = [];
     var vals = [];
     var idx = 1;
@@ -1436,46 +1581,50 @@ app.put("/api/admin/schools/:schoolId", async function (req, res) {
   }
 });
 
-app.delete("/api/admin/schools/:schoolId", async function (req, res) {
+app.delete("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, res) {
   var schoolId = String(req.params.schoolId || "").trim();
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
   try {
     var _delResult = await pool.query("select email from public.license_accounts where school_id = $1", [schoolId]);
     var _delEmail = _delResult.rows.length > 0 ? _delResult.rows[0].email : null;
     await pool.query("delete from public.license_accounts where school_id = $1", [schoolId]);
-    var _delSupaUrl = process.env.SUPABASE_URL, _delSupaKey = process.env.SUPABASE_SECRET_KEY;
-    if (_delEmail && _delSupaUrl && _delSupaKey) {
+
+    var supabaseUrl = process.env.SUPABASE_URL;
+    var supabaseKey = process.env.SUPABASE_SECRET_KEY;
+    if (_delEmail && supabaseUrl && supabaseKey) {
       try {
-        var _delListResp = await fetch(_delSupaUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(_delEmail), { headers: { apikey: _delSupaKey, Authorization: "Bearer " + _delSupaKey } });
+        var _delListResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(_delEmail), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
         if (_delListResp.ok) {
           var _delListData = await _delListResp.json();
           if (_delListData.users && _delListData.users.length > 0) {
             var _delUid = _delListData.users[0].id;
-            await fetch(_delSupaUrl + "/auth/v1/admin/users/" + _delUid, { method: "DELETE", headers: { apikey: _delSupaKey, Authorization: "Bearer " + _delSupaKey } });
+            await fetch(supabaseUrl + "/auth/v1/admin/users/" + _delUid, { method: "DELETE", headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
             console.log("Supabase Auth user deleted for", _delEmail);
           }
         }
       } catch (_delSupaErr) { console.error("Supabase Auth delete error:", _delSupaErr.message); }
     }
+
     return res.json({ success: true, message: "School deleted." });
   } catch (error) {
+    console.error("DELETE /api/admin/schools error:", error.message);
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-app.post("/api/admin/schools/:schoolId/reset-tokens", async function (req, res) {
+app.post("/api/admin/schools/:schoolId/reset-tokens", requireSuperAdmin, async function (req, res) {
   var schoolId = String(req.params.schoolId || "").trim();
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
   try {
     var newToken = "sft-" + Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36);
-    await pool.query("update public.license_accounts set api_token = $1 where school_id = $2", [newToken, schoolId]);
+    await pool.query("update public.license_accounts set license_token = $1, updated_at = now() where school_id = $2", [newToken, schoolId]);
     return res.json({ success: true, message: "Tokens reset.", token: newToken });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 });
 
-app.post("/api/admin/notifications", async function (req, res) {
+app.post("/api/admin/notifications", requireSuperAdmin, async function (req, res) {
   var title = String(req.body.title || "Notification").trim();
   var message = String(req.body.message || "").trim();
   var targetSchoolId = String(req.body.school_id || "").trim();
@@ -1492,7 +1641,7 @@ app.post("/api/admin/notifications", async function (req, res) {
   }
 });
 
-app.get("/api/admin/notifications", async function (req, res) {
+app.get("/api/admin/notifications", requireSuperAdmin, async function (req, res) {
   try {
     var result = await pool.query("select n.id, n.school_id, n.title, n.message, n.created_at, coalesce(a.school_name,'') as school_name from public.license_notifications n left join public.license_accounts a on n.school_id = a.school_id order by n.created_at desc limit 100");
     return res.json({ success: true, notifications: result.rows });
@@ -1501,7 +1650,7 @@ app.get("/api/admin/notifications", async function (req, res) {
   }
 });
 
-app.delete("/api/admin/notifications", async function (req, res) {
+app.delete("/api/admin/notifications", requireSuperAdmin, async function (req, res) {
   try {
     await pool.query("delete from public.license_notifications");
     return res.json({ success: true, message: "Notification history cleared." });
@@ -1643,8 +1792,7 @@ app.get("/api/version", function (_req, res) {
 ensureSchema()
   .then(function () {
     app.listen(port, function () {
-      console.log("SagarSoft online API listening on " + port + " [fix: v2.1-getattr-override]");
-      console.log("Fix injected into /dashboard.html?inline-getattr-override-active");
+      console.log("SagarSoft online API listening on " + port);
     });
   })
   .catch(function (error) {
