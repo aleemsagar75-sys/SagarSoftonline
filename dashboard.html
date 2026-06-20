@@ -1129,31 +1129,31 @@
   <script src="./js/auth.js"></script>
   <script src="./js/dashboard.js?v=20260615"></script>
   <script>
-    // FIX: School creation — clear school_id when adding new, clear form after success
     var _origFetch = window.fetch;
     window.fetch = function () {
-      var args = arguments;
+      var args = Array.prototype.slice.call(arguments);
       var url = typeof args[0] === "string" ? args[0] : (args[0] && args[0].url || "");
       var opts = args[1] || {};
       var method = opts.method || "GET";
-      // Before POST (new school): clear pre-filled school_id so server generates a new one
+      if (!opts.headers) opts.headers = {};
+      if (typeof opts.headers === "object" && !(opts.headers instanceof Headers)) {
+        var token = (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken && window.SagarSoftAuth.getServerToken()) || "";
+        if (token && url.indexOf("/api/admin/") > -1 && !opts.headers["Authorization"]) {
+          opts.headers["Authorization"] = "Bearer " + token;
+        }
+      }
       if (url.indexOf("/api/admin/schools") > -1 && method === "POST") {
         var body = {};
         try { body = JSON.parse(opts.body || "{}"); } catch (e) {}
         var btn = document.getElementById("activateAccountBtn");
         var isNew = btn && !btn.getAttribute("data-edit-school-id");
-        if (isNew && body.school_id && body.school_id.indexOf("SCH-") !== 0) {
+        if (isNew) {
           delete body.school_id;
-          var newBody = JSON.stringify(body);
-          if (typeof args[0] === "string") {
-            args = [args[0], Object.assign({}, opts, { body: newBody })];
-          } else {
-            args[0] = Object.assign({}, args[0], { body: newBody });
-            args = [args[0], args[1]];
-          }
+          opts.body = JSON.stringify(body);
         }
       }
-      return _origFetch.apply(this, args).then(function (r) {
+      args[1] = opts;
+      return _origFetch.apply(window, args).then(function (r) {
         if (url.indexOf("/api/admin/schools") > -1 && method === "POST") {
           var clone = r.clone();
           clone.json().then(function (d) {
@@ -1161,10 +1161,6 @@
               ["schoolIdInput","schoolNameInput","accountUsernameInput","accountPasswordInput"].forEach(function (id) {
                 var el = document.getElementById(id); if (el) el.value = "";
               });
-              if (d.supabase_error) {
-                var msg = document.getElementById("manageSchoolsMessage");
-                if (msg) { msg.textContent = "School added! WARNING: " + d.supabase_error; msg.className = "form-message warning"; }
-              }
             } else if (d && !d.success && d.message) {
               var msg = document.getElementById("manageSchoolsMessage");
               if (msg) { msg.textContent = d.message; msg.className = "form-message error"; }
