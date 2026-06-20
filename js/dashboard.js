@@ -18963,8 +18963,8 @@ ${allContent}
               <input id="accountPasswordInput" type="text" value="${escapeAttr(account.password)}">
             </div>
             <div class="field-group">
-              <label for="schoolIdInput">School ID</label>
-              <input id="schoolIdInput" type="text" value="${escapeAttr(license.schoolId)}">
+              <label for="schoolIdInput">School ID (auto-generated)</label>
+              <input id="schoolIdInput" type="text" value="" readonly placeholder="Auto-assigned on save" class="module-input--readonly">
             </div>
             <div class="field-group">
               <label for="schoolNameInput">School Name</label>
