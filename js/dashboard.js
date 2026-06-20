@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
@@ -1052,7 +1052,7 @@ document.addEventListener("DOMContentLoaded", function () {
       expiryDate: "",
       status: "inactive",
       lastVerifiedAt: "",
-      verificationIntervalDays: 20,
+      verificationIntervalDays: 9999,
       websiteEndpoint: (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com",
       licenseToken: "",
       lastServerResponse: ""
@@ -1228,15 +1228,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const expiry = parseFlexibleDate(expiryRaw);
     if (expiry && !Number.isNaN(expiry.getTime()) && today > expiry) {
       return { locked: true, reason: "Subscription has expired. Please renew from Super Admin panel." };
-    }
-    const intervalDays = Math.max(1, Number(license.verificationIntervalDays || 20));
-    const lastVerified = parseFlexibleDate(license.lastVerifiedAt);
-    if (!lastVerified || Number.isNaN(lastVerified.getTime())) {
-      return { locked: true, reason: "Please connect to internet for a while to verify subscription." };
-    }
-    const msSinceVerify = today.getTime() - lastVerified.getTime();
-    if (msSinceVerify > intervalDays * 24 * 60 * 60 * 1000) {
-      return { locked: true, reason: "Please connect to internet for a while to verify subscription." };
     }
     return { locked: false, reason: "" };
   }
@@ -2146,27 +2137,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function applySidebarIcons() {
     const iconMapByRoute = {
-      "dashboard": "dashboard.png.png",
-      "homework": "homework.png.png",
-      "whatsapp": "whatsapp.png.png",
-      "sms-services": "SMS Services.png.png"
+      "dashboard": "dashboard.png",
+      "homework": "homework.png",
+      "whatsapp": "whatsapp.png",
+      "sms-services": "SMS Services.png"
     };
     const iconMapByAccordion = {
       "general-settings": "cogwheel.png",
-      "classes": "classes.png.png",
-      "subjects": "subjects.png.png",
-      "students": "students.png.png",
-      "employees": "employees.png.png",
-      "accounts": "accounts.png.png",
-      "fees": "fees.png.png",
-      "salary": "salary.png.png",
-      "attendance": "attendence.png.png",
-      "timetable": "timetable.png.png",
-      "question-paper": "question paper.png.png",
-      "exams": "exams.png.png",
-      "class-tests": "class test.png.png",
-      "reports": "reports.png.png",
-      "certificates": "Certificates.png.png"
+      "classes": "classes.png",
+      "subjects": "subjects.png",
+      "students": "students.png",
+      "employees": "employees.png",
+      "accounts": "accounts.png",
+      "fees": "fees.png",
+      "salary": "salary.png",
+      "attendance": "attendance.png",
+      "timetable": "timetable.png",
+      "question-paper": "question paper.png",
+      "exams": "exams.png",
+      "class-tests": "class test.png",
+      "reports": "reports.png",
+      "certificates": "Certificates.png"
     };
 
     document.querySelectorAll(".menu-link .menu-icon, .menu-group__trigger .menu-icon").forEach(function (iconEl) {
@@ -19025,6 +19016,9 @@ ${allContent}
               <article class="super-admin-card">
                 <strong>Manage Schools</strong>
                 <p class="helper-text">List of all schools. Edit, toggle status, or delete.</p>
+                <div style="margin-bottom:12px;">
+                  <button class="primary-button" id="resequenceIdsBtn" type="button" style="background:#6b7280;font-size:12px;padding:6px 12px;">Fix Duplicate IDs</button>
+                </div>
                 <div style="overflow-x:auto;">
                   <table class="data-table" id="schoolsTable" style="width:100%;font-size:13px;min-width:800px;">
                     <thead>
@@ -19429,7 +19423,7 @@ ${allContent}
           if (!emailEl || !emailEl.value.trim()) { if (msgEl) { msgEl.textContent = "Email required."; msgEl.className = "form-message error"; } return; }
           if (!passEl || !passEl.value.trim()) { if (msgEl) { msgEl.textContent = "Password required."; msgEl.className = "form-message error"; } return; }
           var body = { school_name: nameEl.value.trim(), email: emailEl.value.trim(), password: passEl.value.trim() };
-          if (schoolIdInput && schoolIdInput.value.trim()) body.school_id = schoolIdInput.value.trim();
+          if (!isNew && schoolIdInput && schoolIdInput.value.trim()) body.school_id = schoolIdInput.value.trim();
           if (planEl && planEl.value) body.plan = planEl.value;
           if (startEl && startEl.value) body.start_date = startEl.value;
           if (expiryEl && expiryEl.value) body.expiry_date = expiryEl.value;
@@ -19719,6 +19713,31 @@ ${allContent}
         }
 
         var schoolsTable = document.getElementById("schoolsTable");
+        var reseqBtn = document.getElementById("resequenceIdsBtn");
+        if (reseqBtn) {
+          reseqBtn.addEventListener("click", async function () {
+            if (!(await brandedConfirm("Re-sequence all school IDs? This will fix any duplicates."))) return;
+            reseqBtn.disabled = true;
+            reseqBtn.textContent = "Fixing...";
+            try {
+              var resp = await fetch(apiBase + "/api/admin/schools/resequence", { method: "POST", headers: { "Content-Type": "application/json" } });
+              var data = await resp.json().catch(function () { return {}; });
+              var msgEl = document.getElementById("manageSchoolsMessage");
+              if (data.success) {
+                if (msgEl) { msgEl.textContent = "Fixed " + data.resequenced + " duplicate IDs."; msgEl.className = "form-message success"; }
+                loadSchools();
+              } else {
+                if (msgEl) { msgEl.textContent = data.message || "Re-sequence failed."; msgEl.className = "form-message error"; }
+              }
+            } catch (_e) {
+              var msgEl2 = document.getElementById("manageSchoolsMessage");
+              if (msgEl2) { msgEl2.textContent = "Re-sequence failed."; msgEl2.className = "form-message error"; }
+            } finally {
+              reseqBtn.disabled = false;
+              reseqBtn.textContent = "Fix Duplicate IDs";
+            }
+          });
+        }
         if (schoolsTable) {
           schoolsTable.addEventListener("click", async function (e) {
             var btn = e.target.closest("[data-school-action]");
@@ -19805,8 +19824,8 @@ ${allContent}
                     if (sidEl) sidEl.value = school.school_id || "";
                     if (statEl) statEl.value = school.status === "active" && !school.modules_locked ? "Active" : "Inactive";
                     var actBtn = document.getElementById("activateAccountBtn");
-                    if (actBtn) { actBtn.textContent = "Save School"; actBtn.setAttribute("data-edit-school-id", schoolId); }
-                    msgEl.textContent = "Editing " + (school.school_name || schoolId) + ". Update fields above and click Save School.";
+                    if (actBtn) { actBtn.textContent = "Update School"; actBtn.setAttribute("data-edit-school-id", schoolId); }
+                    msgEl.textContent = "Editing " + (school.school_name || schoolId) + ". Update fields above and click Update School.";
                     msgEl.className = "form-message success";
                     var topEl = document.getElementById("accountSettingsTop");
                     if (topEl) topEl.scrollIntoView({ behavior: "smooth", block: "start" });
