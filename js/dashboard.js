@@ -19446,7 +19446,7 @@ ${allContent}
               activateAccountBtn.textContent = "Add School";
               activateAccountBtn.removeAttribute("data-edit-school-id");
               if (isNew) clearSchoolForm();
-              loadSchools();
+              if (typeof loadSchools === "function") { loadSchools(); } else { window.location.reload(); }
             } else {
               var errMsg = data.message || "Save failed. Check console for details.";
               if (msgEl) { msgEl.textContent = errMsg; msgEl.className = "form-message error"; }
