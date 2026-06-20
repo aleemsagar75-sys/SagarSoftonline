@@ -19419,9 +19419,12 @@ ${allContent}
           var expiryEl = document.getElementById("subscriptionExpiryInput");
           var msgEl = document.getElementById("manageSchoolsMessage") || document.getElementById("licenseMessage");
           var isNew = !editSchoolId || editSchoolId === "__NEW__";
-          if (!nameEl || !nameEl.value.trim()) { if (msgEl) { msgEl.textContent = "School name required."; msgEl.className = "form-message error"; } return; }
-          if (!emailEl || !emailEl.value.trim()) { if (msgEl) { msgEl.textContent = "Email required."; msgEl.className = "form-message error"; } return; }
-          if (!passEl || !passEl.value.trim()) { if (msgEl) { msgEl.textContent = "Password required."; msgEl.className = "form-message error"; } return; }
+          if (!nameEl || !nameEl.value.trim()) { if (msgEl) { msgEl.textContent = "School name required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
+          if (!emailEl || !emailEl.value.trim()) { if (msgEl) { msgEl.textContent = "Email required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
+          if (!passEl || !passEl.value.trim()) { if (msgEl) { msgEl.textContent = "Password required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
+          var origBtnText = activateAccountBtn.textContent;
+          activateAccountBtn.textContent = isNew ? "Activating school..." : "Saving...";
+          if (msgEl) { msgEl.textContent = "Processing, please wait..."; msgEl.className = "form-message info"; }
           var body = { school_name: nameEl.value.trim(), email: emailEl.value.trim(), password: passEl.value.trim() };
           if (!isNew && schoolIdInput && schoolIdInput.value.trim()) body.school_id = schoolIdInput.value.trim();
           if (planEl && planEl.value) body.plan = planEl.value;
@@ -19431,21 +19434,30 @@ ${allContent}
             var url = apiBase + "/api/admin/schools";
             var method = isNew ? "POST" : "PUT";
             if (!isNew) url += "/" + encodeURIComponent(editSchoolId);
+            console.log("[SagarSoft] School save request:", method, url, JSON.stringify(body));
             var resp = await fetch(url, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+            console.log("[SagarSoft] School save response status:", resp.status);
             var data = await resp.json().catch(function () { return {}; });
+            console.log("[SagarSoft] School save response:", JSON.stringify(data));
             if (data.success) {
-              if (msgEl) { msgEl.textContent = isNew ? "School added!" : "School saved."; msgEl.className = "form-message success"; }
+              var successMsg = isNew ? "School activated successfully! ID: " + (data.school_id || "") : "School saved successfully!";
+              if (msgEl) { msgEl.textContent = successMsg; msgEl.className = "form-message success"; }
+              openAppMessageBox("Success", successMsg, "success");
               activateAccountBtn.textContent = "Add School";
               activateAccountBtn.removeAttribute("data-edit-school-id");
               if (isNew) clearSchoolForm();
               loadSchools();
             } else {
-              if (msgEl) { msgEl.textContent = data.message || "Save failed."; msgEl.className = "form-message error"; }
+              var errMsg = data.message || "Save failed. Check console for details.";
+              if (msgEl) { msgEl.textContent = errMsg; msgEl.className = "form-message error"; }
+              openAppMessageBox("Error", errMsg, "error");
             }
           } catch (_e) {
-            if (msgEl) { msgEl.textContent = "Save failed."; msgEl.className = "form-message error"; }
+            console.error("[SagarSoft] School save error:", _e);
+            if (msgEl) { msgEl.textContent = "Save failed. Network error."; msgEl.className = "form-message error"; }
+            openAppMessageBox("Error", "Save failed. Network or server error. Check console.", "error");
           } finally {
-            if (activateAccountBtn) activateAccountBtn.disabled = false;
+            if (activateAccountBtn) { activateAccountBtn.disabled = false; activateAccountBtn.textContent = isNew ? "Add School" : "Update School"; }
           }
         });
       }
