@@ -1,4 +1,4 @@
-/* Major section: Dashboard shell, routing, and student management module */
+﻿/* Major section: Dashboard shell, routing, and student management module */
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
