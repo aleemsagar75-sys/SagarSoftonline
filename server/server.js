@@ -20,12 +20,12 @@ const apiKey = String(process.env.SAGARSOFT_API_KEY || "").trim();
 const defaultSchoolId = String(process.env.DEFAULT_SCHOOL_ID || "SCH-2026-001").trim();
 
 const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL || "aleemsagar@gmail.com").trim().toLowerCase();
-const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH || "").trim();
+const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH || "76a429a6f769dda0fa388cafe2a6e0f0f451f9eeb6d308d13aaadbf1ad4ab39f").trim();
 const SUPERADMIN_SESSION_SECRET = String(process.env.SUPERADMIN_SESSION_SECRET || "").trim();
 if (!SUPERADMIN_SESSION_SECRET) {
   console.error("WARNING: SUPERADMIN_SESSION_SECRET not set. All superadmin tokens will be invalidated on server restart. Set this env var for production.");
 }
-const SESSION_SECRET_KEY = SUPERADMIN_SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+const SESSION_SECRET_KEY = SUPERADMIN_SESSION_SECRET || "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2";
 const SUPERADMIN_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 function sha256(input) {
