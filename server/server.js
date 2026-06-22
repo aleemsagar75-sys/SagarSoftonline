@@ -19,13 +19,21 @@ const port = Number(process.env.PORT || 10000);
 const apiKey = String(process.env.SAGARSOFT_API_KEY || "").trim();
 const defaultSchoolId = String(process.env.DEFAULT_SCHOOL_ID || "SCH-2026-001").trim();
 
-const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL || "aleemsagar@gmail.com").trim().toLowerCase();
-const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH || "76a429a6f769dda0fa388cafe2a6e0f0f451f9eeb6d308d13aaadbf1ad4ab39f").trim();
-const SUPERADMIN_SESSION_SECRET = String(process.env.SUPERADMIN_SESSION_SECRET || "").trim();
-if (!SUPERADMIN_SESSION_SECRET) {
-  console.error("WARNING: SUPERADMIN_SESSION_SECRET not set. All superadmin tokens will be invalidated on server restart. Set this env var for production.");
+if (!process.env.SUPERADMIN_EMAIL) {
+  console.error("FATAL: SUPERADMIN_EMAIL environment variable is required.");
+  process.exit(1);
 }
-const SESSION_SECRET_KEY = SUPERADMIN_SESSION_SECRET || "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2";
+if (!process.env.SUPERADMIN_PASSWORD_HASH) {
+  console.error("FATAL: SUPERADMIN_PASSWORD_HASH environment variable is required.");
+  process.exit(1);
+}
+if (!process.env.SUPERADMIN_SESSION_SECRET) {
+  console.error("FATAL: SUPERADMIN_SESSION_SECRET environment variable is required.");
+  process.exit(1);
+}
+const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL).trim().toLowerCase();
+const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH).trim();
+const SESSION_SECRET_KEY = String(process.env.SUPERADMIN_SESSION_SECRET).trim();
 const SUPERADMIN_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 function sha256(input) {
@@ -188,7 +196,7 @@ if (cors) {
     var origin = req.headers.origin || "";
     var allowed = isOriginAllowed(origin);
     if (allowed) {
-      res.setHeader("Access-Control-Allow-Origin", origin || "*");
+      res.setHeader("Access-Control-Allow-Origin", origin);
     } else {
       res.setHeader("Access-Control-Allow-Origin", "https://sagarsoftonline.onrender.com");
     }
@@ -200,7 +208,7 @@ if (cors) {
     return next();
   });
 }
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: "5mb" }));
 
 app.use(function (_req, res, next) {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -246,7 +254,7 @@ app.get("/", (_req, res) => {
 
 function requireApiKey(req, res, next) {
   if (!apiKey) {
-    return next();
+    return res.status(503).json({ success: false, message: "API key not configured. Service unavailable." });
   }
   const incoming = String(req.headers["x-sagarsoft-api-key"] || "").trim();
   if (incoming !== apiKey) {
@@ -559,120 +567,6 @@ async function ensureSchema() {
       primary key (school_id, source_id)
     );
 
-    alter table public.employees add column if not exists school_id text;
-    alter table public.employees add column if not exists source_id text;
-    alter table public.employees add column if not exists data jsonb;
-    alter table public.employees add column if not exists updated_at timestamptz not null default now();
-    alter table public.teachers add column if not exists school_id text;
-    alter table public.teachers add column if not exists source_id text;
-    alter table public.teachers add column if not exists data jsonb;
-    alter table public.teachers add column if not exists updated_at timestamptz not null default now();
-    alter table public.students add column if not exists school_id text;
-    alter table public.students add column if not exists source_id text;
-    alter table public.students add column if not exists data jsonb;
-    alter table public.students add column if not exists updated_at timestamptz not null default now();
-    alter table public.classes add column if not exists school_id text;
-    alter table public.classes add column if not exists source_id text;
-    alter table public.classes add column if not exists data jsonb;
-    alter table public.classes add column if not exists updated_at timestamptz not null default now();
-    alter table public.app_users add column if not exists id text;
-    alter table public.app_users add column if not exists school_id text;
-    alter table public.app_users add column if not exists source_id text;
-    alter table public.app_users add column if not exists name text;
-    alter table public.app_users add column if not exists email text;
-    alter table public.app_users add column if not exists role text;
-    alter table public.app_users add column if not exists active boolean;
-    alter table public.app_users add column if not exists data jsonb not null default '{}'::jsonb;
-    alter table public.app_users add column if not exists updated_at timestamptz not null default now();
-    alter table public.subjects add column if not exists school_id text;
-    alter table public.subjects add column if not exists id text;
-    alter table public.subjects add column if not exists source_id text;
-    alter table public.subjects add column if not exists subject_name text;
-    alter table public.subjects add column if not exists class_name text;
-    alter table public.subjects add column if not exists teacher_id text;
-    alter table public.subjects add column if not exists data jsonb not null default '{}'::jsonb;
-    alter table public.subjects add column if not exists updated_at timestamptz not null default now();
-    alter table public.attendance add column if not exists school_id text;
-    alter table public.attendance add column if not exists id text;
-    alter table public.attendance add column if not exists source_id text;
-    alter table public.attendance add column if not exists entity_type text;
-    alter table public.attendance add column if not exists student_id text;
-    alter table public.attendance add column if not exists employee_id text;
-    alter table public.attendance add column if not exists date date;
-    alter table public.attendance add column if not exists status text;
-    alter table public.attendance add column if not exists data jsonb not null default '{}'::jsonb;
-    alter table public.attendance add column if not exists updated_at timestamptz not null default now();
-    alter table public.fees add column if not exists school_id text;
-    alter table public.fees add column if not exists id text;
-    alter table public.fees add column if not exists source_id text;
-    alter table public.fees add column if not exists student_id text;
-    alter table public.fees add column if not exists student_name text;
-    alter table public.fees add column if not exists class_name text;
-    alter table public.fees add column if not exists fee_month text;
-    alter table public.fees add column if not exists status text;
-    alter table public.fees add column if not exists total_amount numeric;
-    alter table public.fees add column if not exists deposit numeric;
-    alter table public.fees add column if not exists remaining numeric;
-    alter table public.fees add column if not exists data jsonb not null default '{}'::jsonb;
-    alter table public.fees add column if not exists updated_at timestamptz not null default now();
-    alter table public.fee_invoices add column if not exists id text;
-    alter table public.fee_invoices add column if not exists school_id text;
-    alter table public.fee_invoices add column if not exists source_id text;
-    alter table public.fee_invoices add column if not exists student_id text;
-    alter table public.fee_invoices add column if not exists student_name text;
-    alter table public.fee_invoices add column if not exists class_name text;
-    alter table public.fee_invoices add column if not exists fee_month text;
-    alter table public.fee_invoices add column if not exists total_amount numeric;
-    alter table public.fee_invoices add column if not exists data jsonb not null default '{}'::jsonb;
-    alter table public.fee_invoices add column if not exists updated_at timestamptz not null default now();
-    alter table public.fee_collections add column if not exists id text;
-    alter table public.fee_collections add column if not exists school_id text;
-    alter table public.fee_collections add column if not exists source_id text;
-    alter table public.fee_collections add column if not exists student_id text;
-    alter table public.fee_collections add column if not exists student_name text;
-    alter table public.fee_collections add column if not exists class_name text;
-    alter table public.fee_collections add column if not exists fee_month text;
-    alter table public.fee_collections add column if not exists deposit numeric;
-    alter table public.fee_collections add column if not exists remaining numeric;
-    alter table public.fee_collections add column if not exists collected_at timestamptz;
-    alter table public.fee_collections add column if not exists data jsonb not null default '{}'::jsonb;
-    alter table public.fee_collections add column if not exists updated_at timestamptz not null default now();
-    alter table public.salary_payments add column if not exists id text;
-    alter table public.salary_payments add column if not exists school_id text;
-    alter table public.salary_payments add column if not exists source_id text;
-    alter table public.salary_payments add column if not exists employee_id text;
-    alter table public.salary_payments add column if not exists employee_name text;
-    alter table public.salary_payments add column if not exists salary_month text;
-    alter table public.salary_payments add column if not exists salary_amount numeric;
-    alter table public.salary_payments add column if not exists bonus numeric;
-    alter table public.salary_payments add column if not exists deduction numeric;
-    alter table public.salary_payments add column if not exists net_salary numeric;
-    alter table public.salary_payments add column if not exists payment_date date;
-    alter table public.salary_payments add column if not exists data jsonb not null default '{}'::jsonb;
-    alter table public.salary_payments add column if not exists updated_at timestamptz not null default now();
-    alter table public.accounts_ledger add column if not exists id text;
-    alter table public.accounts_ledger add column if not exists school_id text;
-    alter table public.accounts_ledger add column if not exists source_id text;
-    alter table public.accounts_ledger add column if not exists date date;
-    alter table public.accounts_ledger add column if not exists type text;
-    alter table public.accounts_ledger add column if not exists category text;
-    alter table public.accounts_ledger add column if not exists amount numeric;
-    alter table public.accounts_ledger add column if not exists note text;
-    alter table public.accounts_ledger add column if not exists data jsonb not null default '{}'::jsonb;
-    alter table public.accounts_ledger add column if not exists updated_at timestamptz not null default now();
-    alter table public.activity_logs add column if not exists id text;
-    alter table public.activity_logs add column if not exists school_id text;
-    alter table public.activity_logs add column if not exists source_id text;
-    alter table public.activity_logs add column if not exists title text;
-    alter table public.activity_logs add column if not exists message text;
-    alter table public.activity_logs add column if not exists created_at timestamptz;
-    alter table public.activity_logs add column if not exists data jsonb not null default '{}'::jsonb;
-    alter table public.activity_logs add column if not exists updated_at timestamptz not null default now();
-    alter table public.license_accounts add column if not exists last_seen timestamptz;
-    alter table public.license_accounts add column if not exists timezone text not null default 'Asia/Karachi';
-    alter table public.license_accounts add column if not exists currency text not null default 'PKR';
-    alter table public.license_accounts add column if not exists symbol text not null default 'Rs';
-
     create unique index if not exists uq_employees_school_source on public.employees (school_id, source_id);
     create unique index if not exists uq_teachers_school_source on public.teachers (school_id, source_id);
     create unique index if not exists uq_students_school_source on public.students (school_id, source_id);
@@ -691,10 +585,6 @@ async function ensureSchema() {
     create index if not exists idx_accounts_ledger_school_id on public.accounts_ledger (school_id);
     create index if not exists idx_activity_logs_school_id on public.activity_logs (school_id);
     alter table if exists public.license_accounts drop constraint if exists license_accounts_email_key;
-    alter table if exists public.license_accounts add column if not exists last_seen timestamptz;
-    alter table if exists public.license_accounts add column if not exists timezone text default 'Asia/Karachi';
-    alter table if exists public.license_accounts add column if not exists currency text default 'PKR';
-    alter table if exists public.license_accounts add column if not exists symbol text default 'Rs';
     alter table if exists public.license_accounts add column if not exists api_token text;
 
     create table if not exists public.exams (
@@ -1520,47 +1410,53 @@ app.post("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
 });
 
 app.post("/api/admin/license", requireSuperAdmin, async (req, res) => {
-  const body = req.body || {};
-  const schoolId = normalizeSchoolId(body.school_id);
-  const schoolName = String(body.school_name || "School Admin").trim();
-  const email = String(body.email || "").trim().toLowerCase();
-  const password = String(body.password || "").trim();
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: "Email and password are required." });
+  try {
+    const body = req.body || {};
+    const schoolId = normalizeSchoolId(body.school_id);
+    const schoolName = String(body.school_name || "School Admin").trim();
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "").trim();
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required." });
+    }
+    const hashedPassword = hashPassword(password);
+    await pool.query(`
+      insert into public.license_accounts (
+        school_id, school_name, email, password, status, plan, start_date, expiry_date,
+        license_token, internet_required_after_days, modules_locked, updated_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
+      on conflict (school_id)
+      do update set
+        school_name = excluded.school_name,
+        email = excluded.email,
+        password = excluded.password,
+        status = excluded.status,
+        plan = excluded.plan,
+        start_date = excluded.start_date,
+        expiry_date = excluded.expiry_date,
+        license_token = excluded.license_token,
+        internet_required_after_days = excluded.internet_required_after_days,
+        modules_locked = excluded.modules_locked,
+        updated_at = now()
+    `, [
+      schoolId,
+      schoolName,
+      email,
+      hashedPassword,
+      String(body.status || "active").trim().toLowerCase(),
+      String(body.plan || "monthly").trim(),
+      body.start_date || new Date().toISOString().slice(0, 10),
+      body.expiry_date || null,
+      String(body.license_token || `LIC-${schoolId}`),
+      Number(body.internet_required_after_days || 20),
+      Boolean(body.modules_locked)
+    ]);
+    return res.json({ success: true, school_id: schoolId, license_token: String(body.license_token || `LIC-${schoolId}`) });
+  } catch (error) {
+    console.error("POST /api/admin/license error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
-  await pool.query(`
-    insert into public.license_accounts (
-      school_id, school_name, email, password, status, plan, start_date, expiry_date,
-      license_token, internet_required_after_days, modules_locked, updated_at
-    )
-    values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
-    on conflict (school_id)
-    do update set
-      school_name = excluded.school_name,
-      email = excluded.email,
-      password = excluded.password,
-      status = excluded.status,
-      plan = excluded.plan,
-      start_date = excluded.start_date,
-      expiry_date = excluded.expiry_date,
-      license_token = excluded.license_token,
-      internet_required_after_days = excluded.internet_required_after_days,
-      modules_locked = excluded.modules_locked,
-      updated_at = now()
-  `, [
-    schoolId,
-    schoolName,
-    email,
-    password,
-    String(body.status || "active").trim().toLowerCase(),
-    String(body.plan || "monthly").trim(),
-    body.start_date || new Date().toISOString().slice(0, 10),
-    body.expiry_date || null,
-    String(body.license_token || `LIC-${schoolId}`),
-    Number(body.internet_required_after_days || 20),
-    Boolean(body.modules_locked)
-  ]);
-  return res.json({ success: true, school_id: schoolId, license_token: String(body.license_token || `LIC-${schoolId}`) });
 });
 
 async function verifySupabaseAuth(email, password) {
@@ -1580,27 +1476,32 @@ async function verifySupabaseAuth(email, password) {
 }
 
 app.post("/api/activate-school.php", async (req, res) => {
-  var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
-  var rateKey = "activate:" + clientIp;
-  if (!checkRateLimit(rateKey)) {
-    return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+  try {
+    var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+    var rateKey = "activate:" + clientIp;
+    if (!checkRateLimit(rateKey)) {
+      return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+    }
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    var supaOk = await verifySupabaseAuth(email, password);
+    if (supaOk === false) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+    var row = null;
+    if (supaOk === true) {
+      row = (await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email])).rows[0];
+    } else {
+      var _r = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+      if (!_r.rowCount || !verifyPasswordHash(password, _r.rows[0].password)) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+      row = _r.rows[0];
+    }
+    if (!row) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+    await pool.query("update public.license_accounts set last_seen = now() where school_id = $1", [row.school_id]);
+    const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
+    return res.json(toLicensePayload(row, notes.rows));
+  } catch (error) {
+    console.error("POST /api/activate-school.php error:", error.message);
+    return res.status(500).json({ success: false, message: "Activation failed." });
   }
-  const email = String(req.body.email || "").trim().toLowerCase();
-  const password = String(req.body.password || "");
-  var supaOk = await verifySupabaseAuth(email, password);
-  if (supaOk === false) return res.status(401).json({ success: false, message: "Invalid school credentials." });
-  var row = null;
-  if (supaOk === true) {
-    row = (await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email])).rows[0];
-  } else {
-    var _r = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
-    if (!_r.rowCount || !verifyPasswordHash(password, _r.rows[0].password)) return res.status(401).json({ success: false, message: "Invalid school credentials." });
-    row = _r.rows[0];
-  }
-  if (!row) return res.status(401).json({ success: false, message: "Invalid school credentials." });
-  await pool.query("update public.license_accounts set last_seen = now() where school_id = $1", [row.school_id]);
-  const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
-  return res.json(toLicensePayload(row, notes.rows));
 });
 
 app.post("/api/mobile/login", async (req, res) => {
@@ -1715,16 +1616,17 @@ app.get("/api/mobile/database/:schoolId", async (req, res) => {
 });
 
 app.post("/api/mobile/database/:schoolId", async (req, res) => {
-  const schoolId = normalizeSchoolId(req.params.schoolId);
-  const token = String(req.body.license_token || req.headers["x-license-token"] || "").trim();
-  const license = await findLicenseByToken(schoolId, token);
-  if (!license || !isLicenseUsable(license)) {
-    return res.status(401).json({ success: false, message: "Invalid or inactive license." });
-  }
   try {
+    const schoolId = normalizeSchoolId(req.params.schoolId);
+    const token = String(req.body.license_token || req.headers["x-license-token"] || "").trim();
+    const license = await findLicenseByToken(schoolId, token);
+    if (!license || !isLicenseUsable(license)) {
+      return res.status(401).json({ success: false, message: "Invalid or inactive license." });
+    }
     await saveSchoolDatabaseWithMirrors(schoolId, req.body.database || {});
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
+    console.error("POST /api/mobile/database/:schoolId error:", error.message);
     return res.status(500).json({ success: false, message: error.message || "Unable to save mobile database." });
   }
 });
@@ -1900,43 +1802,41 @@ app.post("/api/admin/schools", requireSuperAdmin, async function (req, res) {
 });
 
 app.post("/api/auth/superadmin", async function (req, res) {
-  var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
-  var rateKey = "superadmin:" + clientIp;
-  if (!checkRateLimit(rateKey)) {
-    return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+  try {
+    var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+    var rateKey = "superadmin:" + clientIp;
+    if (!checkRateLimit(rateKey)) {
+      return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+    }
+    var email = String(req.body.email || "").trim().toLowerCase();
+    var password = String(req.body.password || "");
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required." });
+    }
+    if (email !== SUPERADMIN_EMAIL) {
+      return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
+    }
+    if (!verifyPasswordHash(password, SUPERADMIN_PASSWORD_HASH)) {
+      return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
+    }
+    var tokenPayload = {
+      role: "superadmin",
+      email: email,
+      name: "SagarSoft Super Admin",
+      iat: Date.now(),
+      exp: Date.now() + SUPERADMIN_TOKEN_EXPIRY_MS
+    };
+    var token = signToken(tokenPayload);
+    return res.json({
+      success: true,
+      message: "Login successful.",
+      token: token,
+      user: { id: "USR-SUPER-001", name: tokenPayload.name, email: email, role: "superadmin" }
+    });
+  } catch (error) {
+    console.error("POST /api/auth/superadmin error:", error.message);
+    return res.status(500).json({ success: false, message: "Login failed." });
   }
-  var email = String(req.body.email || "").trim().toLowerCase();
-  var password = String(req.body.password || "");
-  if (!email || !password) {
-    return res.status(400).json({ success: false, message: "Email and password are required." });
-  }
-  if (email !== SUPERADMIN_EMAIL) {
-    return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
-  }
-  var passwordHash = sha256(password);
-  var storedHash = SUPERADMIN_PASSWORD_HASH;
-  if (!storedHash) {
-    return res.status(500).json({ success: false, message: "Server misconfiguration. SUPERADMIN_PASSWORD_HASH not set." });
-  }
-  var hashBuf = Buffer.from(passwordHash);
-  var storedBuf = Buffer.from(storedHash);
-  if (hashBuf.length !== storedBuf.length || !crypto.timingSafeEqual(hashBuf, storedBuf)) {
-    return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
-  }
-  var tokenPayload = {
-    role: "superadmin",
-    email: email,
-    name: "SagarSoft Super Admin",
-    iat: Date.now(),
-    exp: Date.now() + SUPERADMIN_TOKEN_EXPIRY_MS
-  };
-  var token = signToken(tokenPayload);
-  return res.json({
-    success: true,
-    message: "Login successful.",
-    token: token,
-    user: { id: "USR-SUPER-001", name: tokenPayload.name, email: email, role: "superadmin" }
-  });
 });
 
 app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, res) {
@@ -2206,3 +2106,19 @@ ensureSchema()
     console.error("Unable to start SagarSoft online API:", error);
     process.exit(1);
   });
+
+function gracefulShutdown(signal) {
+  console.log("Received " + signal + ". Shutting down gracefully...");
+  if (_pool) {
+    _pool.end().then(function () {
+      console.log("Database pool closed.");
+      process.exit(0);
+    }).catch(function () {
+      process.exit(1);
+    });
+  } else {
+    process.exit(0);
+  }
+}
+process.on("SIGTERM", function () { gracefulShutdown("SIGTERM"); });
+process.on("SIGINT", function () { gracefulShutdown("SIGINT"); });
