@@ -150,7 +150,7 @@
         id: "USR-SUPER-001",
         name: "SagarSoft Super Admin",
         email: "aleemsagar@gmail.com",
-        password: "76a429a6f769dda0fa388cafe2a6e0f0f451f9eeb6d308d13aaadbf1ad4ab39f",
+        password: "",
         role: "superadmin",
         phone: "+91 90000 00000",
         active: true
@@ -355,13 +355,10 @@
     if (!superUser) {
       db.users.push(structuredClone(defaultDatabase.users[0]));
     } else {
-      superUser.name = "SagarSoft Super Admin";
-      superUser.role = "superadmin";
-      superUser.active = true;
-      superUser.email = "aleemsagar@gmail.com";
-      if (!window.SagarSoftCrypto || !window.SagarSoftCrypto.isHash(superUser.password)) {
-        superUser.password = "76a429a6f769dda0fa388cafe2a6e0f0f451f9eeb6d308d13aaadbf1ad4ab39f";
-      }
+      if (!superUser.name) superUser.name = "SagarSoft Super Admin";
+      if (!superUser.role) superUser.role = "superadmin";
+      if (typeof superUser.active === "undefined") superUser.active = true;
+      if (!superUser.email) superUser.email = "aleemsagar@gmail.com";
     }
 
     if (!Array.isArray(db.students)) db.students = [];
@@ -472,7 +469,7 @@
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: database })
-      }).catch(function () {});
+      }).catch(function (err) { console.warn("Failed to sync database to server:", err); });
     }
     return database;
   }
