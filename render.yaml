@@ -2,7 +2,8 @@ services:
   - type: web
     name: sagarsoft-online
     runtime: node
-    repo: https://github.com/aleemsagar75-sys/Sagarsoftonline
+    repo: https://github.com/aleemsagar75-sys/SagarSoftonline
+    rootDir: sagarsoft
     buildCommand: cd server && npm install
     startCommand: cd server && node server.js
     envVars:
@@ -18,3 +19,9 @@ services:
         sync: false
       - key: DEFAULT_SCHOOL_ID
         value: SCH-2026-001
+      - key: SUPERADMIN_EMAIL
+        sync: false
+      - key: SUPERADMIN_PASSWORD_HASH
+        sync: false
+      - key: SUPERADMIN_SESSION_SECRET
+        sync: false
