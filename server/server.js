@@ -19,21 +19,13 @@ const port = Number(process.env.PORT || 10000);
 const apiKey = String(process.env.SAGARSOFT_API_KEY || "").trim();
 const defaultSchoolId = String(process.env.DEFAULT_SCHOOL_ID || "SCH-2026-001").trim();
 
-if (!process.env.SUPERADMIN_EMAIL) {
-  console.error("FATAL: SUPERADMIN_EMAIL environment variable is required.");
-  process.exit(1);
+const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL || "aleemsagar@gmail.com").trim().toLowerCase();
+const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH || "76a429a6f769dda0fa388cafe2a6e0f0f451f9eeb6d308d13aaadbf1ad4ab39f").trim();
+const SUPERADMIN_SESSION_SECRET = String(process.env.SUPERADMIN_SESSION_SECRET || "").trim();
+if (!SUPERADMIN_SESSION_SECRET) {
+  console.warn("WARNING: SUPERADMIN_SESSION_SECRET not set. Tokens will be invalidated on restart.");
 }
-if (!process.env.SUPERADMIN_PASSWORD_HASH) {
-  console.error("FATAL: SUPERADMIN_PASSWORD_HASH environment variable is required.");
-  process.exit(1);
-}
-if (!process.env.SUPERADMIN_SESSION_SECRET) {
-  console.error("FATAL: SUPERADMIN_SESSION_SECRET environment variable is required.");
-  process.exit(1);
-}
-const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL).trim().toLowerCase();
-const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH).trim();
-const SESSION_SECRET_KEY = String(process.env.SUPERADMIN_SESSION_SECRET).trim();
+const SESSION_SECRET_KEY = SUPERADMIN_SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 const SUPERADMIN_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 function sha256(input) {
