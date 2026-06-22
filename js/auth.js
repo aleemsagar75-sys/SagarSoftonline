@@ -11,7 +11,7 @@
   }
 
   function saveDemoSnapshot(database) {
-    try { sessionStorage.setItem(DEMO_SNAPSHOT_KEY, JSON.stringify(database)); } catch (_e) {}
+    try { sessionStorage.setItem(DEMO_SNAPSHOT_KEY, JSON.stringify(database)); } catch (_e) { console.warn("Failed to save demo snapshot:", _e); }
   }
 
   function restoreDemoSnapshot() {
@@ -23,12 +23,12 @@
           window.SagarSoftDB.saveDatabase(snapshot);
         }
       }
-    } catch (_e) {}
-    try { sessionStorage.removeItem(DEMO_SNAPSHOT_KEY); } catch (_e) {}
+    } catch (_e) { console.warn("Failed to restore demo snapshot:", _e); }
+    try { sessionStorage.removeItem(DEMO_SNAPSHOT_KEY); } catch (_e) { console.warn("Failed to remove demo snapshot:", _e); }
   }
 
   function saveSession(session) {
-    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (_e) {}
+    try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (_e) { console.warn("Failed to save session:", _e); }
   }
 
   function clearSession() {
@@ -138,7 +138,7 @@
     license.lastServerResponse = JSON.stringify(payload);
 
     account.username = String(email || payload.email || "").trim().toLowerCase();
-    account.password = String(password || "");
+    account.password = "";
     account.subscription = license.subscriptionPlan;
     account.expiry = license.expiryDate;
 
@@ -223,7 +223,7 @@
     if (user && user.password && !window.SagarSoftCrypto.isHash(user.password)) {
       try {
         user.password = await window.SagarSoftCrypto.hashPassword(user.password);
-      } catch (_e) {}
+      } catch (_e) { console.warn("Failed to migrate password hash:", _e); }
     }
     return user;
   }
@@ -233,65 +233,6 @@
     var normalizedEmail = String(email).trim().toLowerCase();
     var enteredPassword = String(password || "");
 
-    var superEmail = "aleemsagar@gmail.com";
-
-    if (normalizedEmail === superEmail) {
-      try {
-        var portalUrl = (database.generalSettings && database.generalSettings.licenseSettings
-          && database.generalSettings.licenseSettings.websiteEndpoint)
-          ? normalizePortalEndpoint(database.generalSettings.licenseSettings.websiteEndpoint)
-          : DEFAULT_PORTAL_URL;
-        var resp = await fetch(portalUrl + "/api/auth/superadmin", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: normalizedEmail, password: enteredPassword })
-        });
-        var payload = await resp.json().catch(function () { return {}; });
-        if (!resp.ok || !payload.success) {
-          return { success: false, message: (payload && payload.message) || "Invalid super admin credentials." };
-        }
-        SUPER_ADMIN_SESSION_TOKEN = payload.token;
-        var superUserRecord = payload.user || {
-          id: "USR-SUPER-001",
-          name: "SagarSoft Super Admin",
-          email: normalizedEmail,
-          role: "superadmin"
-        };
-        var superUserIndex = Array.isArray(database.users)
-          ? database.users.findIndex(function (entry) { return entry && entry.id === "USR-SUPER-001"; })
-          : -1;
-        if (!Array.isArray(database.users)) database.users = [];
-        if (superUserIndex >= 0) {
-          database.users[superUserIndex] = { ...database.users[superUserIndex], ...superUserRecord, active: true };
-        } else {
-          database.users.push({ ...superUserRecord, active: true });
-        }
-        window.SagarSoftDB.saveDatabase(database);
-        var session = {
-          id: superUserRecord.id,
-          name: superUserRecord.name,
-          email: superUserRecord.email,
-          role: "superadmin",
-          rememberMe: Boolean(rememberMe),
-          loginAt: new Date().toISOString(),
-          serverToken: payload.token
-        };
-        saveSession(session);
-        window.SagarSoftDB.updateDatabase(function (databaseSnapshot) {
-          databaseSnapshot.activityLogs.unshift({
-            id: "ACT-" + Date.now(),
-            title: "superadmin login",
-            description: superUserRecord.name + " signed in successfully.",
-            createdAt: new Date().toISOString()
-          });
-          return databaseSnapshot;
-        });
-        return { success: true, message: "Login successful.", user: session };
-      } catch (networkError) {
-        return { success: false, message: "Unable to connect to server for super admin authentication. Check your internet connection." };
-      }
-    }
-
     if (String(role || "").toLowerCase() === "admin") {
       var accountSettings = database.generalSettings && database.generalSettings.accountSettings
         ? database.generalSettings.accountSettings
@@ -299,9 +240,12 @@
       var configuredUsername = String(accountSettings.username || "").trim().toLowerCase();
       var configuredPassword = String(accountSettings.password || "");
       if (configuredUsername && configuredPassword && normalizedEmail === configuredUsername) {
-        var adminPasswordMatch = enteredPassword === configuredPassword;
-        if (!adminPasswordMatch && window.SagarSoftCrypto && window.SagarSoftCrypto.isHash(configuredPassword)) {
+        var adminPasswordMatch = false;
+        if (window.SagarSoftCrypto && window.SagarSoftCrypto.isHash(configuredPassword)) {
           adminPasswordMatch = await window.SagarSoftCrypto.verifyPassword(enteredPassword, configuredPassword);
+        }
+        if (!adminPasswordMatch) {
+          adminPasswordMatch = enteredPassword === configuredPassword;
         }
         if (adminPasswordMatch) {
           var existingAdminIndex = Array.isArray(database.users)
@@ -348,10 +292,10 @@
     }
 
     var demoAccounts = [
-      { id: "USR-ADMIN-DEMO", name: "School Admin", email: "admin@sagarsoft.com", password: "admin123", role: "admin", phone: "+92 300 0000000", active: true },
-      { id: "USR-TEACHER-DEMO", name: "Demo Teacher", email: "teacher@sagarsoft.com", password: "teacher123", role: "teacher", phone: "+92 300 0000001", active: true },
-      { id: "USR-STUDENT-DEMO", name: "Demo Student", email: "student@sagarsoft.com", password: "student123", role: "student", phone: "+92 300 0000002", active: true },
-      { id: "USR-PARENT-DEMO", name: "Demo Parent", email: "parent@sagarsoft.com", password: "parent123", role: "parent", phone: "+92 300 0000003", active: true }
+      { id: "USR-ADMIN-DEMO", name: "School Admin", email: "admin@sagarsoft.com", password: "demo_admin_password", role: "admin", phone: "+92 300 0000000", active: true },
+      { id: "USR-TEACHER-DEMO", name: "Demo Teacher", email: "teacher@sagarsoft.com", password: "demo_teacher_password", role: "teacher", phone: "+92 300 0000001", active: true },
+      { id: "USR-STUDENT-DEMO", name: "Demo Student", email: "student@sagarsoft.com", password: "demo_student_password", role: "student", phone: "+92 300 0000002", active: true },
+      { id: "USR-PARENT-DEMO", name: "Demo Parent", email: "parent@sagarsoft.com", password: "demo_parent_password", role: "parent", phone: "+92 300 0000003", active: true }
     ];
     demoAccounts.forEach(function (demoUser) {
       var exists = database.users.some(function (u) { return u && String(u.email || "").trim().toLowerCase() === demoUser.email; });
