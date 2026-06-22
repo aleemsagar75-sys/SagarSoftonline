@@ -1,0 +1,6 @@
+{
+  "version": "2.0.0",
+  "releaseDate": "2026-06-22",
+  "updateUrl": "https://sagarsoftonline.onrender.com/app/dashboard.html",
+  "releaseNotes": "Security hardening. Removed offline license system. All module data synced to Supabase structured tables."
+}
