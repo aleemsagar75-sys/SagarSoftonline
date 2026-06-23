@@ -410,6 +410,9 @@
       });
     });
 
+    if (!Array.isArray(db.attendance)) db.attendance = [];
+    if (!Array.isArray(db.subjects)) db.subjects = [];
+    if (!Array.isArray(db.activityLogs)) db.activityLogs = [];
     if (!Array.isArray(db.fees)) db.fees = [];
     db.fees = db.fees.map(function (feeItem) {
       return Object.assign({}, feeItem, {
