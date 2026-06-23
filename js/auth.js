@@ -220,7 +220,7 @@
   var SUPER_ADMIN_SESSION_TOKEN = null;
 
   async function migratePassword(user) {
-    if (user && user.password && !window.SagarSoftCrypto.isHash(user.password)) {
+    if (user && user.password && window.SagarSoftCrypto && !window.SagarSoftCrypto.isHash(user.password)) {
       try {
         user.password = await window.SagarSoftCrypto.hashPassword(user.password);
       } catch (_e) { console.warn("Failed to migrate password hash:", _e); }
@@ -328,7 +328,7 @@
       };
     }
 
-    if (!window.SagarSoftCrypto.isHash(user.password)) {
+    if (window.SagarSoftCrypto && !window.SagarSoftCrypto.isHash(user.password)) {
       user = await migratePassword(user);
       window.SagarSoftDB.saveDatabase(database);
     }
