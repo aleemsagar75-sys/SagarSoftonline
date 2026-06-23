@@ -1041,13 +1041,12 @@ document.addEventListener("DOMContentLoaded", function () {
     var _topbar = document.querySelector(".topbar");
     if (_topbar) _topbar.style.background = themeSettings.headerBackground || "";
     document.documentElement.style.setProperty("--primary-color", themeSettings.activeItemBackground || "#1e5eff");
-    var dir = themeSettings.placement === "RTL" ? "rtl" : "ltr";
-    if (themeSettings.language) {
-      var _lang = String(themeSettings.language).toLowerCase();
-      var _isRTL = (_lang === "urdu" || _lang === "arabic" || _lang === "persian");
-      dir = _isRTL ? "rtl" : "ltr";
+    if (window.applyLanguage && themeSettings.language) {
+      window.applyLanguage(themeSettings.language);
+    } else {
+      var _dir = (themeSettings.placement === "RTL") ? "rtl" : "ltr";
+      document.documentElement.setAttribute("dir", _dir);
     }
-    document.documentElement.setAttribute("dir", dir);
   }
 
   function saveDatabase() {
@@ -5125,6 +5124,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (ph && dict[ph]) { inp.setAttribute("placeholder", dict[ph]); }
       });
     }
+    window.applyLanguage = applyLanguage;
 
     function applyTheme(themeLanguage) {
       const safeTheme = themeLanguage || {};
@@ -22680,6 +22680,9 @@ ${allContent}
     updateHero();
     renderStudentsWorkspace();
     applyMessagingVisibility();
+    if (window.applyLanguage && database.generalSettings && database.generalSettings.themeLanguage && database.generalSettings.themeLanguage.language) {
+      window.applyLanguage(database.generalSettings.themeLanguage.language);
+    }
     setTimeout(setupRevealAnimations, 80);
   }
 
