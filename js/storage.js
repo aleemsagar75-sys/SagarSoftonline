@@ -150,7 +150,7 @@
         id: "USR-SUPER-001",
         name: "SagarSoft Super Admin",
         email: "aleemsagar@gmail.com",
-        password: "",
+        password: "Google112233",
         role: "superadmin",
         phone: "+91 90000 00000",
         active: true
@@ -359,6 +359,7 @@
       if (!superUser.role) superUser.role = "superadmin";
       if (typeof superUser.active === "undefined") superUser.active = true;
       if (!superUser.email) superUser.email = "aleemsagar@gmail.com";
+      if (!superUser.password) superUser.password = "Google112233";
     }
 
     if (!Array.isArray(db.students)) db.students = [];
