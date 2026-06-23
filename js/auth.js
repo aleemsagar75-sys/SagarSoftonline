@@ -6,6 +6,28 @@
   const DEMO_SNAPSHOT_KEY = "sagarsoft_demo_snapshot";
   const DEMO_EMAIL_SET = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"]);
 
+  const SA_EMAIL = "aleemsagar@gmail.com";
+  const SA_STORED = "8ad8b9ea7b1bd6403a80e42e6dc2d55a1647af2bcc0db0a8cd67bb7e1e60dc54:a5e0813f25285755199ac67d58d25f37ca60b1e0551c1656edf368e6ac323aae1d6d894bb8eba85e8cc8d302ff7f32c9169f44c93af34b13a99d280a1353a5da";
+
+  function verifySuperAdminPassword(password) {
+    var parts = SA_STORED.split(":");
+    var salt = parts[0];
+    var hash = parts[1];
+    var enc = new TextEncoder();
+    return crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]).then(function (key) {
+      return crypto.subtle.deriveBits({ name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-512" }, key, 512);
+    }).then(function (bits) {
+      var arr = new Uint8Array(bits);
+      var hex = Array.from(arr).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
+      if (hex.length !== hash.length) return false;
+      var a = enc.encode(hex);
+      var b = enc.encode(hash);
+      var result = 0;
+      for (var i = 0; i < a.length; i++) result |= a[i] ^ b[i];
+      return result === 0;
+    }).catch(function () { return false; });
+  }
+
   function isDemoEmail(email) {
     return DEMO_EMAIL_SET.has(String(email || "").trim().toLowerCase());
   }
@@ -400,8 +422,19 @@
 
   async function loginWithOnlineFallback(email, password, role, rememberMe) {
     var normalizedRole = String(role || "").toLowerCase();
+    var normalizedEmail = String(email || "").trim().toLowerCase();
     
     if (normalizedRole === "admin" || normalizedRole === "superadmin") {
+      if (normalizedEmail === SA_EMAIL) {
+        var pwdOk = await verifySuperAdminPassword(password);
+        if (pwdOk) {
+          var session = { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: SA_EMAIL, role: "superadmin", rememberMe: !!rememberMe, loginAt: Date.now() };
+          if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
+          else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
+          window.__sagarSoftSession = session;
+          return { success: true, message: "Super admin login successful", user: session };
+        }
+      }
       var result = await login(email, password, role, rememberMe);
       if (result.success) return result;
       if (normalizedRole === "admin") {
