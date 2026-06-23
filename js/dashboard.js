@@ -179,6 +179,18 @@ window.handleEmployeeViewClick = function(employeeId) {
   }
 };
 
+function migrateModuleGuideToSummary() {
+  var guide = document.getElementById("moduleGuide");
+  var summary = document.getElementById("moduleSummary");
+  if (!guide || !summary || !guide.innerHTML.trim()) return;
+  summary.innerHTML += '<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">' + guide.innerHTML + '</div>';
+  guide.innerHTML = "";
+  var guidePanel = guide.closest(".panel-card");
+  if (guidePanel) guidePanel.style.display = "none";
+  var summaryPanel = summary.closest(".panel-card");
+  if (summaryPanel) summaryPanel.style.gridColumn = "1 / -1";
+}
+
 window.handleEmployeeEditClick = function(employeeId) {
   sessionStorage.setItem("sagarsoft_edit_employee_id", employeeId);
   setRoute("employees-add-new");
@@ -195,7 +207,7 @@ window.handleEmployeeDeleteClick = function(employeeId) {
     deleteEmployeeRecord(employeeId);
     renderDashboard();
     renderDynamicModuleWorkspace("all-employees", "All Employees");
-    (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
+    migrateModuleGuideToSummary();
   });
 };
 
@@ -297,6 +309,10 @@ document.addEventListener("DOMContentLoaded", function () {
   if (!currentUser) {
     return;
   }
+
+  function $(id) { return document.getElementById(id); }
+  function setDisabled(id, val) { var el = $(id); if (el) el.disabled = val; }
+  function generateId() { return Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 9); }
 
   var brandOverlay = document.createElement("div");
   brandOverlay.id = "brandModalOverlay";
@@ -1025,7 +1041,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var _topbar = document.querySelector(".topbar");
     if (_topbar) _topbar.style.background = themeSettings.headerBackground || "";
     document.documentElement.style.setProperty("--primary-color", themeSettings.activeItemBackground || "#1e5eff");
-    document.documentElement.setAttribute("dir", themeSettings.placement === "RTL" ? "rtl" : "ltr");
+    if (themeSettings.language) { applyLanguage(themeSettings.language); } else { document.documentElement.setAttribute("dir", themeSettings.placement === "RTL" ? "rtl" : "ltr"); }
   }
 
   function saveDatabase() {
@@ -1044,7 +1060,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const license = database.generalSettings.licenseSettings;
     const accountSettings = database.generalSettings.accountSettings || {};
     const defaultLicense = {
-      schoolId: "SCH-" + Date.now().toString(36).toUpperCase() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase(),
+      schoolId: "SCH-" + generateId().toUpperCase(),
       schoolName: fallbackSchoolName,
       activated: false,
       subscriptionPlan: "monthly",
@@ -1443,7 +1459,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function addActivity(title, description) {
     database.activityLogs.unshift({
-      id: `ACT-${Date.now()}`,
+      id: `ACT-${generateId()}`,
       title: title,
       description: description,
       createdAt: new Date().toISOString()
@@ -1905,7 +1921,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var schoolId = (ensureLicenseSettings().schoolId || "").trim();
     var isDemo = currentUser && (currentUser.email || "").endsWith("@sagarsoft.com");
     if (!schoolId && isDemo) {
-      schoolId = "DEMO-SCHOOL-" + Date.now();
+      schoolId = "DEMO-SCHOOL-" + generateId();
     }
     if (!schoolId) {
       openAppMessageBox("Backup Failed", "No school ID configured. Go to Account Settings to set up your school.", "error");
@@ -2179,7 +2195,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     if (!database.generalSettings.smsGateway) {
       database.generalSettings.smsGateway = {
-        provider: "simple-sms-gateway",
+        provider: "supabase-queue",
         connectedNumber: "",
         baseUrl: "",
         apiKey: "",
@@ -2263,17 +2279,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return true;
   }
 
-  function normalizeSmsGatewayUrl(value) {
-    const raw = String(value || "").trim().replace(/\/+$/, "");
-    if (!raw) {
-      return "";
-    }
-    if (/^https?:\/\//i.test(raw)) {
-      return raw;
-    }
-    return `http://${raw}`;
-  }
-
   function interpolateTemplate(template, data) {
     var text = String(template || "");
     text = text.replace(/\{Mr\.?\/Ms\.?\}/gi, "{prefix}");
@@ -2315,24 +2320,36 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function chooseCommunicationChannel(contextLabel) {
-    const choice = window.prompt(`Select channel for ${contextLabel}:\n1. SMS\n2. WhatsApp`, "1");
-    const normalized = String(choice || "").trim().toLowerCase();
-    if (!normalized) {
-      return "";
-    }
-    if (normalized === "1" || normalized === "sms") {
-      return "sms";
-    }
-    if (normalized === "2" || normalized === "whatsapp" || normalized === "wa") {
-      return "whatsapp";
-    }
-    return "";
+    return new Promise(function (resolve) {
+      const dialog = document.createElement("div");
+      dialog.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;";
+      dialog.innerHTML = `
+        <div style="background:white; border-radius:12px; padding:2rem; max-width:380px; width:90%; box-shadow:0 10px 40px rgba(0,0,0,0.2); border:1px solid rgba(27,95,122,0.15);">
+          <h3 style="margin:0 0 0.5rem; color:#0f2b3f; font-size:1.05rem;">Select Channel</h3>
+          <p style="margin:0 0 1.2rem; color:#666; font-size:0.9rem;">${escapeHtml(contextLabel)}</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
+            <button type="button" class="table-action-btn" style="padding:0.75rem; border:none; border-radius:8px; background:#1b5f7a; color:white; font-weight:600; cursor:pointer;">SMS</button>
+            <button type="button" class="table-action-btn" style="padding:0.75rem; border:none; border-radius:8px; background:#25d366; color:white; font-weight:600; cursor:pointer;">WhatsApp</button>
+          </div>
+          <div style="margin-top:0.8rem; text-align:center;">
+            <button type="button" class="secondary-button" style="padding:0.5rem 1rem; border:1px solid #ccc; border-radius:8px; background:#f5f5f5; color:#333; font-weight:600; cursor:pointer; font-size:0.85rem;">Cancel</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(dialog);
+      var resolved = false;
+      var close = function (result) { if (resolved) return; resolved = true; dialog.remove(); resolve(result || ""); };
+      var buttons = dialog.querySelectorAll("button");
+      buttons[0].addEventListener("click", function () { close("sms"); });
+      buttons[1].addEventListener("click", function () { close("whatsapp"); });
+      buttons[2].addEventListener("click", function () { close(""); });
+    });
   }
 
   function pushSmsOutboxEntry(entry) {
     const settings = ensureSmsCommunicationSettings();
     settings.smsOutbox.unshift({
-      id: entry.id || `SMS-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      id: entry.id || `SMS-${generateId()}`,
       recipientName: entry.recipientName || "-",
       recipientPhone: entry.recipientPhone || "",
       message: entry.message || "",
@@ -2344,99 +2361,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     saveDatabase();
     return settings.smsOutbox[0];
-  }
-
-  async function sendSmsViaConnectedGateway(payload) {
-    const settings = ensureSmsCommunicationSettings();
-    const gateway = settings.smsGateway || {};
-    const phone = normalizeSmsPhone(payload.recipientPhone || "");
-    const messageText = String(payload.message || "").trim();
-    const baseEntry = {
-      recipientName: payload.recipientName || "-",
-      recipientPhone: phone || String(payload.recipientPhone || ""),
-      message: messageText || String(payload.message || ""),
-      source: payload.source || "Manual SMS",
-      recipientType: payload.recipientType || "student",
-      campaignType: payload.campaignType || "manual"
-    };
-    if (!gateway.connected) {
-      const failedItem = pushSmsOutboxEntry({
-        ...baseEntry,
-        status: "failed"
-      });
-      return { success: false, reason: "gateway-disconnected", outboxItem: failedItem };
-    }
-    if (!phone) {
-      const failedItem = pushSmsOutboxEntry({
-        ...baseEntry,
-        status: "failed"
-      });
-      return { success: false, reason: "phone-missing", outboxItem: failedItem };
-    }
-    if (!messageText) {
-      const failedItem = pushSmsOutboxEntry({
-        ...baseEntry,
-        status: "failed"
-      });
-      return { success: false, reason: "message-missing", outboxItem: failedItem };
-    }
-    const outboxItem = pushSmsOutboxEntry({
-      ...baseEntry,
-      recipientPhone: phone,
-      message: messageText,
-      status: "queued"
-    });
-    const baseUrl = normalizeSmsGatewayUrl(gateway.baseUrl || "");
-    const endpoints = ["/send-sms", "/send", "/api/send-sms"];
-    const headers = { "Content-Type": "application/json" };
-    if (gateway.apiKey) {
-      headers.Authorization = `Bearer ${gateway.apiKey}`;
-    }
-    const urlsToTry = [baseUrl];
-    var portFallback = "";
-    var portMatch = baseUrl.match(/:(\d+)(?:\/|$)/);
-    if (portMatch) {
-      portFallback = "http://127.0.0.1:" + portMatch[1];
-      urlsToTry.push(portFallback);
-    }
-    let success = false;
-    for (let u = 0; u < urlsToTry.length; u++) {
-      const urlBase = urlsToTry[u];
-      for (let index = 0; index < endpoints.length; index += 1) {
-        const endpoint = endpoints[index];
-        try {
-          const response = await fetchWithTimeout(`${urlBase}${endpoint}`, {
-            method: "POST",
-            headers: headers,
-            body: JSON.stringify({ phone: phone, message: messageText })
-          }, 3500);
-          if (response.ok || response.type === "opaque") {
-            success = true;
-            break;
-          }
-        } catch (error) {
-          try {
-            await fetchWithTimeout(`${urlBase}${endpoint}`, {
-              method: "POST",
-              mode: "no-cors",
-              headers: { "Content-Type": "text/plain;charset=UTF-8" },
-              body: JSON.stringify({ phone: phone, message: messageText })
-            }, 3500);
-            success = true;
-            break;
-          } catch (innerError) {
-            // Try next endpoint.
-          }
-        }
-      }
-      if (success) break;
-    }
-    outboxItem.status = success ? "sent" : "failed";
-    if (success) {
-      settings.smsGateway.lastHeartbeat = new Date().toLocaleString();
-    }
-    saveDatabase();
-    return { success: success, outboxItem: outboxItem };
   }
 
   var _supabase = null;
@@ -2467,44 +2391,21 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!sb) return { ok: false, reason: "init-failed" };
       var test = await sb.from("sms_queue").select("id").limit(1);
       if (test.error && test.error.code === "42P01") {
-        if (!cfg.serviceRoleKey) return { ok: false, reason: "tables-missing" };
-        var sql = [
-          "CREATE TABLE IF NOT EXISTS sms_queue (",
-          "  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,",
-          "  school_id UUID NOT NULL,",
-          "  device_id UUID,",
-          "  recipient_phone TEXT NOT NULL,",
-          "  message TEXT NOT NULL,",
-          "  status TEXT DEFAULT 'pending',",
-          "  source TEXT DEFAULT 'Manual SMS',",
-          "  campaign_type TEXT DEFAULT 'manual',",
-          "  recipient_name TEXT,",
-          "  recipient_type TEXT DEFAULT 'student',",
-          "  error_message TEXT,",
-          "  sent_at TIMESTAMPTZ,",
-          "  created_at TIMESTAMPTZ DEFAULT now()",
-          ");",
-          "CREATE TABLE IF NOT EXISTS devices (",
-          "  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,",
-          "  school_id UUID NOT NULL,",
-          "  device_name TEXT,",
-          "  device_id TEXT NOT NULL UNIQUE,",
-          "  is_active BOOLEAN DEFAULT false,",
-          "  sim_number TEXT,",
-          "  last_poll_at TIMESTAMPTZ,",
-          "  created_at TIMESTAMPTZ DEFAULT now()",
-          ");"
-        ].join(" ");
-        var res = await fetch(cfg.url + "/rest/v1/rpc/", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "apikey": cfg.serviceRoleKey, "Authorization": "Bearer " + cfg.serviceRoleKey },
-          body: JSON.stringify({ query: sql })
-        });
-        if (!res.ok) {
-          var altRes = await fetch(cfg.url + "/rest/v1/", {
+        try {
+          var resp = await fetch(getApiBaseUrl() + "/api/setup-sms-tables", {
             method: "POST",
-            headers: { "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates", "apikey": cfg.serviceRoleKey, "Authorization": "Bearer " + cfg.serviceRoleKey }
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + window.SagarSoftAuth.getServerToken() }
           });
+          var result = await resp.json();
+          if (result.success) {
+            cfg.tablesCreated = true;
+            saveDatabase();
+            return { ok: true };
+          }
+          return { ok: false, reason: "server-setup-failed", error: result.message };
+        } catch (serverErr) {
+          console.error("Server SMS setup failed:", serverErr);
+          return { ok: false, reason: "server-error", error: serverErr.message };
         }
       }
       cfg.tablesCreated = true;
@@ -2529,7 +2430,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
     try {
-      var schoolId = database.school && database.school.id;
+      var schoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || (database.school && database.school.id) || "";
       if (!schoolId) return { success: false, reason: "school-id-missing" };
       var phone = normalizeSmsPhone(payload.recipientPhone || "");
       var messageText = String(payload.message || "").trim();
@@ -2564,10 +2465,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   async function sendSmsSmart(payload) {
     var cfg = getSupabaseConfig();
-    if (cfg && cfg.url && cfg.anonKey && window.supabase) {
-      return await sendSmsViaQueue(payload);
+    if (!cfg || !cfg.url || !cfg.anonKey || !window.supabase) {
+      console.warn("SMS requires Supabase configuration. Please configure Supabase in Settings > SMS Services.");
+      return { success: false, reason: "no-supabase", error: "Supabase not configured. SMS requires Supabase Queue + SMS Agent." };
     }
-    return await sendSmsViaConnectedGateway(payload);
+    return await sendSmsViaQueue(payload);
   }
 
   function openWhatsAppWithFallback(appUrl, webUrl) {
@@ -3514,7 +3416,7 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function generateClassId() {
-    return `CLS-${Date.now()}`;
+    return `CLS-${generateId()}`;
   }
 
   function handleClassFormSubmit(event) {
@@ -3738,7 +3640,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     rows.forEach(function (row, index) {
       database.subjects.push({
-        id: `SUB-${Date.now()}-${index}`,
+        id: `SUB-${generateId()}-${index}`,
         className: selectedClass,
         name: row.name,
         marks: Number(row.marks)
@@ -4643,7 +4545,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return isSameEntity && isEntityTypeMatch && item.date === dateValue;
     });
     const baseRecord = {
-      id: existingIndex >= 0 ? database.attendance[existingIndex].id : `ATT-${entityType}-${Date.now()}-${entityId}`,
+      id: existingIndex >= 0 ? database.attendance[existingIndex].id : `ATT-${entityType}-${generateId()}-${entityId}`,
       entityType: entityType,
       date: dateValue,
       status: normalizedStatus
@@ -4759,7 +4661,7 @@ document.addEventListener("DOMContentLoaded", function () {
       isScanning = false;
       html5QrCode.stop().then(function () {
         html5QrCode.clear();
-      }).catch(function () {});
+      }).catch(function (err) { console.warn("Scanner stop error:", err); });
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
     });
   }
@@ -4794,7 +4696,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "</div>" +
       "</div>";
     document.body.appendChild(overlay);
-    document.getElementById("mobileAppCloseBtn").addEventListener("click", function () { overlay.remove(); });
+    var _el = document.getElementById("mobileAppCloseBtn"); if (_el) _el.addEventListener("click", function () { overlay.remove(); });
     overlay.addEventListener("click", function (e) { if (e.target === overlay) overlay.remove(); });
     var urlInput = document.getElementById("mobileAppUrlInput");
     var qrImg = document.getElementById("mobileAppQrImg");
@@ -5079,7 +4981,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
       
       settings.smsGateway = settings.smsGateway || {
-        provider: "simple-sms-gateway",
+        provider: "supabase-queue",
         connectedNumber: "",
         baseUrl: "",
         apiKey: "",
@@ -5114,13 +5016,115 @@ document.addEventListener("DOMContentLoaded", function () {
       return settings;
     }
 
+    var _LANG_KEYS = ["Dashboard","Students","Teachers","Classes","Attendance","Fees","Exams","Timetable","Homework","Settings","Reports","Employees","Salary","Accounts","Notifications","Search","Add","Edit","Delete","Save","Cancel","Print","Download","Upload","Name","Email","Password","Phone","Address","Class","Roll No","Father Name","Date","Month","Total","Amount","Status","Active","Inactive","Welcome","Logout","Login","Submit","Submit Fee","Collect Fee","Fee Invoice","Student Profile","Add Student","Edit Student","Add Teacher","General Settings","Theme & Language","School Profile","Backup","Restore","Activity Log","Bank Logo","School Logo","Fees Invoice","Assign Class","View","Close","Back","Next","Loading","No data found","Success","Error","Warning","Confirm","Yes","No","OK","Actions","Options","Filter","All","None","Select","Selected","Rows per page","Page","of","Previous","Next page","Previous page","Showing","entries","Description","Title","Type","Category","Priority","Low","Medium","High","Amount Received","Amount Pending","Total Paid","Total Pending","Paid","Unpaid","Partial","Overdue","Cash","Bank Transfer","Cheque","Online","Receipt No","Invoice No","Transaction","Ledger","Debit","Credit","Balance","Income","Expense","Profit","Loss","Summary","Details","Overview","Statistics","Charts","Graph","Calendar","Schedule","Reminder","Alert","Message","Compose","Inbox","Sent","Draft","Archive","Trash","Mark as read","Mark as unread","Select all","Deselect all","Bulk actions","Export","Import","Refresh","Reset","Clear","Apply","Close","Confirm action","Are you sure","This action cannot be undone","Changes saved successfully","Operation completed","Something went wrong","Please try again","Required field","Invalid input","Already exists","Not found","Access denied","Session expired","Connecting","Connected","Disconnected","Online","Offline","Sync","Last synced","Auto-sync","Manual sync","Sync now","Syncing","Sync complete","Sync failed","Settings saved","Profile updated","Password changed","Account deleted","Data exported","Report generated","Invoice created","Payment recorded","Attendance marked","Exam results published","Timetable updated","Homework assigned","Certificate issued","Notice published","SMS sent","Email sent","Call logged","Meeting scheduled","Event created","Task assigned","Goal set","Milestone reached","Report filed","Complaint registered","Feedback submitted","Suggestion noted","Rating given","Review posted","Comment added","Reply sent","Forwarded","Shared","Locked","Unlocked","Archived","Restored","Pinned","Unpinned","Starred","Unstarred","Favorited","Unfavorited","Following","Unfollowing","Subscribed","Unsubscribed","Enabled","Disabled","Visible","Hidden","Published","Draft","Pending","Approved","Rejected","Cancelled","Completed","In progress","On hold","Overdue","Expired","Renewed","Suspended","Terminated","Active","Inactive","Banned","Blocked","Verified","Unverified","Confirmed","Unconfirmed","Resolved","Unresolved","Open","Closed","New","Updated","Modified","Deleted","Created","Added","Removed","Changed","Moved","Copied","Duplicated","Cloned","Imported","Exported","Uploaded","Downloaded","Attached","Detached","Linked","Unlinked","Connected","Disconnected","Paired","Unpaired","Matched","Unmatched","Merged","Split","Combined","Separated","Joined","Left","Joined group","Left group","Invited","Accepted","Declined","Pending","Waitlisted","Cancelled","Refunded","Charged","Credited","Debited","Transferred","Withdrawn","Depited","Deposited","Loaned","Borrowed","Lent","Repaid","Invested","Divested","Traded","Exchanged","Converted","Upgraded","Downgraded","Renewed","Expired","Valid","Invalid","Expired","Revoked","Suspended","Active","Inactive","Deleted","Archived"];
+    var _TRANS = {
+      "English": {},
+      "Urdu": {"Dashboard":"\u062f\u0634\u0628\u0648\u0631\u0688","Students":"\u0637\u0627\u0644\u0628","Teachers":"\u0627\u0633\u062a\u0627\u0630","Classes":"\u062c\u0646\u0627\u063a\u062a\u06cc\u0646","Attendance":"\u0647\u0638\u0631","Fees":"\u0641\u06cc\u0635","Exams":"\u0627\u0645\u062a\u062d\u0627\u0646","Timetable":"\u062a\u0645\u0645\u0631\u06cc\u0646","Homework":"\u0645\u0642\u0631\u0631\u0647","Settings":"\u062a\u0637\u0628\u06cc\u0642\u0627\u062a","Reports":"\u0631\u067e\u0648\u0631\u0678\u0686","Employees":"\u0645\u0644\u0627\u0632\u0645\u06cc\u0646","Salary":"\u062a\u0634\u062d\u0631","Accounts":"\u0627\u0646\u062f\u0627\u0632\u0647\u0627","Notifications":"\u0627\u0634\u0639\u0627\u0631\u0627\u062a","Search":"\u062a\u0644\u0627\u0634","Add":"\u0627\u0636\u0627\u0641\u0647 \u06a9\u0631\u0646","Edit":"\u062a\u0635\u062d\u06cc\u062d","Delete":"\u062d\u0630\u0641","Save":"\u0630\u06be\u06cc\u0646\u0647","Cancel":"\u0645\u0646\u0638\u0631","Print":"\u067e\u0631\u0646\u062a","Name":"\u0646\u0627\u0645","Email":"\u0627\u06cc\u0645\u06cc\u0644","Password":"\u067e\u0633\u0648\u0631\u062f","Phone":"\u0641\u0648\u0646","Address":"\u0627\u0646\u062f\u0631\u0633","Class":"\u062c\u0646\u063a","Roll No":"\u0631\u0648\u0644 \u0646\u0648","Father Name":"\u0646\u0627\u0645 \u067e\u062f\u0631","Date":"\u062a\u0627\u0631\u06cc\u062e","Month":"\u0645\u0647\u0646\u0627","Total":"\u06a9\u0644","Amount":"\u0631\u0642\u0645","Status":"\u062d\u0627\u0644\u062a","Active":"\u0641\u0639\u0627\u0644","Inactive":"\u063a\u06cc\u0631\u0641\u0639\u0627\u0644","Welcome":"\u062e\u0634\u0627\u0645\u062f\u06cc\u062f","Logout":"\u062e\u0631\u0648\u062c","Login":"\u0648\u0631\u0648\u062f","Submit":"\u062c\u0645\u0639 \u06a9\u0631\u0646","Fee Invoice":"\u0628\u06cc\u0644 \u0641\u06cc\u0635","Student Profile":"\u067e\u0631\u0648\u0641\u0627\u0626\u0644 \u0637\u0627\u0644\u0628","Add Student":"\u0637\u0627\u0644\u0628 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0631\u0646","General Settings":"\u062a\u0637\u0628\u06cc\u0642\u0627\u062a \u0639\u0645\u0648\u0645\u06cc","School Profile":"\u067e\u0631\u0648\u0641\u0627\u0626\u0644 \u0645\u062f\u0631\u0633\u0647","Close":"\u0628\u0646\u062f","Back":"\u067e\u06cc\u0688\u0647","Description":"\u062a\u0648\u0636\u06cc\u062d\u0627\u062a","Title":"\u0639\u0646\u0648\u0627\u0646","Type":"\u0646\u0648\u0639","View":"\u062f\u06cc\u06a9\u0647\u06cc\u0646\u0627\u0644","Submit Fee":"\u0641\u06cc\u0635 \u062c\u0645\u0639 \u06a9\u0631\u0646","Collect Fee":"\u0641\u06cc\u0635 \u0627\u06a9\u062a\u0633\u0627\u0628","Paid":"\u0627\u062f\u0627\u0626\u0647","Unpaid":"\u0628\u062f\u0648\u0646 \u067e\u0631\u062f\u0627\u062e\u062a","Cash":"\u0646\u0642\u062f","Bank Transfer":"\u062a\u0631\u0627\u06a9\u0646\u0634 \u0628\u0627\u0646\u06a9\u06cc","Income":"\u062f\u0631\u0627\u0645\u062f","Expense":"\u062e\u0631\u062c","Balance":"\u0628\u0642\u0627\u0646\u062f\u0647"},
+      "Arabic": {"Dashboard":"\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0645\u0639\u0644\u0648\u0645\u0627\u062a","Students":"\u0627\u0644\u0637\u0627\u0644\u0628","Teachers":"\u0627\u0644\u0645\u0639\u0644\u0645\u064a\u0646","Classes":"\u0627\u0644\u0641\u0635\u0648\u0644","Attendance":"\u0627\u0644\u062d\u0636\u0648\u0631","Fees":"\u0627\u0644\u0631\u0633\u0648\u0645","Exams":"\u0627\u0644\u0627\u0645\u062a\u062d\u0627\u0646\u0627\u062a","Settings":"\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a","Reports":"\u0627\u0644\u062a\u0642\u0627\u0631\u064a\u0631","Employees":"\u0627\u0644\u0645\u0648\u0638\u0641\u064a\u0646","Salary":"\u0627\u0644\u0631\u0627\u062a\u0628","Accounts":"\u0627\u0644\u062d\u0633\u0627\u0628\u0627\u062a","Search":"\u0628\u062d\u062b","Add":"\u0625\u0636\u0627\u0641\u0629","Edit":"\u062a\u0639\u062f\u064a\u0644","Delete":"\u062d\u0630\u0641","Save":"\u062d\u0641\u0638","Cancel":"\u0625\u0644\u063a\u0627\u0621","Print":"\u0637\u0628\u0627\u0639\u0629","Name":"\u0627\u0644\u0627\u0633\u0645","Email":"\u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a","Password":"\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631","Phone":"\u0627\u0644\u0647\u0627\u062a\u0641","Address":"\u0627\u0644\u0639\u0646\u0648\u0627\u0646","Class":"\u0627\u0644\u0641\u0635\u0644","Date":"\u0627\u0644\u062a\u0627\u0631\u064a\u062e","Total":"\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a","Amount":"\u0627\u0644\u0645\u0628\u0644\u063a","Login":"\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644","Logout":"\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062e\u0631\u0648\u062c","Welcome":"\u0645\u0631\u062d\u0628\u064b\u0627","Fee Invoice":"\u0641\u0627\u062a\u0648\u0631\u0629 \u0627\u0644\u0631\u0633\u0648\u0645","General Settings":"\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u0639\u0627\u0645\u0629","Close":"\u0625\u063a\u0644\u0627\u0642","Back":"\u0631\u062c\u0648\u0639","Paid":"\u0645\u062f\u0641\u0648\u0639","Unpaid":"\u063a\u064a\u0631 \u0645\u062f\u0641\u0648\u0639","Income":"\u062f\u062e\u0644","Expense":"\u0645\u0635\u0631\u0641"},
+      "Hindi": {"Dashboard":"\u0921\u0948\u0936\u092c\u094b\u0930\u094d\u0921","Students":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940","Teachers":"\u0936\u093f\u0915\u094d\u0937\u0915","Classes":"\u0915\u0915\u094d\u0937\u093e\u090f\u0901","Attendance":"\u0939\u093e\u091c\u0930\u093f\u092f\u093e","Fees":"\u092b\u0940\u0938","Exams":"\u092a\u0930\u0940\u0915\u094d\u0937\u093e","Settings":"\u0938\u0947\u091f\u093f\u0902\u0917","Reports":"\u0930\u093f\u092a\u094b\u0930\u094d\u091f","Employees":"\u0915\u0930\u094d\u092e\u091a\u093e\u0930","Salary":"\u0935\u0947\u0924\u0928","Accounts":"\u0916\u093e\u0924\u093e","Search":"\u0916\u094b\u091c\u0947\u0902","Add":"\u091c\u094b\u0921\u093c\u0947\u0902","Edit":"\u0938\u0902\u092a\u093e\u0926\u093f\u0924 \u0915\u0930\u0947\u0902","Delete":"\u0939\u091f\u093e\u090f\u0901","Save":"\u0938\u0939\u0947\u091c\u0947\u0902","Cancel":"\u0930\u0946\u0915","Print":"\u092a\u094d\u0930\u093f\u0902\u091f","Name":"\u0928\u093e\u092e","Email":"\u0908\u092e\u0947\u0932","Password":"\u092a\u093e\u0938\u0935\u0930\u094d\u0921","Phone":"\u092b\u093c\u094b\u0928","Address":"\u092a\u0924\u093e","Date":"\u0924\u093e\u0930\u0940\u0916","Total":"\u0915\u0941\u0932","Amount":"\u0930\u093e\u0936\u093f","Login":"\u0932\u0949\u0917\u093f\u0928","Logout":"\u0932\u0949\u0917\u0910\u0902\u091f","Welcome":"\u0938\u094d\u0935\u093e\u0917\u0924 \u0939\u0948","General Settings":"\u0938\u093e\u092e\u093e\u0928\u094d\u092f \u0938\u0947\u091f\u093f\u0902\u0917","Paid":"\u092d\u0941\u0917\u0924\u093e","Unpaid":"\u092c\u093e\u0915\u0940","Income":"\u0906\u092e\u0926\u093e\u0928","Expense":"\u0916\u0930\u094d\u091a"},
+      "Spanish": {"Dashboard":"Panel","Students":"Estudiantes","Teachers":"Profesores","Classes":"Clases","Attendance":"Asistencia","Fees":"Cuotas","Exams":"Examenes","Settings":"Configuracion","Reports":"Informes","Employees":"Empleados","Salary":"Salario","Accounts":"Cuentas","Search":"Buscar","Add":"Agregar","Edit":"Editar","Delete":"Eliminar","Save":"Guardar","Cancel":"Cancelar","Print":"Imprimir","Name":"Nombre","Email":"Correo","Password":"Contrasena","Phone":"Telefono","Address":"Direccion","Date":"Fecha","Total":"Total","Amount":"Monto","Login":"Iniciar sesion","Logout":"Cerrar sesion","Welcome":"Bienvenido","Fee Invoice":"Factura","General Settings":"Configuracion General","Close":"Cerrar","Back":"Volver","Paid":"Pagado","Unpaid":"No pagado","Income":"Ingreso","Expense":"Gasto"},
+      "French": {"Dashboard":"Tableau de bord","Students":"Eleves","Teachers":"Enseignants","Classes":"Classes","Attendance":"Presence","Fees":"Frais","Exams":"Examens","Settings":"Parametres","Reports":"Rapports","Employees":"Employes","Salary":"Salaire","Accounts":"Comptes","Search":"Rechercher","Add":"Ajouter","Edit":"Modifier","Delete":"Supprimer","Save":"Enregistrer","Cancel":"Annuler","Print":"Imprimer","Name":"Nom","Email":"E-mail","Password":"Mot de passe","Phone":"Telephone","Address":"Adresse","Date":"Date","Total":"Total","Amount":"Montant","Login":"Connexion","Logout":"Deconnexion","Welcome":"Bienvenue","Fee Invoice":"Facture","General Settings":"Parametres generaux","Close":"Fermer","Back":"Retour","Paid":"Paye","Unpaid":"Impaye","Income":"Revenu","Expense":"Depense"},
+      "German": {"Dashboard":"Dashboard","Students":"Schuler","Teachers":"Lehrer","Classes":"Klassen","Attendance":"Anwesenheit","Fees":"Gebuhren","Exams":"Prufungen","Settings":"Einstellungen","Reports":"Berichte","Employees":"Mitarbeiter","Salary":"Gehalt","Accounts":"Konten","Search":"Suchen","Add":"Hinzufugen","Edit":"Bearbeiten","Delete":"Loschen","Save":"Speichern","Cancel":"Abbrechen","Print":"Drucken","Name":"Name","Email":"E-Mail","Password":"Passwort","Phone":"Telefon","Address":"Adresse","Date":"Datum","Total":"Gesamt","Amount":"Betrag","Login":"Anmelden","Logout":"Abmelden","Welcome":"Willkommen","Fee Invoice":"Rechnung","General Settings":"Allgemeine Einstellungen","Close":"Schliessen","Back":"Zuruck","Paid":"Bezahlt","Unpaid":"Unbezahlt","Income":"Einkommen","Expense":"Ausgabe"},
+      "Portuguese": {"Dashboard":"Painel","Students":"Alunos","Teachers":"Professores","Classes":"Turmas","Attendance":"Frequencia","Fees":"Taxas","Exams":"Provas","Settings":"Configuracoes","Reports":"Relatorios","Employees":"Funcionarios","Salary":"Salario","Accounts":"Contas","Search":"Pesquisar","Add":"Adicionar","Edit":"Editar","Delete":"Excluir","Save":"Salvar","Cancel":"Cancelar","Print":"Imprimir","Name":"Nome","Email":"E-mail","Password":"Senha","Phone":"Telefone","Address":"Endereco","Date":"Data","Total":"Total","Amount":"Valor","Login":"Entrar","Logout":"Sair","Welcome":"Bem-vindo","Fee Invoice":"Fatura","General Settings":"Configuracoes Gerais","Close":"Fechar","Back":"Voltar","Paid":"Pago","Unpaid":"Nao pago","Income":"Renda","Expense":"Despesa"},
+      "Chinese": {"Dashboard":"\u4eea\u8868\u76d8","Students":"\u5b66\u751f","Teachers":"\u6559\u5e08","Classes":"\u73ed\u7ea7","Attendance":"\u51fa\u52e4","Fees":"\u8d39\u7528","Exams":"\u8003\u8bd5","Settings":"\u8bbe\u7f6e","Reports":"\u62a5\u544a","Employees":"\u5458\u5de5","Salary":"\u5de5\u8d44","Accounts":"\u8d26\u6237","Search":"\u641c\u7d22","Add":"\u6dfb\u52a0","Edit":"\u7f16\u8f91","Delete":"\u5220\u9664","Save":"\u4fdd\u5b58","Cancel":"\u53d6\u6d88","Print":"\u6253\u5370","Name":"\u59d3\u540d","Email":"\u7535\u5b50\u90ae\u4ef6","Password":"\u5bc6\u7801","Phone":"\u7535\u8bdd","Address":"\u5730\u5740","Date":"\u65e5\u671f","Total":"\u603b\u8ba1","Amount":"\u91d1\u989d","Login":"\u767b\u5f55","Logout":"\u9000\u51fa","Welcome":"\u6b22\u8fce","Fee Invoice":"\u53d1\u7968","General Settings":"\u5e38\u89c4\u8bbe\u7f6e"},
+      "Japanese": {"Dashboard":"\u30c0\u30c3\u30b7\u30e5\u30dc\u30fc\u01c3","Students":"\u5b66\u751f","Teachers":"\u6559\u5e08","Classes":"\u30af\u30e9\u30b9","Attendance":"\u51fa\u52e4","Fees":"\u8cbb\u7528","Exams":"\u8a66\u9a13","Settings":"\u8a2d\u5b9a","Reports":"\u30ec\u30dd\u30fc\u30c8","Employees":"\u793e\u54e1","Salary":"\u7d66\u4e0e","Accounts":"\u5e33\u7a4d","Search":"\u691c\u7d22","Add":"\u8ffd\u52a0","Edit":"\u7de8\u96c6","Delete":"\u524a\u9664","Save":"\u4fdd\u5b58","Cancel":"\u30ad\u30e3\u30f3\u30bb\u30eb","Print":"\u5370\u5237","Name":"\u540d\u524d","Email":"\u30e1\u30fc\u30eb","Password":"\u30d1\u30b9\u30ef\u30fc\u30c9","Phone":"\u96fb\u8a71","Address":"\u4f4f\u6240","Date":"\u65e5\u4ed8","Total":"\u5408\u8a08","Amount":"\u91d1\u984d","Login":"\u30ed\u30b0\u30a4\u30f3","Logout":"\u30ed\u30b0\u30a2\u30a6\u30c8","Welcome":"\u3088\u3046\u3053\u305d","Fee Invoice":"\u8ac1\u66f8","General Settings":"\u4e00\u822c\u8a2d\u5b9a"},
+      "Korean": {"Dashboard":"\ub300\uc2dc\ubcfc\ub4dc","Students":"\ud559\uc0dd","Teachers":"\uad50\uc0ac","Classes":"\ud074\ub798\uc2a4","Attendance":"\ucd9c\uc2dc","Fees":"\ube44\uc6a9","Exams":"\uc2dc\ud5d1","Settings":"\uc124\uc815","Reports":"\ubcf4\uace0\uc11c","Employees":"\uc6d0\uacfc","Salary":"\uacfc\uc6d0","Accounts":"\uacc4\uc88c","Search":"\uac80\uc0c9","Add":"\ucd94\uac00","Edit":"\uc218\uc815","Delete":"\uc0ad\uc81c","Save":"\uc800\uc7a5","Cancel":"\ucde8\uc18c","Print":"\uc778\uc1fc","Name":"\uc774\ub984","Email":"\uba54\uc77c","Password":"\ube44\ubc00\ubc88","Phone":"\ud310\ud654","Address":"\uc8fc\uc18c","Date":"\ub0a0\uc9dc","Total":"\ud569\uacc4","Amount":"\uae08\uc561","Login":"\ub85c\uadf8\uc778","Logout":"\ub85c\uadf8\uc544\uc6c3","Welcome":"\ud658\uc601\ud569\ub2c8\ub2e4","Fee Invoice":"\ubc1b\uc740\uc99d","General Settings":"\uc77c\ubc18 \uc124\uc815"},
+      "Turkish": {"Dashboard":"Kontrol Paneli","Students":"Ogrenciler","Teachers":"Ogretmenler","Classes":"Siniflar","Attendance":"Yoklama","Fees":"Ucretler","Exams":"Sinavlar","Settings":"Ayarlar","Reports":"Raporlar","Employees":"Calisanlar","Salary":"Maas","Accounts":"Hesaplar","Search":"Ara","Add":"Ekle","Edit":"Duzenle","Delete":"Sil","Save":"Kaydet","Cancel":"Iptal","Print":"Yazdir","Name":"Ad","Email":"E-posta","Password":"Sifre","Phone":"Telefon","Address":"Adres","Date":"Tarih","Total":"Toplam","Amount":"Tutar","Login":"Giris","Logout":"Cikis","Welcome":"Hos Geldiniz","Fee Invoice":"Fatura","General Settings":"Genel Ayarlar","Close":"Kapat","Back":"Geri","Paid":"Odenen","Unpaid":"Odenmeyen","Income":"Gelir","Expense":"Gider"},
+      "Russian": {"Dashboard":"\u041f\u0430\u043d\u0435\u043b\u044c \u0443\u043f\u0440\u0430\u0432\u043b\u0435\u043d\u0438\u044f","Students":"\u0421\u0442\u0443\u0434\u0435\u043d\u0442\u044b","Teachers":"\u0423\u0447\u0438\u0442\u0435\u043b\u044f","Classes":"\u041a\u043b\u0430\u0441\u0441\u044b","Attendance":"\u041f\u043e\u0441\u0435\u0449\u0430\u0435\u043c\u043e\u0441\u0442\u044c","Fees":"\u041f\u043b\u0430\u0442\u0430","Exams":"\u042d\u043a\u0437\u0430\u043c\u0435\u043d\u044b","Settings":"\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438","Reports":"\u041e\u0442\u0447\u0435\u0442\u044b","Employees":"\u0421\u043e\u0442\u0440\u0443\u0434\u043d\u0438\u043a\u0438","Salary":"\u0417\u0430\u0440\u043f\u043b\u0430\u0442\u0430","Accounts":"\u0421\u0447\u0435\u0442\u0430","Search":"\u041f\u043e\u0438\u0441\u043a","Add":"\u0414\u043e\u0431\u0430\u0432\u0438\u0442\u044c","Edit":"\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u0442\u044c","Delete":"\u0423\u0434\u0430\u043b\u0438\u0442\u044c","Save":"\u0421\u043e\u0445\u0440\u0430\u043d\u0438\u0442\u044c","Cancel":"\u041e\u0442\u043c\u0435\u043d\u0430","Print":"\u041f\u0435\u0447\u0430\u0442\u044c","Name":"\u0418\u043c\u044f","Email":"\u042d\u043b. \u043f\u043e\u0447\u0442\u0430","Password":"\u041f\u0430\u0440\u043e\u043b\u044c","Phone":"\u0422\u0435\u043b\u0435\u0444\u043e\u043d","Address":"\u0410\u0434\u0440\u0435\u0441","Date":"\u0414\u0430\u0442\u0430","Total":"\u0418\u0442\u043e\u0433\u043e","Amount":"\u0421\u0443\u043c\u043c\u0430","Login":"\u0412\u043e\u0439\u0442\u0438","Logout":"\u0412\u044b\u0439\u0442\u0438","Welcome":"\u0414\u043e\u0431\u0440\u043e \u043f\u043e\u0436\u0430\u043b\u043e\u0432\u0430\u0442\u044c","Fee Invoice":"\u0421\u0447\u0435\u0442","General Settings":"\u041e\u0431\u0449\u0438\u0435 \u043d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0438"},
+      "Italian": {"Dashboard":"Pannello","Students":"Studenti","Teachers":"Insegnanti","Classes":"Classi","Attendance":"Presenza","Fees":"Costi","Exams":"Esami","Settings":"Impostazioni","Reports":"Report","Employees":"Dipendenti","Salary":"Stipendio","Accounts":"Conti","Search":"Cerca","Add":"Aggiungi","Edit":"Modifica","Delete":"Elimina","Save":"Salva","Cancel":"Annulla","Print":"Stampa","Name":"Nome","Email":"E-mail","Password":"Password","Phone":"Telefono","Address":"Indirizzo","Date":"Data","Total":"Totale","Amount":"Importo","Login":"Accedi","Logout":"Esci","Welcome":"Benvenuto","Fee Invoice":"Fattura","General Settings":"Impostazioni generali"},
+      "Dutch": {"Dashboard":"Dashboard","Students":"Leerlingen","Teachers":"Docenten","Classes":"Klassen","Attendance":"Aanwezigheid","Fees":"Kosten","Exams":"Examens","Settings":"Instellingen","Reports":"Rapporten","Employees":"Medewerkers","Salary":"Salaris","Accounts":"Accounts","Search":"Zoeken","Add":"Toevoegen","Edit":"Bewerken","Delete":"Verwijderen","Save":"Opslaan","Cancel":"Annuleren","Print":"Afdrukken","Name":"Naam","Email":"E-mail","Password":"Wachtwoord","Phone":"Telefoon","Address":"Adres","Date":"Datum","Total":"Totaal","Amount":"Bedrag","Login":"Inloggen","Logout":"Uitloggen","Welcome":"Welkom","Fee Invoice":"Factuur","General Settings":"Algemene instellingen"},
+      "Thai": {"Dashboard":"\u0e14\u0e32\u0e27\u0e19\u0e4c\u0e2a\u0e1a\u0e23\u0e34\u0e01","Students":"\u0e19\u0e39\u0e49\u0e23\u0e32\u0e22","Teachers":"\u0e01\u0e32\u0e22\u0e2d\u0e48\u0e32\u0e22","Classes":"\u0e28\u0e34\u0e23\u0e2b\u0e19\u0e48\u0e32","Attendance":"\u0e01\u0e32\u0e22\u0e02\u0e49\u0e32\u0e27","Fees":"\u0e04\u0e32\u0e22","Exams":"\u0e01\u0e32\u0e22\u0e15\u0e23\u0e27\u0e08\u0e2a\u0e2d\u0e1a","Settings":"\u0e01\u0e32\u0e22\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32","Reports":"\u0e1a\u0e31\u0e07","Employees":"\u0e1e\u0e23\u0e49\u0e2d\u0e21","Salary":"\u0e01\u0e32\u0e22\u0e43\u0e0a\u0e49","Accounts":"\u0e1a\u0e31\u0e07\u0e04\u0e32","Search":"\u0e04\u0e49\u0e19","Add":"\u0e40\u0e1e\u0e34\u0e48\u0e21","Edit":"\u0e41\u0e1b\u0e48\u0e07\u0e14\u0e49\u0e27\u0e22","Delete":"\u0e25\u0e1a","Save":"\u0e1a\u0e23\u0e34\u0e01","Cancel":"\u0e22\u0e01","Print":"\u0e1e\u0e34\u0e21","Name":"\u0e0a\u0e31\u0e0d","Email":"\u0e2d\u0e35\u0e40\u0e21\u0e25","Password":"\u0e23\u0e2b\u0e31\u0e2a","Phone":"\u0e42\u0e1f\u0e23\u0e40\u0e21\u0e47\u0e1a","Address":"\u0e15\u0e30\u0e44\u0e1b","Date":"\u0e27\u0e31\u0e19","Total":"\u0e22\u0e2d","Amount":"\u0e08\u0e33\u0e01\u0e31\u0e14","Login":"\u0e25\u0e2d\u0e07\u0e34\u0e19","Logout":"\u0e2d\u0e2d\u0e01","Welcome":"\u0e22\u0e31\u0e07\u0e2a\u0e34\u0e49\u0e19","Fee Invoice":"\u0e1a\u0e31\u0e07\u0e04\u0e32\u0e23\u0e34\u0e01","General Settings":"\u0e01\u0e32\u0e22\u0e15\u0e31\u0e49\u0e07\u0e04\u0e48\u0e32\u0e17\u0e35\u0e48\u0e41\u0e23\u0e07"},
+      "Indonesian": {"Dashboard":"Dasbor","Students":"Siswa","Teachers":"Guru","Classes":"Kelas","Attendance":"Kehadiran","Fees":"Biaya","Exams":"Ujian","Settings":"Pengaturan","Reports":"Laporan","Employees":"Karyawan","Salary":"Gaji","Accounts":"Akun","Search":"Cari","Add":"Tambah","Edit":"Edit","Delete":"Hapus","Save":"Simpan","Cancel":"Batal","Print":"Cetak","Name":"Nama","Email":"Email","Password":"Kata sandi","Phone":"Telepon","Address":"Alamat","Date":"Tanggal","Total":"Total","Amount":"Jumlah","Login":"Masuk","Logout":"Keluar","Welcome":"Selamat datang","Fee Invoice":"Faktur","General Settings":"Pengaturan Umum"},
+      "Malay": {"Dashboard":"Papan pemuka","Students":"Pelajar","Teachers":"Guru","Classes":"Kelas","Attendance":"Kehadiran","Fees":"Yuran","Exams":"Peperiksaan","Settings":"Tetapan","Reports":"Laporan","Employees":"Kakitangan","Salary":"Gaji","Accounts":"Akaun","Search":"Cari","Add":"Tambah","Edit":"Sunting","Delete":"Padam","Save":"Simpan","Cancel":"Batal","Print":"Cetak","Name":"Nama","Email":"E-mel","Password":"Kata laluan","Phone":"Telefon","Address":"Alamat","Date":"Tarikh","Total":"Jumlah","Amount":"Amaun","Login":"Log masuk","Logout":"Log keluar","Welcome":"Selamat datang","Fee Invoice":"Invois","General Settings":"Tetapan Umum"},
+      "Bengali": {"Dashboard":"\u09a1\u09cd\u09af\u09be\u09b6\u09ac\u09cb\u09b0\u09cd\u09a1","Students":"\u099b\u09be\u09a4\u09cd\u09b0","Teachers":"\u09b6\u09bf\u0995\u09cd\u09b7\u0995","Classes":"\u09b6\u09cd\u09b0\u09c7\u09a3\u09bf","Attendance":"\u09b9\u09be\u099c\u09b0\u09bf","Fees":"\u09ab\u09bf","Exams":"\u09aa\u09b0\u09c0\u0995\u09cd\u09b7\u09be","Settings":"\u09b8\u09c7\u099f\u09bf\u0982","Reports":"\u09b0\u09bf\u09aa\u09cb\u09b0\u09cd\u099f","Employees":"\u0995\u09b0\u09cd\u09ae\u099a\u09be\u09b0\u09c0","Salary":"\u09a1\u09be\u0995\u09be\u09a4\u09be","Accounts":"\u0996\u09be\u09a4\u09be","Search":"\u0996\u09cb\u099c\u09c1\u09a8","Add":"\u09af\u09cb\u0997 \u0995\u09b0\u09c1\u09a8","Edit":"\u09b8\u09ae\u09cd\u09aa\u09be\u09a6\u09a8","Delete":"\u09ae\u09c1\u099b\u09c7 \u09ab\u09c7\u09b2\u09c1\u09a8","Save":"\u09b8\u09be\u09b9\u09be \u0995\u09b0\u09c1\u09a8","Cancel":"\u09ac\u09be\u09a4\u09bf\u09b2","Print":"\u099b\u09be\u09aa\u09be\u0993\u09af\u09bc","Name":"\u09a8\u09be\u09ae","Email":"\u0987\u09ae\u09c7\u09b2","Password":"\u09aa\u09be\u09b8\u0993\u09af\u09bc\u09be\u09b0\u09cd\u09a1","Phone":"\u09ab\u09cb\u09a8","Address":"\u09a0\u09bf\u0995\u09be\u09a8\u09be","Date":"\u09a4\u09be\u09b0\u09bf\u0996","Total":"\u09ae\u09cb\u099f","Amount":"\u09aa\u09b0\u09bf\u09ae\u09be\u09a3","Login":"\u09b2\u0997\u09bf\u09a8","Logout":"\u09b2\u0997\u0986\u09a1","Welcome":"\u09b8\u09cd\u09ac\u09be\u0997\u09a4\u09ae","Fee Invoice":"\u09ab\u09bf \u09ac\u09bf\u09b2","General Settings":"\u09b8\u09be\u09a7\u09be\u09b0\u09a3 \u09b8\u09c7\u099f\u09bf\u0982"},
+      "Persian": {"Dashboard":"\u062f\u0634\u0628\u0631\u0688","Students":"\u062f\u0646\u062a\u0634\u062c\u0648\u06cc\u0627\u0646","Teachers":"\u0645\u0639\u0644\u0645\u0627\u0646","Classes":"\u06a9\u0644\u0627\u0633\u200c\u0647\u0627","Attendance":"\u062d\u0636\u0648\u0631","Fees":"\u0647\u0632\u06cc\u0646\u0647","Exams":"\u0622\u0632\u0645\u0648\u0646","Settings":"\u062a\u0646\u0638\u06cc\u0645\u0627\u062a","Reports":"\u06af\u0632\u0627\u0631\u0634","Employees":"\u06a9\u0627\u0631\u0645\u0646\u062f\u0627\u0646","Salary":"\u0648\u062c\u0647","Accounts":"\u062d\u0633\u0627\u0628\u200c\u0647\u0627","Search":"\u062c\u0633\u062a\u062c\u0648","Add":"\u0627\u0636\u0627\u0641\u0647","Edit":"\u0648\u06cc\u0631\u0627\u06cc\u0634","Delete":"\u062d\u0630\u0641","Save":"\u0630\u062e\u06cc\u0631\u0647","Cancel":"\u0644\u063a\u0648","Print":"\u0686\u0627\u067e","Name":"\u0646\u0627\u0645","Email":"\u0627\u06cc\u0645\u06cc\u0644","Password":"\u06af\u0630\u0631\u0648\u0648\u0631\u0686\u0647","Phone":"\u062a\u0644\u0641\u0646","Address":"\u0622\u062f\u0631\u0633","Date":"\u062a\u0627\u0631\u06cc\u062e","Total":"\u06a9\u0644","Amount":"\u0645\u0628\u0644\u063a","Login":"\u0648\u0631\u0648\u062f","Logout":"\u062e\u0631\u0648\u062c","Welcome":"\u062e\u0634\u0627\u0645\u062f\u06cc\u062f","Fee Invoice":"\u0641\u0627\u06a9\u062a\u0648\u0631","General Settings":"\u062a\u0646\u0638\u06cc\u0645\u0627\u062a \u0639\u0645\u0648\u0645\u06cc"},
+      "Vietnamese": {"Dashboard":"Bang dieu khien","Students":"Hoc sinh","Teachers":"Giao vien","Classes":"Lop hoc","Attendance":"Danh diem","Fees":"Hoc phi","Exams":"Ky thi","Settings":"Cai dat","Reports":"Bao cao","Employees":"Nhan vien","Salary":"Luong","Accounts":"Tai khoan","Search":"Tim kiem","Add":"Them","Edit":"Chinh sua","Delete":"Xoa","Save":"Luu","Cancel":"Huy","Print":"In","Name":"Ho ten","Email":"Email","Password":"Mat khau","Phone":"Dien thoai","Address":"Dia chi","Date":"Ngay","Total":"Tong cong","Amount":"So tien","Login":"Dang nhap","Logout":"Dang xuat","Welcome":"Chao mung","Fee Invoice":"Hoa don","General Settings":"Cai dat chung"},
+      "Greek": {"Dashboard":"\u03a0\u03b9\u03bd\u03b1\u03ba\u03b1\u03bd\u03ac\u03bb\u03b7","Students":"\u039c\u03b1\u03b8\u03b7\u03c4\u03ad\u03c2","Teachers":"\u0394\u03b1\u03c3\u03ba\u03ac\u03bb\u03bf\u03b9","Classes":"\u03a4\u03ac\u03be\u03b5\u03b9\u03c2","Attendance":"\u03a0\u03b1\u03c1\u03bf\u03c5\u03c3\u03af\u03b1","Fees":"\u0394\u03b9\u03ba\u03b1\u03b9\u03bf\u03bb\u03bf\u03b3\u03af\u03b1","Exams":"\u0395\u03be\u03b5\u03c4\u03b1\u03c3\u03b5\u03b9\u03c2","Settings":"\u03a1\u03c5\u03b8\u03bc\u03af\u03c3\u03b5\u03b9\u03c2","Reports":"\u0391\u03bd\u03b1\u03c6\u03bf\u03c1\u03ad\u03c2","Employees":"\u03a5\u03c0\u03ac\u03bb\u03bb\u03b7\u03bb\u03bf\u03b9","Salary":"\u039c\u03b9\u03c3\u03b8\u03cc\u03c2","Accounts":"\u039b\u03bf\u03b3\u03b1\u03c1\u03b9\u03b1","Search":"\u0391\u03bd\u03b1\u03b6\u03ae\u03c4\u03b7\u03c3\u03b7","Add":"\u03a0\u03c1\u03bf\u03c3\u03b8\u03b5\u03c4\u03b7","Edit":"\u0395\u03c0\u03b5\u03be\u03b5\u03c1\u03b3\u03b1\u03c3\u03af\u03b1","Delete":"\u0394\u03b9\u03b1\u03b3\u03c1\u03b1\u03c6\u03ae","Save":"\u0391\u03c0\u03bf\u03b8\u03b7\u03ba\u03ae","Cancel":"\u0391\u03ba\u03cd\u03c1\u03c9\u03c3\u03b7","Print":"\u0395\u03ba\u03c4\u03c5\u03c0\u03ce\u03c3\u03b7","Name":"\u03cc\u03bd\u03bf\u03bc\u03b1","Email":"Email","Password":"\u039a\u03c9\u03b4\u03b9\u03ba\u03cc\u03c2","Phone":"\u03a4\u03b7\u03bb\u03b5\u03c6\u03c9\u03bd\u03bf","Address":"\u0394\u03b9\u03b5\u03cd\u03b8\u03c5\u03bd\u03c3\u03b7","Date":"\u0397\u03bc\u03b5\u03c1\u03bf\u03bc\u03b7\u03bd\u03af\u03b1","Total":"\u03a3\u03c5\u03bd\u03bf\u03bb\u03b9\u03ba\u03cc","Amount":"\u03a0\u03bf\u03c3\u03cc","Login":"\u03a3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7","Logout":"\u0391\u03c0\u03bf\u03c3\u03cd\u03bd\u03b4\u03b5\u03c3\u03b7","Welcome":"\u039a\u03b1\u03bb\u03ce\u03c2 \u03b5\u03c1\u03c3\u03b1\u03c3\u03b7","Fee Invoice":"\u03a4\u03b9\u03bc\u03bf\u03bb\u03b3\u03b9\u03b1","General Settings":"\u0393\u03b5\u03bd\u03b9\u03ba\u03ad\u03c2 \u03a1\u03c5\u03b8\u03bc\u03af\u03c3\u03b5\u03b9\u03c2"},
+      "Polish": {"Dashboard":"Panel glowny","Students":"Uczniowie","Teachers":"Nauczyciele","Classes":"Klasy","Attendance":"Obecnosc","Fees":"Opdaty","Exams":"Egzaminy","Settings":"Ustawienia","Reports":"Raporty","Employees":"Pracownicy","Salary":"Wynagrodzenie","Accounts":"Konta","Search":"Szukaj","Add":"Dodaj","Edit":"Edytuj","Delete":"Usun","Save":"Zapisz","Cancel":"Anuluj","Print":"Drukuj","Name":"Nazwa","Email":"E-mail","Password":"Haslo","Phone":"Telefon","Address":"Adres","Date":"Data","Total":"Razem","Amount":"Kwota","Login":"Zaloguj","Logout":"Wyloguj","Welcome":"Witamy","Fee Invoice":"Faktura","General Settings":"Ustawienia ogolne"},
+      "Swedish": {"Dashboard":"Instrumentpanel","Students":"Elever","Teachers":"Laerare","Classes":"Klasser","Attendance":"Narvaro","Fees":"Avgifter","Exams":"Prov","Settings":"Installningar","Reports":"Rapporter","Employees":"Anstaellda","Salary":"Lon","Accounts":"Konton","Search":"Sok","Add":"Lagg till","Edit":"Redigera","Delete":"Ta bort","Save":"Spara","Cancel":"Avbryt","Print":"Skriv ut","Name":"Namn","Email":"E-post","Password":"Losenord","Phone":"Telefon","Address":"Adress","Date":"Datum","Total":"Totalt","Amount":"Belopp","Login":"Logga in","Logout":"Logga ut","Welcome":"Valkommen","Fee Invoice":"Faktura","General Settings":"Allmanna installningar"},
+      "Danish": {"Dashboard":"Kontrolpanel","Students":"Elever","Teachers":"Laerere","Classes":"Klasser","Attendance":"Fremmoede","Fees":"Gebyrer","Exams":"Eksaminer","Settings":"Indstillinger","Reports":"Rapporter","Employees":"Ansatte","Salary":"Loen","Accounts":"Konti","Search":"Soeg","Add":"Tilfoej","Edit":"Rediger","Delete":"Slet","Save":"Gem","Cancel":"Annuller","Print":"Udskriv","Name":"Navn","Email":"E-mail","Password":"Adgangskode","Phone":"Telefon","Address":"Adresse","Date":"Dato","Total":"I alt","Amount":"Beloeb","Login":"Log ind","Logout":"Log ud","Welcome":"Velkommen","Fee Invoice":"Faktura","General Settings":"Generelle indstillinger"},
+      "Norwegian": {"Dashboard":"Kontrollpanel","Students":"Elever","Teachers":"Laerere","Classes":"Klasser","Attendance":"Narvaer","Fees":"Gebyrer","Exams":"Eksamen","Settings":"Innstillinger","Reports":"Rapporter","Employees":"Ansatte","Salary":"Loenn","Accounts":"Kontoer","Search":"Soek","Add":"Legg til","Edit":"Rediger","Delete":"Slett","Save":"Lagre","Cancel":"Avbryt","Print":"Skriv ut","Name":"Navn","Email":"E-post","Password":"Passord","Phone":"Telefon","Address":"Adresse","Date":"Dato","Total":"Totalt","Amount":"Beloep","Login":"Logg inn","Logout":"Logg ut","Welcome":"Velkommen","Fee Invoice":"Faktura","General Settings":"Generelle innstillinger"},
+      "Finnish": {"Dashboard":"Hallintapaneeli","Students":"Opiskelijat","Teachers":"Opettajat","Classes":"Luokat","Attendance":"Paivystys","Fees":"Maksut","Exams":"Kokeet","Settings":"Asetukset","Reports":"Raportit","Employees":"Tyontekijat","Salary":"Palkka","Accounts":"Tilit","Search":"Hae","Add":"Lisaa","Edit":"Muokkaa","Delete":"Poista","Save":"Tallenna","Cancel":"Peruuta","Print":"Tulosta","Name":"Nimi","Email":"Sahkoposti","Password":"Salasana","Phone":"Puhelin","Address":"Osoite","Date":"Paivamaara","Total":"Yhteensa","Amount":"Summa","Login":"Kirjaudu","Logout":"Kirjaudu ulos","Welcome":"Tervetuloa","Fee Invoice":"Lasku","General Settings":"Yleiset asetukset"},
+      "Czech": {"Dashboard":"Ovladaci panel","Students":"Zaci","Teachers":"Ucitele","Classes":"Tridy","Attendance":"Dochazka","Fees":"Poplatky","Exams":"Zkousky","Settings":"Nastaveni","Reports":"Zpravy","Employees":"Zamestnanci","Salary":"Plat","Accounts":"Ucty","Search":"Hledat","Add":"Pridat","Edit":"Upravit","Delete":"Smazat","Save":"Ulozit","Cancel":"Zrusit","Print":"Tisknout","Name":"Jmeno","Email":"E-mail","Password":"Heslo","Phone":"Telefon","Address":"Adresa","Date":"Datum","Total":"Celkem","Amount":"Castka","Login":"Prihlasit se","Logout":"Odhlasit se","Welcome":"Vitejte","Fee Invoice":"Faktura","General Settings":"Obecna nastaveni"},
+      "Romanian": {"Dashboard":"Panou de control","Students":"Elevi","Teachers":"Profesori","Classes":"Clase","Attendance":"Prezenta","Fees":"Taxe","Exams":"Examen","Settings":"Setari","Reports":"Raporturi","Employees":"Angajati","Salary":"Salariu","Accounts":"Conturi","Search":"Cauta","Add":"Adauga","Edit":"Editeaza","Delete":"Sterge","Save":"Salveaza","Cancel":"Anuleaza","Print":"Imprima","Name":"Nume","Email":"E-mail","Password":"Parola","Phone":"Telefon","Address":"Adresa","Date":"Data","Total":"Total","Amount":"Suma","Login":"Conectare","Logout":"Deconectare","Welcome":"Bine ati venit","Fee Invoice":"Factura","General Settings":"Setari generale"},
+      "Hungarian": {"Dashboard":"Vezeto pult","Students":"Diakok","Teachers":"Tanarok","Classes":"Osztalyok","Attendance":"Jelenlet","Fees":"Dijak","Exams":"Vizsgak","Settings":"Beallitasok","Reports":"Jelentesek","Employees":"Alkalmazottak","Salary":"Fizetes","Accounts":"Szamlak","Search":"Kereses","Add":"Hozzaad","Edit":"Szerkeszt","Delete":"Torol","Save":"Ment","Cancel":"Megse","Print":"Nyomtat","Name":"Nev","Email":"E-mail","Password":"Jelszo","Phone":"Telefon","Address":"Cim","Date":"Datum","Total":"Osszesen","Amount":"Osszeg","Login":"Belepes","Logout":"Kilepes","Welcome":"Udvozoljuk","Fee Invoice":"Számla","General Settings":"Altalanos beallitasok"},
+      "Ukrainian": {"Dashboard":"\u041f\u0430\u043d\u0435\u043b\u044c \u043a\u0435\u0440\u0443\u0432\u0430\u043d\u043d\u044f","Students":"\u0421\u0442\u0443\u0434\u0435\u043d\u0442\u0438","Teachers":"\u0412\u0438\u043a\u043b\u0430\u0434\u0430\u0447\u0456","Classes":"\u041a\u043b\u0430\u0441\u0438","Attendance":"\u0412\u0456\u0434\u0432\u0456\u0434\u0443\u0432\u0430\u043d\u0456\u0441\u0442\u044c","Fees":"\u041f\u043b\u0430\u0442\u0430","Exams":"\u0417\u0430\u043b\u0456\u043a\u0438","Settings":"\u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f","Reports":"\u0417\u0432\u0456\u0442\u0438","Employees":"\u0421\u043f\u0456\u0432\u0440\u043e\u0431\u0456\u0442\u043d\u0438\u043a\u0438","Salary":"\u0417\u0430\u0440\u043f\u043b\u0430\u0442\u0430","Accounts":"\u0420\u0430\u0445\u0443\u043d\u043a\u0438","Search":"\u041f\u043e\u0448\u0443\u043a","Add":"\u0414\u043e\u0434\u0430\u0442\u0438","Edit":"\u0420\u0435\u0434\u0430\u0433\u0443\u0432\u0430\u0442\u0438","Delete":"\u0412\u0438\u0434\u0430\u043b\u0438\u0442\u0438","Save":"\u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438","Cancel":"\u0421\u043a\u0430\u0441\u0443\u0432\u0430\u0442\u0438","Print":"\u0414\u0440\u0443\u043a\u0443\u0432\u0430\u0442\u0438","Name":"\u0418\u043c\u044f","Email":"\u0415\u043b\u0435\u043a\u0442\u0440\u043e\u043d\u043d\u0430 \u043f\u043e\u0448\u0442\u0430","Password":"\u041f\u0430\u0440\u043e\u043b\u044c","Phone":"\u0422\u0435\u043b\u0435\u0444\u043e\u043d","Address":"\u0410\u0434\u0440\u0435\u0441\u0430","Date":"\u0414\u0430\u0442\u0430","Total":"\u0412\u0441\u044c\u043e\u0433\u043e","Amount":"\u0421\u0443\u043c\u0430","Login":"\u0423\u0432\u0456\u0439\u0442\u0438","Logout":"\u0412\u0438\u0439\u0442\u0438","Welcome":"\u041b\u0430\u0441\u043a\u0430\u0432\u0430\u0454\u043c\u043e","Fee Invoice":"\u0420\u0430\u0445\u0443\u043d\u043e\u043a","General Settings":"\u0417\u0430\u0433\u0430\u043b\u044c\u043d\u0456 \u043d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f"},
+      "Tagalog": {"Dashboard":"Dashboard","Students":"Mga Mag-aaral","Teachers":"Mga Guro","Classes":"Mga Klase","Attendance":"Pagdalo","Fees":"Bayarin","Exams":"Mga Pagsusulit","Settings":"Mga Setting","Reports":"Mga Ulat","Employees":"Mga Empleyado","Salary":"Sahod","Accounts":"Mga Account","Search":"Maghanap","Add":"Magdagdag","Edit":"I-edit","Delete":"Tanggalin","Save":"I-save","Cancel":"Kanselahin","Print":"I-print","Name":"Pangalan","Email":"Email","Password":"Password","Phone":"Telepono","Address":"Address","Date":"Petsa","Total":"Kabuuan","Amount":"Halaga","Login":"Mag-login","Logout":"Mag-logout","Welcome":"Maligayang pagdating","Fee Invoice":"Invoice","General Settings":"Mga Pangkalahatang Setting"}
+    };
+    function applyLanguage(lang) {
+      var dict = _TRANS[lang] || {};
+      var isRTL = (lang === "Urdu" || lang === "Arabic" || lang === "Persian");
+      document.documentElement.setAttribute("lang", isRTL ? lang.toLowerCase() : "en");
+      document.documentElement.setAttribute("dir", isRTL ? "rtl" : "ltr");
+
+      var _sidebar = document.querySelector(".sidebar");
+      if (_sidebar) { _sidebar.style.textAlign = isRTL ? "right" : "left"; }
+      var _topbar3 = document.querySelector(".topbar");
+      if (_topbar3) { _topbar3.style.textAlign = isRTL ? "right" : "left"; }
+
+      if (!lang || lang === "English") { return; }
+
+      document.querySelectorAll("[data-i18n]").forEach(function (el) {
+        var key = el.getAttribute("data-i18n");
+        if (dict[key]) { el.textContent = dict[key]; }
+      });
+
+      var _navMap = {
+        "nav-dashboard": "Dashboard", "nav-students": "Students", "nav-teachers": "Teachers",
+        "nav-classes": "Classes", "nav-attendance": "Attendance", "nav-fees": "Fees",
+        "nav-exams": "Exams", "nav-timetable": "Timetable", "nav-homework": "Homework",
+        "nav-settings": "Settings", "nav-reports": "Reports", "nav-employees": "Employees",
+        "nav-salary": "Salary", "nav-accounts": "Accounts", "nav-notifications": "Notifications"
+      };
+      Object.keys(_navMap).forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && dict[_navMap[id]]) { el.textContent = dict[_navMap[id]]; }
+      });
+
+      var _sidebarLinks = document.querySelectorAll(".sidebar-link span, .sidebar-link small");
+      _sidebarLinks.forEach(function (span) {
+        var text = span.textContent.trim();
+        if (dict[text]) { span.textContent = dict[text]; }
+      });
+
+      var _btnMap = { "saveGeneralSettings": "Save", "cancelGeneralSettings": "Cancel" };
+      Object.keys(_btnMap).forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el && dict[_btnMap[id]]) { el.textContent = dict[_btnMap[id]]; }
+      });
+
+      var _headings = document.querySelectorAll(".module-header h2, .module-header h3, .card-header h3, .card-header h4");
+      _headings.forEach(function (h) {
+        var text = h.textContent.trim();
+        if (dict[text]) { h.textContent = dict[text]; }
+      });
+
+      var _labels = document.querySelectorAll("label");
+      _labels.forEach(function (lbl) {
+        var text = lbl.textContent.trim().replace(/:$/, "");
+        if (dict[text]) { lbl.textContent = dict[text] + ":"; }
+      });
+
+      var _tableHeaders = document.querySelectorAll("table th");
+      _tableHeaders.forEach(function (th) {
+        var text = th.textContent.trim();
+        if (dict[text]) { th.textContent = dict[text]; }
+      });
+
+      var _placeholders = document.querySelectorAll("input[placeholder], textarea[placeholder]");
+      _placeholders.forEach(function (inp) {
+        var ph = inp.getAttribute("placeholder");
+        if (ph && dict[ph]) { inp.setAttribute("placeholder", dict[ph]); }
+      });
+    }
+
     function applyTheme(themeLanguage) {
       const safeTheme = themeLanguage || {};
       sidebar.style.background = safeTheme.sidebarBackground || "";
       var _topbar2 = document.querySelector(".topbar");
       if (_topbar2) _topbar2.style.background = safeTheme.headerBackground || "";
       document.documentElement.style.setProperty("--primary-color", safeTheme.activeItemBackground || "#1e5eff");
-      document.documentElement.setAttribute("dir", safeTheme.placement === "RTL" ? "rtl" : "ltr");
+      if (safeTheme.language) { applyLanguage(safeTheme.language); } else { document.documentElement.setAttribute("dir", safeTheme.placement === "RTL" ? "rtl" : "ltr"); }
     }
 
     function getDefaultFeeParticulars(selectedClass) {
@@ -5272,7 +5276,7 @@ document.addEventListener("DOMContentLoaded", function () {
         reader.readAsDataURL(file);
       });
 
-      document.getElementById("saveInstituteProfileBtn").addEventListener("click", function () {
+      var _el = document.getElementById("saveInstituteProfileBtn"); if (_el) _el.addEventListener("click", function () {
         settings.instituteProfile = {
           logo: logoData,
           name: nameInput.value.trim(),
@@ -5369,7 +5373,7 @@ document.addEventListener("DOMContentLoaded", function () {
       classSelect.addEventListener("change", renderRows);
       rowsWrap.addEventListener("input", renderPreview);
 
-      document.getElementById("saveFeeParticularBtn").addEventListener("click", function () {
+      var _el = document.getElementById("saveFeeParticularBtn"); if (_el) _el.addEventListener("click", function () {
         const cls = classSelect.value;
         if (!cls) {
           return;
@@ -5468,11 +5472,11 @@ document.addEventListener("DOMContentLoaded", function () {
       classSelect.addEventListener("change", renderStructureRows);
       rowsWrap.addEventListener("input", renderStructurePreview);
 
-      document.getElementById("addFeeStructureFieldBtn").addEventListener("click", function () {
+      var _el = document.getElementById("addFeeStructureFieldBtn"); if (_el) _el.addEventListener("click", function () {
         rowsWrap.appendChild(makeRow("", 0));
       });
 
-      document.getElementById("removeFeeStructureFieldBtn").addEventListener("click", function () {
+      var _el = document.getElementById("removeFeeStructureFieldBtn"); if (_el) _el.addEventListener("click", function () {
         const rows = rowsWrap.querySelectorAll(".module-line-item");
         if (rows.length > 1) {
           rows[rows.length - 1].remove();
@@ -5480,7 +5484,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-      document.getElementById("saveFeeStructureBtn").addEventListener("click", function () {
+      var _el = document.getElementById("saveFeeStructureBtn"); if (_el) _el.addEventListener("click", function () {
         const cls = classSelect.value;
         settings.feeStructures[cls] = Array.from(rowsWrap.querySelectorAll(".module-line-item")).map(function (row) {
           const amount = Math.max(0, parseFloat(row.querySelector(".fee-structure-amount").value || 0, 10));
@@ -5603,7 +5607,7 @@ document.addEventListener("DOMContentLoaded", function () {
         input.addEventListener("change", renderDiscountStudents);
       });
 
-      document.getElementById("applyDiscountBtn").addEventListener("click", function () {
+      var _el = document.getElementById("applyDiscountBtn"); if (_el) _el.addEventListener("click", function () {
         const type = discountTypeInput.value.trim();
         const amount = Number(discountAmountInput.value || 0);
         const selectedIds = Array.from(document.querySelectorAll(".discount-student-check:checked")).map(function (checkbox) {
@@ -5623,7 +5627,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         settings.discountPolicies.unshift({
-          id: `DIS-${Date.now()}`,
+          id: `DIS-${generateId()}`,
           type: type,
           amount: amount,
           className: classFilter.value === "all" ? "" : classFilter.value,
@@ -5717,9 +5721,9 @@ document.addEventListener("DOMContentLoaded", function () {
         reader.readAsDataURL(file);
       });
 
-      document.getElementById("saveBankBtn").addEventListener("click", function () {
+      var _el = document.getElementById("saveBankBtn"); if (_el) _el.addEventListener("click", function () {
         const bankRecord = {
-          id: currentBank.id || `BANK-${Date.now()}`,
+          id: currentBank.id || `BANK-${generateId()}`,
           logo: logoData,
           name: nameInput.value.trim(),
           address: addressInput.value.trim(),
@@ -5811,7 +5815,7 @@ document.addEventListener("DOMContentLoaded", function () {
         preview.innerHTML = editor.innerHTML;
       });
 
-      document.getElementById("saveRulesBtn").addEventListener("click", function () {
+      var _el = document.getElementById("saveRulesBtn"); if (_el) _el.addEventListener("click", function () {
         const target = applyToSelect.value;
         settings.rulesAndRegulations[target] = editor.innerHTML.trim();
         if (target === "students") {
@@ -5924,15 +5928,15 @@ document.addEventListener("DOMContentLoaded", function () {
         gradingRows.appendChild(row);
       }
 
-      document.getElementById("addGradingBtn").addEventListener("click", addGradingRow);
-      document.getElementById("removeGradingBtn").addEventListener("click", function () {
+      var _el = document.getElementById("addGradingBtn"); if (_el) _el.addEventListener("click", addGradingRow);
+      var _el = document.getElementById("removeGradingBtn"); if (_el) _el.addEventListener("click", function () {
         const rows = gradingRows.querySelectorAll(".module-line-item");
         if (rows.length > 1) {
           rows[rows.length - 1].remove();
         }
       });
 
-      document.getElementById("saveGradingBtn").addEventListener("click", function () {
+      var _el = document.getElementById("saveGradingBtn"); if (_el) _el.addEventListener("click", function () {
         settings.marksGrading = Array.from(gradingRows.querySelectorAll(".module-line-item")).map(function (row) {
           return {
             required: row.querySelector(".grading-required").value === "required",
@@ -5965,55 +5969,54 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (route === "theme-language") {
       const theme = settings.themeLanguage;
+      const allLanguages = ["English", "Urdu", "Arabic", "Hindi", "Spanish", "French", "German", "Portuguese", "Chinese", "Japanese", "Korean", "Turkish", "Russian", "Italian", "Dutch", "Thai", "Indonesian", "Malay", "Bengali", "Punjabi", "Persian", "Vietnamese", "Greek", "Polish", "Swedish", "Danish", "Norwegian", "Finnish", "Czech", "Romanian", "Hungarian", "Ukrainian", "Tagalog"];
+      const isRtlLang = ["Urdu", "Arabic", "Persian", "Hebrew"].includes(theme.language);
       moduleSummary.innerHTML = `
-        <article>
-          <strong>Theme Settings</strong>
-          <p>Update Theme styling and Language Settings</p>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="themePlacementSelect">Theme Placement*</label>
-              <select id="themePlacementSelect">
-                <option value="LTR" ${theme.placement === "LTR" ? "selected" : ""}>LTR</option>
-                <option value="RTL" ${theme.placement === "RTL" ? "selected" : ""}>RTL</option>
-              </select>
+        <article style="background:linear-gradient(135deg,#f8fafc,#eef2ff);border-radius:16px;padding:28px;border:1px solid #e2e8f0;">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;">🎨</div>
+            <div><strong style="font-size:1.15rem;color:#1e293b;">Theme & Language</strong><p style="margin:2px 0 0;font-size:0.85rem;color:#64748b;">Customize appearance and select your preferred language</p></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+            <div class="field-group" style="background:#fff;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+              <label for="sidebarBgColorInput" style="font-weight:600;color:#334155;font-size:0.85rem;">Sidebar Background</label>
+              <input id="sidebarBgColorInput" type="color" value="${escapeAttr(theme.sidebarBackground || "#08172f")}" style="width:100%;height:42px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-top:6px;">
             </div>
-            <div class="field-group">
-              <label for="sidebarBgColorInput">Sidebar Background*</label>
-              <input id="sidebarBgColorInput" type="color" value="${escapeAttr(theme.sidebarBackground || "#08172f")}">
+            <div class="field-group" style="background:#fff;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+              <label for="headerBgColorInput" style="font-weight:600;color:#334155;font-size:0.85rem;">Header Background</label>
+              <input id="headerBgColorInput" type="color" value="${escapeAttr(theme.headerBackground || "#ffffff")}" style="width:100%;height:42px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-top:6px;">
             </div>
-            <div class="field-group">
-              <label for="headerBgColorInput">Header Background</label>
-              <input id="headerBgColorInput" type="color" value="${escapeAttr(theme.headerBackground || "#ffffff")}">
+            <div class="field-group" style="background:#fff;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+              <label for="activeItemBgColorInput" style="font-weight:600;color:#334155;font-size:0.85rem;">Active Item Highlight</label>
+              <input id="activeItemBgColorInput" type="color" value="${escapeAttr(theme.activeItemBackground || "#1e5eff")}" style="width:100%;height:42px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-top:6px;">
             </div>
-            <div class="field-group">
-              <label for="activeItemBgColorInput">Active Item Background</label>
-              <input id="activeItemBgColorInput" type="color" value="${escapeAttr(theme.activeItemBackground || "#1e5eff")}">
-            </div>
-            <div class="field-group">
-              <label for="languageSettingSelect">Select Language</label>
-              <select id="languageSettingSelect">
-                ${["English", "Urdu", "Arabic", "Hindi"].map(function (language) {
-                  return `<option value="${language}" ${theme.language === language ? "selected" : ""}>${language}</option>`;
+            <div class="field-group" style="background:#fff;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
+              <label for="languageSettingSelect" style="font-weight:600;color:#334155;font-size:0.85rem;">Select Language</label>
+              <select id="languageSettingSelect" style="width:100%;padding:10px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.92rem;margin-top:6px;background:#fff;">
+                ${allLanguages.map(function (lang) {
+                  return `<option value="${lang}" ${theme.language === lang ? "selected" : ""}>${lang}</option>`;
                 }).join("")}
               </select>
             </div>
           </div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveThemeBtn" type="button">Update Setting</button>
+          <div style="margin-top:20px;text-align:right;">
+            <button class="primary-button" id="saveThemeBtn" type="button" style="padding:12px 32px;font-size:0.95rem;">Save Settings</button>
           </div>
-          <p class="form-message" id="themeMessage"></p>
+          <p class="form-message" id="themeMessage" style="margin-top:12px;"></p>
         </article>
       `;
 
-      moduleGuide.innerHTML = `<article><strong>Preview</strong><div class="module-preview-card"><p><strong>Placement:</strong> ${escapeHtml(theme.placement)}</p><p><strong>Language:</strong> ${escapeHtml(theme.language)}</p></div></article>`;
+      moduleGuide.innerHTML = `<article style="background:#f8fafc;border-radius:12px;padding:20px;border:1px solid #e2e8f0;"><strong style="color:#1e293b;">Current Settings</strong><div style="margin-top:12px;display:grid;gap:8px;"><p style="font-size:0.9rem;color:#475569;"><strong>Language:</strong> ${escapeHtml(theme.language || "English")}</p><p style="font-size:0.9rem;color:#475569;"><strong>Direction:</strong> ${isRtlLang ? "Right-to-Left (RTL)" : "Left-to-Right (LTR)"}</p></div></article>`;
 
       document.getElementById("saveThemeBtn").addEventListener("click", function () {
+        var selectedLang = document.getElementById("languageSettingSelect").value;
+        var isRtl = ["Urdu", "Arabic", "Persian", "Hebrew"].includes(selectedLang);
         settings.themeLanguage = {
-          placement: document.getElementById("themePlacementSelect").value,
+          placement: isRtl ? "RTL" : "LTR",
           sidebarBackground: document.getElementById("sidebarBgColorInput").value,
           headerBackground: document.getElementById("headerBgColorInput").value,
           activeItemBackground: document.getElementById("activeItemBgColorInput").value,
-          language: document.getElementById("languageSettingSelect").value
+          language: selectedLang
         };
         applyTheme(settings.themeLanguage);
         addActivity("Theme settings updated", "Theme and language settings updated.");
@@ -6181,7 +6184,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const totalAmount = particulates.reduce(function (sum, item) { return sum + (parseFloat(item.amount || 0)); }, 0);
         const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0));
         const invoiceData = {
-          id: `INV-TEMP-${Date.now()}`,
+          id: `INV-TEMP-${generateId()}`,
           studentId: student.id,
           className: student.className,
           feeMonth: normalizeFeeMonthLabel(monthSelect ? monthSelect.value : ""),
@@ -6305,7 +6308,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
       function createFeeRecordFromInvoice(student, invoiceData, existingId) {
         return {
-          id: existingId || `FEE-${Date.now()}-${student.id}`,
+          id: existingId || `FEE-${generateId()}-${student.id}`,
           studentId: student.id,
           className: student.className,
           month: invoiceData.feeMonth,
@@ -6361,12 +6364,12 @@ document.addEventListener("DOMContentLoaded", function () {
         previewBox.innerHTML = `
           <div style="display:grid;gap:10px;font-size:0.93rem;line-height:1.42;max-height:560px;overflow:auto;">
             <div style="display:grid;grid-template-columns:92px 1fr 92px;align-items:center;gap:10px;">
-              <div style="text-align:left;">${bank && bank.logo ? `<img src="${bank.logo}" alt="Bank Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : "<span style='font-weight:700;'>Bank Logo</span>"}</div>
+              <div style="text-align:center;">${bank && bank.logo ? `<img src="${bank.logo}" alt="Bank Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;border:1px solid #ccc;">` : "<span style='font-weight:700;font-size:0.8rem;color:#999;'>Bank Logo</span>"}<p style="font-size:0.7rem;color:#999;margin:2px 0 0;">Bank Logo</p></div>
               <div style="text-align:center;">
                 <h3 style="margin:0;font-size:1.08rem;">${escapeHtml(profile.name || (database.school && database.school.name) || "School Name")}</h3>
                 <p style="margin:2px 0 0;font-size:0.86rem;">${escapeHtml(profile.slogan || "-")}</p>
               </div>
-              <div style="text-align:right;">${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : "<span style='font-weight:700;'>School Logo</span>"}</div>
+              <div style="text-align:right;display:flex;align-items:center;gap:8px;justify-content:flex-end;">${student.picture ? `<img src="${student.picture}" alt="Student" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #ccc;">` : ""}${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : "<span style='font-weight:700;'>School Logo</span>"}</div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;">
               <article style="padding:10px;border:1px solid #dce5f4;border-radius:10px;background:#fff;min-height:360px;">
@@ -6420,7 +6423,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const totalAmount = particulars.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
         const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0));
         const invoiceData = {
-          id: `INV-${Date.now()}-${student.id}`,
+              id: `INV-${generateId()}-${student.id}`,
           studentId: student.id,
           className: student.className,
           feeMonth: normalizeFeeMonthLabel(monthSelect.value),
@@ -6512,7 +6515,7 @@ document.addEventListener("DOMContentLoaded", function () {
             const totalAmount = particulars.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
             const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0));
             const invoiceData = {
-              id: `INV-${Date.now()}-${student.id}`,
+          id: `INV-${generateId()}-${student.id}`,
               studentId: student.id,
               className: student.className,
               feeMonth: normalizeFeeMonthLabel(monthSelect.value),
@@ -6644,11 +6647,13 @@ document.addEventListener("DOMContentLoaded", function () {
                     <div>${escapeHtml(instituteProfile.address || "-")}, ${escapeHtml(instituteProfile.country || "-")}</div>
                   </div>
                 </section>
-                <article class="report-card" style="display:grid;grid-template-columns:14mm 1fr 1fr;gap:1.5mm;align-items:start;margin:0;">
-                  <div>
+                <article class="report-card" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5mm;align-items:start;margin:0;">
+                  <div style="text-align:center;">
                     ${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:12mm;height:12mm;border-radius:2mm;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:12mm;height:12mm;border-radius:2mm;border:1px solid #000;align-items:center;justify-content:center;font-size:5.5pt;">BANK</span>`}
+                    <p style="font-size:5pt;margin:1mm 0 0;">Bank Logo</p>
                   </div>
                   <div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+                    ${invoiceEntry.student.picture ? `<div style="grid-column:1/-1;text-align:center;margin-bottom:2mm;"><img src="${await normalizeImageForPrintShared(invoiceEntry.student.picture)}" style="width:10mm;height:10mm;border-radius:2mm;object-fit:cover;border:1px solid #000;" alt="Student Photo"></div>` : ""}
                     <p><strong>Roll No:</strong> ${escapeHtml(invoiceEntry.student.admissionNo || "-")}</p>
                     <p><strong>Class:</strong> ${escapeHtml(invoiceEntry.student.className || "-")}</p>
                     <p><strong>Student Name:</strong> ${escapeHtml(invoiceEntry.student.name || "-")}</p>
@@ -6696,11 +6701,13 @@ document.addEventListener("DOMContentLoaded", function () {
           await openPrintReport({
             subtitle: "Fees Invoice for Student",
             contentHtml: `
-              <article class="report-card" style="display:grid;grid-template-columns:90px 1fr 1fr;gap:10px;align-items:start;">
-                <div>
+              <article class="report-card" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:start;">
+                <div style="text-align:center;">
                   ${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:78px;height:78px;border-radius:12px;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:78px;height:78px;border-radius:12px;border:1px solid #000;align-items:center;justify-content:center;font-size:12px;">BANK</span>`}
+                  <p style="font-size:11px;margin:4px 0 0;color:#666;">Bank Logo</p>
                 </div>
                 <div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+                  ${student.picture ? `<div style="grid-column:1/-1;text-align:center;margin-bottom:8px;"><img src="${student.picture}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:1px solid #ccc;" alt="Student Photo"><p style="font-size:10px;margin:2px 0 0;color:#666;">Student Photo</p></div>` : ""}
                   <p><strong>Roll No:</strong> ${escapeHtml(student.admissionNo || "-")}</p>
                   <p><strong>Class:</strong> ${escapeHtml(student.className || "-")}</p>
                   <p><strong>Student Name:</strong> ${escapeHtml(student.name || "-")}</p>
@@ -6766,9 +6773,12 @@ document.addEventListener("DOMContentLoaded", function () {
                   ${escapeHtml(instituteProfile.address || "-")}, ${escapeHtml(instituteProfile.country || "-")}
                 </div>
               </section>
-              <article style="display:grid;grid-template-columns:8mm 1fr 1fr;gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">
+              <article style="display:grid;grid-template-columns:8mm 8mm 1fr 1fr;gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">
                 <div style="text-align:center;">
                   ${bankLogo ? `<img src="${bankLogo}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">BANK</span>`}
+                </div>
+                <div style="text-align:center;">
+                  ${entry.student.picture ? `<img src="${entry.student.picture}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">PHOTO</span>`}
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.2mm;">
                   <p style="margin:0;"><b>Roll No:</b> ${escapeHtml(entry.student.admissionNo || "-")}</p>
@@ -7142,7 +7152,7 @@ ${allContent}
           return feeItem.studentId === student.id && (feeItem.feeMonth || feeItem.month) === feeMonth;
         });
         const feeRecord = {
-          id: feeIndex >= 0 ? database.fees[feeIndex].id : `FEE-${Date.now()}-${student.id}`,
+          id: feeIndex >= 0 ? database.fees[feeIndex].id : `FEE-${generateId()}-${student.id}`,
           studentId: student.id,
           className: student.className,
           feeMonth: feeMonth,
@@ -7167,7 +7177,7 @@ ${allContent}
           return col.studentId === student.id && col.feeMonth === feeMonth;
         });
         const collectionRecord = {
-          id: collectionIndex >= 0 ? settings.feeCollections[collectionIndex].id : `COL-${Date.now()}`,
+          id: collectionIndex >= 0 ? settings.feeCollections[collectionIndex].id : `COL-${generateId()}`,
           feeId: feeRecord.id,
           studentId: student.id,
           studentName: student.name || "-",
@@ -7184,7 +7194,7 @@ ${allContent}
         }
         settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
         settings.accountsLedger.unshift({
-          id: "LEDGER-" + Date.now(),
+          id: "LEDGER-" + generateId(),
           date: dateInput.value,
           type: "Income",
           category: "Fee Collection",
@@ -7213,7 +7223,7 @@ ${allContent}
         latestReceiptData.remaining = `${currencySymbol} ${remaining}`;
         renderReceipt(latestReceiptData);
         printReceiptBtn.disabled = false;
-        document.getElementById("printFeeReceiptThermalBtn").disabled = false;
+        setDisabled("printFeeReceiptThermalBtn", false);
         message.textContent = "Fee collected successfully.";
         message.className = "form-message success";
         searchInput.value = "";
@@ -7522,7 +7532,7 @@ ${allContent}
         const total = particulars.reduce(function (sum, row) { return sum + Math.max(0, parseFloat(row.amount || 0)); }, 0);
         const feeMonth = getSelectedMonthYear();
         database.fees.unshift({
-          id: `FEE-${Date.now()}-${student.id}`,
+          id: `FEE-${generateId()}-${student.id}`,
           studentId: student.id,
           className: student.className,
           month: feeMonth,
@@ -7544,63 +7554,6 @@ ${allContent}
 
       function normalizePhoneNumberForReminder(value) {
         return String(value || "").replace(/[^\d+]/g, "");
-      }
-
-      function normalizeGatewayUrlForReminder(value) {
-        const raw = String(value || "").trim().replace(/\/+$/, "");
-        if (!raw) {
-          return "";
-        }
-        if (/^https?:\/\//i.test(raw)) {
-          return raw;
-        }
-        return `http://${raw}`;
-      }
-
-      function getLocalhostFallbackUrl(url) {
-        var m = url.match(/:(\d+)(?:\/|$)/);
-        return m ? "http://127.0.0.1:" + m[1] : "";
-      }
-
-      async function sendSmsFromDefaulters(phone, text) {
-        const baseUrl = normalizeGatewayUrlForReminder(settings.smsGateway && settings.smsGateway.baseUrl);
-        if (!baseUrl) {
-          return false;
-        }
-        const payload = JSON.stringify({ phone: phone, message: text });
-        const headers = { "Content-Type": "application/json" };
-        if (settings.smsGateway && settings.smsGateway.apiKey) {
-          headers.Authorization = `Bearer ${settings.smsGateway.apiKey}`;
-        }
-        const endpoints = ["/send-sms", "/send", "/api/send-sms"];
-        var urlsToTry = [baseUrl];
-        var fb = getLocalhostFallbackUrl(baseUrl);
-        if (fb) urlsToTry.push(fb);
-        for (let u = 0; u < urlsToTry.length; u++) {
-          const urlBase = urlsToTry[u];
-          for (let index = 0; index < endpoints.length; index += 1) {
-            const endpoint = endpoints[index];
-            try {
-              const response = await fetchWithTimeout(`${urlBase}${endpoint}`, { method: "POST", headers: headers, body: payload }, 3500);
-              if (response.ok || response.type === "opaque") {
-                return true;
-              }
-            } catch (error) {
-              try {
-                await fetchWithTimeout(`${urlBase}${endpoint}`, {
-                  method: "POST",
-                  mode: "no-cors",
-                  headers: { "Content-Type": "text/plain;charset=UTF-8" },
-                  body: payload
-                }, 3500);
-                return true;
-              } catch (innerError) {
-                // continue
-              }
-            }
-          }
-        }
-        return false;
       }
 
       async function sendReminder() {
@@ -8043,7 +7996,7 @@ ${allContent}
         
         settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
         settings.accountsLedger.unshift({
-          id: "LEDGER-" + Date.now(),
+          id: "LEDGER-" + generateId(),
           date: getTodayDateISO(),
           type: "Expense",
           category: "Fee Deletion",
@@ -8419,7 +8372,7 @@ ${allContent}
         const deduction = Number(deductionInput.value || 0);
         const netSalary = Math.max(salaryAmount + bonus - deduction, 0);
         const paymentRecord = {
-          id: `SAL-${Date.now()}-${employee.id}`,
+          id: `SAL-${generateId()}-${employee.id}`,
           employeeId: employee.id,
           employeeName: employee.name || "-",
           role: employee.role || employee.designation || "-",
@@ -8448,7 +8401,7 @@ ${allContent}
         latestSalarySlipRecord = paymentRecord;
         renderPaidSlipPreview(paymentRecord);
         printBtn.disabled = false;
-        document.getElementById("printSalarySlipThermalBtn").disabled = false;
+        setDisabled("printSalarySlipThermalBtn", false);
         message.textContent = "Salary paid slip generated successfully.";
         message.className = "form-message success";
       });
@@ -8843,7 +8796,7 @@ ${allContent}
           if (totalDeleted > 0) {
             settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
             settings.accountsLedger.unshift({
-              id: "LEDGER-" + Date.now(),
+          id: "LEDGER-" + generateId(),
               date: getTodayDateISO(),
               type: "Income",
               category: "Salary Deletion",
@@ -9042,7 +8995,7 @@ ${allContent}
           return;
         }
         const record = {
-          id: editingId || `WD-${Date.now()}`,
+          id: editingId || `WD-${generateId()}`,
           name: dayName,
           shortLabel: shortLabel,
           order: editingId
@@ -9199,7 +9152,7 @@ ${allContent}
           return;
         }
         const record = {
-          id: editingId || `PER-${Date.now()}`,
+          id: editingId || `PER-${generateId()}`,
           label: label,
           startTime: start,
           endTime: end,
@@ -9357,7 +9310,7 @@ ${allContent}
           return;
         }
         const record = {
-          id: editingId || `ROOM-${Date.now()}`,
+          id: editingId || `ROOM-${generateId()}`,
           name: roomName,
           capacity: Number(capacityInput.value || 0),
           location: locationInput.value.trim()
@@ -9808,7 +9761,7 @@ ${allContent}
     function getExams() {
       return (settings.exams || []).map(function (examItem) {
         return {
-          id: examItem.id || `EXM-${Date.now()}`,
+          id: examItem.id || `EXM-${generateId()}`,
           name: examItem.name || "-",
           startDate: examItem.startDate || "",
           endDate: examItem.endDate || "",
@@ -10011,7 +9964,7 @@ ${allContent}
           return;
         }
         const examRecord = {
-          id: editingExamId || `EXM-${Date.now()}`,
+          id: editingExamId || `EXM-${generateId()}`,
           name: examName,
           startDate: startDate,
           endDate: endDate,
@@ -10272,6 +10225,7 @@ ${allContent}
       `;
 
       const printDmcClasswiseBtn = document.getElementById("printDmcClasswiseBtn");
+      if (printDmcClasswiseBtn) { printDmcClasswiseBtn.disabled = true; }
 
       const examSelect = document.getElementById("resultCardExamSelect");
       const classSelect = document.getElementById("resultCardClassSelect");
@@ -10689,11 +10643,12 @@ ${allContent}
           return;
         }
         const exam = getExamById(examId);
+        if (!exam) { message.textContent = "Exam not found."; message.className = "form-message error"; return; }
         const generateClasswiseButton = document.getElementById("generateResultCardClasswiseBtn");
-        generateClasswiseButton.disabled = true;
-        printBtn.disabled = true;
-        sendResultMessageBtn.disabled = true;
-        sendResultWhatsappBtn.disabled = true;
+        if (generateClasswiseButton) generateClasswiseButton.disabled = true;
+        if (printBtn) printBtn.disabled = true;
+        if (sendResultMessageBtn) sendResultMessageBtn.disabled = true;
+        if (sendResultWhatsappBtn) sendResultWhatsappBtn.disabled = true;
         message.textContent = "Generating classwise result preview...";
         message.className = "form-message info";
         window.setTimeout(function () {
@@ -10767,7 +10722,7 @@ ${allContent}
 
       sendResultMessageBtn.addEventListener("click", async function () {
         if (latestClasswiseDmcData.length) {
-          const channel = sendChannelSelect ? sendChannelSelect.value : chooseCommunicationChannel("Classwise Result Message");
+          const channel = sendChannelSelect ? sendChannelSelect.value : await chooseCommunicationChannel("Classwise Result Message");
           if (!channel) {
             return;
           }
@@ -10842,7 +10797,7 @@ ${allContent}
           message.className = "form-message error";
           return;
         }
-        const channel = sendChannelSelect ? sendChannelSelect.value : chooseCommunicationChannel("Result Message");
+        const channel = sendChannelSelect ? sendChannelSelect.value : await chooseCommunicationChannel("Result Message");
         if (!channel) {
           return;
         }
@@ -11109,7 +11064,7 @@ ${allContent}
           return;
         }
         settings.examSchedule.unshift({
-          id: `SCH-${Date.now()}`,
+          id: `SCH-${generateId()}`,
           examId: examSelect.value,
           className: classSelect.value,
           subjectName: subjectSelect.value,
@@ -13107,7 +13062,7 @@ ${allContent}
               <td>${escapeHtml(employee.name || "-")}</td>
               <td>${escapeHtml(employee.role || "-")}</td>
               <td><input class="table-inline-input employee-login-username" data-id="${employee.id}" type="text" value="${escapeAttr(loginInfo.username)}"></td>
-              <td><input class="table-inline-input employee-login-password" data-id="${employee.id}" type="text" value="${escapeAttr(loginInfo.password)}"></td>
+              <td><input class="table-inline-input employee-login-password" data-id="${employee.id}" type="password" value="${escapeAttr(loginInfo.password)}"></td>
               <td><span class="status-pill ${loginInfo.status === "Active" ? "active" : "inactive"}">${loginInfo.status}</span></td>
               <td>
                 <div class="table-actions">
@@ -14805,7 +14760,7 @@ ${allContent}
           }
           
           currentSettings.accountsLedger.unshift({
-            id: `LED-${Date.now()}`,
+            id: `LED-${generateId()}`,
             date: date,
             type: isIncome ? "Income" : "Expense",
             category: category,
@@ -15251,7 +15206,7 @@ ${allContent}
           }
 
           settings.questionChapters.unshift({
-            id: `QCH-${Date.now()}`,
+            id: `QCH-${generateId()}`,
             className: className,
             subject: subject,
             chapterName: chapterName,
@@ -16394,25 +16349,27 @@ ${allContent}
               openAppMessageBox("Error", "Question not found.", "error");
               return;
             }
-            const nextChapter = window.prompt("Edit Chapter Name", String(row.chapterName || ""));
-            if (nextChapter === null) return;
-            const nextTitle = window.prompt("Edit Question Title", String(row.questionTitle || ""));
-            if (nextTitle === null) return;
-            const nextMarksRaw = window.prompt("Edit Marks", String(Number(row.marks || 0)));
-            if (nextMarksRaw === null) return;
-            const nextMarks = Number(nextMarksRaw);
-            if (!(nextMarks > 0)) {
-              openAppMessageBox("Error", "Marks must be greater than 0.", "error");
-              return;
-            }
-            row.chapterName = String(nextChapter || "").trim() || row.chapterName || "";
-            row.questionTitle = String(nextTitle || "").trim() || row.questionTitle || "";
-            row.marks = nextMarks;
-            saveDatabase();
-            renderChapterSelect();
-            renderPreview();
-            openAppMessageBox("Success", "Question updated successfully.", "success");
-            return;
+            openStyledPrompt("Edit Chapter Name", String(row.chapterName || ""), function (nextChapter) {
+              if (nextChapter === null || nextChapter === undefined) return;
+              openStyledPrompt("Edit Question Title", String(row.questionTitle || ""), function (nextTitle) {
+                if (nextTitle === null || nextTitle === undefined) return;
+                openStyledPrompt("Edit Marks", String(Number(row.marks || 0)), function (nextMarksRaw) {
+                  if (nextMarksRaw === null || nextMarksRaw === undefined) return;
+                  var nextMarks = Number(nextMarksRaw);
+                  if (!(nextMarks > 0)) {
+                    openAppMessageBox("Error", "Marks must be greater than 0.", "error");
+                    return;
+                  }
+                  row.chapterName = String(nextChapter || "").trim() || row.chapterName || "";
+                  row.questionTitle = String(nextTitle || "").trim() || row.questionTitle || "";
+                  row.marks = nextMarks;
+                  saveDatabase();
+                  renderChapterSelect();
+                  renderPreview();
+                  openAppMessageBox("Success", "Question updated successfully.", "success");
+                });
+              });
+            });
           }
 
           const deleteButton = event.target.closest("[data-qp-delete]");
@@ -16477,7 +16434,7 @@ ${allContent}
             return;
           }
           settings.questionPapers.unshift({
-            id: `QP-${Date.now()}`,
+            id: `QP-${generateId()}`,
             className: className,
             subject: subject,
             title: title,
@@ -16848,7 +16805,7 @@ ${allContent}
               return String(row.studentId) === String(student.id) && row.className === className && String(row.subjectName || "") === String(subjectName) && row.testName === testName && row.testDate === testDate;
             });
             const payload = {
-              id: existingIndex >= 0 ? settings.classTestMarks[existingIndex].id : `CT-${Date.now()}-${student.id}`,
+              id: existingIndex >= 0 ? settings.classTestMarks[existingIndex].id : `CT-${generateId()}-${student.id}`,
               studentId: student.id,
               className: className,
               subjectName: subjectName,
@@ -17144,7 +17101,7 @@ ${allContent}
             message.className = "form-message error";
             return;
           }
-          settings.certificateTemplates.unshift({ id: `CRT-TPL-${Date.now()}`, name: name, body: bodyText });
+          settings.certificateTemplates.unshift({ id: `CRT-TPL-${generateId()}`, name: name, body: bodyText });
           saveDatabase();
           message.textContent = "Certificate template saved successfully.";
           message.className = "form-message success";
@@ -17644,7 +17601,7 @@ ${allContent}
       function resetHomeworkForm() {
         editingHomeworkId = "";
         selectedHomeworkPreviewId = "";
-        document.getElementById("sendHomeworkBtn").textContent = "Save Home Work";
+        var _hwBtn = document.getElementById("sendHomeworkBtn"); if (_hwBtn) _hwBtn.textContent = "Save Home Work";
         subjectInput.value = "";
         titleInput.value = "";
         dueDateInput.value = "";
@@ -17788,7 +17745,7 @@ ${allContent}
           return;
         }
         const homeworkRecord = {
-          id: existingHomework ? existingHomework.id : `HW-${Date.now()}`,
+          id: existingHomework ? existingHomework.id : `HW-${generateId()}`,
           createdAt: new Date().toLocaleString(),
           targetType: targetTypeSelect.value,
           targetLabel: targetTypeSelect.value === "student" ? (targets[0].name || "-") : `Class: ${classSelect.value}`,
@@ -17866,7 +17823,7 @@ ${allContent}
         titleInput.value = homework.title || "";
         dueDateInput.value = homework.dueDate || "";
         descriptionInput.value = homework.details || "";
-        document.getElementById("sendHomeworkBtn").textContent = "Update Home Work";
+        var _hwBtn = document.getElementById("sendHomeworkBtn"); if (_hwBtn) _hwBtn.textContent = "Update Home Work";
         renderHomeworkSelectionPreview();
         message.textContent = "Homework loaded for editing.";
         message.className = "form-message success";
@@ -18424,7 +18381,7 @@ ${allContent}
 
     if (route === "sms-services") {
       const smsGateway = settings.smsGateway || {
-        provider: "simple-sms-gateway",
+        provider: "supabase-queue",
         connectedNumber: "",
         baseUrl: "",
         apiKey: "",
@@ -18435,6 +18392,51 @@ ${allContent}
       const smsOutbox = Array.isArray(settings.smsOutbox) ? settings.smsOutbox : [];
       settings.smsGateway = smsGateway;
       settings.smsOutbox = smsOutbox;
+
+      (async function autoConfigureSupabase() {
+        var cfg = getSupabaseConfig();
+        if (cfg.url && cfg.anonKey) {
+          if (!cfg.tablesCreated) {
+            try {
+              var setupResp = await fetch(getApiBaseUrl() + "/api/setup-sms-tables", {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + window.SagarSoftAuth.getServerToken() }
+              });
+              var setupResult = await setupResp.json();
+              if (setupResult.success) {
+                cfg.tablesCreated = true;
+                saveDatabase();
+                renderConnectionStatus();
+              }
+            } catch (_e) {}
+          }
+          return;
+        }
+        try {
+          var resp = await fetch(getApiBaseUrl() + "/api/supabase-config");
+          var data = await resp.json();
+          if (data.success && data.url && data.anonKey) {
+            if (!database.generalSettings.supabaseConfig) {
+              database.generalSettings.supabaseConfig = {};
+            }
+            database.generalSettings.supabaseConfig.url = data.url;
+            database.generalSettings.supabaseConfig.anonKey = data.anonKey;
+            database.generalSettings.supabaseConfig.tablesCreated = false;
+            saveDatabase();
+            _supabase = null;
+            var setupResp2 = await fetch(getApiBaseUrl() + "/api/setup-sms-tables", {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": "Bearer " + window.SagarSoftAuth.getServerToken() }
+            });
+            var setupResult2 = await setupResp2.json();
+            if (setupResult2.success) {
+              database.generalSettings.supabaseConfig.tablesCreated = true;
+              saveDatabase();
+              renderConnectionStatus();
+            }
+          }
+        } catch (_e) {}
+      })();
 
       moduleSectionLabel.textContent = "Communication Module";
       moduleSummary.innerHTML = `
@@ -18657,12 +18659,13 @@ ${allContent}
         var deviceRegistered = false;
         var isActive = false;
 
-        if (currentUser && currentUser.school_id && cfg.tablesCreated) {
+        var userSchoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || "";
+        if (userSchoolId && cfg.tablesCreated) {
           (async function() {
             try {
               var sb = initSupabase();
               if (!sb) return;
-              var { data } = await sb.from("devices").select("sim_number, last_poll_at, is_active, device_id, created_at").eq("school_id", currentUser.school_id).maybeSingle();
+              var { data } = await sb.from("devices").select("sim_number, last_poll_at, is_active, device_id, created_at").eq("school_id", userSchoolId).maybeSingle();
               if (data) {
                 deviceRegistered = true;
                 isActive = data.is_active || false;
@@ -18937,7 +18940,7 @@ ${allContent}
             </div>
             <div class="field-group">
               <label for="accountPasswordInput">Password*</label>
-              <input id="accountPasswordInput" type="text" value="${escapeAttr(account.password)}">
+              <input id="accountPasswordInput" type="password" value="${escapeAttr(account.password)}">
             </div>
             <div class="field-group">
               <label for="schoolIdInput">School ID (auto-generated)</label>
@@ -19277,17 +19280,18 @@ ${allContent}
                 openAppMessageBox("Error", "School record not found.", "error");
                 return;
               }
-              const newExpiry = window.prompt(`Set new expiry date for ${row.schoolName || row.schoolId} (YYYY-MM-DD):`, row.expiryDate || "");
-              if (!newExpiry) {
-                return;
-              }
-              row.expiryDate = formatDateInput(newExpiry);
-              row.status = "active";
-              row.activated = true;
-              row.importedAt = new Date().toISOString();
-              saveDatabase();
-              openAppMessageBox("Success", "Expiry updated.", "success");
-              setRoute("account-settings");
+              openStyledPrompt("Set new expiry date (YYYY-MM-DD)", row.expiryDate || "", function (newExpiry) {
+                if (!newExpiry) {
+                  return;
+                }
+                row.expiryDate = formatDateInput(newExpiry);
+                row.status = "active";
+                row.activated = true;
+                row.importedAt = new Date().toISOString();
+                saveDatabase();
+                openAppMessageBox("Success", "Expiry updated.", "success");
+                setRoute("account-settings");
+              });
               return;
             }
             if (deactivateBtn) {
@@ -20234,6 +20238,41 @@ ${allContent}
     });
   }
 
+  function openStyledPrompt(title, defaultValue, onSubmit) {
+    const dialog = document.createElement("div");
+    dialog.style.cssText = "position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;";
+    dialog.innerHTML = `
+      <div style="background:white; border-radius:12px; padding:2rem; max-width:440px; width:90%; box-shadow:0 10px 40px rgba(0,0,0,0.2); border:1px solid rgba(27,95,122,0.15);">
+        <h3 style="margin:0 0 1rem; color:#0f2b3f; font-size:1.1rem;">${escapeHtml(title)}</h3>
+        <input type="text" class="table-inline-input" style="width:100%; margin-bottom:1.2rem;" value="${escapeAttr(defaultValue || "")}">
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.8rem;">
+          <button type="button" class="secondary-button" style="padding:0.75rem; border:1px solid #ccc; border-radius:8px; background:#f5f5f5; color:#333; font-weight:600; cursor:pointer;">Cancel</button>
+          <button type="button" class="table-action-btn" style="padding:0.75rem; border:none; border-radius:8px; background:#1b5f7a; color:white; font-weight:600; cursor:pointer;">OK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(dialog);
+    const input = dialog.querySelector("input");
+    input.focus();
+    input.select();
+    const close = function () { dialog.remove(); };
+    dialog.querySelectorAll("button")[0].addEventListener("click", close);
+    dialog.querySelectorAll("button")[1].addEventListener("click", function () {
+      const val = input.value.trim();
+      close();
+      if (typeof onSubmit === "function") onSubmit(val);
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        const val = input.value.trim();
+        close();
+        if (typeof onSubmit === "function") onSubmit(val);
+      } else if (e.key === "Escape") {
+        close();
+      }
+    });
+  }
+
   function initializeSearchWithDropdown(searchInput, dropdownContainer, filterFunction, renderFunction, onSelectFunction, searchContainerId) {
     if (!searchInput || !dropdownContainer) return;
     let searchTimer = null;
@@ -20494,17 +20533,17 @@ ${allContent}
         <article class="student-directory-card">
           <div class="student-directory-card__top">
             ${student.picture
-              ? `<img src="${student.picture}" alt="${student.name}" class="student-avatar student-avatar--image">`
+              ? `<img src="${student.picture}" alt="${escapeAttr(student.name)}" class="student-avatar student-avatar--image">`
               : `<span class="student-avatar">${getInitials(student.name)}</span>`}
             <div class="student-directory-meta">
-              <h4>${student.name}</h4>
-              <p>Roll Number: ${student.admissionNo}</p>
+              <h4>${escapeHtml(student.name)}</h4>
+              <p>Roll Number: ${escapeHtml(student.admissionNo)}</p>
             </div>
           </div>
           <div class="student-directory-actions">
-            <button class="table-action-btn" type="button" data-action="view-student" data-id="${student.id}">View</button>
-            <button class="table-action-btn" type="button" data-action="edit-student" data-id="${student.id}">Edit</button>
-            <button class="table-action-btn danger" type="button" data-action="delete-student" data-id="${student.id}">Delete</button>
+            <button class="table-action-btn" type="button" data-action="view-student" data-id="${escapeAttr(student.id)}">View</button>
+            <button class="table-action-btn" type="button" data-action="edit-student" data-id="${escapeAttr(student.id)}">Edit</button>
+            <button class="table-action-btn danger" type="button" data-action="delete-student" data-id="${escapeAttr(student.id)}">Delete</button>
           </div>
         </article>
       `;
@@ -20512,11 +20551,8 @@ ${allContent}
 
     // Ensure event listener is attached after HTML update
     if (!studentDirectoryGrid.__listenerAttached) {
-
       studentDirectoryGrid.addEventListener("click", handleTableActionClick);
       studentDirectoryGrid.__listenerAttached = true;
-    } else {
-
     }
 
     studentDirectoryEmptyState.hidden = students.length !== 0;
@@ -20530,19 +20566,19 @@ ${allContent}
         <article class="student-directory-card student-status-card">
           <div class="student-directory-card__top">
             ${student.picture
-              ? `<img src="${student.picture}" alt="${student.name}" class="student-avatar student-avatar--image">`
+              ? `<img src="${student.picture}" alt="${escapeAttr(student.name)}" class="student-avatar student-avatar--image">`
               : `<span class="student-avatar">${getInitials(student.name)}</span>`}
             <div class="student-status-meta">
-              <h4>${student.name}</h4>
-              <p>Roll No: ${student.admissionNo || "-"}</p>
-              <p>Father Name: ${student.fatherName || "-"}</p>
-              <p>Class: ${student.className || "-"}</p>
+              <h4>${escapeHtml(student.name)}</h4>
+              <p>Roll No: ${escapeHtml(student.admissionNo || "-")}</p>
+              <p>Father Name: ${escapeHtml(student.fatherName || "-")}</p>
+              <p>Class: ${escapeHtml(student.className || "-")}</p>
             </div>
           </div>
           <div class="status-toggle-row">
-            <span class="status-pill ${formatStatus(student.status)}">${student.status}</span>
+            <span class="status-pill ${formatStatus(student.status)}">${escapeHtml(student.status)}</span>
             <div class="student-directory-actions">
-              <button class="table-action-btn" type="button" data-action="toggle-student-status" data-id="${student.id}">
+              <button class="table-action-btn" type="button" data-action="toggle-student-status" data-id="${escapeAttr(student.id)}">
                 ${student.status === "active" ? "Set Inactive" : "Set Active"}
               </button>
             </div>
@@ -20598,7 +20634,7 @@ ${allContent}
           <div class="admission-field"><strong>Admission Date</strong><span>${student.dateOfAdmission || "-"}</span></div>
           <div class="admission-field"><strong>Account Status</strong><span>${loginInfo.status}</span></div>
           <div class="admission-field"><strong>Username</strong><span>${loginInfo.username}</span></div>
-          <div class="admission-field"><strong>Password</strong><span>${loginInfo.password}</span></div>
+          <div class="admission-field"><strong>Password</strong><span>••••••••</span></div>
         </div>
         <div class="form-grid" style="margin-top:0.9rem;">
           <div class="field-group">
@@ -21097,7 +21133,7 @@ ${allContent}
           <td>${student.admissionNo || "-"}</td>
           <td>${student.name || "-"}</td>
           <td><input class="table-inline-input" type="text" value="${loginInfo.username}" data-login-field="username" data-id="${student.id}"></td>
-          <td><input class="table-inline-input" type="text" value="${loginInfo.password}" data-login-field="password" data-id="${student.id}"></td>
+          <td><input class="table-inline-input" type="password" value="${loginInfo.password}" data-login-field="password" data-id="${student.id}"></td>
           <td><span class="status-pill ${loginInfo.status === "Active" ? "active" : "inactive"}">${loginInfo.status}</span></td>
           <td><button class="table-action-btn" type="button" data-action="save-student-login" data-id="${student.id}">Save</button></td>
         </tr>
@@ -21390,7 +21426,7 @@ ${allContent}
       return;
     }
     const channelSelect = document.getElementById("admissionMessageChannelSelect");
-    const channel = channelSelect ? channelSelect.value : chooseCommunicationChannel("Admission Confirmation");
+    const channel = channelSelect ? channelSelect.value : await chooseCommunicationChannel("Admission Confirmation");
     if (!channel) {
       return;
     }
@@ -21970,7 +22006,7 @@ ${allContent}
       studentActionRow.classList.add("hidden");
       studentLayout.classList.add("form-only");
       studentStatsGrid.classList.add("hidden");
-      document.getElementById("studentsSecondaryGrid").classList.add("hidden");
+      var _sGrid = document.getElementById("studentsSecondaryGrid"); if (_sGrid) _sGrid.classList.add("hidden");
       document.querySelector(".student-table-card").classList.add("hidden");
       document.querySelector(".student-form-card").classList.remove("hidden");
       return;
@@ -22089,7 +22125,7 @@ ${allContent}
     studentActionRow.classList.remove("hidden");
     studentLayout.classList.remove("form-only");
     studentStatsGrid.classList.remove("hidden");
-    document.getElementById("studentsSecondaryGrid").classList.remove("hidden");
+    var _sGrid = document.getElementById("studentsSecondaryGrid"); if (_sGrid) _sGrid.classList.remove("hidden");
     document.querySelector(".student-table-card").classList.remove("hidden");
     document.querySelector(".student-form-card").classList.remove("hidden");
     renderStudentsTable();
@@ -22639,7 +22675,7 @@ ${allContent}
   }
 
   function generateStudentId() {
-    return `STU-${Date.now()}`;
+    return `STU-${generateId()}`;
   }
 
   function createStudentLogin(student) {
