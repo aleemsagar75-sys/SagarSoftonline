@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="#F5F6FA">
+
+    <ImageView
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:src="@drawable/sagarsoftsms_logo"
+        android:contentDescription="SagarSoft Logo"
+        android:layout_marginBottom="8dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SagarSoft"
+        android:textSize="32sp"
+        android:textColor="#1E5EFF"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="SMS Agent"
+        android:textSize="16sp"
+        android:textColor="#666666"
+        android:layout_marginBottom="32dp" />
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/emailLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/emailInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="School Email"
+            android:inputType="textEmailAddress"
+            android:autofillHints="emailAddress" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:id="@+id/passwordLayout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        app:passwordToggleEnabled="true"
+        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/passwordInput"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Password"
+            android:inputType="textPassword"
+            android:autofillHints="password" />
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/loginButton"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="Sign In"
+        android:textSize="16sp"
+        app:cornerRadius="12dp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Use your school login credentials"
+        android:textSize="12sp"
+        android:textColor="#999999"
+        android:layout_marginTop="16dp" />
+
+</LinearLayout>
