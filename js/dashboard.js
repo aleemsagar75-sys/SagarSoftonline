@@ -4054,13 +4054,14 @@ document.addEventListener("DOMContentLoaded", function () {
     
     // Get attendance for TODAY only
     const todayISO = getTodayDateISO();
-    const studentAttendance = database.attendance.filter(function (item) {
+    const attendanceArr = Array.isArray(database.attendance) ? database.attendance : [];
+    const studentAttendance = attendanceArr.filter(function (item) {
       const attendanceDate = (item.date || "").substring(0, 10);
       return (item.studentId || !item.entityType || item.entityType === "student") && attendanceDate === todayISO;
     });
     const presentAttendance = studentAttendance.filter(function (item) { return item.status === "Present"; }).length;
     const presentOnLeaveAttendance = studentAttendance.filter(function (item) { return item.status === "Present" || item.status === "On-leave"; }).length;
-    const totalStudents = database.students.filter(function (item) { return item.status === "active"; }).length;
+    const totalStudents = (Array.isArray(database.students) ? database.students : []).filter(function (item) { return item.status === "active"; }).length;
     const attendancePercentage = totalStudents > 0 ? Math.round((presentOnLeaveAttendance / totalStudents) * 100) : 0;
 
     // Get monthly fees breakdown (all months with records)
@@ -4221,7 +4222,8 @@ document.addEventListener("DOMContentLoaded", function () {
   function renderActivity() {
     const activityList = document.getElementById("activityList");
     if (!activityList) return;
-    activityList.innerHTML = database.activityLogs.slice(0, 5).map(function (item) {
+    var actLogs = Array.isArray(database.activityLogs) ? database.activityLogs : [];
+    activityList.innerHTML = actLogs.slice(0, 5).map(function (item) {
       const date = new Date(item.createdAt);
       return `
         <article class="activity-item">
@@ -22672,6 +22674,7 @@ ${allContent}
     updateHero();
     renderStudentsWorkspace();
     applyMessagingVisibility();
+    setTimeout(setupRevealAnimations, 80);
   }
 
   function generateStudentId() {
