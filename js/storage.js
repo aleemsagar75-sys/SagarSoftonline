@@ -347,7 +347,7 @@
       return Object.assign({}, entry, { amount: Number(entry.amount || 0) });
     }).filter(function (entry) {
       return entry && entry.id && entry.date && entry.type && entry.category &&
-        Number.isFinite(entry.amount) && entry.amount >= 0;
+        Number.isFinite(entry.amount);
     });
 
     if (!Array.isArray(db.users)) db.users = [];
