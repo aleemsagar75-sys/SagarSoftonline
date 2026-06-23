@@ -1041,7 +1041,13 @@ document.addEventListener("DOMContentLoaded", function () {
     var _topbar = document.querySelector(".topbar");
     if (_topbar) _topbar.style.background = themeSettings.headerBackground || "";
     document.documentElement.style.setProperty("--primary-color", themeSettings.activeItemBackground || "#1e5eff");
-    if (themeSettings.language) { applyLanguage(themeSettings.language); } else { document.documentElement.setAttribute("dir", themeSettings.placement === "RTL" ? "rtl" : "ltr"); }
+    var dir = themeSettings.placement === "RTL" ? "rtl" : "ltr";
+    if (themeSettings.language) {
+      var _lang = String(themeSettings.language).toLowerCase();
+      var _isRTL = (_lang === "urdu" || _lang === "arabic" || _lang === "persian");
+      dir = _isRTL ? "rtl" : "ltr";
+    }
+    document.documentElement.setAttribute("dir", dir);
   }
 
   function saveDatabase() {
