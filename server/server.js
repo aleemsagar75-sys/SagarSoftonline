@@ -19,8 +19,11 @@ const port = Number(process.env.PORT || 10000);
 const apiKey = String(process.env.SAGARSOFT_API_KEY || "").trim();
 const defaultSchoolId = String(process.env.DEFAULT_SCHOOL_ID || "SCH-2026-001").trim();
 
-const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL || "aleemsagar@gmail.com").trim().toLowerCase();
-const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH || "76a429a6f769dda0fa388cafe2a6e0f0f451f9eeb6d308d13aaadbf1ad4ab39f").trim();
+const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL || "").trim().toLowerCase();
+const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH || "").trim();
+if (!SUPERADMIN_EMAIL || !SUPERADMIN_PASSWORD_HASH) {
+  console.warn("WARNING: SUPERADMIN_EMAIL or SUPERADMIN_PASSWORD_HASH not set. Superadmin login will be disabled.");
+}
 const SUPERADMIN_SESSION_SECRET = String(process.env.SUPERADMIN_SESSION_SECRET || "").trim();
 if (!SUPERADMIN_SESSION_SECRET) {
   console.warn("WARNING: SUPERADMIN_SESSION_SECRET not set. Tokens will be invalidated on restart.");
@@ -63,8 +66,8 @@ function verifyToken(token) {
     var parts = String(token || "").split(".");
     if (parts.length !== 2) return null;
     var expectedSig = crypto.createHmac("sha256", SESSION_SECRET_KEY).update(parts[0]).digest("base64url");
-    var sigBuf = Buffer.from(parts[1]);
-    var expectedBuf = Buffer.from(expectedSig);
+    var sigBuf = Buffer.from(parts[1], "base64url");
+    var expectedBuf = Buffer.from(expectedSig, "base64url");
     if (sigBuf.length !== expectedBuf.length) return null;
     if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
     var payload = JSON.parse(Buffer.from(parts[0], "base64url").toString());
@@ -143,7 +146,7 @@ async function _initPool() {
       } catch (_e2) {}
     }
   }
-  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, ssl: { rejectUnauthorized: false } });
+  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" ? { rejectUnauthorized: true } : { rejectUnauthorized: false } });
   return _pool;
 }
 
@@ -207,7 +210,7 @@ app.use(function (_req, res, next) {
   res.setHeader("X-Frame-Options", "DENY");
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Content-Security-Policy", "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:;");
+  res.setHeader("Content-Security-Policy", "default-src 'self' https:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:;");
   return next();
 });
 
@@ -277,8 +280,8 @@ function requireSchoolAuth(req, res, next) {
         return res.status(401).json({ success: false, message: "School not found." });
       }
       var row = result.rows[0];
-      var expectedToken = row.license_token || ("LIC-" + row.school_id);
-      if (token !== expectedToken) {
+      var expectedToken = row.license_token;
+      if (!expectedToken || token.length !== expectedToken.length || !crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken))) {
         return res.status(401).json({ success: false, message: "Invalid school token." });
       }
       var status = String(row.status || "").toLowerCase();
@@ -705,11 +708,16 @@ async function ensureSchema() {
 }
 
 function normalizeSchoolId(value) {
-  return String(value || defaultSchoolId || "SCH-2026-001").trim();
+  const trimmed = String(value || "").trim();
+  if (!trimmed) {
+    console.warn("normalizeSchoolId: empty school_id, using default");
+    return defaultSchoolId || "SCH-2026-001";
+  }
+  return trimmed;
 }
 
 function toLicensePayload(row, notifications) {
-  const licenseToken = row.license_token || `LIC-${row.school_id}`;
+  const licenseToken = row.license_token || generateToken();
   return {
     success: true,
     school_id: row.school_id,
@@ -1031,9 +1039,9 @@ async function syncStructuredModuleTables(client, schoolId, database) {
     const row = users[index];
     const sourceId = rowId(row, "USR", index);
     await client.query(`
-      insert into public.app_users (id, school_id, source_id, name, email, role, active, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.name || "", row.email || "", row.role || "", row.active !== false, rowData(row)]);
+      insert into public.app_users (school_id, source_id, name, email, role, active, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+    `, [schoolId, sourceId, row.name || "", row.email || "", row.role || "", row.active !== false, rowData(row)]);
   }
 
   for (let index = 0; index < subjects.length; index += 1) {
@@ -1376,15 +1384,20 @@ app.get("/health", async (_req, res) => {
 });
 
 app.get("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
-  const schoolId = normalizeSchoolId(req.params.schoolId);
-  if (req.authRole !== "superadmin" && req.authSchoolId !== schoolId) {
-    return res.status(403).json({ success: false, message: "Access denied to this school's data." });
+  try {
+    const schoolId = normalizeSchoolId(req.params.schoolId);
+    if (req.authRole !== "superadmin" && req.authSchoolId !== schoolId) {
+      return res.status(403).json({ success: false, message: "Access denied to this school's data." });
+    }
+    const database = await getSchoolDatabase(schoolId);
+    if (!database) {
+      return res.json({ success: true, school_id: schoolId, database: null });
+    }
+    return res.json({ success: true, school_id: schoolId, database });
+  } catch (err) {
+    console.error("GET /api/database error:", err);
+    return res.status(500).json({ success: false, message: "Internal server error." });
   }
-  const database = await getSchoolDatabase(schoolId);
-  if (!database) {
-    return res.json({ success: true, school_id: schoolId, database: null });
-  }
-  return res.json({ success: true, school_id: schoolId, database });
 });
 
 app.post("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
@@ -1454,7 +1467,7 @@ app.post("/api/admin/license", requireSuperAdmin, async (req, res) => {
 async function verifySupabaseAuth(email, password) {
   var supaUrl = process.env.SUPABASE_URL;
   var supaKey = process.env.SUPABASE_SECRET_KEY;
-  if (!supaUrl || !supaKey) return "unavailable";
+  if (!supaUrl || !supaKey) return null;
   try {
     var resp = await fetch(supaUrl + "/auth/v1/token?grant_type=password", {
       method: "POST",
@@ -1463,7 +1476,7 @@ async function verifySupabaseAuth(email, password) {
     });
     return resp.ok ? true : false;
   } catch (_e) {
-    return "unavailable";
+    return null;
   }
 }
 
@@ -1514,7 +1527,7 @@ app.post("/api/mobile/login", async (req, res) => {
   var _authEmail = _resolveEmail.rowCount ? _resolveEmail.rows[0].email : email;
   var supaOk = await verifySupabaseAuth(_authEmail, password);
   if (supaOk === false) return res.status(401).json({ success: false, message: "Invalid credentials." });
-  if (supaOk === "unavailable") {
+  if (supaOk === null) {
     var _licCheck = await pool.query("select school_id, password from public.license_accounts where (lower(email) = $1 or lower(school_id) = $1) limit 1", [email]);
     if (!_licCheck.rowCount || !verifyPasswordHash(password, _licCheck.rows[0].password)) return res.status(401).json({ success: false, message: "Invalid credentials." });
   }
@@ -1527,12 +1540,11 @@ app.post("/api/mobile/login", async (req, res) => {
         select 1
         from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
         where lower(app_user->>'email') = $1
-          and app_user->>'password' = $2
-          and lower(app_user->>'role') = $3
+          and lower(app_user->>'role') = $2
           and lower(coalesce(app_user->>'active', 'true')) <> 'false'
       )
       limit 1
-    `, [email, password, requestedRole]);
+    `, [email, requestedRole]);
     if (!userResult.rowCount) {
       return res.status(401).json({ success: false, message: "Invalid app user credentials." });
     }
@@ -1544,18 +1556,21 @@ app.post("/api/mobile/login", async (req, res) => {
     const appUser = Array.isArray(database.users)
       ? database.users.find((entry) => (
         String(entry.email || "").trim().toLowerCase() === email &&
-        String(entry.password || "") === password &&
+        verifyPasswordHash(password, entry.password || "") &&
         String(entry.role || "").trim().toLowerCase() === requestedRole &&
         entry.active !== false
       ))
       : null;
+    if (!appUser) {
+      return res.status(401).json({ success: false, message: "Invalid app user credentials." });
+    }
     const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [license.school_id]);
     return res.json({
       success: true,
       license: toLicensePayload(license, notes.rows),
       user: appUser || { email: identifier, role: requestedRole, name: requestedRole },
       school_id: license.school_id,
-      license_token: license.license_token || `LIC-${license.school_id}`,
+      license_token: license.license_token || generateToken(),
       database: database || {}
     });
   }
@@ -1583,7 +1598,7 @@ app.post("/api/mobile/login", async (req, res) => {
       role: requestedRole === "superadmin" ? "superadmin" : "admin"
     },
     school_id: license.school_id,
-    license_token: license.license_token || `LIC-${license.school_id}`,
+    license_token: license.license_token || generateToken(),
     database: database || {}
   });
   } catch (error) {
@@ -1629,7 +1644,7 @@ app.post("/api/check-license.php", async (req, res) => {
   try {
     const result = await pool.query(`
       select * from public.license_accounts
-      where school_id = $1 and coalesce(license_token, 'LIC-' || school_id) = $2
+      where school_id = $1 and license_token = $2
       limit 1
     `, [schoolId, token]);
     if (!result.rowCount) {
@@ -1698,6 +1713,10 @@ app.get("/api/admin/schools", requireSuperAdmin, async function (req, res) {
 });
 
 app.post("/api/admin/schools/resequence", requireSuperAdmin, async function (req, res) {
+  var rateKey = "resequence:" + (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
+  }
   try {
     await pool.query("ALTER TABLE public.license_notifications DROP CONSTRAINT IF EXISTS license_notifications_school_id_fkey");
     await pool.query("ALTER TABLE public.school_databases DROP CONSTRAINT IF EXISTS school_databases_school_id_fkey");
@@ -1892,6 +1911,10 @@ app.delete("/api/admin/schools/:schoolId", requireSuperAdmin, async function (re
 });
 
 app.post("/api/admin/schools/:schoolId/reset-tokens", requireSuperAdmin, async function (req, res) {
+  var rateKey = "reset-tokens:" + (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
+  }
   var schoolId = String(req.params.schoolId || "").trim();
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
   try {
@@ -2060,10 +2083,18 @@ app.delete("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (
 });
 
 app.post("/api/backup", requireApiKey, async function (req, res) {
+  var rateKey = "backup:" + (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
+  }
   var schoolId = String(req.body.school_id || "").trim();
   var database = req.body.database || {};
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID required." });
   try {
+    var _schoolCheck = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    if (!_schoolCheck.rowCount) {
+      return res.status(404).json({ success: false, message: "School not found." });
+    }
     var jsonStr = JSON.stringify(database);
     var sizeBytes = Buffer.byteLength(jsonStr, "utf8");
     await pool.query("insert into public.school_backups (school_id, database, size_bytes, created_at) values ($1, $2::jsonb, $3, now())", [schoolId, jsonStr, sizeBytes]);
@@ -2098,6 +2129,139 @@ ensureSchema()
     console.error("Unable to start SagarSoft online API:", error);
     process.exit(1);
   });
+
+app.get("/api/supabase-config", function (req, res) {
+  var supabaseUrl = process.env.SUPABASE_URL || "";
+  var anonKey = "";
+  try {
+    var keyParts = supabaseUrl.match(/\/\/([^.]+)\.supabase\.co/);
+    if (keyParts) {
+      var infraKey = process.env.SUPABASE_SECRET_KEY || "";
+      anonKey = infraKey;
+    }
+  } catch (_e) {}
+  return res.json({
+    success: true,
+    url: supabaseUrl,
+    anonKey: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SECRET_KEY || ""
+  });
+});
+
+app.post("/api/setup-sms-tables", requireSuperAdmin, async function (req, res) {
+  try {
+    if (!_pool) {
+      return res.status(500).json({ success: false, message: "Database not connected." });
+    }
+    var sql = `
+      CREATE TABLE IF NOT EXISTS sms_queue (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        device_id TEXT,
+        recipient_phone TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        source TEXT DEFAULT 'Manual SMS',
+        campaign_type TEXT DEFAULT 'manual',
+        recipient_name TEXT,
+        recipient_type TEXT DEFAULT 'student',
+        error_message TEXT,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS sent_messages (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT,
+        device_id TEXT,
+        recipient_phone TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT,
+        error_message TEXT,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS devices (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        device_name TEXT,
+        device_id TEXT NOT NULL UNIQUE,
+        is_active BOOLEAN DEFAULT false,
+        sim_number TEXT,
+        last_poll_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `;
+    await _pool.query(sql);
+
+    var rpcSql = `
+      CREATE OR REPLACE FUNCTION create_tables()
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      SET search_path = public
+      AS $$
+      BEGIN
+        CREATE TABLE IF NOT EXISTS sms_queue (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          school_id TEXT NOT NULL,
+          device_id TEXT,
+          recipient_phone TEXT NOT NULL,
+          message TEXT NOT NULL,
+          status TEXT DEFAULT 'pending',
+          source TEXT DEFAULT 'Manual SMS',
+          campaign_type TEXT DEFAULT 'manual',
+          recipient_name TEXT,
+          recipient_type TEXT DEFAULT 'student',
+          error_message TEXT,
+          sent_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+        CREATE TABLE IF NOT EXISTS sent_messages (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          school_id TEXT,
+          device_id TEXT,
+          recipient_phone TEXT NOT NULL,
+          message TEXT NOT NULL,
+          status TEXT,
+          error_message TEXT,
+          sent_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+        CREATE TABLE IF NOT EXISTS devices (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          school_id TEXT NOT NULL,
+          device_name TEXT,
+          device_id TEXT NOT NULL UNIQUE,
+          is_active BOOLEAN DEFAULT false,
+          sim_number TEXT,
+          last_poll_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+      END;
+      $$;
+    `;
+    await _pool.query(rpcSql);
+
+    var grants = `
+      GRANT EXECUTE ON FUNCTION create_tables TO anon;
+      GRANT EXECUTE ON FUNCTION create_tables TO authenticated;
+      GRANT ALL ON TABLE sms_queue TO anon;
+      GRANT ALL ON TABLE devices TO anon;
+      GRANT ALL ON TABLE sent_messages TO anon;
+      GRANT ALL ON TABLE sms_queue TO authenticated;
+      GRANT ALL ON TABLE devices TO authenticated;
+      GRANT ALL ON TABLE sent_messages TO authenticated;
+      ALTER TABLE sms_queue ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE sent_messages ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
+    `;
+    try { await _pool.query(grants); } catch (_grantErr) {}
+
+    return res.json({ success: true, message: "SMS tables created successfully." });
+  } catch (error) {
+    console.error("POST /api/setup-sms-tables error:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 function gracefulShutdown(signal) {
   console.log("Received " + signal + ". Shutting down gracefully...");
