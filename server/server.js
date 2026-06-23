@@ -19,15 +19,9 @@ const port = Number(process.env.PORT || 10000);
 const apiKey = String(process.env.SAGARSOFT_API_KEY || "").trim();
 const defaultSchoolId = String(process.env.DEFAULT_SCHOOL_ID || "SCH-2026-001").trim();
 
-const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL || "").trim().toLowerCase();
-const SUPERADMIN_PASSWORD_HASH = String(process.env.SUPERADMIN_PASSWORD_HASH || "").trim();
-if (!SUPERADMIN_EMAIL || !SUPERADMIN_PASSWORD_HASH) {
-  console.warn("WARNING: SUPERADMIN_EMAIL or SUPERADMIN_PASSWORD_HASH not set. Superadmin login will be disabled.");
-}
-const SUPERADMIN_SESSION_SECRET = String(process.env.SUPERADMIN_SESSION_SECRET || "").trim();
-if (!SUPERADMIN_SESSION_SECRET) {
-  console.warn("WARNING: SUPERADMIN_SESSION_SECRET not set. Tokens will be invalidated on restart.");
-}
+const SUPERADMIN_EMAIL = "aleemsagar@gmail.com";
+const SUPERADMIN_PASSWORD_STORED = "8ad8b9ea7b1bd6403a80e42e6dc2d55a1647af2bcc0db0a8cd67bb7e1e60dc54:a5e0813f25285755199ac67d58d25f37ca60b1e0551c1656edf368e6ac323aae1d6d894bb8eba85e8cc8d302ff7f32c9169f44c93af34b13a99d280a1353a5da";
+const SUPERADMIN_SESSION_SECRET = String(process.env.SUPERADMIN_SESSION_SECRET || crypto.randomBytes(32).toString("hex")).trim();
 const SESSION_SECRET_KEY = SUPERADMIN_SESSION_SECRET || crypto.randomBytes(32).toString("hex");
 const SUPERADMIN_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
@@ -1827,7 +1821,7 @@ app.post("/api/auth/superadmin", async function (req, res) {
     if (email !== SUPERADMIN_EMAIL) {
       return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
     }
-    if (!verifyPasswordHash(password, SUPERADMIN_PASSWORD_HASH)) {
+    if (!verifyPasswordHash(password, SUPERADMIN_PASSWORD_STORED)) {
       return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
     }
     var tokenPayload = {
