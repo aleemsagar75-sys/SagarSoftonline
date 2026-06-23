@@ -369,6 +369,35 @@
     clearSession();
   }
 
+  function getApiBaseUrl() {
+    if (window.OnlineConfig && window.OnlineConfig.getApiBaseUrl) return window.OnlineConfig.getApiBaseUrl();
+    if (window.OnlineConfig && window.OnlineConfig.apiBaseUrl) return window.OnlineConfig.apiBaseUrl;
+    return window.location.origin;
+  }
+
+  async function tryServerSuperAdminLogin(email, password, rememberMe) {
+    var apiBase = getApiBaseUrl();
+    var url = apiBase + "/api/auth/superadmin";
+    try {
+      var response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, password: password })
+      });
+      var data = await response.json();
+      if (data.success && data.session) {
+        var session = data.session;
+        if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
+        else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
+        window.__sagarSoftSession = session;
+        return { success: true, message: data.message || "Super admin login successful", user: session };
+      }
+      return { success: false, message: data.message || "Invalid super admin credentials" };
+    } catch (e) {
+      return { success: false, message: "Server unreachable" };
+    }
+  }
+
   async function loginWithOnlineFallback(email, password, role, rememberMe) {
     var normalizedRole = String(role || "").toLowerCase();
     
@@ -378,6 +407,10 @@
       if (normalizedRole === "admin") {
         var superResult = await login(email, password, "superadmin", rememberMe);
         if (superResult.success) return superResult;
+        try {
+          var superServerResult = await tryServerSuperAdminLogin(email, password, rememberMe);
+          if (superServerResult.success) return superServerResult;
+        } catch (e) { /* continue to activate */ }
         try {
           return await activateSchoolOnline(email, password);
         } catch (error) {
