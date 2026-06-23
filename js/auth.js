@@ -376,6 +376,8 @@
       var result = await login(email, password, role, rememberMe);
       if (result.success) return result;
       if (normalizedRole === "admin") {
+        var superResult = await login(email, password, "superadmin", rememberMe);
+        if (superResult.success) return superResult;
         try {
           return await activateSchoolOnline(email, password);
         } catch (error) {
