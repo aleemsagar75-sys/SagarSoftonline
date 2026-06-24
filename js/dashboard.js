@@ -19186,7 +19186,7 @@ ${allContent}
           try {
             var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(activeLicense.schoolId || ""), {
               method: "PUT",
-              headers: { "Content-Type": "application/json" },
+              headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") },
               body: JSON.stringify({ school_name: schoolName, timezone: timezone, currency: currency, symbol: symbol })
             });
             var data = await resp.json().catch(function () { return {}; });
@@ -19402,7 +19402,7 @@ ${allContent}
             var method = isNew ? "POST" : "PUT";
             if (!isNew) url += "/" + encodeURIComponent(editSchoolId);
             console.log("[SagarSoft] School save request:", method, url, JSON.stringify(body));
-            var resp = await fetch(url, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+            var resp = await fetch(url, { method: method, headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") }, body: JSON.stringify(body) });
             console.log("[SagarSoft] School save response status:", resp.status);
             var data = await resp.json().catch(function () { return {}; });
             console.log("[SagarSoft] School save response:", JSON.stringify(data));
@@ -19649,7 +19649,7 @@ ${allContent}
             reseqBtn.disabled = true;
             reseqBtn.textContent = "Fixing...";
             try {
-              var resp = await fetch(apiBase + "/api/admin/schools/resequence", { method: "POST", headers: { "Content-Type": "application/json" } });
+              var resp = await fetch(apiBase + "/api/admin/schools/resequence", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } });
               var data = await resp.json().catch(function () { return {}; });
               var msgEl = document.getElementById("manageSchoolsMessage");
               if (data.success) {
@@ -19678,7 +19678,7 @@ ${allContent}
             if (action === "delete") {
               if (!(await brandedConfirm("Delete school " + schoolId + "? This cannot be undone."))) return;
               try {
-                var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(schoolId), { method: "DELETE" });
+                var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(schoolId), { method: "DELETE", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } });
                 var data = await resp.json().catch(function () { return {}; });
                 if (data.success) {
                   msgEl.textContent = "School deleted.";
@@ -19697,7 +19697,7 @@ ${allContent}
               try {
                 var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(schoolId), {
                   method: "PUT",
-                  headers: { "Content-Type": "application/json" },
+                  headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") },
                   body: JSON.stringify({ status: newStatus, modules_locked: newStatus === "inactive" })
                 });
                 var data = await resp.json().catch(function () { return {}; });
@@ -19716,7 +19716,7 @@ ${allContent}
             } else if (action === "reset-tokens") {
               if (!(await brandedConfirm("Reset API tokens for " + schoolId + "? All current sessions will be invalidated."))) return;
               try {
-                var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(schoolId) + "/reset-tokens", { method: "POST" });
+                var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(schoolId) + "/reset-tokens", { method: "POST", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } });
                 var data = await resp.json().catch(function () { return {}; });
                 if (data.success) {
                   msgEl.textContent = "Tokens reset successfully.";
@@ -19731,7 +19731,9 @@ ${allContent}
               }
             } else if (action === "edit") {
               try {
-                var resp = await fetch(apiBase + "/api/admin/schools");
+            var resp = await fetch(apiBase + "/api/admin/schools", {
+              headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") }
+            });
                 var data = await resp.json().catch(function () { return {}; });
                 if (data.success && Array.isArray(data.schools)) {
                   var school = data.schools.find(function (s) { return String(s.school_id) === String(schoolId); });
