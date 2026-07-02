@@ -6781,10 +6781,9 @@ document.addEventListener("DOMContentLoaded", function () {
               </section>
               <article style="display:grid;grid-template-columns:8mm 8mm 1fr 1fr;gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">
                 <div style="text-align:center;">
-                  ${bankLogo ? `<img src="${bankLogo}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">BANK</span>`}
+                  ${entry.student.picture ? `<img src="${entry.student.picture}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">PHOTO</span>`}
                 </div>
                 <div style="text-align:center;">
-                  ${entry.student.picture ? `<img src="${entry.student.picture}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">PHOTO</span>`}
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.2mm;">
                   <p style="margin:0;"><b>Roll No:</b> ${escapeHtml(entry.student.admissionNo || "-")}</p>
@@ -6797,8 +6796,9 @@ document.addEventListener("DOMContentLoaded", function () {
                   <p style="margin:0;"><b>Fine:</b> ${Number(entry.invoiceData.fineAfterDueDate || 0)}</p>
                 </div>
                 <div>
-                  <div style="text-align:center;margin-bottom:0.3mm;">
+                  <div style="text-align:center;margin-bottom:0.3mm;display:flex;align-items:center;justify-content:center;gap:0.5mm;">
                     <span style="display:inline-block;background:#1e5eff;color:#fff;padding:0.2mm 0.8mm;border-radius:0.5mm;font-size:4.5pt;">Bank Copy</span>
+                    ${bankLogo ? `<img src="${bankLogo}" style="width:3.5mm;height:3.5mm;border-radius:0.3mm;border:0.3px solid #000;object-fit:cover;">` : ""}
                   </div>
                   <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Bank:</b> ${escapeHtml(bank ? bank.name : "-")}</p>
                   <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Address:</b> ${escapeHtml(bank ? bank.address : "-")}</p>
