@@ -5450,7 +5450,14 @@ select:focus, input:focus, textarea:focus {
   }
   .attendance-mark-group button { width: 100% !important; margin: 0 !important; }
 
-  .hero-metrics article { padding: 0.75rem; }
+  .hero-metrics article { padding: 0.75rem; min-height: auto !important; }
+  .hero-stat-header { font-size: 0.72rem; }
+  .hero-stat-amount { gap: 0.2rem; }
+  .hero-stat-symbol { font-size: 1rem; }
+  .hero-stat-value { font-size: 1.4rem !important; }
+  .hero-stat-footer { margin-top: 0.4rem; padding-top: 0.4rem; }
+  .hero-stat-footer span { font-size: 0.65rem; }
+  .hero-stat-footer-amount { font-size: 0.8rem !important; }
   .hero-metrics .panel-label { font-size: 0.7rem; }
   .hero-metrics strong { font-size: 1.1rem; }
 
@@ -5593,7 +5600,17 @@ select:focus, input:focus, textarea:focus {
     border-radius: 8px;
   }
 
-  .hero-metrics article { padding: 0.6rem; }
+  .hero-metrics article { padding: 0.6rem; min-height: auto !important; }
+  .hero-stat-header { font-size: 0.65rem; }
+  .hero-stat-amount { gap: 0.15rem; }
+  .hero-stat-symbol { font-size: 0.85rem; }
+  .hero-stat-value { font-size: 1.2rem !important; }
+  .hero-stat-footer { margin-top: 0.3rem; padding-top: 0.3rem; }
+  .hero-stat-footer span { font-size: 0.6rem; }
+  .hero-stat-footer-amount { font-size: 0.72rem !important; }
+  .hero-panel h2 { font-size: 1.2rem; margin: 0.5rem 0 0.4rem; }
+  .hero-panel p { font-size: 0.78rem; line-height: 1.5; }
+  .hero-chip { font-size: 0.65rem; padding: 0.35rem 0.6rem; }
   .hero-metrics .panel-label { font-size: 0.65rem; }
   .hero-metrics strong { font-size: 1rem; }
 
