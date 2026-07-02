@@ -1878,16 +1878,26 @@ app.delete("/api/admin/schools/:schoolId", requireSuperAdmin, async function (re
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
   var _client = await pool.connect();
   try {
-    await _client.query("begin");
     var _delResult = await _client.query("select email from public.license_accounts where school_id = $1", [schoolId]);
     var _delEmail = _delResult.rows.length > 0 ? _delResult.rows[0].email : null;
 
-    var _tables = ["license_notifications", "school_databases", "sms_queue", "sent_messages", "devices"];
-    for (var _t = 0; _t < _tables.length; _t++) {
-      try { await _client.query("DELETE FROM public." + _tables[_t] + " WHERE school_id = $1", [schoolId]); } catch (_e) { /* table may not exist */ }
+    var _mustTables = ["license_notifications", "school_databases", "license_accounts"];
+    await _client.query("begin");
+    for (var _i = 0; _i < _mustTables.length; _i++) {
+      await _client.query("DELETE FROM public." + _mustTables[_i] + " WHERE school_id = $1", [schoolId]);
     }
-    await _client.query("DELETE FROM public.license_accounts WHERE school_id = $1", [schoolId]);
     await _client.query("commit");
+
+    var _optTables = ["sms_queue", "sent_messages", "devices"];
+    for (var _j = 0; _j < _optTables.length; _j++) {
+      try {
+        await _client.query("SAVEPOINT sp_" + _optTables[_j]);
+        await _client.query("DELETE FROM public." + _optTables[_j] + " WHERE school_id = $1", [schoolId]);
+        await _client.query("RELEASE SAVEPOINT sp_" + _optTables[_j]);
+      } catch (_e) {
+        try { await _client.query("ROLLBACK TO SAVEPOINT sp_" + _optTables[_j]); } catch (_e2) {}
+      }
+    }
 
     var supabaseUrl = process.env.SUPABASE_URL;
     var supabaseKey = process.env.SUPABASE_SECRET_KEY;
