@@ -6372,12 +6372,12 @@ document.addEventListener("DOMContentLoaded", function () {
         previewBox.innerHTML = `
           <div style="display:grid;gap:10px;font-size:0.93rem;line-height:1.42;max-height:560px;overflow:auto;">
             <div style="display:grid;grid-template-columns:92px 1fr 92px;align-items:center;gap:10px;">
-              <div style="text-align:center;">${bank && bank.logo ? `<img src="${bank.logo}" alt="Bank Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;border:1px solid #ccc;">` : "<span style='font-weight:700;font-size:0.8rem;color:#999;'>Bank Logo</span>"}<p style="font-size:0.7rem;color:#999;margin:2px 0 0;">Bank Logo</p></div>
+              <div style="text-align:center;">${student.picture ? `<img src="${student.picture}" alt="Student" style="width:62px;height:62px;border-radius:10px;object-fit:cover;border:1px solid #ccc;">` : "<span style='font-weight:700;font-size:0.8rem;color:#999;'>Student Photo</span>"}<p style="font-size:0.7rem;color:#999;margin:2px 0 0;">Student Photo</p></div>
               <div style="text-align:center;">
                 <h3 style="margin:0;font-size:1.08rem;">${escapeHtml(profile.name || (database.school && database.school.name) || "School Name")}</h3>
                 <p style="margin:2px 0 0;font-size:0.86rem;">${escapeHtml(profile.slogan || "-")}</p>
               </div>
-              <div style="text-align:right;display:flex;align-items:center;gap:8px;justify-content:flex-end;">${student.picture ? `<img src="${student.picture}" alt="Student" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:1px solid #ccc;">` : ""}${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : "<span style='font-weight:700;'>School Logo</span>"}</div>
+              <div style="text-align:right;display:flex;align-items:center;gap:8px;justify-content:flex-end;">${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : "<span style='font-weight:700;'>School Logo</span>"}</div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;">
               <article style="padding:10px;border:1px solid #dce5f4;border-radius:10px;background:#fff;min-height:360px;">
@@ -6389,7 +6389,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 <p><strong>Date:</strong> ${escapeHtml(invoiceData.date)}</p>
                 <p><strong>Due Date:</strong> ${escapeHtml(invoiceData.dueDate)}</p>
                 <p><strong>Fine After Due Date:</strong> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
-                <h4 style="margin:10px 0 6px;text-align:center;"><span style="display:inline-block;background:#1e5eff;color:#fff;padding:4px 10px;border-radius:8px;">Bank Copy</span></h4>
+                <h4 style="margin:10px 0 6px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="background:#1e5eff;color:#fff;padding:4px 10px;border-radius:8px;">Bank Copy</span>${bank && bank.logo ? `<img src="${bank.logo}" alt="Bank Logo" style="width:24px;height:24px;border-radius:4px;object-fit:cover;border:1px solid #ccc;">` : ""}</h4>
                 <p><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
                 <p><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
                 <p><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
@@ -6657,11 +6657,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 </section>
                 <article class="report-card" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5mm;align-items:start;margin:0;">
                   <div style="text-align:center;">
-                    ${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:12mm;height:12mm;border-radius:2mm;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:12mm;height:12mm;border-radius:2mm;border:1px solid #000;align-items:center;justify-content:center;font-size:5.5pt;">BANK</span>`}
-                    <p style="font-size:5pt;margin:1mm 0 0;">Bank Logo</p>
+                    ${invoiceEntry.student.picture ? `<img src="${await normalizeImageForPrintShared(invoiceEntry.student.picture)}" alt="Student Photo" style="width:12mm;height:12mm;border-radius:2mm;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:12mm;height:12mm;border-radius:2mm;border:1px solid #000;align-items:center;justify-content:center;font-size:5.5pt;">PHOTO</span>`}
+                    <p style="font-size:5pt;margin:1mm 0 0;">Student Photo</p>
                   </div>
                   <div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-                    ${invoiceEntry.student.picture ? `<div style="grid-column:1/-1;text-align:center;margin-bottom:2mm;"><img src="${await normalizeImageForPrintShared(invoiceEntry.student.picture)}" style="width:10mm;height:10mm;border-radius:2mm;object-fit:cover;border:1px solid #000;" alt="Student Photo"></div>` : ""}
                     <p><strong>Roll No:</strong> ${escapeHtml(invoiceEntry.student.admissionNo || "-")}</p>
                     <p><strong>Class:</strong> ${escapeHtml(invoiceEntry.student.className || "-")}</p>
                     <p><strong>Student Name:</strong> ${escapeHtml(invoiceEntry.student.name || "-")}</p>
@@ -6672,7 +6671,7 @@ document.addEventListener("DOMContentLoaded", function () {
                     <p><strong>Fine After Due Date:</strong> ${Number(invoiceEntry.invoiceData.fineAfterDueDate || 0)}</p>
                   </div>
                   <div>
-                    <h4 style="margin:0 0 1mm;text-align:center;font-size:5.8pt;"><span style="display:inline-block;background:#1e5eff;color:#fff;padding:1px 4px;border-radius:2mm;">Bank Copy</span></h4>
+                    <h4 style="margin:0 0 1mm;display:flex;align-items:center;justify-content:center;gap:1mm;font-size:5.8pt;"><span style="background:#1e5eff;color:#fff;padding:1px 4px;border-radius:2mm;">Bank Copy</span>${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:4mm;height:4mm;border-radius:1mm;object-fit:cover;border:1px solid #000;">` : ""}</h4>
                     <p style="margin:0 0 1px;"><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
                     <p style="margin:0 0 1px;"><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
                     <p style="margin:0 0 1px;"><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
@@ -6711,11 +6710,10 @@ document.addEventListener("DOMContentLoaded", function () {
             contentHtml: `
               <article class="report-card" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:start;">
                 <div style="text-align:center;">
-                  ${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:78px;height:78px;border-radius:12px;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:78px;height:78px;border-radius:12px;border:1px solid #000;align-items:center;justify-content:center;font-size:12px;">BANK</span>`}
-                  <p style="font-size:11px;margin:4px 0 0;color:#666;">Bank Logo</p>
+                  ${student.picture ? `<img src="${student.picture}" alt="Student Photo" style="width:78px;height:78px;border-radius:12px;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:78px;height:78px;border-radius:12px;border:1px solid #000;align-items:center;justify-content:center;font-size:12px;">PHOTO</span>`}
+                  <p style="font-size:11px;margin:4px 0 0;color:#666;">Student Photo</p>
                 </div>
                 <div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-                  ${student.picture ? `<div style="grid-column:1/-1;text-align:center;margin-bottom:8px;"><img src="${student.picture}" style="width:60px;height:60px;border-radius:8px;object-fit:cover;border:1px solid #ccc;" alt="Student Photo"><p style="font-size:10px;margin:2px 0 0;color:#666;">Student Photo</p></div>` : ""}
                   <p><strong>Roll No:</strong> ${escapeHtml(student.admissionNo || "-")}</p>
                   <p><strong>Class:</strong> ${escapeHtml(student.className || "-")}</p>
                   <p><strong>Student Name:</strong> ${escapeHtml(student.name || "-")}</p>
@@ -6726,7 +6724,7 @@ document.addEventListener("DOMContentLoaded", function () {
                   <p><strong>Fine After Due Date:</strong> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
                 </div>
                 <div>
-                  <h4 style="margin:0 0 6px;text-align:center;"><span style="display:inline-block;background:#1e5eff;color:#fff;padding:4px 10px;border-radius:8px;">Bank Copy</span></h4>
+                  <h4 style="margin:0 0 6px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="background:#1e5eff;color:#fff;padding:4px 10px;border-radius:8px;">Bank Copy</span>${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:24px;height:24px;border-radius:4px;object-fit:cover;border:1px solid #000;">` : ""}</h4>
                   <p style="margin:0 0 4px;"><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
                   <p style="margin:0 0 4px;"><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
                   <p style="margin:0 0 4px;"><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
