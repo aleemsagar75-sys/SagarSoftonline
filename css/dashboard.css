@@ -5995,6 +5995,17 @@ select:focus, input:focus, textarea:focus {
   .account-core-card select { font-size: 0.8rem; padding: 0.5rem; }
   .view.module--account .super-admin-card .data-table { overflow-x: auto; }
   .notification-send-section .form-grid { grid-template-columns: 1fr !important; }
+  .view.module--account .split-grid { grid-template-columns: 1fr !important; }
+  .view.module--account .account-core-card .form-grid { grid-template-columns: 1fr !important; }
+  .view.module--account .subscription-activation-card .form-grid { grid-template-columns: 1fr !important; }
+  .view.module--account .subscription-activation-card .form-actions { grid-template-columns: 1fr !important; }
+  .view.module--account .offline-registry-card { position: static !important; top: auto !important; overflow: visible !important; }
+  .view.module--account .offline-registry-card .registry-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .view.module--account .offline-registry-card .registry-table-wrap .data-table { min-width: 600px !important; font-size: 10px !important; }
+  .view.module--account .offline-registry-card .registry-table-wrap .data-table th,
+  .view.module--account .offline-registry-card .registry-table-wrap .data-table td { padding: 0.2rem 0.3rem !important; white-space: nowrap !important; font-size: 10px !important; }
+  .view.module--account .offline-registry-card .registry-table-wrap .status-pill { font-size: 0.55rem !important; }
+  .view.module--account .offline-registry-card .registry-table-wrap .table-action-btn { font-size: 9px !important; padding: 0.1rem 0.25rem !important; min-height: 22px !important; }
 }
 
 @media (max-width: 480px) {
