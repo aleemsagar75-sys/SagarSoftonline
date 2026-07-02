@@ -19413,7 +19413,7 @@ ${allContent}
               activateAccountBtn.textContent = "Add School";
               activateAccountBtn.removeAttribute("data-edit-school-id");
               if (isNew) clearSchoolForm();
-              if (typeof loadSchools === "function") { loadSchools(); } else { setTimeout(function(){ if (typeof loadSchools === "function") loadSchools(); }, 500); }
+              if (typeof loadSchools === "function") { loadSchools(); } else if (typeof window._loadSchools === "function") { window._loadSchools(); } else { setTimeout(function(){ if (typeof window._loadSchools === "function") window._loadSchools(); }, 300); }
             } else {
               var errMsg = data.message || "Save failed. Check console for details.";
               if (msgEl) { msgEl.textContent = errMsg; msgEl.className = "form-message error"; }
@@ -19643,6 +19643,7 @@ ${allContent}
             if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:16px;color:#d64b4b;">Error loading schools.</td></tr>';
           }
         }
+        window._loadSchools = loadSchools;
 
         var schoolsTable = document.getElementById("schoolsTable");
         var reseqBtn = document.getElementById("resequenceIdsBtn");
