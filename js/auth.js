@@ -428,10 +428,22 @@
       if (normalizedEmail === SA_EMAIL) {
         var pwdOk = await verifySuperAdminPassword(password);
         if (pwdOk) {
-          var session = { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: SA_EMAIL, role: "superadmin", rememberMe: !!rememberMe, loginAt: Date.now() };
+          var serverToken = null;
+          try {
+            var apiBase = getApiBaseUrl();
+            var resp = await fetch(apiBase + "/api/auth/superadmin", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email: email, password: password })
+            });
+            var data = await resp.json();
+            if (data.success && data.token) serverToken = data.token;
+          } catch (e) { /* server offline, continue without token */ }
+          var session = { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: SA_EMAIL, role: "superadmin", rememberMe: !!rememberMe, loginAt: Date.now(), serverToken: serverToken };
           if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
           else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
           window.__sagarSoftSession = session;
+          if (serverToken) SUPER_ADMIN_SESSION_TOKEN = serverToken;
           return { success: true, message: "Super admin login successful", user: session };
         }
       }
