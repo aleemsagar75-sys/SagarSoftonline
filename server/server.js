@@ -2145,20 +2145,13 @@ ensureSchema()
     process.exit(1);
   });
 
-app.get("/api/supabase-config", function (req, res) {
+app.get("/api/supabase-config", requireSuperAdmin, function (req, res) {
   var supabaseUrl = process.env.SUPABASE_URL || "";
-  var anonKey = "";
-  try {
-    var keyParts = supabaseUrl.match(/\/\/([^.]+)\.supabase\.co/);
-    if (keyParts) {
-      var infraKey = process.env.SUPABASE_SECRET_KEY || "";
-      anonKey = infraKey;
-    }
-  } catch (_e) {}
+  var anonKey = process.env.SUPABASE_ANON_KEY || "";
   return res.json({
     success: true,
     url: supabaseUrl,
-    anonKey: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SECRET_KEY || ""
+    anonKey: anonKey
   });
 });
 
