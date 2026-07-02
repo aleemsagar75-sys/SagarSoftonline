@@ -1882,11 +1882,10 @@ app.delete("/api/admin/schools/:schoolId", requireSuperAdmin, async function (re
     var _delResult = await _client.query("select email from public.license_accounts where school_id = $1", [schoolId]);
     var _delEmail = _delResult.rows.length > 0 ? _delResult.rows[0].email : null;
 
-    await _client.query("DELETE FROM public.license_notifications WHERE school_id = $1", [schoolId]);
-    await _client.query("DELETE FROM public.school_databases WHERE school_id = $1", [schoolId]);
-    await _client.query("DELETE FROM public.sms_queue WHERE school_id = $1", [schoolId]);
-    await _client.query("DELETE FROM public.sent_messages WHERE school_id = $1", [schoolId]);
-    await _client.query("DELETE FROM public.devices WHERE school_id = $1", [schoolId]);
+    var _tables = ["license_notifications", "school_databases", "sms_queue", "sent_messages", "devices"];
+    for (var _t = 0; _t < _tables.length; _t++) {
+      try { await _client.query("DELETE FROM public." + _tables[_t] + " WHERE school_id = $1", [schoolId]); } catch (_e) { /* table may not exist */ }
+    }
     await _client.query("DELETE FROM public.license_accounts WHERE school_id = $1", [schoolId]);
     await _client.query("commit");
 
