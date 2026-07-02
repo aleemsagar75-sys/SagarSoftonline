@@ -19413,7 +19413,7 @@ ${allContent}
               activateAccountBtn.textContent = "Add School";
               activateAccountBtn.removeAttribute("data-edit-school-id");
               if (isNew) clearSchoolForm();
-              if (typeof loadSchools === "function") { loadSchools(); } else { window.location.reload(); }
+              if (typeof loadSchools === "function") { loadSchools(); } else { setTimeout(function(){ if (typeof loadSchools === "function") loadSchools(); }, 500); }
             } else {
               var errMsg = data.message || "Save failed. Check console for details.";
               if (msgEl) { msgEl.textContent = errMsg; msgEl.className = "form-message error"; }
