@@ -19597,7 +19597,10 @@ ${allContent}
           if (!tbody) return;
           tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:16px;">Loading...</td></tr>';
           try {
-            var resp = await fetch(apiBase + "/api/admin/schools");
+            var resp = await fetch(apiBase + "/api/admin/schools", {
+              cache: "no-store",
+              headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") }
+            });
             var data = await resp.json().catch(function () { return {}; });
             if (!data.success || !Array.isArray(data.schools)) {
               tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:16px;color:#d64b4b;">Failed to load schools.</td></tr>';
