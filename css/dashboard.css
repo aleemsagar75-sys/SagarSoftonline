@@ -6006,6 +6006,12 @@ select:focus, input:focus, textarea:focus {
   .view.module--account .offline-registry-card .registry-table-wrap .data-table td { padding: 0.2rem 0.3rem !important; white-space: nowrap !important; font-size: 10px !important; }
   .view.module--account .offline-registry-card .registry-table-wrap .status-pill { font-size: 0.55rem !important; }
   .view.module--account .offline-registry-card .registry-table-wrap .table-action-btn { font-size: 9px !important; padding: 0.1rem 0.25rem !important; min-height: 22px !important; }
+  .view.module--account .account-core-card { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+  .view.module--account .account-core-card .form-grid .field-group { min-width: 0 !important; }
+  .view.module--account .super-admin-card { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important; }
+  .view.module--account .super-admin-card .data-table { display: block !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  .view.module--account .subscription-activation-card { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
+  .view.module--account .subscription-activation-card .form-grid .field-group { min-width: 0 !important; }
 }
 
 @media (max-width: 480px) {
@@ -6021,4 +6027,16 @@ select:focus, input:focus, textarea:focus {
   .fee-invoice-preview th,
   .fee-invoice-preview td { padding: 0.15rem 0.2rem; }
   .table-action-btn { font-size: 9px; padding: 0.15rem 0.25rem; min-height: 24px; }
+  .view.module--account .split-grid { grid-template-columns: 1fr !important; }
+  .view.module--account .account-core-card .form-grid { grid-template-columns: 1fr !important; }
+  .view.module--account .account-core-card { padding: 0.4rem !important; }
+  .view.module--account .account-core-card label { font-size: 0.7rem !important; }
+  .view.module--account .account-core-card input,
+  .view.module--account .account-core-card select { font-size: 0.75rem !important; padding: 0.4rem !important; }
+  .view.module--account .super-admin-card .data-table { min-width: 400px !important; font-size: 9px !important; }
+  .view.module--account .super-admin-card .data-table th,
+  .view.module--account .super-admin-card .data-table td { font-size: 9px !important; padding: 0.15rem 0.2rem !important; }
+  .view.module--account .super-admin-card { padding: 0.4rem !important; }
+  .view.module--account .subscription-activation-card .form-grid { grid-template-columns: 1fr !important; }
+  .view.module--account .subscription-activation-card .form-actions { grid-template-columns: 1fr !important; }
 }
