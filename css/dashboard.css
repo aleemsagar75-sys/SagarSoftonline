@@ -5967,3 +5967,47 @@ select:focus, input:focus, textarea:focus {
   .table-action-btn { min-height: 26px; padding: 0.2rem 0.35rem; font-size: 0.65rem; }
   .status-pill { font-size: 0.6rem; padding: 0.1rem 0.3rem; }
 }
+
+@media (max-width: 768px) {
+  #moduleFullWidth { padding: 0 0.5rem !important; }
+  #moduleFullWidth .panel-card { padding: 0.6rem !important; border-radius: 12px; }
+  #moduleFullWidth .panel-card__header h3 { font-size: 1rem; }
+  .super-admin-card { padding: 0.6rem !important; }
+  .super-admin-card strong { font-size: 0.85rem; }
+  .super-admin-card .helper-text { font-size: 0.75rem; }
+  .super-admin-card .data-table { min-width: 100%; font-size: 10px; overflow-x: auto; display: block; }
+  .super-admin-card .data-table th,
+  .super-admin-card .data-table td { padding: 0.25rem 0.3rem; white-space: nowrap; }
+  .general-settings-panel { padding: 0.6rem !important; }
+  .general-settings-panel .form-grid { grid-template-columns: 1fr !important; gap: 0.5rem !important; }
+  .general-settings-panel .field-group { margin-bottom: 0.4rem; }
+  .general-settings-panel label { font-size: 0.75rem; margin-bottom: 0.15rem; }
+  .general-settings-panel input,
+  .general-settings-panel select,
+  .general-settings-panel textarea { font-size: 0.8rem; padding: 0.5rem; }
+  .fees-form-grid { grid-template-columns: 1fr !important; gap: 0.5rem !important; }
+  .fee-invoice-preview { padding: 0.5rem !important; font-size: 0.8rem; }
+  .account-core-card { padding: 0.6rem !important; }
+  .account-core-card .form-grid { grid-template-columns: 1fr !important; gap: 0.5rem !important; }
+  .account-core-card .field-group { margin-bottom: 0.4rem; }
+  .account-core-card label { font-size: 0.75rem; }
+  .account-core-card input,
+  .account-core-card select { font-size: 0.8rem; padding: 0.5rem; }
+  .view.module--account .super-admin-card .data-table { overflow-x: auto; }
+  .notification-send-section .form-grid { grid-template-columns: 1fr !important; }
+}
+
+@media (max-width: 480px) {
+  #moduleFullWidth { padding: 0 0.3rem !important; }
+  .super-admin-card .data-table th,
+  .super-admin-card .data-table td { font-size: 9px; padding: 0.2rem 0.25rem; }
+  .general-settings-panel input,
+  .general-settings-panel select,
+  .general-settings-panel textarea { font-size: 0.75rem; }
+  .account-core-card input,
+  .account-core-card select { font-size: 0.75rem; }
+  .fee-invoice-preview table { font-size: 0.65rem; }
+  .fee-invoice-preview th,
+  .fee-invoice-preview td { padding: 0.15rem 0.2rem; }
+  .table-action-btn { font-size: 9px; padding: 0.15rem 0.25rem; min-height: 24px; }
+}
