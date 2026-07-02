@@ -21388,9 +21388,9 @@ ${allContent}
   function promoteSelectedStudents() {
     const targetClass = promoteTargetClassSelect.value;
     const filteredStudents = getPromoteStudents();
-    const selectedStudents = filteredStudents.filter(function (student) {
+    const selectedIds = filteredStudents.filter(function (student) {
       return promoteSelectionState[student.id];
-    });
+    }).map(function (s) { return s.id; });
 
     if (!targetClass) {
       promoteStudentsMessage.textContent = "Please select target class.";
@@ -21398,20 +21398,24 @@ ${allContent}
       return;
     }
 
-    if (selectedStudents.length === 0) {
+    if (selectedIds.length === 0) {
       promoteStudentsMessage.textContent = "Please select at least one student.";
       promoteStudentsMessage.className = "form-message error";
       return;
     }
 
-    selectedStudents.forEach(function (student) {
-      student.className = targetClass;
+    var promoted = 0;
+    (database.students || []).forEach(function (student) {
+      if (selectedIds.includes(student.id)) {
+        student.className = targetClass;
+        promoted++;
+      }
     });
 
-    addActivity("Students promoted", `${selectedStudents.length} student(s) promoted to ${targetClass}.`);
+    addActivity("Students promoted", `${promoted} student(s) promoted to ${targetClass}.`);
     saveDatabase();
     refreshDatabase();
-    promoteStudentsMessage.textContent = `${selectedStudents.length} student(s) promoted successfully.`;
+    promoteStudentsMessage.textContent = `${promoted} student(s) promoted successfully.`;
     promoteStudentsMessage.className = "form-message success";
     promoteSelectionState = {};
     renderDashboard();
