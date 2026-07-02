@@ -1876,10 +1876,19 @@ app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, 
 app.delete("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, res) {
   var schoolId = String(req.params.schoolId || "").trim();
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
+  var _client = await pool.connect();
   try {
-    var _delResult = await pool.query("select email from public.license_accounts where school_id = $1", [schoolId]);
+    await _client.query("begin");
+    var _delResult = await _client.query("select email from public.license_accounts where school_id = $1", [schoolId]);
     var _delEmail = _delResult.rows.length > 0 ? _delResult.rows[0].email : null;
-    await pool.query("delete from public.license_accounts where school_id = $1", [schoolId]);
+
+    await _client.query("DELETE FROM public.license_notifications WHERE school_id = $1", [schoolId]);
+    await _client.query("DELETE FROM public.school_databases WHERE school_id = $1", [schoolId]);
+    await _client.query("DELETE FROM public.sms_queue WHERE school_id = $1", [schoolId]);
+    await _client.query("DELETE FROM public.sent_messages WHERE school_id = $1", [schoolId]);
+    await _client.query("DELETE FROM public.devices WHERE school_id = $1", [schoolId]);
+    await _client.query("DELETE FROM public.license_accounts WHERE school_id = $1", [schoolId]);
+    await _client.query("commit");
 
     var supabaseUrl = process.env.SUPABASE_URL;
     var supabaseKey = process.env.SUPABASE_SECRET_KEY;
@@ -1897,8 +1906,11 @@ app.delete("/api/admin/schools/:schoolId", requireSuperAdmin, async function (re
       } catch (_delSupaErr) { console.error("Supabase Auth delete error:", _delSupaErr.message); }
     }
 
-    return res.json({ success: true, message: "School deleted." });
+    _client.release();
+    return res.json({ success: true, message: "School permanently deleted." });
   } catch (error) {
+    try { await _client.query("rollback"); } catch (_e) {}
+    try { _client.release(); } catch (_e) {}
     console.error("DELETE /api/admin/schools error:", error.message);
     return res.status(500).json({ success: false, message: error.message });
   }
