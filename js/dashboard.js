@@ -2428,7 +2428,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var cfg = getSupabaseConfig();
     if (!cfg.tablesCreated) {
       var initResult = await ensureSupabaseTables();
-      if (!initResult.success) return { success: false, reason: "table-init-failed", error: initResult.error };
+      if (!initResult.ok) return { success: false, reason: "table-init-failed", error: initResult.error };
       cfg.tablesCreated = true;
       if (database.generalSettings && database.generalSettings.supabaseConfig) {
         database.generalSettings.supabaseConfig.tablesCreated = true;
@@ -18781,7 +18781,7 @@ ${allContent}
         }
         if (!cfg.tablesCreated) {
           var initResult = await ensureSupabaseTables();
-          if (!initResult.success) {
+          if (!initResult.ok) {
             setSendMessage("Table initialization failed. Please contact admin.", "error");
             return;
           }
