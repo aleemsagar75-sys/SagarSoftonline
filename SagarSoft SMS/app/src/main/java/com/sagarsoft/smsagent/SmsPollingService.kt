@@ -139,6 +139,10 @@ class SmsPollingService : Service() {
 
     private fun sendSms(phone: String, message: String): Boolean {
         return try {
+            if (androidx.core.app.ActivityCompat.checkSelfPermission(this, android.Manifest.permission.SEND_SMS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                stats.lastError = "SEND_SMS permission not granted"
+                return false
+            }
             val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val context = applicationContext
                 context.getSystemService("telephony_sms") as? SmsManager
