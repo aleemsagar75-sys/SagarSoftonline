@@ -2264,6 +2264,40 @@ app.post("/api/setup-sms-tables", requireSuperAdmin, async function (req, res) {
     `;
     try { await _pool.query(grants); } catch (_grantErr) {}
 
+    var rlsPolicies = `
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sms_queue_anon_all' AND tablename='sms_queue') THEN
+          CREATE POLICY sms_queue_anon_all ON sms_queue FOR ALL TO anon USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sms_queue_auth_all' AND tablename='sms_queue') THEN
+          CREATE POLICY sms_queue_auth_all ON sms_queue FOR ALL TO authenticated USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='devices_anon_all' AND tablename='devices') THEN
+          CREATE POLICY devices_anon_all ON devices FOR ALL TO anon USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='devices_auth_all' AND tablename='devices') THEN
+          CREATE POLICY devices_auth_all ON devices FOR ALL TO authenticated USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sent_messages_anon_all' AND tablename='sent_messages') THEN
+          CREATE POLICY sent_messages_anon_all ON sent_messages FOR ALL TO anon USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sent_messages_auth_all' AND tablename='sent_messages') THEN
+          CREATE POLICY sent_messages_auth_all ON sent_messages FOR ALL TO authenticated USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+    `;
+    try { await _pool.query(rlsPolicies); } catch (_rlsErr) { console.error("RLS policy error:", _rlsErr.message); }
+
     return res.json({ success: true, message: "SMS tables created successfully." });
   } catch (error) {
     console.error("POST /api/setup-sms-tables error:", error.message);
