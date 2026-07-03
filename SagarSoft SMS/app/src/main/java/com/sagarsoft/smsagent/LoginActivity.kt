@@ -17,8 +17,6 @@ class LoginActivity : AppCompatActivity() {
     private lateinit var binding: ActivityLoginBinding
     private lateinit var authManager: AuthManager
     private var scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private var pendingEmail = ""
-    private var pendingPassword = ""
 
     companion object {
         private const val PERMISSION_REQUEST_CODE = 1001
@@ -32,8 +30,16 @@ class LoginActivity : AppCompatActivity() {
         authManager = AuthManager(this)
 
         if (authManager.loadSession()) {
-            requestPermissionsAndStart()
+            if (hasAllPermissions()) {
+                startDashboard()
+            } else {
+                requestPermissions()
+            }
             return
+        }
+
+        if (!hasAllPermissions()) {
+            requestPermissions()
         }
 
         binding.loginButton.setOnClickListener {
@@ -43,17 +49,7 @@ class LoginActivity : AppCompatActivity() {
                 Toast.makeText(this, "Email and password required", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            pendingEmail = email
-            pendingPassword = password
-            if (hasAllPermissions()) {
-                doLogin(email, password)
-            } else {
-                requestPermissions()
-            }
-        }
-
-        if (!hasAllPermissions()) {
-            requestPermissions()
+            doLogin(email, password)
         }
     }
 
@@ -79,19 +75,9 @@ class LoginActivity : AppCompatActivity() {
         if (requestCode == PERMISSION_REQUEST_CODE) {
             val smsGranted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
             if (!smsGranted) {
-                Toast.makeText(this, "SMS permission is required to send messages. Please grant it in Settings.", Toast.LENGTH_LONG).show()
-            }
-            if (pendingEmail.isNotEmpty() && pendingPassword.isNotEmpty()) {
-                doLogin(pendingEmail, pendingPassword)
+                Toast.makeText(this, "SMS permission is required. Grant it in Settings.", Toast.LENGTH_LONG).show()
             }
         }
-    }
-
-    private fun requestPermissionsAndStart() {
-        if (!hasAllPermissions()) {
-            requestPermissions()
-        }
-        startDashboard()
     }
 
     private fun doLogin(email: String, password: String) {
@@ -99,24 +85,36 @@ class LoginActivity : AppCompatActivity() {
         binding.loginButton.text = "Signing in..."
 
         scope.launch {
+            var loginSuccess = false
             try {
                 withContext(Dispatchers.IO) {
                     authManager.login(email, password)
-                    authManager.registerDevice()
+                    loginSuccess = true
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    binding.loginButton.isEnabled = true
+                    binding.loginButton.text = "Sign In"
+                    Toast.makeText(this@LoginActivity, e.message ?: "Login failed", Toast.LENGTH_LONG).show()
+                }
+                return@launch
+            }
+
+            if (loginSuccess) {
+                withContext(Dispatchers.IO) {
+                    try { authManager.registerDevice() } catch (_: Exception) {}
                 }
                 startDashboard()
-            } catch (e: Exception) {
-                binding.loginButton.isEnabled = true
-                binding.loginButton.text = "Sign In"
-                Toast.makeText(this@LoginActivity, e.message ?: "Login failed", Toast.LENGTH_LONG).show()
             }
         }
     }
 
     private fun startDashboard() {
-        val intent = Intent(this, DashboardActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
+        try {
+            val intent = Intent(this, DashboardActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        } catch (_: Exception) {}
         finish()
     }
 
