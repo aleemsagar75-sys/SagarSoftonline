@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.google.gson.JsonObject
 import com.sagarsoft.smsagent.SmsPollingService.Companion.stats
 import com.sagarsoft.smsagent.databinding.ActivityDashboardBinding
@@ -22,17 +23,24 @@ class DashboardActivity : AppCompatActivity() {
     private lateinit var authManager: AuthManager
     private var isServiceRunning = false
     private var simRegistered = false
+    private var receiverRegistered = false
     private var scope = CoroutineScope(Dispatchers.Main + SupervisorJob())
     private val statsReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            updateUi()
+            try { updateUi() } catch (_: Exception) { }
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityDashboardBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        try {
+            binding = ActivityDashboardBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+        } catch (e: Exception) {
+            Toast.makeText(this, "UI init failed: ${e.message}", Toast.LENGTH_LONG).show()
+            finish()
+            return
+        }
 
         authManager = AuthManager(this)
         if (!authManager.loadSession()) {
@@ -40,81 +48,108 @@ class DashboardActivity : AppCompatActivity() {
             return
         }
 
-        if (authManager.deviceId == null) {
-            scope.launch {
-                try {
-                    withContext(Dispatchers.IO) { authManager.registerDevice() }
-                    setupUI()
-                } catch (_: Exception) {
-                    setupUI()
-                }
-            }
-        } else {
-            setupUI()
-        }
+        setupUI()
     }
 
     private fun setupUI() {
-        binding.schoolNameText.text = authManager.schoolName.ifEmpty { authManager.schoolId }
-        binding.deviceIdText.text = "Device: ${authManager.deviceId?.take(20) ?: "Not Registered"}..."
-        binding.schoolIdLabel.text = "School ID: ${authManager.schoolId}"
+        try {
+            binding.schoolNameText.text = authManager.schoolName.ifEmpty { authManager.schoolId }
+            binding.deviceIdText.text = "Device: ${authManager.deviceId?.take(20) ?: "Not Registered"}..."
+            binding.schoolIdLabel.text = "School ID: ${authManager.schoolId}"
 
-        binding.startStopButton.setOnClickListener { toggleService() }
-        binding.logoutButton.setOnClickListener { confirmLogout() }
-        binding.registerSimButton.setOnClickListener { registerSim() }
-        binding.editSimButton.setOnClickListener { enableSimEdit() }
+            binding.startStopButton.setOnClickListener { toggleService() }
+            binding.logoutButton.setOnClickListener { confirmLogout() }
+            binding.registerSimButton.setOnClickListener { registerSim() }
+            binding.editSimButton.setOnClickListener { enableSimEdit() }
 
-        isServiceRunning = SmsPollingService.isRunning
-        registerReceiver(statsReceiver, IntentFilter("com.sagarsoft.sms.STATS_UPDATE"))
-        loadCurrentSim()
+            isServiceRunning = try { SmsPollingService.isRunning } catch (_: Exception) { false }
+            updateUi()
+
+            if (!receiverRegistered) {
+                try {
+                    val filter = IntentFilter("com.sagarsoft.sms.STATS_UPDATE")
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        registerReceiver(statsReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
+                    } else {
+                        registerReceiver(statsReceiver, filter)
+                    }
+                    receiverRegistered = true
+                } catch (_: Exception) { }
+            }
+
+            loadCurrentSim()
+
+            if (authManager.deviceId == null) {
+                scope.launch {
+                    try {
+                        withContext(Dispatchers.IO) { authManager.registerDevice() }
+                        binding.deviceIdText.text = "Device: ${authManager.deviceId?.take(20) ?: "Not Registered"}..."
+                    } catch (_: Exception) { }
+                }
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Setup error: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     override fun onResume() {
         super.onResume()
-        isServiceRunning = SmsPollingService.isRunning
-        updateUi()
+        try {
+            isServiceRunning = try { SmsPollingService.isRunning } catch (_: Exception) { false }
+            updateUi()
+        } catch (_: Exception) { }
     }
 
     override fun onDestroy() {
+        try {
+            scope.cancel()
+        } catch (_: Exception) { }
+        try {
+            if (receiverRegistered) {
+                unregisterReceiver(statsReceiver)
+                receiverRegistered = false
+            }
+        } catch (_: Exception) { }
         super.onDestroy()
-        scope.cancel()
-        try { unregisterReceiver(statsReceiver) } catch (_: Exception) { }
     }
 
     private fun updateUi() {
-        val s = stats
-        binding.sentCount.text = s.totalSent.toString()
-        binding.failedCount.text = s.totalFailed.toString()
-        binding.pollCount.text = s.totalPolled.toString()
-        binding.lastPollText.text = "Last Poll: ${s.lastPollAt}"
-        binding.lastSendText.text = "Last Send: ${s.lastSendAt}"
+        try {
+            val s = stats
+            binding.sentCount.text = s.totalSent.toString()
+            binding.failedCount.text = s.totalFailed.toString()
+            binding.pollCount.text = s.totalPolled.toString()
+            binding.lastPollText.text = "Last Poll: ${s.lastPollAt}"
+            binding.lastSendText.text = "Last Send: ${s.lastSendAt}"
 
-        if (s.lastError != null) {
-            binding.lastErrorText.text = "Error: ${s.lastError}"
-            binding.lastErrorText.visibility = View.VISIBLE
-        } else {
-            binding.lastErrorText.visibility = View.GONE
-        }
+            if (s.lastError != null) {
+                binding.lastErrorText.text = "Error: ${s.lastError}"
+                binding.lastErrorText.visibility = View.VISIBLE
+            } else {
+                binding.lastErrorText.visibility = View.GONE
+            }
 
-        if (isServiceRunning) {
-            binding.startStopButton.text = "Stop Service"
-            binding.startStopButton.setBackgroundColor(getColor(android.R.color.holo_red_dark))
-            binding.statusIndicator.text = "● Service Running"
-            binding.statusIndicator.setTextColor(getColor(android.R.color.holo_green_dark))
-        } else {
-            binding.startStopButton.text = "Start Service"
-            binding.startStopButton.setBackgroundColor(getColor(com.google.android.material.R.color.mtrl_btn_bg_color_selector))
-            binding.statusIndicator.text = "● Service Stopped"
-            binding.statusIndicator.setTextColor(Color.GRAY)
-        }
+            if (isServiceRunning) {
+                binding.startStopButton.text = "Stop Service"
+                binding.startStopButton.setBackgroundColor(Color.parseColor("#D32F2F"))
+                binding.statusIndicator.text = "● Service Running"
+                binding.statusIndicator.setTextColor(Color.parseColor("#4CAF50"))
+            } else {
+                binding.startStopButton.text = "Start Service"
+                binding.startStopButton.setBackgroundColor(Color.parseColor("#1E5EFF"))
+                binding.statusIndicator.text = "● Service Stopped"
+                binding.statusIndicator.setTextColor(Color.GRAY)
+            }
+        } catch (_: Exception) { }
     }
 
     private fun loadCurrentSim() {
         val did = authManager.deviceId ?: return
+        val token = authManager.authToken ?: return
         scope.launch {
             try {
-                val api = SupabaseApi(authManager.authToken)
-                val devs = api.query("devices?device_id=eq.$did&select=sim_number,school_id&limit=1")
+                val api = SupabaseApi(token)
+                val devs = api.query("devices?device_id=eq.$did&select=sim_number&limit=1")
                 if (devs.isNotEmpty()) {
                     val sim = devs[0].get("sim_number")?.asString ?: ""
                     if (sim.isNotEmpty()) {
@@ -126,26 +161,30 @@ class DashboardActivity : AppCompatActivity() {
     }
 
     private fun setSimRegistered(sim: String) {
-        simRegistered = true
-        binding.simNumberInput.setText(sim)
-        binding.simNumberInput.isEnabled = false
-        binding.simNumberInput.alpha = 0.6f
-        binding.registerSimButton.visibility = View.GONE
-        binding.editSimButton.visibility = View.VISIBLE
-        binding.simStatusText.text = "✓ SIM Registered: $sim"
-        binding.simStatusText.visibility = View.VISIBLE
-        binding.simStatusText.setTextColor(getColor(android.R.color.holo_green_dark))
+        try {
+            simRegistered = true
+            binding.simNumberInput.setText(sim)
+            binding.simNumberInput.isEnabled = false
+            binding.simNumberInput.alpha = 0.6f
+            binding.registerSimButton.visibility = View.GONE
+            binding.editSimButton.visibility = View.VISIBLE
+            binding.simStatusText.text = "✓ SIM Registered: $sim"
+            binding.simStatusText.visibility = View.VISIBLE
+            binding.simStatusText.setTextColor(Color.parseColor("#4CAF50"))
+        } catch (_: Exception) { }
     }
 
     private fun enableSimEdit() {
-        simRegistered = false
-        binding.simNumberInput.isEnabled = true
-        binding.simNumberInput.alpha = 1.0f
-        binding.registerSimButton.visibility = View.VISIBLE
-        binding.editSimButton.visibility = View.GONE
-        binding.simStatusText.text = "Edit SIM number and tap Register"
-        binding.simStatusText.visibility = View.VISIBLE
-        binding.simStatusText.setTextColor(Color.parseColor("#FF9800"))
+        try {
+            simRegistered = false
+            binding.simNumberInput.isEnabled = true
+            binding.simNumberInput.alpha = 1.0f
+            binding.registerSimButton.visibility = View.VISIBLE
+            binding.editSimButton.visibility = View.GONE
+            binding.simStatusText.text = "Edit SIM number and tap Register"
+            binding.simStatusText.visibility = View.VISIBLE
+            binding.simStatusText.setTextColor(Color.parseColor("#FF9800"))
+        } catch (_: Exception) { }
     }
 
     private fun registerSim() {
@@ -172,50 +211,67 @@ class DashboardActivity : AppCompatActivity() {
                 val api = SupabaseApi(authManager.authToken)
                 val body = JsonObject().apply { addProperty("sim_number", sim) }
                 api.update("devices?device_id=eq.$did", body)
-                setSimRegistered(sim)
-                Toast.makeText(this@DashboardActivity, "SIM registered successfully", Toast.LENGTH_SHORT).show()
+                withContext(Dispatchers.Main) {
+                    setSimRegistered(sim)
+                    Toast.makeText(this@DashboardActivity, "SIM registered successfully", Toast.LENGTH_SHORT).show()
+                }
             } catch (e: Exception) {
-                Toast.makeText(this@DashboardActivity, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
-                binding.registerSimButton.isEnabled = true
-                binding.registerSimButton.text = "Register SIM"
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@DashboardActivity, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    binding.registerSimButton.isEnabled = true
+                    binding.registerSimButton.text = "Register SIM"
+                }
             }
         }
     }
 
     private fun toggleService() {
-        if (isServiceRunning) {
-            stopService(Intent(this, SmsPollingService::class.java))
-            isServiceRunning = false
-        } else {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(Intent(this, SmsPollingService::class.java))
+        try {
+            if (isServiceRunning) {
+                stopService(Intent(this, SmsPollingService::class.java))
+                isServiceRunning = false
             } else {
-                startService(Intent(this, SmsPollingService::class.java))
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    startForegroundService(Intent(this, SmsPollingService::class.java))
+                } else {
+                    startService(Intent(this, SmsPollingService::class.java))
+                }
+                isServiceRunning = true
             }
-            isServiceRunning = true
+            updateUi()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Service error: ${e.message}", Toast.LENGTH_SHORT).show()
         }
-        updateUi()
     }
 
     private fun confirmLogout() {
-        AlertDialog.Builder(this)
-            .setTitle("Logout")
-            .setMessage("Stop service and logout?")
-            .setPositiveButton("Logout") { _, _ ->
-                if (isServiceRunning) {
-                    stopService(Intent(this, SmsPollingService::class.java))
+        try {
+            AlertDialog.Builder(this)
+                .setTitle("Logout")
+                .setMessage("Stop service and logout?")
+                .setPositiveButton("Logout") { _, _ ->
+                    try {
+                        if (isServiceRunning) {
+                            stopService(Intent(this, SmsPollingService::class.java))
+                        }
+                    } catch (_: Exception) { }
+                    authManager.logout()
+                    goToLogin()
                 }
-                authManager.logout()
-                goToLogin()
-            }
-            .setNegativeButton("Cancel", null)
-            .show()
+                .setNegativeButton("Cancel", null)
+                .show()
+        } catch (_: Exception) {
+            authManager.logout()
+            goToLogin()
+        }
     }
 
     private fun goToLogin() {
-        val intent = Intent(this, LoginActivity::class.java)
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        startActivity(intent)
+        try {
+            val intent = Intent(this, LoginActivity::class.java)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            startActivity(intent)
+        } catch (_: Exception) { }
         finish()
     }
 }
