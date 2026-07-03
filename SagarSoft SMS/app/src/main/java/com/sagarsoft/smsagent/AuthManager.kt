@@ -82,10 +82,13 @@ class AuthManager(context: Context) {
             }
             val inserted = api.insert("devices", body)
             if (inserted != null) {
-                deviceId = inserted.get("id")?.asString ?: inserted.get("device_id")?.asString ?: newId
+                val returnedId = inserted.get("device_id")?.asString ?: inserted.get("id")?.asString
+                if (!returnedId.isNullOrEmpty()) {
+                    deviceId = returnedId
+                }
             }
         } catch (e: Exception) {
-            // Device may already exist — continue with generated ID
+            android.util.Log.w("AuthManager", "Device insert failed: ${e.message}")
         }
 
         prefs.edit().putString("device_id", deviceId).apply()
