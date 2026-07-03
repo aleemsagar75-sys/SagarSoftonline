@@ -19411,7 +19411,8 @@ ${allContent}
               activateAccountBtn.textContent = "Add School";
               activateAccountBtn.removeAttribute("data-edit-school-id");
               if (isNew) clearSchoolForm();
-              if (typeof loadSchools === "function") { loadSchools(); } else if (typeof window._loadSchools === "function") { window._loadSchools(); } else { setTimeout(function(){ if (typeof window._loadSchools === "function") window._loadSchools(); }, 300); }
+              var _refreshList = (typeof loadSchools === "function") ? loadSchools : (typeof window._loadSchools === "function") ? window._loadSchools : null;
+              if (_refreshList) { _refreshList(); } else { setTimeout(function(){ var _r = typeof window._loadSchools === "function" ? window._loadSchools : null; if (_r) _r(); }, 500); }
             } else {
               var errMsg = data.message || "Save failed. Check console for details.";
               if (msgEl) { msgEl.textContent = errMsg; msgEl.className = "form-message error"; }
