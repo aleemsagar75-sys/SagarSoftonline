@@ -701,6 +701,73 @@ async function ensureSchema() {
   console.log("Schema ready");
 }
 
+async function ensureSmsTables() {
+  if (!_pool) { console.log("SMS tables: DB not connected, skipping."); return; }
+  try {
+    await _pool.query(`
+      CREATE TABLE IF NOT EXISTS sms_queue (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        device_id TEXT,
+        recipient_phone TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        source TEXT DEFAULT 'Manual SMS',
+        campaign_type TEXT DEFAULT 'manual',
+        recipient_name TEXT,
+        recipient_type TEXT DEFAULT 'student',
+        error_message TEXT,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS sent_messages (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT,
+        device_id TEXT,
+        recipient_phone TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT,
+        error_message TEXT,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS devices (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        device_name TEXT,
+        device_id TEXT NOT NULL UNIQUE,
+        is_active BOOLEAN DEFAULT false,
+        sim_number TEXT,
+        last_poll_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
+    await _pool.query(`
+      GRANT ALL ON TABLE sms_queue TO anon;
+      GRANT ALL ON TABLE devices TO anon;
+      GRANT ALL ON TABLE sent_messages TO anon;
+      GRANT ALL ON TABLE sms_queue TO authenticated;
+      GRANT ALL ON TABLE devices TO authenticated;
+      GRANT ALL ON TABLE sent_messages TO authenticated;
+      ALTER TABLE sms_queue ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE sent_messages ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
+    `);
+    var rlsPolicies = `
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sms_queue_anon_all' AND tablename='sms_queue') THEN CREATE POLICY sms_queue_anon_all ON sms_queue FOR ALL TO anon USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sms_queue_auth_all' AND tablename='sms_queue') THEN CREATE POLICY sms_queue_auth_all ON sms_queue FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='devices_anon_all' AND tablename='devices') THEN CREATE POLICY devices_anon_all ON devices FOR ALL TO anon USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='devices_auth_all' AND tablename='devices') THEN CREATE POLICY devices_auth_all ON devices FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sent_messages_anon_all' AND tablename='sent_messages') THEN CREATE POLICY sent_messages_anon_all ON sent_messages FOR ALL TO anon USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sent_messages_auth_all' AND tablename='sent_messages') THEN CREATE POLICY sent_messages_auth_all ON sent_messages FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF; END $$;
+    `;
+    await _pool.query(rlsPolicies);
+    console.log("SMS tables ready with RLS policies.");
+  } catch (err) {
+    console.error("ensureSmsTables error:", err.message);
+  }
+}
+
 function normalizeSchoolId(value) {
   const trimmed = String(value || "").trim();
   if (!trimmed) {
@@ -2136,6 +2203,9 @@ app.get("/api/version", function (_req, res) {
 
 ensureSchema()
   .then(function () {
+    return ensureSmsTables();
+  })
+  .then(function () {
     app.listen(port, function () {
       console.log("SagarSoft online API listening on " + port);
     });
@@ -2145,7 +2215,7 @@ ensureSchema()
     process.exit(1);
   });
 
-app.get("/api/supabase-config", requireSuperAdmin, function (req, res) {
+app.get("/api/supabase-config", function (req, res) {
   var supabaseUrl = process.env.SUPABASE_URL || "";
   var anonKey = process.env.SUPABASE_ANON_KEY || "";
   return res.json({
@@ -2155,7 +2225,7 @@ app.get("/api/supabase-config", requireSuperAdmin, function (req, res) {
   });
 });
 
-app.post("/api/setup-sms-tables", requireSuperAdmin, async function (req, res) {
+app.post("/api/setup-sms-tables", async function (req, res) {
   try {
     if (!_pool) {
       return res.status(500).json({ success: false, message: "Database not connected." });
