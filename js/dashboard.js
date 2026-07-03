@@ -2390,12 +2390,11 @@ document.addEventListener("DOMContentLoaded", function () {
   async function ensureSupabaseTables() {
     var cfg = getSupabaseConfig();
     if (!cfg.url || !cfg.anonKey) return { ok: false, reason: "not-configured" };
-    if (cfg.tablesCreated) return { ok: true };
     try {
       var sb = initSupabase();
       if (!sb) return { ok: false, reason: "init-failed" };
       var test = await sb.from("sms_queue").select("id").limit(1);
-      if (test.error && test.error.code === "42P01") {
+      if (test.error && (test.error.code === "42P01" || test.error.code === "42501" || String(test.error.message || "").includes("permission") || String(test.error.message || "").includes("relation") || String(test.error.message || "").includes("policy"))) {
         try {
           var resp = await fetch(getApiBaseUrl() + "/api/setup-sms-tables", {
             method: "POST",
@@ -2412,6 +2411,23 @@ document.addEventListener("DOMContentLoaded", function () {
           console.error("Server SMS setup failed:", serverErr);
           return { ok: false, reason: "server-error", error: serverErr.message };
         }
+      }
+      if (test.error) {
+        console.error("SMS table check error:", test.error);
+        cfg.tablesCreated = false;
+        try {
+          var resp2 = await fetch(getApiBaseUrl() + "/api/setup-sms-tables", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + window.SagarSoftAuth.getServerToken() }
+          });
+          var result2 = await resp2.json();
+          if (result2.success) {
+            cfg.tablesCreated = true;
+            saveDatabase();
+            return { ok: true };
+          }
+        } catch (_e) {}
+        return { ok: false, reason: "error", error: test.error.message };
       }
       cfg.tablesCreated = true;
       saveDatabase();
@@ -18666,7 +18682,7 @@ ${allContent}
         var isActive = false;
 
         var userSchoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || "";
-        if (userSchoolId && cfg.tablesCreated) {
+        if (userSchoolId && cfg.url && cfg.anonKey) {
           (async function() {
             try {
               var sb = initSupabase();
