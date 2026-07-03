@@ -120,6 +120,15 @@
                         android:textSize="11sp"
                         android:textColor="#999999"
                         android:layout_marginTop="6dp" />
+
+                    <TextView
+                        android:id="@+id/schoolIdLabel"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="School: -"
+                        android:textSize="11sp"
+                        android:textColor="#999999"
+                        android:layout_marginTop="2dp" />
                 </LinearLayout>
             </androidx.cardview.widget.CardView>
 
@@ -254,16 +263,36 @@
                         android:padding="12dp"
                         android:background="@drawable/edit_text_bg"
                         android:textSize="14sp" />
-                    <Button
-                        android:id="@+id/registerSimButton"
-                        android:layout_width="wrap_content"
-                        android:layout_height="40dp"
-                        android:text="Register SIM"
-                        android:textSize="13sp"
-                        android:textColor="#FFFFFF"
-                        android:backgroundTint="#1E5EFF"
-                        android:layout_marginTop="8dp"
-                        app:cornerRadius="8dp" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/registerSimButton"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="42dp"
+                            android:text="Register SIM"
+                            android:textSize="13sp"
+                            android:textColor="#FFFFFF"
+                            android:backgroundTint="#1E5EFF"
+                            app:cornerRadius="8dp" />
+
+                        <Button
+                            android:id="@+id/editSimButton"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="42dp"
+                            android:text="Edit Number"
+                            android:textSize="13sp"
+                            android:textColor="#FFFFFF"
+                            android:backgroundTint="#FF9800"
+                            android:layout_marginStart="8dp"
+                            android:visibility="gone"
+                            app:cornerRadius="8dp" />
+                    </LinearLayout>
                     <TextView
                         android:id="@+id/simStatusText"
                         android:layout_width="wrap_content"
