@@ -14232,16 +14232,16 @@ ${allContent}
       moduleSummary.innerHTML = `
         <article>
           <strong class="module-center-title">Account Statement</strong>
-          <div class="accounts-filter-bar" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;margin:0 0 1rem;">
-            <label style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.8rem;color:#555;white-space:nowrap;">From<input id="accountsFromInput" type="date" value="${_firstOfMonth}" style="padding:0.3rem 0.5rem;font-size:0.8rem;border:1px solid #dde4ea;border-radius:6px;font-family:inherit;width:130px;"></label>
-            <label style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.8rem;color:#555;white-space:nowrap;">To<input id="accountsToInput" type="date" value="${_today}" style="padding:0.3rem 0.5rem;font-size:0.8rem;border:1px solid #dde4ea;border-radius:6px;font-family:inherit;width:130px;"></label>
-            <button id="clearAccountsHistoryBtn" type="button" class="btn-account-action btn-danger-action"><i class="fas fa-trash" style="font-size:0.6rem;"></i>Clear History</button>
-            <button id="printAccountsBtn" type="button" class="btn-account-action btn-primary-action"><i class="fas fa-print" style="font-size:0.6rem;"></i>Print</button>
-            <button id="pdfAccountsBtn" type="button" class="btn-account-action btn-secondary-action"><i class="fas fa-file-pdf" style="font-size:0.6rem;"></i>PDF</button>
-            <button id="excelAccountsBtn" type="button" class="btn-account-action btn-secondary-action"><i class="fas fa-file-excel" style="font-size:0.6rem;"></i>Excel</button>
+          <div class="accounts-filter-bar">
+            <label class="accounts-filter-label">From<input id="accountsFromInput" type="date" value="${_firstOfMonth}" class="accounts-filter-date"></label>
+            <label class="accounts-filter-label">To<input id="accountsToInput" type="date" value="${_today}" class="accounts-filter-date"></label>
+            <button id="clearAccountsHistoryBtn" type="button" class="btn-account-action btn-danger-action"><i class="fas fa-trash"></i>Clear History</button>
+            <button id="printAccountsBtn" type="button" class="btn-account-action btn-primary-action"><i class="fas fa-print"></i>Print</button>
+            <button id="pdfAccountsBtn" type="button" class="btn-account-action btn-secondary-action"><i class="fas fa-file-pdf"></i>PDF</button>
+            <button id="excelAccountsBtn" type="button" class="btn-account-action btn-secondary-action"><i class="fas fa-file-excel"></i>Excel</button>
           </div>
           <div class="report-cards" id="accountsStats"></div>
-          <div class="table-wrap" style="overflow-x:auto;"><table style="min-width:650px;"><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Net Balance</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
+          <div class="table-wrap"><table style="min-width:500px;"><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Net Balance</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
