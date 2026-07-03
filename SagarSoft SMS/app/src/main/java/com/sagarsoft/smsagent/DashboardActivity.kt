@@ -40,8 +40,23 @@ class DashboardActivity : AppCompatActivity() {
             return
         }
 
+        if (authManager.deviceId == null) {
+            scope.launch {
+                try {
+                    withContext(Dispatchers.IO) { authManager.registerDevice() }
+                    setupUI()
+                } catch (_: Exception) {
+                    setupUI()
+                }
+            }
+        } else {
+            setupUI()
+        }
+    }
+
+    private fun setupUI() {
         binding.schoolNameText.text = authManager.schoolName.ifEmpty { authManager.schoolId }
-        binding.deviceIdText.text = "Device: ${authManager.deviceId?.take(20) ?: "-"}..."
+        binding.deviceIdText.text = "Device: ${authManager.deviceId?.take(20) ?: "Not Registered"}..."
         binding.schoolIdLabel.text = "School ID: ${authManager.schoolId}"
 
         binding.startStopButton.setOnClickListener { toggleService() }
@@ -139,15 +154,21 @@ class DashboardActivity : AppCompatActivity() {
             Toast.makeText(this, "Enter SIM phone number", Toast.LENGTH_SHORT).show()
             return
         }
-        val did = authManager.deviceId ?: run {
-            Toast.makeText(this, "Device not registered yet", Toast.LENGTH_SHORT).show()
-            return
-        }
         binding.registerSimButton.isEnabled = false
         binding.registerSimButton.text = "Saving..."
 
         scope.launch {
             try {
+                if (authManager.deviceId == null) {
+                    withContext(Dispatchers.IO) { authManager.registerDevice() }
+                }
+                val did = authManager.deviceId
+                if (did == null) {
+                    Toast.makeText(this@DashboardActivity, "Device registration failed. Check network.", Toast.LENGTH_LONG).show()
+                    binding.registerSimButton.isEnabled = true
+                    binding.registerSimButton.text = "Register SIM"
+                    return@launch
+                }
                 val api = SupabaseApi(authManager.authToken)
                 val body = JsonObject().apply { addProperty("sim_number", sim) }
                 api.update("devices?device_id=eq.$did", body)
