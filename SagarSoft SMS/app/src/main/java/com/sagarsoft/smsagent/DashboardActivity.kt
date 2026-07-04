@@ -7,7 +7,9 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.View
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -25,52 +27,101 @@ class DashboardActivity : AppCompatActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private val statsRunnable = object : Runnable {
         override fun run() {
-            try { updateUi() } catch (_: Exception) {}
+            try { updateStats() } catch (_: Throwable) {}
             handler.postDelayed(this, 1000)
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityDashboardBinding.inflate(layoutInflater)
-        setContentView(binding.root)
-
-        authManager = AuthManager(this)
-        if (!authManager.loadSession()) {
-            goToLogin()
+        try {
+            binding = ActivityDashboardBinding.inflate(layoutInflater)
+            setContentView(binding.root)
+        } catch (t: Throwable) {
+            Log.e("SagarSoft", "Layout crash", t)
+            showCrashDialog("Layout failed: ${t.message}")
             return
         }
 
-        binding.schoolNameText.text = authManager.schoolName.ifEmpty { authManager.schoolId }
-        binding.schoolIdLabel.text = "School ID: ${authManager.schoolId}"
-        binding.deviceIdText.text = "Device: ${authManager.deviceId?.take(25) ?: "Not Registered"}..."
-
-        binding.startStopButton.setOnClickListener { toggleService() }
-        binding.logoutButton.setOnClickListener { confirmLogout() }
-        binding.registerSimButton.setOnClickListener { registerSim() }
-        binding.editSimButton.setOnClickListener { enableSimEdit() }
-
-        updateUi()
-        loadCurrentSim()
-
-        if (authManager.deviceId == null) {
-            scope.launch {
-                try {
-                    withContext(Dispatchers.IO) { authManager.registerDevice() }
-                    binding.deviceIdText.text = "Device: ${authManager.deviceId?.take(25) ?: "Not Registered"}..."
-                } catch (_: Exception) {}
+        try {
+            authManager = AuthManager(this)
+            if (!authManager.loadSession()) {
+                goToLogin()
+                return
             }
+        } catch (t: Throwable) {
+            Log.e("SagarSoft", "Auth crash", t)
+            showCrashDialog("Auth failed: ${t.message}")
+            return
+        }
+
+        try {
+            binding.schoolNameText.text = authManager.schoolName.ifEmpty { authManager.schoolId }
+            binding.schoolIdLabel.text = "School: ${authManager.schoolId}"
+            binding.deviceIdText.text = "Device: ${authManager.deviceId?.take(25) ?: "Not Registered"}"
+            binding.startStopButton.setOnClickListener { toggleService() }
+            binding.logoutButton.setOnClickListener { confirmLogout() }
+            binding.registerSimButton.setOnClickListener { registerSim() }
+            binding.editSimButton.setOnClickListener { enableSimEdit() }
+        } catch (t: Throwable) {
+            Log.e("SagarSoft", "UI setup crash", t)
+            showCrashDialog("UI setup: ${t.message}")
+            return
+        }
+
+        try { updateStats() } catch (_: Throwable) {}
+        try { loadCurrentSim() } catch (_: Throwable) {}
+
+        showLastCrashIfAny()
+    }
+
+    private fun showLastCrashIfAny() {
+        try {
+            val file = java.io.File(filesDir, "last_crash.txt")
+            if (file.exists()) {
+                val crashText = file.readText()
+                file.delete()
+                val tv = android.widget.TextView(this).apply {
+                    text = crashText
+                    setPadding(48, 32, 48, 32)
+                    textSize = 11f
+                    setTextColor(Color.RED)
+                    isVerticalScrollBarEnabled = true
+                }
+                val scroll = android.widget.ScrollView(this).apply { addView(tv) }
+                AlertDialog.Builder(this)
+                    .setTitle("LAST CRASH LOG")
+                    .setView(scroll)
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        } catch (_: Throwable) {}
+    }
+
+    private fun showCrashDialog(msg: String) {
+        try {
+            val tv = TextView(this).apply {
+                text = msg
+                setPadding(48, 32, 48, 32)
+                textSize = 14f
+                setTextColor(Color.RED)
+            }
+            AlertDialog.Builder(this)
+                .setTitle("Crash Report")
+                .setView(tv)
+                .setPositiveButton("OK") { _, _ -> finish() }
+                .setCancelable(false)
+                .show()
+        } catch (_: Throwable) {
+            Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+            finish()
         }
     }
 
     override fun onResume() {
         super.onResume()
-        try {
-            isServiceRunning = SmsPollingService.isRunning
-        } catch (_: Exception) {
-            isServiceRunning = false
-        }
-        updateUi()
+        try { isServiceRunning = SmsPollingService.isRunning } catch (_: Throwable) { isServiceRunning = false }
+        try { updateStats() } catch (_: Throwable) {}
         handler.postDelayed(statsRunnable, 1000)
     }
 
@@ -81,15 +132,11 @@ class DashboardActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         handler.removeCallbacks(statsRunnable)
-        scope.cancel()
+        try { scope.cancel() } catch (_: Throwable) {}
         super.onDestroy()
     }
 
-    private fun updateUi() {
-        try {
-            isServiceRunning = SmsPollingService.isRunning
-        } catch (_: Exception) {}
-
+    private fun updateStats() {
         try {
             val s = SmsPollingService.stats
             binding.sentCount.text = s.totalSent.toString()
@@ -97,28 +144,27 @@ class DashboardActivity : AppCompatActivity() {
             binding.pollCount.text = s.totalPolled.toString()
             binding.lastPollText.text = "Last Poll: ${s.lastPollAt}"
             binding.lastSendText.text = "Last Send: ${s.lastSendAt}"
-
             if (s.lastError != null) {
                 binding.lastErrorText.text = "Error: ${s.lastError}"
                 binding.lastErrorText.visibility = View.VISIBLE
             } else {
                 binding.lastErrorText.visibility = View.GONE
             }
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
 
         try {
             if (isServiceRunning) {
                 binding.startStopButton.text = "Stop Service"
                 binding.startStopButton.setBackgroundColor(Color.parseColor("#D32F2F"))
-                binding.statusIndicator.text = "● Service Running"
+                binding.statusIndicator.text = "● Running"
                 binding.statusIndicator.setTextColor(Color.parseColor("#4CAF50"))
             } else {
                 binding.startStopButton.text = "Start Service"
                 binding.startStopButton.setBackgroundColor(Color.parseColor("#1E5EFF"))
-                binding.statusIndicator.text = "● Service Stopped"
+                binding.statusIndicator.text = "● Stopped"
                 binding.statusIndicator.setTextColor(Color.GRAY)
             }
-        } catch (_: Exception) {}
+        } catch (_: Throwable) {}
     }
 
     private fun loadCurrentSim() {
@@ -134,7 +180,7 @@ class DashboardActivity : AppCompatActivity() {
                         withContext(Dispatchers.Main) { setSimRegistered(sim) }
                     }
                 }
-            } catch (_: Exception) {}
+            } catch (_: Throwable) {}
         }
     }
 
@@ -145,7 +191,7 @@ class DashboardActivity : AppCompatActivity() {
         binding.simNumberInput.alpha = 0.6f
         binding.registerSimButton.visibility = View.GONE
         binding.editSimButton.visibility = View.VISIBLE
-        binding.simStatusText.text = "✓ SIM Registered: $sim"
+        binding.simStatusText.text = "✓ SIM: $sim"
         binding.simStatusText.visibility = View.VISIBLE
         binding.simStatusText.setTextColor(Color.parseColor("#4CAF50"))
     }
@@ -156,7 +202,7 @@ class DashboardActivity : AppCompatActivity() {
         binding.simNumberInput.alpha = 1.0f
         binding.registerSimButton.visibility = View.VISIBLE
         binding.editSimButton.visibility = View.GONE
-        binding.simStatusText.text = "Edit SIM number and tap Register"
+        binding.simStatusText.text = "Edit number and tap Register"
         binding.simStatusText.visibility = View.VISIBLE
         binding.simStatusText.setTextColor(Color.parseColor("#FF9800"))
     }
@@ -164,12 +210,11 @@ class DashboardActivity : AppCompatActivity() {
     private fun registerSim() {
         val sim = binding.simNumberInput.text.toString().trim()
         if (sim.isEmpty()) {
-            Toast.makeText(this, "Enter SIM phone number", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Enter SIM number", Toast.LENGTH_SHORT).show()
             return
         }
         binding.registerSimButton.isEnabled = false
         binding.registerSimButton.text = "Saving..."
-
         scope.launch {
             try {
                 if (authManager.deviceId == null) {
@@ -187,11 +232,11 @@ class DashboardActivity : AppCompatActivity() {
                 val api = SupabaseApi(authManager.authToken)
                 val body = JsonObject().apply { addProperty("sim_number", sim) }
                 api.update("devices?device_id=eq.$did", body)
-                withContext(Dispatchers.Main) { setSimRegistered(sim) }
                 withContext(Dispatchers.Main) {
+                    setSimRegistered(sim)
                     Toast.makeText(this@DashboardActivity, "SIM registered", Toast.LENGTH_SHORT).show()
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 withContext(Dispatchers.Main) {
                     Toast.makeText(this@DashboardActivity, "Failed: ${e.message}", Toast.LENGTH_LONG).show()
                     binding.registerSimButton.isEnabled = true
@@ -214,9 +259,9 @@ class DashboardActivity : AppCompatActivity() {
                 }
                 isServiceRunning = true
             }
-            updateUi()
-        } catch (e: Exception) {
-            Toast.makeText(this, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+            updateStats()
+        } catch (t: Throwable) {
+            Toast.makeText(this, "Error: ${t.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -225,7 +270,7 @@ class DashboardActivity : AppCompatActivity() {
             .setTitle("Logout")
             .setMessage("Stop service and logout?")
             .setPositiveButton("Logout") { _, _ ->
-                try { if (isServiceRunning) stopService(Intent(this, SmsPollingService::class.java)) } catch (_: Exception) {}
+                try { if (isServiceRunning) stopService(Intent(this, SmsPollingService::class.java)) } catch (_: Throwable) {}
                 authManager.logout()
                 goToLogin()
             }
