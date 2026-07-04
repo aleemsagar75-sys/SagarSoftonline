@@ -164,11 +164,14 @@ class SmsPollingService : Service() {
             val api = SupabaseApi(am.authToken)
             val body = JsonObject().apply {
                 addProperty("status", "sent")
-                addProperty("device_id", am.deviceId)
+                addProperty("device_id", am.deviceId ?: "")
                 addProperty("sent_at", java.time.Instant.now().toString())
             }
             api.update("sms_queue?id=eq.$smsId", body)
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            stats.lastError = "markSent: ${e.message}"
+            updateNotification()
+        }
     }
 
     private suspend fun markFailed(am: AuthManager, smsId: String, error: String) {
@@ -179,7 +182,10 @@ class SmsPollingService : Service() {
                 addProperty("error_message", error)
             }
             api.update("sms_queue?id=eq.$smsId", body)
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            stats.lastError = "markFailed: ${e.message}"
+            updateNotification()
+        }
     }
 
     private fun createNotificationChannel() {
