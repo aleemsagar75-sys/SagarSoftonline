@@ -2438,37 +2438,31 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   async function sendSmsViaQueue(payload) {
-    var sb = initSupabase();
-    if (!sb) return { success: false, reason: "supabase-not-configured" };
-    var cfg = getSupabaseConfig();
-    if (!cfg.tablesCreated) {
-      var initResult = await ensureSupabaseTables();
-      if (!initResult.ok) return { success: false, reason: "table-init-failed", error: initResult.error };
-      cfg.tablesCreated = true;
-      if (database.generalSettings && database.generalSettings.supabaseConfig) {
-        database.generalSettings.supabaseConfig.tablesCreated = true;
-      }
-    }
+    var schoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || (database.school && database.school.id) || "";
+    if (!schoolId) return { success: false, reason: "school-id-missing" };
+    var phone = normalizeSmsPhone(payload.recipientPhone || "");
+    var messageText = String(payload.message || "").trim();
+    if (!phone) return { success: false, reason: "phone-missing" };
+    if (!messageText) return { success: false, reason: "message-missing" };
     try {
-      var schoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || (database.school && database.school.id) || "";
-      if (!schoolId) return { success: false, reason: "school-id-missing" };
-      var phone = normalizeSmsPhone(payload.recipientPhone || "");
-      var messageText = String(payload.message || "").trim();
-      if (!phone) return { success: false, reason: "phone-missing" };
-      if (!messageText) return { success: false, reason: "message-missing" };
-      var { data, error } = await sb.from("sms_queue").insert({
-        school_id: schoolId,
-        recipient_phone: phone,
-        message: messageText,
-        source: payload.source || "Manual SMS",
-        campaign_type: payload.campaignType || "manual",
-        recipient_name: payload.recipientName || "-",
-        recipient_type: payload.recipientType || "student",
-        status: "pending"
-      }).select("id").single();
-      if (error) return { success: false, reason: "db-error", error: error.message };
+      var apiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
+      var resp = await fetch(apiBase + "/api/sms/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          school_id: schoolId,
+          recipient_phone: phone,
+          message: messageText,
+          source: payload.source || "Manual SMS",
+          campaign_type: payload.campaignType || "manual",
+          recipient_name: payload.recipientName || "-",
+          recipient_type: payload.recipientType || "student"
+        })
+      });
+      var result = await resp.json();
+      if (!result.success) return { success: false, reason: "server-error", error: result.message };
       var outboxItem = pushSmsOutboxEntry({
-        id: data && data.id ? String(data.id) : "",
+        id: result.sms_id || "",
         recipientName: payload.recipientName || "-",
         recipientPhone: phone,
         message: messageText,
@@ -2484,11 +2478,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   async function sendSmsSmart(payload) {
-    var cfg = getSupabaseConfig();
-    if (!cfg || !cfg.url || !cfg.anonKey || !window.supabase) {
-      console.warn("SMS requires Supabase configuration. Please configure Supabase in Settings > SMS Services.");
-      return { success: false, reason: "no-supabase", error: "Supabase not configured. SMS requires Supabase Queue + SMS Agent." };
-    }
     return await sendSmsViaQueue(payload);
   }
 
