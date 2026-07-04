@@ -4148,7 +4148,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const cards = [
       {
-        icon: "ST",
+        icon: '<img src="./assets/students.png" class="menu-icon__img" style="filter:none;">',
         tone: "students",
         route: "all-students",
         label: "Students",
@@ -4156,7 +4156,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: `${totalStudents} active records`
       },
       {
-        icon: "TC",
+        icon: '<img src="./assets/employees.png" class="menu-icon__img" style="filter:none;">',
         tone: "teachers",
         route: "all-employees",
         label: "Teachers",
@@ -4164,7 +4164,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: `${linkedSubjectsCount} subjects assigned`
       },
       {
-        icon: "CL",
+        icon: '<img src="./assets/classes.png" class="menu-icon__img" style="filter:none;">',
         tone: "classes",
         route: "all-classes",
         label: "Classes",
@@ -4172,7 +4172,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: `${database.classes.length} academic groups`
       },
       {
-        icon: "FS",
+        icon: '<img src="./assets/fees.png" class="menu-icon__img" style="filter:none;">',
         tone: "fees",
         route: "generate-fees-invoice",
         label: "Fees",
@@ -4180,7 +4180,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: "Paid students / enrolled"
       },
       {
-        icon: "AT",
+        icon: '<img src="./assets/attendance.png" class="menu-icon__img" style="filter:none;">',
         tone: "attendance",
         route: "students-attendance",
         label: "Attendance",
@@ -4188,7 +4188,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: "Today's attendance"
       },
       {
-        icon: "PA",
+        icon: '<img src="./assets/subjects.png" class="menu-icon__img" style="filter:none;">',
         tone: "parents",
         route: "parents-info-report",
         label: "Parents",
@@ -4203,7 +4203,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: "Associated with students"
       },
       {
-        icon: "SB",
+        icon: '<img src="./assets/subjects.png" class="menu-icon__img" style="filter:none;">',
         tone: "subjects",
         route: "classes-with-subjects",
         label: "Subjects",
@@ -4211,7 +4211,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: "Linked subjects configured"
       },
       {
-        icon: "LG",
+        icon: '<img src="./assets/dashboard.png" class="menu-icon__img" style="filter:none;">',
         tone: "activity",
         route: "students-info-report",
         label: "Activity",
