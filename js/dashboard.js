@@ -18682,52 +18682,57 @@ ${allContent}
         var isActive = false;
 
         var userSchoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || "";
-        if (userSchoolId && cfg.url && cfg.anonKey) {
-          (async function() {
-            try {
-              var sb = initSupabase();
-              if (!sb) return;
-              var { data } = await sb.from("devices").select("sim_number, last_poll_at, is_active, device_id, created_at").eq("school_id", userSchoolId).maybeSingle();
-              if (data) {
-                deviceRegistered = true;
-                isActive = data.is_active || false;
-                if (data.sim_number) {
-                  simDisplay = escapeHtml(data.sim_number);
-                  settings.smsGateway.connectedNumber = data.sim_number;
-                }
-                if (data.last_poll_at) {
-                  var lastPoll = new Date(data.last_poll_at);
-                  var now = new Date();
-                  var diff = (now - lastPoll) / 1000;
-                  lastPollDisplay = lastPoll.toLocaleString();
-                  if (diff < 300) {
-                    connStatus = "Connected";
-                    connClass = "active";
-                  } else if (diff < 3600) {
-                    connStatus = "Disconnected (" + Math.floor(diff / 60) + "m ago)";
+        if (userSchoolId) {
+          var apiBase = (typeof window !== "undefined" && window._onlineConfig && window._onlineConfig.apiBaseUrl) ? window._onlineConfig.apiBaseUrl : "";
+          if (!apiBase) {
+            try { apiBase = "https://sagarsoftonline.onrender.com"; } catch(_e) {}
+          }
+          if (apiBase) {
+            fetch(apiBase + "/api/sms/device-status?school_id=" + encodeURIComponent(userSchoolId))
+              .then(function(r) { return r.json(); })
+              .then(function(result) {
+                var data = result && result.device ? result.device : null;
+                if (data) {
+                  deviceRegistered = true;
+                  isActive = data.is_active || false;
+                  if (data.sim_number) {
+                    simDisplay = escapeHtml(data.sim_number);
+                    settings.smsGateway.connectedNumber = data.sim_number;
+                  }
+                  if (data.last_poll_at) {
+                    var lastPoll = new Date(data.last_poll_at);
+                    var now = new Date();
+                    var diff = (now - lastPoll) / 1000;
+                    lastPollDisplay = lastPoll.toLocaleString();
+                    if (diff < 300) {
+                      connStatus = "Connected";
+                      connClass = "active";
+                    } else if (diff < 3600) {
+                      connStatus = "Disconnected (" + Math.floor(diff / 60) + "m ago)";
+                    }
                   }
                 }
-              }
-            } catch(e) { console.error("Device fetch error", e); }
-            var regStatus = deviceRegistered
-              ? '<span style="color:#4CAF50;">&#10003; Registered</span>'
-              : '<span style="color:#999;">Not Registered</span>';
-            statusCard.innerHTML = `
-              <p><span class="status-pill ${connClass}">${connStatus}</span> | Device: ${regStatus}</p>
-              <p><strong>Agent:</strong> SagarSoft SMS Agent</p>
-              <p><strong>SIM Number:</strong> ${simDisplay}</p>
-              <p><strong>Last Poll:</strong> ${lastPollDisplay}</p>
-            `;
-          })();
+                var regStatus = deviceRegistered
+                  ? '<span style="color:#4CAF50;">&#10003; Registered</span>'
+                  : '<span style="color:#999;">Not Registered</span>';
+                statusCard.innerHTML =
+                  '<p><span class="status-pill ' + connClass + '">' + connStatus + '</span> | Device: ' + regStatus + '</p>' +
+                  '<p><strong>Agent:</strong> SagarSoft SMS Agent</p>' +
+                  '<p><strong>SIM Number:</strong> ' + simDisplay + '</p>' +
+                  '<p><strong>Last Poll:</strong> ' + lastPollDisplay + '</p>';
+              })
+              .catch(function() {
+                statusCard.innerHTML =
+                  '<p><span class="status-pill inactive">Disconnected</span></p>' +
+                  '<p><strong>Agent:</strong> SagarSoft SMS Agent</p>' +
+                  '<p><strong>SIM Number:</strong> ' + simDisplay + '</p>' +
+                  '<p><strong>Status:</strong> Server unreachable</p>';
+              });
+          }
           return;
         }
 
-        statusCard.innerHTML = `
-          <p><span class="status-pill ${agentReady ? "active" : "inactive"}">${agentReady ? "Connected" : "Not Configured"}</span></p>
-          <p><strong>Agent:</strong> SagarSoft SMS Agent</p>
-          <p><strong>SIM Number:</strong> ${simDisplay}</p>
-          <p><strong>Status:</strong> Setup Supabase in General Settings first</p>
-        `;
+        statusCard.innerHTML = '<p><span class="status-pill ' + (agentReady ? "active" : "inactive") + '">' + (agentReady ? "Connected" : "Not Configured") + '</span></p><p><strong>Agent:</strong> SagarSoft SMS Agent</p><p><strong>SIM Number:</strong> ' + simDisplay + '</p><p><strong>Status:</strong> Setup Supabase in General Settings first</p>';
       }
 
       function renderOutbox() {
