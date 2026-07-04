@@ -6458,9 +6458,10 @@ body[data-theme="dark"] .calendar-event-legend__item { color: #8b949e; }
 
 /* ===== DASHBOARD NOTICE BOARD - CORK BOARD STYLE ===== */
 .dashboard-notice-board-card {
-  border-top: 3px solid #102542;
-  background: linear-gradient(145deg, #faf8f5 0%, #f5f0e8 100%);
+  border-top: 4px solid #e65100;
+  background: linear-gradient(145deg, #fff8f0 0%, #ffecd2 50%, #ffe0b2 100%);
   position: relative;
+  box-shadow: 0 2px 12px rgba(230,81,0,0.10);
 }
 .dashboard-notice-board-card::before {
   content: "";
@@ -6471,10 +6472,11 @@ body[data-theme="dark"] .calendar-event-legend__item { color: #8b949e; }
   border-radius: inherit;
   z-index: 0;
 }
-.dashboard-notice-board-card .panel-card__header { position: relative; z-index: 1; }
-.dashboard-notice-board-card .panel-card__header .panel-label { color: #8b6914; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-.dashboard-notice-board-card .panel-card__header h3 { color: #102542; }
+.dashboard-notice-board-card .panel-card__header { position: relative; z-index: 1; border-bottom: 2px solid rgba(230,81,0,0.12); }
+.dashboard-notice-board-card .panel-card__header .panel-label { color: #e65100; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem; }
+.dashboard-notice-board-card .panel-card__header h3 { color: #bf360c; font-size: 1rem; }
 .dashboard-notice-board-card .dashboard-mini-card__body { position: relative; z-index: 1; }
+.dashboard-notice-board-card .dashboard-mini-card__viewall { background: #e65100 !important; color: #fff !important; border: none !important; }
 
 .dash-notice {
   display: flex;
@@ -6525,9 +6527,14 @@ body[data-theme="dark"] .calendar-event-legend__item { color: #8b949e; }
 
 /* ===== DASHBOARD EVENT CALENDAR - PROFESSIONAL ===== */
 .dashboard-event-calendar-card {
-  border-top: 3px solid #1976d2;
+  border-top: 4px solid #1565c0;
+  background: linear-gradient(145deg, #f0f7ff 0%, #e3f2fd 50%, #bbdefb 100%);
+  box-shadow: 0 2px 12px rgba(21,101,192,0.10);
 }
-.dashboard-event-calendar-card .panel-card__header .panel-label { color: #1976d2; font-weight: 700; }
+.dashboard-event-calendar-card .panel-card__header { border-bottom: 2px solid rgba(21,101,192,0.12); }
+.dashboard-event-calendar-card .panel-card__header .panel-label { color: #1565c0; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; font-size: 0.72rem; }
+.dashboard-event-calendar-card .panel-card__header h3 { color: #0d47a1; font-size: 1rem; }
+.dashboard-event-calendar-card .dashboard-mini-card__viewall { background: #1565c0 !important; color: #fff !important; border: none !important; }
 
 .dash-cal { margin-bottom: 0.8rem; }
 .dash-cal__header {
@@ -6639,21 +6646,30 @@ body[data-theme="dark"] .calendar-event-legend__item { color: #8b949e; }
 .dash-empty i { font-size: 1.5rem; display: block; margin-bottom: 0.5rem; opacity: 0.4; }
 
 /* ===== DARK MODE OVERRIDES ===== */
-body[data-theme="dark"] .dashboard-notice-board-card { background: linear-gradient(145deg, #161b22 0%, #1a1f27 100%); border-top-color: #d4a817; }
-body[data-theme="dark"] .dashboard-notice-board-card::before { opacity: 0.1; }
-body[data-theme="dark"] .dashboard-notice-board-card .panel-card__header .panel-label { color: #d4a817; }
-body[data-theme="dark"] .dash-notice { background: rgba(212,168,23,0.06); border-left-color: #d4a817; }
+body[data-theme="dark"] .dashboard-notice-board-card { background: linear-gradient(145deg, #1a1208 0%, #2a1a0a 100%); border-top-color: #ff9100; box-shadow: 0 2px 12px rgba(255,145,0,0.08); }
+body[data-theme="dark"] .dashboard-notice-board-card::before { opacity: 0.08; }
+body[data-theme="dark"] .dashboard-notice-board-card .panel-card__header { border-bottom-color: rgba(255,145,0,0.15); }
+body[data-theme="dark"] .dashboard-notice-board-card .panel-card__header .panel-label { color: #ff9100; }
+body[data-theme="dark"] .dashboard-notice-board-card .panel-card__header h3 { color: #ffcc80; }
+body[data-theme="dark"] .dashboard-notice-board-card .dashboard-mini-card__viewall { background: #ff6d00 !important; }
+body[data-theme="dark"] .dash-notice { background: rgba(255,145,0,0.06); border-left-color: #ff9100; }
 body[data-theme="dark"] .dash-notice::before { background: #c62828; }
-body[data-theme="dark"] .dash-notice__title { color: #e6edf3; }
-body[data-theme="dark"] .dash-notice__meta { color: #8b949e; }
-body[data-theme="dark"] .dashboard-event-calendar-card .panel-card__header .panel-label { color: #58a6ff; }
-body[data-theme="dark"] .dash-cal__header { color: #e6edf3; }
-body[data-theme="dark"] .dash-cal__dayname { color: #8b949e; }
-body[data-theme="dark"] .dash-cal__cell { color: #c9d1d9; }
-body[data-theme="dark"] .dash-cal__cell--today { background: #58a6ff; color: #0d1117; }
-body[data-theme="dark"] .dash-events-upcoming__date { color: #8b949e; }
-body[data-theme="dark"] .dash-events-upcoming__title { color: #e6edf3; }
-body[data-theme="dark"] .dash-events-upcoming { border-top-color: rgba(255,255,255,0.06); }
+body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #42a5f5; }
+body[data-theme="dark"] .dash-notice:nth-child(3n)::before { background: #66bb6a; }
+body[data-theme="dark"] .dash-notice__title { color: #ffe0b2; }
+body[data-theme="dark"] .dash-notice__meta { color: #a1887f; }
+body[data-theme="dark"] .dashboard-event-calendar-card { background: linear-gradient(145deg, #0a1628 0%, #0d2137 100%); border-top-color: #42a5f5; box-shadow: 0 2px 12px rgba(66,165,245,0.08); }
+body[data-theme="dark"] .dashboard-event-calendar-card .panel-card__header { border-bottom-color: rgba(66,165,245,0.15); }
+body[data-theme="dark"] .dashboard-event-calendar-card .panel-card__header .panel-label { color: #42a5f5; }
+body[data-theme="dark"] .dashboard-event-calendar-card .panel-card__header h3 { color: #bbdefb; }
+body[data-theme="dark"] .dashboard-event-calendar-card .dashboard-mini-card__viewall { background: #1976d2 !important; }
+body[data-theme="dark"] .dash-cal__header { color: #bbdefb; }
+body[data-theme="dark"] .dash-cal__dayname { color: #64b5f6; }
+body[data-theme="dark"] .dash-cal__cell { color: #90caf9; }
+body[data-theme="dark"] .dash-cal__cell--today { background: #42a5f5; color: #0d1117; }
+body[data-theme="dark"] .dash-events-upcoming__date { color: #64b5f6; }
+body[data-theme="dark"] .dash-events-upcoming__title { color: #e3f2fd; }
+body[data-theme="dark"] .dash-events-upcoming { border-top-color: rgba(66,165,245,0.12); }
 body[data-theme="dark"] .dash-empty { color: #8b949e; }
 body[data-theme="dark"] .dashboard-mini-card .panel-card__header { border-bottom-color: rgba(255,255,255,0.06); }
 body[data-theme="dark"] .notice-card__pushed-badge { background: rgba(255,255,255,0.1); color: #e6edf3; }
