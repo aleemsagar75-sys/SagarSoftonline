@@ -18477,7 +18477,7 @@ ${allContent}
               if (setupResult.success) {
                 cfg.tablesCreated = true;
                 saveDatabase();
-                renderConnectionStatus();
+
               }
             } catch (_e) {}
           }
@@ -18503,7 +18503,6 @@ ${allContent}
             if (setupResult2.success) {
               database.generalSettings.supabaseConfig.tablesCreated = true;
               saveDatabase();
-              renderConnectionStatus();
             }
           }
         } catch (_e) {}
@@ -18559,7 +18558,6 @@ ${allContent}
                   <th>Recipient</th>
                   <th>Phone</th>
                   <th>Status</th>
-                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="smsOutboxBody"></tbody>
@@ -18581,10 +18579,6 @@ ${allContent}
             </ol>
           </div>
         </article>
-        <article>
-          <strong>Connection Status</strong>
-          <div id="smsConnectionStatusCard" class="module-preview-card"></div>
-        </article>
       `;
 
       const connectMessage = document.getElementById("smsConnectMessage");
@@ -18598,7 +18592,6 @@ ${allContent}
       const smsOutboxCategoryFilter = document.getElementById("smsOutboxCategoryFilter");
       const smsOutboxTypeFilter = document.getElementById("smsOutboxTypeFilter");
       const clearSmsHistoryBtn = document.getElementById("clearSmsHistoryBtn");
-      const statusCard = document.getElementById("smsConnectionStatusCard");
       let selectedRecipient = null;
 
       function normalizePhoneNumber(value) {
@@ -18720,67 +18713,6 @@ ${allContent}
         recipientSuggestions.hidden = records.length === 0;
       }
 
-      function renderConnectionStatus() {
-        var cfg = getSupabaseConfig();
-        var agentReady = cfg && cfg.url && cfg.anonKey && cfg.tablesCreated ? true : false;
-        var simDisplay = escapeHtml(settings.smsGateway.connectedNumber || "-");
-        var lastPollDisplay = "-";
-        var connStatus = "Disconnected";
-        var connClass = "inactive";
-        var deviceRegistered = false;
-        var isActive = false;
-
-        var userSchoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || "";
-        if (userSchoolId) {
-          var apiBase = "https://sagarsoftonline.onrender.com";
-          if (apiBase) {
-            fetch(apiBase + "/api/sms/device-status?school_id=" + encodeURIComponent(userSchoolId))
-              .then(function(r) { return r.json(); })
-              .then(function(result) {
-                var data = result && result.device ? result.device : null;
-                if (data) {
-                  deviceRegistered = true;
-                  isActive = data.is_active || false;
-                  if (data.sim_number) {
-                    simDisplay = escapeHtml(data.sim_number);
-                    settings.smsGateway.connectedNumber = data.sim_number;
-                  }
-                  if (data.last_poll_at) {
-                    var lastPoll = new Date(data.last_poll_at);
-                    var now = new Date();
-                    var diff = (now - lastPoll) / 1000;
-                    lastPollDisplay = lastPoll.toLocaleString();
-                    if (diff < 300) {
-                      connStatus = "Connected";
-                      connClass = "active";
-                    } else if (diff < 3600) {
-                      connStatus = "Disconnected (" + Math.floor(diff / 60) + "m ago)";
-                    }
-                  }
-                }
-                var regStatus = deviceRegistered
-                  ? '<span style="color:#4CAF50;">&#10003; Registered</span>'
-                  : '<span style="color:#999;">Not Registered</span>';
-                statusCard.innerHTML =
-                  '<p><span class="status-pill ' + connClass + '">' + connStatus + '</span> | Device: ' + regStatus + '</p>' +
-                  '<p><strong>Agent:</strong> SagarSoft SMS Agent</p>' +
-                  '<p><strong>SIM Number:</strong> ' + simDisplay + '</p>' +
-                  '<p><strong>Last Poll:</strong> ' + lastPollDisplay + '</p>';
-              })
-              .catch(function() {
-                statusCard.innerHTML =
-                  '<p><span class="status-pill inactive">Disconnected</span></p>' +
-                  '<p><strong>Agent:</strong> SagarSoft SMS Agent</p>' +
-                  '<p><strong>SIM Number:</strong> ' + simDisplay + '</p>' +
-                  '<p><strong>Status:</strong> Server unreachable</p>';
-              });
-          }
-          return;
-        }
-
-        statusCard.innerHTML = '<p><span class="status-pill ' + (agentReady ? "active" : "inactive") + '">' + (agentReady ? "Connected" : "Not Configured") + '</span></p><p><strong>Agent:</strong> SagarSoft SMS Agent</p><p><strong>SIM Number:</strong> ' + simDisplay + '</p><p><strong>Status:</strong> Setup Supabase in General Settings first</p>';
-      }
-
       function renderOutbox() {
         const selectedCategory = smsOutboxCategoryFilter.value;
         const selectedType = smsOutboxTypeFilter.value;
@@ -18805,9 +18737,6 @@ ${allContent}
               <td>${escapeHtml(entry.recipientName || "-")}</td>
               <td>${escapeHtml(entry.recipientPhone || "-")}</td>
               <td><span class="status-pill ${statusClass}">${escapeHtml(entry.status || "pending")}</span></td>
-              <td>${entry.status === "failed" && !String(entry.source || "").toLowerCase().includes("whatsapp")
-                ? `<button class="table-action-btn" type="button" data-sms-retry-id="${escapeAttr(entry.id || "")}">Retry</button>`
-                : "-"}</td>
             </tr>
           `;
         }).join("");
@@ -18879,49 +18808,6 @@ ${allContent}
         }
       });
 
-      outboxBody.addEventListener("click", async function (event) {
-        const retryButton = event.target.closest("[data-sms-retry-id]");
-        if (!retryButton) {
-          return;
-        }
-        const entryId = retryButton.getAttribute("data-sms-retry-id");
-        const entry = (settings.smsOutbox || []).find(function (row) {
-          return row.id === entryId;
-        }) || null;
-        if (!entry) {
-          setSendMessage("Failed message not found for retry.", "error");
-          return;
-        }
-        retryButton.disabled = true;
-        setSendMessage("Retrying message via SagarSoft SMS Agent...", "");
-        try {
-          var retryResult = await sendSmsViaQueue({
-            recipientName: entry.recipientName || "-",
-            recipientPhone: entry.recipientPhone || "",
-            message: entry.message || "",
-            source: entry.source || "Retry",
-            recipientType: entry.recipientType || "student",
-            campaignType: entry.campaignType || "manual"
-          });
-          entry.status = retryResult.success ? "queued" : "failed";
-          entry.retriedAt = new Date().toLocaleString();
-          saveDatabase();
-          renderOutbox();
-          var retryMessage = retryResult.success ? "Message queued for retry." : "Retry failed.";
-          setSendMessage(retryMessage, retryResult.success ? "success" : "error");
-          openAppMessageBox(retryResult.success ? "Success" : "Error", retryMessage, retryResult.success ? "success" : "error");
-        } catch (error) {
-          entry.status = "failed";
-          entry.retriedAt = new Date().toLocaleString();
-          saveDatabase();
-          renderOutbox();
-          setSendMessage("Retry failed due to unexpected error.", "error");
-          openAppMessageBox("Error", "Retry failed due to unexpected error.", "error");
-        } finally {
-          retryButton.disabled = false;
-        }
-      });
-
       [smsOutboxCategoryFilter, smsOutboxTypeFilter].forEach(function (input) {
         input.addEventListener("change", renderOutbox);
       });
@@ -18932,7 +18818,6 @@ ${allContent}
         setSendMessage("SMS history cleared.", "success");
       });
 
-      renderConnectionStatus();
       renderOutbox();
       return;
     }
