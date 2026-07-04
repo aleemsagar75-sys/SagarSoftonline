@@ -1,5 +1,6 @@
 (function () {
   var CACHE_KEY = "ss_db_cache";
+  var STORAGE_KEY = "ss_db_local";
   var cachedDatabase = null;
   var config = { apiBaseUrl: "", schoolId: "", apiKey: "" };
 
@@ -16,16 +17,37 @@
     }
   }
 
-  try {
-    var cached = sessionStorage.getItem(CACHE_KEY);
-    if (cached) {
-      var parsed = JSON.parse(cached);
-      if (parsed && parsed.school) {
-        cachedDatabase = parsed;
-        updateConfigFromDatabase(parsed);
+  function loadFromLocalStorage() {
+    try {
+      var local = localStorage.getItem(STORAGE_KEY);
+      if (local) {
+        var parsed = JSON.parse(local);
+        if (parsed && parsed.school) {
+          cachedDatabase = parsed;
+          updateConfigFromDatabase(parsed);
+          return true;
+        }
       }
-    }
-  } catch (_e) {}
+    } catch (_e) {}
+    return false;
+  }
+
+  function loadFromSessionStorage() {
+    try {
+      var cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        var parsed = JSON.parse(cached);
+        if (parsed && parsed.school) {
+          cachedDatabase = parsed;
+          updateConfigFromDatabase(parsed);
+          return true;
+        }
+      }
+    } catch (_e) {}
+    return false;
+  }
+
+  loadFromLocalStorage() || loadFromSessionStorage();
 
   function headers() {
     var h = { "Content-Type": "application/json" };
@@ -154,120 +176,11 @@
         role: "superadmin",
         phone: "+91 90000 00000",
         active: true
-      },
-      {
-        id: "USR-ADMIN-DEMO",
-        name: "School Admin",
-        email: "admin@sagarsoft.com",
-        password: "admin123",
-        role: "admin",
-        phone: "+92 300 0000000",
-        active: true
-      },
-      {
-        id: "USR-TEACHER-DEMO",
-        name: "Demo Teacher",
-        email: "teacher@sagarsoft.com",
-        password: "teacher123",
-        role: "teacher",
-        phone: "+92 300 0000001",
-        active: true
-      },
-      {
-        id: "USR-STUDENT-DEMO",
-        name: "Demo Student",
-        email: "student@sagarsoft.com",
-        password: "student123",
-        role: "student",
-        phone: "+92 300 0000002",
-        active: true
-      },
-      {
-        id: "USR-PARENT-DEMO",
-        name: "Demo Parent",
-        email: "parent@sagarsoft.com",
-        password: "parent123",
-        role: "parent",
-        phone: "+92 300 0000003",
-        active: true
       }
     ],
-    students: [
-      {
-        id: "STU-DEMO-001",
-        admissionNo: "STD1001",
-        name: "Ali Raza",
-        picture: "",
-        dateOfAdmission: "2026-01-15",
-        className: "Class 5 | A",
-        discountInFee: "",
-        section: "A",
-        dateOfBirth: "2014-05-20",
-        gender: "male",
-        bloodGroup: "B+",
-        diseaseInfo: "",
-        birthId: "BIRTH-1001",
-        previousSchool: "Bright Future School",
-        previousId: "",
-        orphanStatus: "No",
-        religion: "Islam",
-        address: "123 Main Street, Lahore",
-        phone: "+92 300 1111111",
-        fatherName: "Ahmed Raza",
-        fatherEducation: "Graduate",
-        fatherNationalId: "35201-1234567-1",
-        fatherPhone: "+92 300 0000003",
-        fatherOccupation: "Businessman",
-        fatherIncome: "50000",
-        motherName: "Fatima Ahmed",
-        motherEducation: "Intermediate",
-        motherNationalId: "35201-7654321-2",
-        motherPhone: "+92 300 1111112",
-        motherOccupation: "Housewife",
-        status: "active"
-      },
-      {
-        id: "STU-DEMO-002",
-        admissionNo: "STD1002",
-        name: "Sara Ahmed",
-        picture: "",
-        dateOfAdmission: "2026-02-01",
-        className: "Class 3 | A",
-        discountInFee: "",
-        section: "A",
-        dateOfBirth: "2016-08-12",
-        gender: "female",
-        bloodGroup: "A+",
-        diseaseInfo: "",
-        birthId: "BIRTH-1002",
-        previousSchool: "The Educators School",
-        previousId: "",
-        orphanStatus: "No",
-        religion: "Islam",
-        address: "456 Garden Town, Lahore",
-        phone: "+92 300 2222222",
-        fatherName: "Ahmed Raza",
-        fatherEducation: "Graduate",
-        fatherNationalId: "35201-1234567-1",
-        fatherPhone: "+92 300 0000003",
-        fatherOccupation: "Businessman",
-        fatherIncome: "50000",
-        motherName: "Fatima Ahmed",
-        motherEducation: "Intermediate",
-        motherNationalId: "35201-7654321-2",
-        motherPhone: "+92 300 1111112",
-        motherOccupation: "Housewife",
-        status: "active"
-      }
-    ],
+    students: [],
     teachers: [],
-    classes: [
-      { id: "CLS-DEMO-001", name: "Class 1 | A", classTeacher: "", monthlyTuitionFees: 2000 },
-      { id: "CLS-DEMO-002", name: "Class 1 | B", classTeacher: "", monthlyTuitionFees: 2000 },
-      { id: "CLS-DEMO-003", name: "Class 3 | A", classTeacher: "", monthlyTuitionFees: 3000 },
-      { id: "CLS-DEMO-004", name: "Class 5 | A", classTeacher: "", monthlyTuitionFees: 4000 },
-      { id: "CLS-DEMO-005", name: "Class 5 | B", classTeacher: "", monthlyTuitionFees: 4000 }
-    ],
+    classes: [],
     subjects: [],
     attendance: [],
     fees: [],
@@ -469,6 +382,7 @@
     cachedDatabase = database;
     updateConfigFromDatabase(database);
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(database)); } catch (_e) {}
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(database)); } catch (_e) {}
     if (config.apiBaseUrl && config.schoolId) {
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
@@ -493,6 +407,7 @@
         cachedDatabase = db;
         updateConfigFromDatabase(db);
         try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(db)); } catch (_e) {}
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (_e) {}
         window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "online" } }));
         return db;
       }
@@ -503,6 +418,7 @@
   async function reloadDatabase() {
     cachedDatabase = null;
     try { sessionStorage.removeItem(CACHE_KEY); } catch (_e) {}
+    try { localStorage.removeItem(STORAGE_KEY); } catch (_e) {}
     return await loadDatabaseFromServer();
   }
 
@@ -530,6 +446,7 @@
   function clearCache() {
     cachedDatabase = null;
     try { sessionStorage.removeItem(CACHE_KEY); } catch (_e) {}
+    try { localStorage.removeItem(STORAGE_KEY); } catch (_e) {}
     config.schoolId = cfg.schoolId || "";
     config.apiKey = cfg.apiKey || "";
   }
