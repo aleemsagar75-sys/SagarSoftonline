@@ -381,7 +381,7 @@
     });
 
     var changed = false;
-    if (!db.__demoCleanupV2Done) {
+    if (!db.__demoCleanupV3Done) {
       changed = true;
       const demoUserEmails = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com","rohan.teacher@sagarsoft.com"]);
       db.users = (db.users || []).filter(function (user) {
@@ -390,20 +390,34 @@
         if (uid === "USR-SUPER-001") return true;
         return !demoUserEmails.has(email);
       });
-      const demoTeacherIds = new Set(["TCH-001","TCH-002"]);
-      db.teachers = (db.teachers || []).filter(function (t) { return !demoTeacherIds.has(String((t && t.id) || "")); });
-      const demoStudentIds = new Set(["STU-001","STU-002","STU-003"]);
-      db.students = (db.students || []).filter(function (s) { return !demoStudentIds.has(String((s && s.id) || "")); });
-      const demoClassIds = new Set(["CLS-001","CLS-002","CLS-003"]);
-      db.classes = (db.classes || []).filter(function (c) { return !demoClassIds.has(String((c && c.id) || "")); });
-      const demoSubjectIds = new Set(["SUB-001","SUB-002","SUB-003"]);
-      db.subjects = (db.subjects || []).filter(function (s) { return !demoSubjectIds.has(String((s && s.id) || "")); });
-      db.attendance = Array.isArray(db.attendance) ? db.attendance.filter(function (item) { return !/^ATT-00[1-3]$/i.test(String((item && item.id) || "")); }) : [];
-      db.fees = Array.isArray(db.fees) ? db.fees.filter(function (item) { return !/^FEE-00[1-3]$/i.test(String((item && item.id) || "")); }) : [];
+      db.teachers = (db.teachers || []).filter(function (t) {
+        var tid = String((t && t.id) || "");
+        return tid.indexOf("DEMO") === -1 && tid.indexOf("TCH-00") !== 0;
+      });
+      db.students = (db.students || []).filter(function (s) {
+        var sid = String((s && s.id) || "");
+        return sid.indexOf("DEMO") === -1 && !/^STU-00[0-9]/.test(sid);
+      });
+      db.classes = (db.classes || []).filter(function (c) {
+        var cid = String((c && c.id) || "");
+        return cid.indexOf("DEMO") === -1 && !/^CLS-00[0-9]/.test(cid);
+      });
+      db.subjects = (db.subjects || []).filter(function (s) {
+        var sid = String((s && s.id) || "");
+        return sid.indexOf("DEMO") === -1 && !/^SUB-00[0-9]/.test(sid);
+      });
+      db.attendance = Array.isArray(db.attendance) ? db.attendance.filter(function (item) {
+        var aid = String((item && item.id) || "");
+        return aid.indexOf("DEMO") === -1 && !/^ATT-00[0-9]/.test(aid);
+      }) : [];
+      db.fees = Array.isArray(db.fees) ? db.fees.filter(function (item) {
+        var fid = String((item && item.id) || "");
+        return fid.indexOf("DEMO") === -1 && !/^FEE-00[0-9]/.test(fid);
+      }) : [];
       db.activityLogs = Array.isArray(db.activityLogs) ? db.activityLogs.filter(function (entry) {
         return String((entry && entry.title) || "").toLowerCase() !== "system initialized";
       }) : [];
-      db.__demoCleanupV2Done = true;
+      db.__demoCleanupV3Done = true;
     }
 
     return db;
