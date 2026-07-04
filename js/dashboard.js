@@ -21365,71 +21365,73 @@ ${allContent}
   }
 
   async function sendAdmissionConfirmationMessage() {
-    if (!selectedAdmissionStudentId) {
-      return;
-    }
-    const student = database.students.find(function (item) { return item.id === selectedAdmissionStudentId; }) || null;
-    if (!student) {
-      return;
-    }
-    const normalizedStudent = normalizeStudentForPrint(student);
-    const recipientPhone = normalizeSmsPhone(
-      normalizedStudent.phone ||
-      normalizedStudent.fatherPhone ||
-      normalizedStudent.studentPhone ||
-      ""
-    );
-    if (!recipientPhone) {
-      alert("Student phone number not found.");
-      return;
-    }
-    const channelSelect = document.getElementById("admissionMessageChannelSelect");
-    const channel = channelSelect ? channelSelect.value : await chooseCommunicationChannel("Admission Confirmation");
-    if (!channel) {
-      return;
-    }
-    const templateText = getSavedMessageTemplate("admissionLetter", getDefaultAdmissionLetterTemplate());
-    const loginInfo = getStudentLoginInfo(student);
-    const messageText = interpolateTemplate(templateText, {
-      prefix: getGenderPrefix(normalizedStudent.gender),
-      name: normalizedStudent.name || "-",
-      roll: normalizedStudent.admissionNo || "-",
-      class: normalizedStudent.className || "-",
-      section: normalizedStudent.section || "-",
-      admissionDate: normalizedStudent.dateOfAdmission || "-",
-      username: loginInfo.username || "-",
-      password: loginInfo.password || "-",
-      school: database.school.name || "School"
-    });
-    if (channel === "sms") {
-      const result = await sendSmsSmart({
+    try {
+      if (!selectedAdmissionStudentId) {
+        openAppMessageBox("Error", "No student selected. Please select a student first.", "error");
+        return;
+      }
+      const student = database.students.find(function (item) { return item.id === selectedAdmissionStudentId; }) || null;
+      if (!student) {
+        openAppMessageBox("Error", "Student not found in database.", "error");
+        return;
+      }
+      const normalizedStudent = normalizeStudentForPrint(student);
+      const rawPhone = normalizedStudent.phone || normalizedStudent.fatherPhone || "";
+      const recipientPhone = normalizeSmsPhone(rawPhone);
+      if (!recipientPhone) {
+        openAppMessageBox("Error", "Student phone number not found. Please add a phone number to this student first.", "error");
+        return;
+      }
+      const channelSelect = document.getElementById("admissionMessageChannelSelect");
+      const channel = channelSelect ? channelSelect.value : await chooseCommunicationChannel("Admission Confirmation");
+      if (!channel) {
+        return;
+      }
+      const templateText = getSavedMessageTemplate("admissionLetter", getDefaultAdmissionLetterTemplate());
+      const loginInfo = getStudentLoginInfo(student);
+      const messageText = interpolateTemplate(templateText, {
+        prefix: getGenderPrefix(normalizedStudent.gender),
+        name: normalizedStudent.name || "-",
+        roll: normalizedStudent.admissionNo || "-",
+        class: normalizedStudent.className || "-",
+        section: normalizedStudent.section || "-",
+        admissionDate: normalizedStudent.dateOfAdmission || "-",
+        username: loginInfo.username || "-",
+        password: loginInfo.password || "-",
+        school: database.school.name || "School"
+      });
+      if (channel === "sms") {
+        const result = await sendSmsSmart({
+          recipientName: normalizedStudent.name || "-",
+          recipientPhone: recipientPhone,
+          message: messageText,
+          source: "Admission Letter SMS",
+          recipientType: "student",
+          campaignType: "admission"
+        });
+        if (!result.success) {
+          openAppMessageBox("Error", "SMS failed: " + (result.error || result.reason || "Unknown error") + ". Please check SMS Services settings and ensure the SMS Agent is running.", "error");
+          return;
+        }
+        openAppMessageBox("Success", "Admission confirmation SMS sent successfully to " + normalizedStudent.name + ".", "success");
+        return;
+      }
+      const pdfHtml = printAdmissionLetter(true);
+      const pdfResult = await saveCommunicationPdf(pdfHtml, `Admission-Letter-${normalizedStudent.name || normalizedStudent.admissionNo || "Student"}.pdf`);
+      const whatsappText = pdfResult && pdfResult.success ? `${messageText}\nPDF: ${pdfResult.filePath}` : messageText;
+      const logged = logWhatsappCommunication({
         recipientName: normalizedStudent.name || "-",
         recipientPhone: recipientPhone,
-        message: messageText,
-        source: "Admission Letter SMS",
+        message: whatsappText,
+        source: "Admission Letter WhatsApp",
         recipientType: "student",
         campaignType: "admission"
       });
-      if (!result.success) {
-        alert("Unable to send SMS. Please check SMS gateway connection.");
-        return;
+      if (logged) {
+        openAppMessageBox("Success", "Admission confirmation WhatsApp message prepared and added to history.", "success");
       }
-      alert("Admission confirmation SMS sent successfully.");
-      return;
-    }
-    const pdfHtml = printAdmissionLetter(true);
-    const pdfResult = await saveCommunicationPdf(pdfHtml, `Admission-Letter-${normalizedStudent.name || normalizedStudent.admissionNo || "Student"}.pdf`);
-    const whatsappText = pdfResult && pdfResult.success ? `${messageText}\nPDF: ${pdfResult.filePath}` : messageText;
-    const logged = logWhatsappCommunication({
-      recipientName: normalizedStudent.name || "-",
-      recipientPhone: recipientPhone,
-      message: whatsappText,
-      source: "Admission Letter WhatsApp",
-      recipientType: "student",
-      campaignType: "admission"
-    });
-    if (logged) {
-      alert("Admission confirmation WhatsApp message prepared and added to history.");
+    } catch (e) {
+      openAppMessageBox("Error", "Admission SMS failed: " + (e.message || "Unknown error"), "error");
     }
   }
 
