@@ -232,14 +232,14 @@
 
           <button class="menu-link" type="button" data-route="notice-board" data-title="Notice Board">
             <span class="menu-link__left">
-              <span class="menu-icon">15A</span>
+              <span class="menu-icon"><img src="./assets/notice board.png.png" class="menu-icon__img" alt="Notice Board"></span>
               <span class="menu-label">Notice Board</span>
             </span>
           </button>
 
           <button class="menu-link" type="button" data-route="event-calendar" data-title="Event Calendar">
             <span class="menu-link__left">
-              <span class="menu-icon">15B</span>
+              <span class="menu-icon"><img src="./assets/event calender.png.png" class="menu-icon__img" alt="Event Calendar"></span>
               <span class="menu-label">Event Calendar</span>
             </span>
           </button>
@@ -330,7 +330,7 @@
           <div class="menu-group">
             <button class="menu-group__trigger" type="button" data-accordion="sms-templates" aria-expanded="false">
               <span class="menu-link__left">
-                <span class="menu-icon">21</span>
+                <span class="menu-icon"><img src="./assets/template.png.png" class="menu-icon__img" alt="Templates"></span>
                 <span class="menu-label">Sms/Whatsapp Templates</span>
               </span>
               <span class="menu-arrow"></span>
@@ -489,9 +489,12 @@
           <section class="dashboard-grid dashboard-grid--two-col" style="margin-bottom:1rem;">
             <article class="panel-card dashboard-mini-card dashboard-notice-board-card">
               <div class="panel-card__header">
-                <div>
-                  <p class="panel-label">Notice Board</p>
-                  <h3>Recent Notices</h3>
+                <div style="display:flex;align-items:center;gap:0.6rem;">
+                  <img src="./assets/notice board.png.png" alt="" style="width:28px;height:28px;object-fit:contain;">
+                  <div>
+                    <p class="panel-label">Notice Board</p>
+                    <h3>Recent Notices</h3>
+                  </div>
                 </div>
                 <button class="secondary-button dashboard-mini-card__viewall" type="button" data-dashboard-route="notice-board">View All</button>
               </div>
@@ -499,9 +502,12 @@
             </article>
             <article class="panel-card dashboard-mini-card dashboard-event-calendar-card">
               <div class="panel-card__header">
-                <div>
-                  <p class="panel-label">Event Calendar</p>
-                  <h3>Upcoming Events</h3>
+                <div style="display:flex;align-items:center;gap:0.6rem;">
+                  <img src="./assets/event calender.png.png" alt="" style="width:28px;height:28px;object-fit:contain;">
+                  <div>
+                    <p class="panel-label">Event Calendar</p>
+                    <h3>Upcoming Events</h3>
+                  </div>
                 </div>
                 <button class="secondary-button dashboard-mini-card__viewall" type="button" data-dashboard-route="event-calendar">View All</button>
               </div>
