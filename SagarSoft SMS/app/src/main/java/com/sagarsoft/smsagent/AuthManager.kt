@@ -103,7 +103,9 @@ class AuthManager(context: Context) {
                 addProperty("last_poll_at", java.time.Instant.now().toString())
             }
             api.update("devices?device_id=eq.$deviceId", body)
-        } catch (_: Exception) { }
+        } catch (e: Exception) {
+            android.util.Log.w("AuthManager", "updateDevicePoll failed: ${e.message}")
+        }
     }
 
     fun logout() {
