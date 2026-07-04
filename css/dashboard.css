@@ -6590,11 +6590,15 @@ body[data-theme="dark"] .calendar-event-legend__item { color: #8b949e; }
 .dash-notice__dot--urgent { background: #d32f2f; }
 .dash-notice__content { flex: 1; min-width: 0; }
 .dash-notice__title {
-  font-size: 0.8rem; font-weight: 700; color: #102542; margin: 0;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-size: 0.9rem; font-weight: 700; color: #102542; margin: 0;
+  white-space: normal;
 }
 .dash-notice__meta {
-  font-size: 0.68rem; color: #6c7a89; margin: 2px 0 0;
+  font-size: 0.72rem; color: #6c7a89; margin: 3px 0 0;
+}
+.dash-notice__content {
+  font-size: 0.78rem; color: #546e7a; margin: 2px 0 0; line-height: 1.4;
+  white-space: normal;
 }
 
 /* ===== DASHBOARD EVENT CALENDAR - PROFESSIONAL ===== */
