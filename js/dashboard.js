@@ -932,7 +932,9 @@ document.addEventListener("DOMContentLoaded", function () {
     "customised-reports": "Customised Reports",
     "generate-certificate": "Generate Certificate",
     "certificate-templates": "Certificate Templates",
-    "sms-templates": "Sms/Whatsapp Templates"
+    "sms-templates": "Sms/Whatsapp Templates",
+    "notice-board": "Notice Board",
+    "event-calendar": "Event Calendar"
   };
 
   let database = window.SagarSoftDB.getDatabase();
@@ -4847,7 +4849,9 @@ document.addEventListener("DOMContentLoaded", function () {
       "test-result",
       "generate-certificate",
       "certificate-templates",
-      "sms-templates"
+      "sms-templates",
+      "notice-board",
+      "event-calendar"
     ];
     const examModuleRoutes = [
       "create-new-exam",
@@ -14737,8 +14741,237 @@ ${allContent}
              return;
            }
          });
-         return;
+      return;
+    }
+
+      if (route === "add-income" || route === "add-expense") {
+
+      var noticeHtml = '<article><strong class="module-center-title">Notice Board</strong>';
+      noticeHtml += '<div class="form-grid" style="margin-bottom:1.5rem;">';
+      noticeHtml += '<div class="field-group"><label>Title *</label><input type="text" id="noticeTitle" placeholder="Notice title"></div>';
+      noticeHtml += '<div class="field-group"><label>Priority</label><select id="noticePriority"><option value="normal">Normal</option><option value="important">Important</option><option value="urgent">Urgent</option></select></div>';
+      noticeHtml += '<div class="field-group"><label>Target Audience</label><select id="noticeTarget"><option value="all">All</option><option value="students">Students</option><option value="teachers">Teachers</option><option value="parents">Parents</option></select></div>';
+      noticeHtml += '<div class="field-group"><label>Expiry Date</label><input type="date" id="noticeExpiry"></div>';
+      noticeHtml += '</div>';
+      noticeHtml += '<div class="field-group" style="margin-bottom:1rem;"><label>Notice Content *</label><textarea id="noticeContent" rows="4" placeholder="Write notice content here..."></textarea></div>';
+      noticeHtml += '<div class="form-actions" style="margin-bottom:2rem;"><button class="primary-button" id="saveNoticeBtn" type="button">Publish Notice</button></div>';
+      noticeHtml += '<div id="noticeBoardGrid" class="notice-board-grid">';
+      if (notices.length === 0) {
+        noticeHtml += '<p class="empty-state">No notices published yet.</p>';
+      } else {
+        for (var ni = notices.length - 1; ni >= 0; ni--) {
+          var n = notices[ni];
+          var priorityClass = "notice-card--" + (n.priority || "normal");
+          var targetLabel = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
+          noticeHtml += '<div class="notice-card ' + priorityClass + '" data-notice-id="' + escapeAttr(n.id) + '">';
+          noticeHtml += '<div class="notice-card__header"><h4 class="notice-card__title">' + escapeHtml(n.title) + '</h4>';
+          noticeHtml += '<span class="notice-card__date">' + escapeHtml(n.createdAt || "") + '</span></div>';
+          noticeHtml += '<span class="notice-card__target">' + escapeHtml(targetLabel) + '</span>';
+          noticeHtml += '<p class="notice-card__content">' + escapeHtml(n.content) + '</p>';
+          if (n.expiryDate) { noticeHtml += '<p style="font-size:0.72rem;color:#999;margin:0;">Expires: ' + escapeHtml(n.expiryDate) + '</p>'; }
+          noticeHtml += '<div class="notice-card__actions">';
+          noticeHtml += '<button class="table-action-btn" type="button" data-delete-notice="' + escapeAttr(n.id) + '">Delete</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-sms-notice="' + escapeAttr(n.id) + '">Send SMS</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-wa-notice="' + escapeAttr(n.id) + '">WhatsApp</button>';
+          noticeHtml += '</div></div>';
+        }
       }
+      noticeHtml += '</div></article>';
+      moduleSummary.innerHTML = noticeHtml;
+
+      document.getElementById("saveNoticeBtn").addEventListener("click", function () {
+        var title = (document.getElementById("noticeTitle").value || "").trim();
+        var content = (document.getElementById("noticeContent").value || "").trim();
+        var priority = document.getElementById("noticePriority").value;
+        var target = document.getElementById("noticeTarget").value;
+        var expiry = document.getElementById("noticeExpiry").value;
+        if (!title || !content) { openAppMessageBox("Error", "Title and content are required.", "error"); return; }
+        var notice = { id: "notice-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, content: content, priority: priority, target: target, expiryDate: expiry, createdAt: new Date().toLocaleString() };
+        notices.push(notice);
+        addActivity("Notice published", "Notice: " + title);
+        saveDatabase();
+        openAppMessageBox("Success", "Notice published successfully.", "success");
+        setRoute("notice-board");
+      });
+
+      document.getElementById("noticeBoardGrid").addEventListener("click", function (e) {
+        var delBtn = e.target.closest("[data-delete-notice]");
+        if (delBtn) {
+          var nid = delBtn.getAttribute("data-delete-notice");
+          var idx = notices.findIndex(function (x) { return x.id === nid; });
+          if (idx > -1) { notices.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
+          return;
+        }
+        var smsBtn = e.target.closest("[data-sms-notice]");
+        if (smsBtn) {
+          var nid2 = smsBtn.getAttribute("data-sms-notice");
+          var notice2 = notices.find(function (x) { return x.id === nid2; });
+          if (notice2) {
+            var students = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
+            var sentCount = 0;
+            var missingCount = 0;
+            (async function () {
+              for (var si = 0; si < students.length; si++) {
+                var st = students[si];
+                var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
+                if (!phone) { missingCount++; continue; }
+                var result = await sendSmsSmart({ recipientName: normalizeStudentForPrint(st).name, recipientPhone: phone, message: notice2.title + "\n" + notice2.content + "\n\n" + (database.school.name || "School"), source: "Notice Board SMS", recipientType: "student", campaignType: "notice" });
+                if (result.success) sentCount++;
+              }
+              openAppMessageBox("Done", "SMS sent: " + sentCount + (missingCount ? ", missing phone: " + missingCount : ""), "success");
+            })();
+          }
+          return;
+        }
+        var waBtn = e.target.closest("[data-wa-notice]");
+        if (waBtn) {
+          var nid3 = waBtn.getAttribute("data-wa-notice");
+          var notice3 = notices.find(function (x) { return x.id === nid3; });
+          if (notice3) {
+            var waText = notice3.title + "\n" + notice3.content + "\n\n" + (database.school.name || "School");
+            var waUrl = "https://wa.me/?text=" + encodeURIComponent(waText);
+            window.open(waUrl, "_blank");
+          }
+          return;
+        }
+      });
+      return;
+    }
+
+      if (route === "add-income" || route === "add-expense") {
+
+      function renderCalendar() {
+        var year = calendarDate.getFullYear();
+        var month = calendarDate.getMonth();
+        var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        var firstDay = new Date(year, month, 1).getDay();
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+        var daysInPrevMonth = new Date(year, month, 0).getDate();
+        var today = new Date();
+        var isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+        var calHtml = '<article>';
+        calHtml += '<div class="calendar-header">';
+        calHtml += '<div class="calendar-nav"><button id="calPrev" type="button"><i class="fas fa-chevron-left"></i></button></div>';
+        calHtml += '<h3>' + monthNames[month] + ' ' + year + '</h3>';
+        calHtml += '<div class="calendar-nav"><button id="calNext" type="button"><i class="fas fa-chevron-right"></i></button></div>';
+        calHtml += '</div>';
+
+        calHtml += '<div style="display:grid;grid-template-columns:1fr auto;gap:1.5rem;">';
+        calHtml += '<div>';
+        calHtml += '<div class="calendar-grid">';
+        for (var d = 0; d < 7; d++) { calHtml += '<div class="calendar-grid__day-header">' + dayNames[d] + '</div>'; }
+
+        var totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+        for (var c = 0; c < totalCells; c++) {
+          var dayNum, isOther = false, cellDate;
+          if (c < firstDay) {
+            dayNum = daysInPrevMonth - firstDay + c + 1;
+            isOther = true;
+            cellDate = new Date(year, month - 1, dayNum);
+          } else if (c >= firstDay + daysInMonth) {
+            dayNum = c - firstDay - daysInMonth + 1;
+            isOther = true;
+            cellDate = new Date(year, month + 1, dayNum);
+          } else {
+            dayNum = c - firstDay + 1;
+            cellDate = new Date(year, month, dayNum);
+          }
+          var dateStr = cellDate.getFullYear() + "-" + String(cellDate.getMonth() + 1).padStart(2, "0") + "-" + String(cellDate.getDate()).padStart(2, "0");
+          var isToday = isCurrentMonth && !isOther && cellDate.getDate() === today.getDate();
+          var isSelected = selectedCalendarDate === dateStr;
+          var cellClasses = "calendar-grid__cell";
+          if (isOther) cellClasses += " calendar-grid__cell--other-month";
+          if (isToday) cellClasses += " calendar-grid__cell--today";
+          if (isSelected) cellClasses += " calendar-grid__cell--selected";
+
+          calHtml += '<div class="' + cellClasses + '" data-date="' + dateStr + '">';
+          calHtml += '<div class="calendar-cell__date">' + dayNum + '</div>';
+          calHtml += '<div class="calendar-cell__events">';
+          for (var ei = 0; ei < events.length; ei++) {
+            var ev = events[ei];
+            if (ev.date === dateStr) {
+              var evType = ev.type || "custom";
+              calHtml += '<div class="calendar-cell__event calendar-cell__event--' + escapeAttr(evType) + '" title="' + escapeAttr(ev.title) + '">' + escapeHtml(ev.title) + '</div>';
+            }
+          }
+          calHtml += '</div></div>';
+        }
+        calHtml += '</div></div>';
+
+        calHtml += '<div style="min-width:240px;">';
+        calHtml += '<div style="padding:1rem;border:1px solid rgba(16,37,66,0.1);border-radius:10px;background:#f9fafb;">';
+        calHtml += '<h4 style="margin:0 0 0.8rem;font-size:0.95rem;color:#102542;">Add Event</h4>';
+        calHtml += '<div class="field-group" style="margin-bottom:0.6rem;"><label>Title *</label><input type="text" id="eventTitle" placeholder="Event title"></div>';
+        calHtml += '<div class="field-group" style="margin-bottom:0.6rem;"><label>Date *</label><input type="date" id="eventDate" value="' + (selectedCalendarDate || (year + "-" + String(month + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0"))) + '"></div>';
+        calHtml += '<div class="field-group" style="margin-bottom:0.6rem;"><label>Type</label><select id="eventType"><option value="holiday">Holiday</option><option value="exam">Exam</option><option value="meeting">Meeting</option><option value="activity">Activity</option><option value="custom">Custom</option></select></div>';
+        calHtml += '<div class="field-group" style="margin-bottom:0.8rem;"><label>Description</label><textarea id="eventDesc" rows="2" placeholder="Optional description"></textarea></div>';
+        calHtml += '<button class="primary-button" id="addEventBtn" type="button" style="width:100%;margin-bottom:1rem;">Add Event</button>';
+
+        if (selectedCalendarDate) {
+          var dayEvents = events.filter(function (ev) { return ev.date === selectedCalendarDate; });
+          if (dayEvents.length > 0) {
+            calHtml += '<strong style="font-size:0.82rem;color:#102542;">Events on ' + escapeHtml(selectedCalendarDate) + ':</strong>';
+            for (var de = 0; de < dayEvents.length; de++) {
+              var dev = dayEvents[de];
+              calHtml += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:6px;border:1px solid rgba(16,37,66,0.08);font-size:0.8rem;">';
+              calHtml += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+              calHtml += '<strong>' + escapeHtml(dev.title) + '</strong>';
+              calHtml += '<button class="table-action-btn" type="button" data-delete-event="' + escapeAttr(dev.id) + '" style="font-size:0.65rem;padding:2px 6px;">Delete</button>';
+              calHtml += '</div>';
+              if (dev.description) { calHtml += '<p style="margin:2px 0 0;color:#666;">' + escapeHtml(dev.description) + '</p>'; }
+              calHtml += '</div>';
+            }
+          }
+        }
+        calHtml += '</div></div></div>';
+
+        calHtml += '<div class="calendar-event-legend">';
+        var legendTypes = [{ type: "holiday", label: "Holiday", color: "#388e3c" }, { type: "exam", label: "Exam", color: "#d32f2f" }, { type: "meeting", label: "Meeting", color: "#1976d2" }, { type: "activity", label: "Activity", color: "#f9a825" }, { type: "custom", label: "Custom", color: "#757575" }];
+        for (var li = 0; li < legendTypes.length; li++) {
+          calHtml += '<div class="calendar-event-legend__item"><span class="calendar-event-legend__dot" style="background:' + legendTypes[li].color + ';"></span>' + legendTypes[li].label + '</div>';
+        }
+        calHtml += '</div></article>';
+        moduleSummary.innerHTML = calHtml;
+
+        document.getElementById("calPrev").addEventListener("click", function () { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
+        document.getElementById("calNext").addEventListener("click", function () { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
+
+        document.querySelectorAll("[data-date]").forEach(function (cell) {
+          cell.addEventListener("click", function () { selectedCalendarDate = cell.getAttribute("data-date"); renderCalendar(); });
+        });
+
+        document.querySelectorAll("[data-delete-event]").forEach(function (btn) {
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var eid = btn.getAttribute("data-delete-event");
+            var idx = events.findIndex(function (x) { return x.id === eid; });
+            if (idx > -1) { events.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+          });
+        });
+
+        var addBtn = document.getElementById("addEventBtn");
+        if (addBtn) {
+          addBtn.addEventListener("click", function () {
+            var title = (document.getElementById("eventTitle").value || "").trim();
+            var date = document.getElementById("eventDate").value;
+            var type = document.getElementById("eventType").value;
+            var desc = (document.getElementById("eventDesc").value || "").trim();
+            if (!title || !date) { openAppMessageBox("Error", "Title and date are required.", "error"); return; }
+            events.push({ id: "evt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, date: date, type: type, description: desc, createdAt: new Date().toLocaleString() });
+            addActivity("Event created", "Event: " + title + " on " + date);
+            saveDatabase();
+            openAppMessageBox("Success", "Event added successfully.", "success");
+            selectedCalendarDate = date;
+            renderCalendar();
+          });
+        }
+      }
+
+      renderCalendar();
+      return;
+    }
 
       if (route === "add-income" || route === "add-expense") {
         const isIncome = route === "add-income";
@@ -17467,6 +17700,243 @@ ${allContent}
           });
         })(tplConfigs[t]);
       }
+      return;
+    }
+
+    if (route === "notice-board") {
+      moduleSectionLabel.textContent = "Communication Module";
+      var notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
+      database.generalSettings.notices = notices;
+
+      var noticeHtml = '<article><strong class="module-center-title">Notice Board</strong>';
+      noticeHtml += '<div class="form-grid" style="margin-bottom:1.5rem;">';
+      noticeHtml += '<div class="field-group"><label>Title *</label><input type="text" id="noticeTitle" placeholder="Notice title"></div>';
+      noticeHtml += '<div class="field-group"><label>Priority</label><select id="noticePriority"><option value="normal">Normal</option><option value="important">Important</option><option value="urgent">Urgent</option></select></div>';
+      noticeHtml += '<div class="field-group"><label>Target Audience</label><select id="noticeTarget"><option value="all">All</option><option value="students">Students</option><option value="teachers">Teachers</option><option value="parents">Parents</option></select></div>';
+      noticeHtml += '<div class="field-group"><label>Expiry Date</label><input type="date" id="noticeExpiry"></div>';
+      noticeHtml += '</div>';
+      noticeHtml += '<div class="field-group" style="margin-bottom:1rem;"><label>Notice Content *</label><textarea id="noticeContent" rows="4" placeholder="Write notice content here..."></textarea></div>';
+      noticeHtml += '<div class="form-actions" style="margin-bottom:2rem;"><button class="primary-button" id="saveNoticeBtn" type="button">Publish Notice</button></div>';
+      noticeHtml += '<div id="noticeBoardGrid" class="notice-board-grid">';
+      if (notices.length === 0) {
+        noticeHtml += '<p class="empty-state">No notices published yet.</p>';
+      } else {
+        for (var ni = notices.length - 1; ni >= 0; ni--) {
+          var n = notices[ni];
+          var priorityClass = "notice-card--" + (n.priority || "normal");
+          var targetLabel = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
+          noticeHtml += '<div class="notice-card ' + priorityClass + '" data-notice-id="' + escapeAttr(n.id) + '">';
+          noticeHtml += '<div class="notice-card__header"><h4 class="notice-card__title">' + escapeHtml(n.title) + '</h4>';
+          noticeHtml += '<span class="notice-card__date">' + escapeHtml(n.createdAt || "") + '</span></div>';
+          noticeHtml += '<span class="notice-card__target">' + escapeHtml(targetLabel) + '</span>';
+          noticeHtml += '<p class="notice-card__content">' + escapeHtml(n.content) + '</p>';
+          if (n.expiryDate) { noticeHtml += '<p style="font-size:0.72rem;color:#999;margin:0;">Expires: ' + escapeHtml(n.expiryDate) + '</p>'; }
+          noticeHtml += '<div class="notice-card__actions">';
+          noticeHtml += '<button class="table-action-btn" type="button" data-delete-notice="' + escapeAttr(n.id) + '">Delete</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-sms-notice="' + escapeAttr(n.id) + '">Send SMS</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-wa-notice="' + escapeAttr(n.id) + '">WhatsApp</button>';
+          noticeHtml += '</div></div>';
+        }
+      }
+      noticeHtml += '</div></article>';
+      moduleSummary.innerHTML = noticeHtml;
+
+      document.getElementById("saveNoticeBtn").addEventListener("click", function () {
+        var title = (document.getElementById("noticeTitle").value || "").trim();
+        var content = (document.getElementById("noticeContent").value || "").trim();
+        var priority = document.getElementById("noticePriority").value;
+        var target = document.getElementById("noticeTarget").value;
+        var expiry = document.getElementById("noticeExpiry").value;
+        if (!title || !content) { openAppMessageBox("Error", "Title and content are required.", "error"); return; }
+        var notice = { id: "notice-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, content: content, priority: priority, target: target, expiryDate: expiry, createdAt: new Date().toLocaleString() };
+        notices.push(notice);
+        addActivity("Notice published", "Notice: " + title);
+        saveDatabase();
+        openAppMessageBox("Success", "Notice published successfully.", "success");
+        setRoute("notice-board");
+      });
+
+      document.getElementById("noticeBoardGrid").addEventListener("click", function (e) {
+        var delBtn = e.target.closest("[data-delete-notice]");
+        if (delBtn) {
+          var nid = delBtn.getAttribute("data-delete-notice");
+          var idx = notices.findIndex(function (x) { return x.id === nid; });
+          if (idx > -1) { notices.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
+          return;
+        }
+        var smsBtn = e.target.closest("[data-sms-notice]");
+        if (smsBtn) {
+          var nid2 = smsBtn.getAttribute("data-sms-notice");
+          var notice2 = notices.find(function (x) { return x.id === nid2; });
+          if (notice2) {
+            var students = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
+            var sentCount = 0;
+            var missingCount = 0;
+            (async function () {
+              for (var si = 0; si < students.length; si++) {
+                var st = students[si];
+                var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
+                if (!phone) { missingCount++; continue; }
+                var result = await sendSmsSmart({ recipientName: normalizeStudentForPrint(st).name, recipientPhone: phone, message: notice2.title + "\n" + notice2.content + "\n\n" + (database.school.name || "School"), source: "Notice Board SMS", recipientType: "student", campaignType: "notice" });
+                if (result.success) sentCount++;
+              }
+              openAppMessageBox("Done", "SMS sent: " + sentCount + (missingCount ? ", missing phone: " + missingCount : ""), "success");
+            })();
+          }
+          return;
+        }
+        var waBtn = e.target.closest("[data-wa-notice]");
+        if (waBtn) {
+          var nid3 = waBtn.getAttribute("data-wa-notice");
+          var notice3 = notices.find(function (x) { return x.id === nid3; });
+          if (notice3) {
+            var waText = notice3.title + "\n" + notice3.content + "\n\n" + (database.school.name || "School");
+            var waUrl = "https://wa.me/?text=" + encodeURIComponent(waText);
+            window.open(waUrl, "_blank");
+          }
+          return;
+        }
+      });
+      return;
+    }
+
+    if (route === "event-calendar") {
+      moduleSectionLabel.textContent = "Communication Module";
+      var events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
+      database.generalSettings.events = events;
+      var calendarDate = new Date();
+      var selectedCalendarDate = null;
+
+      function renderCalendar() {
+        var year = calendarDate.getFullYear();
+        var month = calendarDate.getMonth();
+        var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        var dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        var firstDay = new Date(year, month, 1).getDay();
+        var daysInMonth = new Date(year, month + 1, 0).getDate();
+        var daysInPrevMonth = new Date(year, month, 0).getDate();
+        var today = new Date();
+        var isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+
+        var calHtml = '<article>';
+        calHtml += '<div class="calendar-header">';
+        calHtml += '<div class="calendar-nav"><button id="calPrev" type="button"><i class="fas fa-chevron-left"></i></button></div>';
+        calHtml += '<h3>' + monthNames[month] + ' ' + year + '</h3>';
+        calHtml += '<div class="calendar-nav"><button id="calNext" type="button"><i class="fas fa-chevron-right"></i></button></div>';
+        calHtml += '</div>';
+
+        calHtml += '<div style="display:grid;grid-template-columns:1fr auto;gap:1.5rem;">';
+        calHtml += '<div>';
+        calHtml += '<div class="calendar-grid">';
+        for (var d = 0; d < 7; d++) { calHtml += '<div class="calendar-grid__day-header">' + dayNames[d] + '</div>'; }
+
+        var totalCells = Math.ceil((firstDay + daysInMonth) / 7) * 7;
+        for (var c = 0; c < totalCells; c++) {
+          var dayNum, isOther = false, cellDate;
+          if (c < firstDay) {
+            dayNum = daysInPrevMonth - firstDay + c + 1;
+            isOther = true;
+            cellDate = new Date(year, month - 1, dayNum);
+          } else if (c >= firstDay + daysInMonth) {
+            dayNum = c - firstDay - daysInMonth + 1;
+            isOther = true;
+            cellDate = new Date(year, month + 1, dayNum);
+          } else {
+            dayNum = c - firstDay + 1;
+            cellDate = new Date(year, month, dayNum);
+          }
+          var dateStr = cellDate.getFullYear() + "-" + String(cellDate.getMonth() + 1).padStart(2, "0") + "-" + String(cellDate.getDate()).padStart(2, "0");
+          var isToday = isCurrentMonth && !isOther && cellDate.getDate() === today.getDate();
+          var isSelected = selectedCalendarDate === dateStr;
+          var cellClasses = "calendar-grid__cell";
+          if (isOther) cellClasses += " calendar-grid__cell--other-month";
+          if (isToday) cellClasses += " calendar-grid__cell--today";
+          if (isSelected) cellClasses += " calendar-grid__cell--selected";
+
+          calHtml += '<div class="' + cellClasses + '" data-date="' + dateStr + '">';
+          calHtml += '<div class="calendar-cell__date">' + dayNum + '</div>';
+          calHtml += '<div class="calendar-cell__events">';
+          for (var ei = 0; ei < events.length; ei++) {
+            var ev = events[ei];
+            if (ev.date === dateStr) {
+              var evType = ev.type || "custom";
+              calHtml += '<div class="calendar-cell__event calendar-cell__event--' + escapeAttr(evType) + '" title="' + escapeAttr(ev.title) + '">' + escapeHtml(ev.title) + '</div>';
+            }
+          }
+          calHtml += '</div></div>';
+        }
+        calHtml += '</div></div>';
+
+        calHtml += '<div style="min-width:240px;">';
+        calHtml += '<div style="padding:1rem;border:1px solid rgba(16,37,66,0.1);border-radius:10px;background:#f9fafb;">';
+        calHtml += '<h4 style="margin:0 0 0.8rem;font-size:0.95rem;color:#102542;">Add Event</h4>';
+        calHtml += '<div class="field-group" style="margin-bottom:0.6rem;"><label>Title *</label><input type="text" id="eventTitle" placeholder="Event title"></div>';
+        calHtml += '<div class="field-group" style="margin-bottom:0.6rem;"><label>Date *</label><input type="date" id="eventDate" value="' + (selectedCalendarDate || (year + "-" + String(month + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0"))) + '"></div>';
+        calHtml += '<div class="field-group" style="margin-bottom:0.6rem;"><label>Type</label><select id="eventType"><option value="holiday">Holiday</option><option value="exam">Exam</option><option value="meeting">Meeting</option><option value="activity">Activity</option><option value="custom">Custom</option></select></div>';
+        calHtml += '<div class="field-group" style="margin-bottom:0.8rem;"><label>Description</label><textarea id="eventDesc" rows="2" placeholder="Optional description"></textarea></div>';
+        calHtml += '<button class="primary-button" id="addEventBtn" type="button" style="width:100%;margin-bottom:1rem;">Add Event</button>';
+
+        if (selectedCalendarDate) {
+          var dayEvents = events.filter(function (ev) { return ev.date === selectedCalendarDate; });
+          if (dayEvents.length > 0) {
+            calHtml += '<strong style="font-size:0.82rem;color:#102542;">Events on ' + escapeHtml(selectedCalendarDate) + ':</strong>';
+            for (var de = 0; de < dayEvents.length; de++) {
+              var dev = dayEvents[de];
+              calHtml += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:6px;border:1px solid rgba(16,37,66,0.08);font-size:0.8rem;">';
+              calHtml += '<div style="display:flex;justify-content:space-between;align-items:center;">';
+              calHtml += '<strong>' + escapeHtml(dev.title) + '</strong>';
+              calHtml += '<button class="table-action-btn" type="button" data-delete-event="' + escapeAttr(dev.id) + '" style="font-size:0.65rem;padding:2px 6px;">Delete</button>';
+              calHtml += '</div>';
+              if (dev.description) { calHtml += '<p style="margin:2px 0 0;color:#666;">' + escapeHtml(dev.description) + '</p>'; }
+              calHtml += '</div>';
+            }
+          }
+        }
+        calHtml += '</div></div></div>';
+
+        calHtml += '<div class="calendar-event-legend">';
+        var legendTypes = [{ type: "holiday", label: "Holiday", color: "#388e3c" }, { type: "exam", label: "Exam", color: "#d32f2f" }, { type: "meeting", label: "Meeting", color: "#1976d2" }, { type: "activity", label: "Activity", color: "#f9a825" }, { type: "custom", label: "Custom", color: "#757575" }];
+        for (var li = 0; li < legendTypes.length; li++) {
+          calHtml += '<div class="calendar-event-legend__item"><span class="calendar-event-legend__dot" style="background:' + legendTypes[li].color + ';"></span>' + legendTypes[li].label + '</div>';
+        }
+        calHtml += '</div></article>';
+        moduleSummary.innerHTML = calHtml;
+
+        document.getElementById("calPrev").addEventListener("click", function () { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
+        document.getElementById("calNext").addEventListener("click", function () { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
+
+        document.querySelectorAll("[data-date]").forEach(function (cell) {
+          cell.addEventListener("click", function () { selectedCalendarDate = cell.getAttribute("data-date"); renderCalendar(); });
+        });
+
+        document.querySelectorAll("[data-delete-event]").forEach(function (btn) {
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var eid = btn.getAttribute("data-delete-event");
+            var idx = events.findIndex(function (x) { return x.id === eid; });
+            if (idx > -1) { events.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+          });
+        });
+
+        var addBtn = document.getElementById("addEventBtn");
+        if (addBtn) {
+          addBtn.addEventListener("click", function () {
+            var title = (document.getElementById("eventTitle").value || "").trim();
+            var date = document.getElementById("eventDate").value;
+            var type = document.getElementById("eventType").value;
+            var desc = (document.getElementById("eventDesc").value || "").trim();
+            if (!title || !date) { openAppMessageBox("Error", "Title and date are required.", "error"); return; }
+            events.push({ id: "evt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, date: date, type: type, description: desc, createdAt: new Date().toLocaleString() });
+            addActivity("Event created", "Event: " + title + " on " + date);
+            saveDatabase();
+            openAppMessageBox("Success", "Event added successfully.", "success");
+            selectedCalendarDate = date;
+            renderCalendar();
+          });
+        }
+      }
+
+      renderCalendar();
       return;
     }
 
@@ -23214,6 +23684,28 @@ ${allContent}
   applySidebarIcons();
   normalizeStudentsDatasetInMemory();
   saveDatabase();
+
+  (function initDarkMode() {
+    var saved = localStorage.getItem("sagarsoft-theme");
+    if (saved === "dark") { document.body.setAttribute("data-theme", "dark"); }
+    var btn = document.getElementById("themeToggleBtn");
+    var icon = document.getElementById("themeToggleIcon");
+    if (btn) {
+      btn.addEventListener("click", function () {
+        var isDark = document.body.getAttribute("data-theme") === "dark";
+        if (isDark) {
+          document.body.removeAttribute("data-theme");
+          localStorage.setItem("sagarsoft-theme", "light");
+          if (icon) { icon.className = "fas fa-moon"; }
+        } else {
+          document.body.setAttribute("data-theme", "dark");
+          localStorage.setItem("sagarsoft-theme", "dark");
+          if (icon) { icon.className = "fas fa-sun"; }
+        }
+      });
+    }
+    if (icon) { icon.className = saved === "dark" ? "fas fa-sun" : "fas fa-moon"; }
+  })();
 
   (async function loadFromServerAfterInit() {
     var license = database.generalSettings && database.generalSettings.licenseSettings;
