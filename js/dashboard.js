@@ -4309,6 +4309,114 @@ document.addEventListener("DOMContentLoaded", function () {
     }).join("");
   }
 
+  function renderDashboardMiniCards() {
+    renderDashboardNotices();
+    renderDashboardEvents();
+    var viewAllBtns = document.querySelectorAll("[data-dashboard-route]");
+    viewAllBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        setRoute(btn.getAttribute("data-dashboard-route"));
+      });
+    });
+  }
+
+  function renderDashboardNotices() {
+    var el = document.getElementById("dashboardNoticeBoard");
+    if (!el) return;
+    var notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
+    var recent = notices.filter(function (n) { return n.pushed !== false; }).slice(-5).reverse();
+    if (!recent.length) {
+      el.innerHTML = '<div class="dash-empty"><i class="fas fa-bullhorn"></i>No pushed notices. Use "Push to Dashboard" from Notice Board.</div>';
+      return;
+    }
+    el.innerHTML = recent.map(function (n) {
+      var priority = n.priority || "normal";
+      var date = n.createdAt || "";
+      var smsRecipients = "all active students";
+      return '<div class="dash-notice" data-notice-id="' + escapeAttr(n.id) + '">' +
+        '<span class="dash-notice__dot dash-notice__dot--' + escapeAttr(priority) + '"></span>' +
+        '<div class="dash-notice__content">' +
+          '<p class="dash-notice__title">' + escapeHtml(n.title) + '</p>' +
+          '<p class="dash-notice__meta">' + escapeHtml(date) + ' &middot; ' + escapeHtml(priority.charAt(0).toUpperCase() + priority.slice(1)) + '</p>' +
+        '</div>' +
+        '<div class="dash-notice__actions">' +
+          '<button class="table-action-btn dash-notice__sms-btn" type="button" data-dash-sms-notice="' + escapeAttr(n.id) + '" title="Send SMS to all active students"><i class="fas fa-sms"></i> SMS</button>' +
+          '<button class="table-action-btn dash-notice__wa-btn" type="button" data-dash-wa-notice="' + escapeAttr(n.id) + '" title="Open WhatsApp for this notice"><i class="fab fa-whatsapp"></i></button>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+
+    el.querySelectorAll("[data-dash-sms-notice]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var nid = btn.getAttribute("data-dash-sms-notice");
+        var notice = notices.find(function (x) { return x.id === nid; });
+        if (!notice) return;
+        var students = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
+        var sentCount = 0, missingCount = 0;
+        (async function () {
+          for (var si = 0; si < students.length; si++) {
+            var st = students[si];
+            var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
+            if (!phone) { missingCount++; continue; }
+            var result = await sendSmsSmart({ recipientName: normalizeStudentForPrint(st).name, recipientPhone: phone, message: notice.title + "\n" + notice.content + "\n\n" + (database.school.name || "School"), source: "Notice Board SMS", recipientType: "student", campaignType: "notice" });
+            if (result.success) sentCount++;
+          }
+          openAppMessageBox("Done", "SMS sent: " + sentCount + (missingCount ? ", missing phone: " + missingCount : ""), "success");
+        })();
+      });
+    });
+
+    el.querySelectorAll("[data-dash-wa-notice]").forEach(function (btn) {
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var nid = btn.getAttribute("data-dash-wa-notice");
+        var notice = notices.find(function (x) { return x.id === nid; });
+        if (!notice) return;
+        var students = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
+        if (!students.length) { openAppMessageBox("Info", "No active students found.", "info"); return; }
+        var waText = encodeURIComponent(notice.title + "\n" + notice.content + "\n\n" + (database.school.name || "School"));
+        students.forEach(function (st) {
+          var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
+          if (phone) {
+            var cleanPhone = phone.replace(/[^0-9+]/g, "");
+            if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.substring(1);
+            window.open("https://wa.me/" + cleanPhone + "?text=" + waText, "_blank");
+          }
+        });
+        openAppMessageBox("Info", "Opening WhatsApp for " + students.length + " students. Send the message in each chat.", "info");
+      });
+    });
+  }
+
+  function renderDashboardEvents() {
+    var el = document.getElementById("dashboardEventCalendar");
+    if (!el) return;
+    var events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
+    var today = new Date();
+    var todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+    var upcoming = events.filter(function (ev) { return ev.date >= todayStr; }).sort(function (a, b) { return a.date > b.date ? 1 : a.date < b.date ? -1 : 0; }).slice(0, 5);
+    var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    if (!upcoming.length) {
+      el.innerHTML = '<div class="dash-empty"><i class="fas fa-calendar-alt"></i>No upcoming events. Add events from Event Calendar.</div>';
+      return;
+    }
+    el.innerHTML = upcoming.map(function (ev) {
+      var d = new Date(ev.date);
+      var dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
+      var type = ev.type || "custom";
+      var typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
+      return '<div class="dash-event">' +
+        '<div class="dash-event__bar dash-event__bar--' + escapeAttr(type) + '"></div>' +
+        '<div class="dash-event__content">' +
+          '<p class="dash-event__title">' + escapeHtml(ev.title) + '</p>' +
+          '<p class="dash-event__meta">' + dayName + ', ' + d.getDate() + ' ' + monthNames[d.getMonth()] + ' ' + d.getFullYear() + (ev.description ? ' &middot; ' + escapeHtml(ev.description) : '') + '</p>' +
+        '</div>' +
+        '<span class="dash-event__badge dash-event__badge--' + escapeAttr(type) + '">' + escapeHtml(typeLabel) + '</span>' +
+      '</div>';
+    }).join("");
+  }
+
   function getMonthKeyFromValue(value) {
     const raw = String(value || "").trim();
     if (!raw) {
@@ -17725,16 +17833,18 @@ ${allContent}
           var n = notices[ni];
           var priorityClass = "notice-card--" + (n.priority || "normal");
           var targetLabel = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
+          var pushedBadge = n.pushed ? '<span class="notice-card__pushed-badge">Pushed to Dashboard</span>' : '';
           noticeHtml += '<div class="notice-card ' + priorityClass + '" data-notice-id="' + escapeAttr(n.id) + '">';
           noticeHtml += '<div class="notice-card__header"><h4 class="notice-card__title">' + escapeHtml(n.title) + '</h4>';
           noticeHtml += '<span class="notice-card__date">' + escapeHtml(n.createdAt || "") + '</span></div>';
-          noticeHtml += '<span class="notice-card__target">' + escapeHtml(targetLabel) + '</span>';
+          noticeHtml += '<span class="notice-card__target">' + escapeHtml(targetLabel) + '</span> ' + pushedBadge;
           noticeHtml += '<p class="notice-card__content">' + escapeHtml(n.content) + '</p>';
           if (n.expiryDate) { noticeHtml += '<p style="font-size:0.72rem;color:#999;margin:0;">Expires: ' + escapeHtml(n.expiryDate) + '</p>'; }
           noticeHtml += '<div class="notice-card__actions">';
           noticeHtml += '<button class="table-action-btn" type="button" data-delete-notice="' + escapeAttr(n.id) + '">Delete</button>';
-          noticeHtml += '<button class="table-action-btn" type="button" data-sms-notice="' + escapeAttr(n.id) + '">Send SMS</button>';
-          noticeHtml += '<button class="table-action-btn" type="button" data-wa-notice="' + escapeAttr(n.id) + '">WhatsApp</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-push-notice="' + escapeAttr(n.id) + '">' + (n.pushed ? 'Unpush' : 'Push to Dashboard') + '</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-sms-notice="' + escapeAttr(n.id) + '"><i class="fas fa-sms"></i> SMS All</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-wa-notice="' + escapeAttr(n.id) + '"><i class="fab fa-whatsapp"></i> WhatsApp Each</button>';
           noticeHtml += '</div></div>';
         }
       }
@@ -17748,11 +17858,11 @@ ${allContent}
         var target = document.getElementById("noticeTarget").value;
         var expiry = document.getElementById("noticeExpiry").value;
         if (!title || !content) { openAppMessageBox("Error", "Title and content are required.", "error"); return; }
-        var notice = { id: "notice-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, content: content, priority: priority, target: target, expiryDate: expiry, createdAt: new Date().toLocaleString() };
+        var notice = { id: "notice-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, content: content, priority: priority, target: target, expiryDate: expiry, pushed: true, createdAt: new Date().toLocaleString() };
         notices.push(notice);
         addActivity("Notice published", "Notice: " + title);
         saveDatabase();
-        openAppMessageBox("Success", "Notice published successfully.", "success");
+        openAppMessageBox("Success", "Notice published and pushed to dashboard.", "success");
         setRoute("notice-board");
       });
 
@@ -17764,23 +17874,47 @@ ${allContent}
           if (idx > -1) { notices.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
           return;
         }
+        var pushBtn = e.target.closest("[data-push-notice]");
+        if (pushBtn) {
+          var nidP = pushBtn.getAttribute("data-push-notice");
+          var noticeP = notices.find(function (x) { return x.id === nidP; });
+          if (noticeP) {
+            noticeP.pushed = !noticeP.pushed;
+            saveDatabase();
+            openAppMessageBox("Success", noticeP.pushed ? "Notice pushed to dashboard." : "Notice removed from dashboard.", "success");
+            setRoute("notice-board");
+          }
+          return;
+        }
         var smsBtn = e.target.closest("[data-sms-notice]");
         if (smsBtn) {
           var nid2 = smsBtn.getAttribute("data-sms-notice");
           var notice2 = notices.find(function (x) { return x.id === nid2; });
           if (notice2) {
-            var students = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
-            var sentCount = 0;
-            var missingCount = 0;
-            (async function () {
-              for (var si = 0; si < students.length; si++) {
-                var st = students[si];
+            var target = notice2.target || "all";
+            var recipients = [];
+            if (target === "students" || target === "all") {
+              (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; }).forEach(function (st) {
                 var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
-                if (!phone) { missingCount++; continue; }
-                var result = await sendSmsSmart({ recipientName: normalizeStudentForPrint(st).name, recipientPhone: phone, message: notice2.title + "\n" + notice2.content + "\n\n" + (database.school.name || "School"), source: "Notice Board SMS", recipientType: "student", campaignType: "notice" });
-                if (result.success) sentCount++;
+                if (phone) recipients.push({ name: normalizeStudentForPrint(st).name, phone: phone, type: "student" });
+              });
+            }
+            if (target === "teachers" || target === "all") {
+              (database.teachers || []).filter(function (e) { return String(e.status || "").toLowerCase() === "active" || !e.status; }).forEach(function (t) {
+                var phone = normalizeSmsPhone(t.phone || "");
+                if (phone) recipients.push({ name: t.name || "Teacher", phone: phone, type: "teacher" });
+              });
+            }
+            if (!recipients.length) { openAppMessageBox("Info", "No recipients with phone numbers found.", "info"); return; }
+            var sentCount = 0, missingCount = 0;
+            openAppMessageBox("Sending SMS", "Sending SMS to " + recipients.length + " recipients...", "info");
+            (async function () {
+              for (var si = 0; si < recipients.length; si++) {
+                var r = recipients[si];
+                var result = await sendSmsSmart({ recipientName: r.name, recipientPhone: r.phone, message: notice2.title + "\n" + notice2.content + "\n\n" + (database.school.name || "School"), source: "Notice Board SMS", recipientType: r.type, campaignType: "notice" });
+                if (result.success) sentCount++; else missingCount++;
               }
-              openAppMessageBox("Done", "SMS sent: " + sentCount + (missingCount ? ", missing phone: " + missingCount : ""), "success");
+              openAppMessageBox("Done", "SMS sent: " + sentCount + "/" + recipients.length + (missingCount ? " (failed: " + missingCount + ")" : ""), "success");
             })();
           }
           return;
@@ -17790,9 +17924,28 @@ ${allContent}
           var nid3 = waBtn.getAttribute("data-wa-notice");
           var notice3 = notices.find(function (x) { return x.id === nid3; });
           if (notice3) {
-            var waText = notice3.title + "\n" + notice3.content + "\n\n" + (database.school.name || "School");
-            var waUrl = "https://wa.me/?text=" + encodeURIComponent(waText);
-            window.open(waUrl, "_blank");
+            var target3 = notice3.target || "all";
+            var waRecipients = [];
+            if (target3 === "students" || target3 === "all") {
+              (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; }).forEach(function (st) {
+                var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
+                if (phone) waRecipients.push({ name: normalizeStudentForPrint(st).name, phone: phone });
+              });
+            }
+            if (target3 === "teachers" || target3 === "all") {
+              (database.teachers || []).filter(function (e) { return String(e.status || "").toLowerCase() === "active" || !e.status; }).forEach(function (t) {
+                var phone = normalizeSmsPhone(t.phone || "");
+                if (phone) waRecipients.push({ name: t.name || "Teacher", phone: phone });
+              });
+            }
+            if (!waRecipients.length) { openAppMessageBox("Info", "No recipients with phone numbers found.", "info"); return; }
+            var waText = encodeURIComponent(notice3.title + "\n" + notice3.content + "\n\n" + (database.school.name || "School"));
+            waRecipients.forEach(function (r) {
+              var cleanPhone = r.phone.replace(/[^0-9+]/g, "");
+              if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.substring(1);
+              window.open("https://wa.me/" + cleanPhone + "?text=" + waText, "_blank");
+            });
+            openAppMessageBox("Info", "Opening WhatsApp for " + waRecipients.length + " recipients. Send the message in each chat.", "info");
           }
           return;
         }
@@ -17804,6 +17957,29 @@ ${allContent}
       moduleSectionLabel.textContent = "Communication Module";
       var events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
       database.generalSettings.events = events;
+
+      var pakHolidays = [
+        { date: "2026-02-05", title: "Kashmir Day", type: "holiday", description: "National holiday" },
+        { date: "2026-03-23", title: "Pakistan Day", type: "holiday", description: "National holiday" },
+        { date: "2026-05-01", title: "Labour Day", type: "holiday", description: "National holiday" },
+        { date: "2026-05-27", title: "Youm-e-Takbeer", type: "holiday", description: "National holiday" },
+        { date: "2026-06-05", title: "Eid-ul-Adha", type: "holiday", description: "National holiday" },
+        { date: "2026-07-05", title: "Ashura", type: "holiday", description: "National holiday" },
+        { date: "2026-08-14", title: "Independence Day", type: "holiday", description: "National holiday" },
+        { date: "2026-09-05", title: "Eid Milad-un-Nabi", type: "holiday", description: "National holiday" },
+        { date: "2026-11-09", title: "Iqbal Day", type: "holiday", description: "National holiday" },
+        { date: "2026-12-25", title: "Quaid-e-Azam Day", type: "holiday", description: "National holiday" }
+      ];
+      var holidaysChanged = false;
+      pakHolidays.forEach(function (ph) {
+        var exists = events.some(function (ev) { return ev.date === ph.date && ev.title === ph.title; });
+        if (!exists) {
+          events.push({ id: "ph-" + ph.date + "-" + Math.random().toString(36).slice(2, 6), title: ph.title, date: ph.date, type: ph.type, description: ph.description, isNational: true, createdAt: new Date().toLocaleString() });
+          holidaysChanged = true;
+        }
+      });
+      if (holidaysChanged) saveDatabase();
+
       var calendarDate = new Date();
       var selectedCalendarDate = null;
 
@@ -17882,12 +18058,17 @@ ${allContent}
             calHtml += '<strong style="font-size:0.82rem;color:#102542;">Events on ' + escapeHtml(selectedCalendarDate) + ':</strong>';
             for (var de = 0; de < dayEvents.length; de++) {
               var dev = dayEvents[de];
+              var nationalBadge = dev.isNational ? ' <span style="font-size:0.6rem;background:#388e3c;color:#fff;padding:1px 5px;border-radius:3px;">National</span>' : '';
               calHtml += '<div style="margin-top:0.5rem;padding:0.5rem;border-radius:6px;border:1px solid rgba(16,37,66,0.08);font-size:0.8rem;">';
               calHtml += '<div style="display:flex;justify-content:space-between;align-items:center;">';
-              calHtml += '<strong>' + escapeHtml(dev.title) + '</strong>';
+              calHtml += '<strong>' + escapeHtml(dev.title) + nationalBadge + '</strong>';
               calHtml += '<button class="table-action-btn" type="button" data-delete-event="' + escapeAttr(dev.id) + '" style="font-size:0.65rem;padding:2px 6px;">Delete</button>';
               calHtml += '</div>';
               if (dev.description) { calHtml += '<p style="margin:2px 0 0;color:#666;">' + escapeHtml(dev.description) + '</p>'; }
+              calHtml += '<div style="margin-top:4px;display:flex;gap:4px;">';
+              calHtml += '<button class="table-action-btn" type="button" data-sms-event="' + escapeAttr(dev.id) + '" style="font-size:0.6rem;padding:2px 6px;"><i class="fas fa-sms"></i> SMS All</button>';
+              calHtml += '<button class="table-action-btn" type="button" data-wa-event="' + escapeAttr(dev.id) + '" style="font-size:0.6rem;padding:2px 6px;"><i class="fab fa-whatsapp"></i> WhatsApp Each</button>';
+              calHtml += '</div>';
               calHtml += '</div>';
             }
           }
@@ -17915,6 +18096,51 @@ ${allContent}
             var eid = btn.getAttribute("data-delete-event");
             var idx = events.findIndex(function (x) { return x.id === eid; });
             if (idx > -1) { events.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+          });
+        });
+
+        document.querySelectorAll("[data-sms-event]").forEach(function (btn) {
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var eid = btn.getAttribute("data-sms-event");
+            var ev = events.find(function (x) { return x.id === eid; });
+            if (!ev) return;
+            var students = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
+            if (!students.length) { openAppMessageBox("Info", "No active students found.", "info"); return; }
+            var msg = ev.title + " - " + ev.date + (ev.description ? "\n" + ev.description : "") + "\n\n" + (database.school.name || "School");
+            var sentCount = 0, missingCount = 0;
+            openAppMessageBox("Sending SMS", "Sending SMS to " + students.length + " students...", "info");
+            (async function () {
+              for (var si = 0; si < students.length; si++) {
+                var st = students[si];
+                var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
+                if (!phone) { missingCount++; continue; }
+                var result = await sendSmsSmart({ recipientName: normalizeStudentForPrint(st).name, recipientPhone: phone, message: msg, source: "Event Calendar SMS", recipientType: "student", campaignType: "event" });
+                if (result.success) sentCount++;
+              }
+              openAppMessageBox("Done", "SMS sent: " + sentCount + "/" + students.length + (missingCount ? " (missing phone: " + missingCount + ")" : ""), "success");
+            })();
+          });
+        });
+
+        document.querySelectorAll("[data-wa-event]").forEach(function (btn) {
+          btn.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var eid = btn.getAttribute("data-wa-event");
+            var ev = events.find(function (x) { return x.id === eid; });
+            if (!ev) return;
+            var students = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
+            if (!students.length) { openAppMessageBox("Info", "No active students found.", "info"); return; }
+            var msg = encodeURIComponent(ev.title + " - " + ev.date + (ev.description ? "\n" + ev.description : "") + "\n\n" + (database.school.name || "School"));
+            students.forEach(function (st) {
+              var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
+              if (phone) {
+                var cleanPhone = phone.replace(/[^0-9+]/g, "");
+                if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.substring(1);
+                window.open("https://wa.me/" + cleanPhone + "?text=" + msg, "_blank");
+              }
+            });
+            openAppMessageBox("Info", "Opening WhatsApp for " + students.length + " students. Send the message in each chat.", "info");
           });
         });
 
@@ -23142,6 +23368,7 @@ ${allContent}
     renderStats();
     renderActivity();
     renderInsights();
+    renderDashboardMiniCards();
     renderDashboardAnalytics();
     refreshAttendanceOverview();
     renderDashboardTodayAttendance();
