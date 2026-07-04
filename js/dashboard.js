@@ -4326,67 +4326,21 @@ document.addEventListener("DOMContentLoaded", function () {
     var notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
     var recent = notices.filter(function (n) { return n.pushed !== false; }).slice(-5).reverse();
     if (!recent.length) {
-      el.innerHTML = '<div class="dash-empty"><i class="fas fa-bullhorn"></i>No pushed notices. Use "Push to Dashboard" from Notice Board.</div>';
+      el.innerHTML = '<div class="dash-empty"><i class="fas fa-bullhorn"></i>No pushed notices yet.</div>';
       return;
     }
     el.innerHTML = recent.map(function (n) {
       var priority = n.priority || "normal";
       var date = n.createdAt || "";
-      var smsRecipients = "all active students";
-      return '<div class="dash-notice" data-notice-id="' + escapeAttr(n.id) + '">' +
+      var target = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
+      return '<div class="dash-notice">' +
         '<span class="dash-notice__dot dash-notice__dot--' + escapeAttr(priority) + '"></span>' +
         '<div class="dash-notice__content">' +
           '<p class="dash-notice__title">' + escapeHtml(n.title) + '</p>' +
-          '<p class="dash-notice__meta">' + escapeHtml(date) + ' &middot; ' + escapeHtml(priority.charAt(0).toUpperCase() + priority.slice(1)) + '</p>' +
-        '</div>' +
-        '<div class="dash-notice__actions">' +
-          '<button class="table-action-btn dash-notice__sms-btn" type="button" data-dash-sms-notice="' + escapeAttr(n.id) + '" title="Send SMS to all active students"><i class="fas fa-sms"></i> SMS</button>' +
-          '<button class="table-action-btn dash-notice__wa-btn" type="button" data-dash-wa-notice="' + escapeAttr(n.id) + '" title="Open WhatsApp for this notice"><i class="fab fa-whatsapp"></i></button>' +
+          '<p class="dash-notice__meta">' + escapeHtml(date) + ' &middot; ' + escapeHtml(target) + '</p>' +
         '</div>' +
       '</div>';
     }).join("");
-
-    el.querySelectorAll("[data-dash-sms-notice]").forEach(function (btn) {
-      btn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        var nid = btn.getAttribute("data-dash-sms-notice");
-        var notice = notices.find(function (x) { return x.id === nid; });
-        if (!notice) return;
-        var students = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
-        var sentCount = 0, missingCount = 0;
-        (async function () {
-          for (var si = 0; si < students.length; si++) {
-            var st = students[si];
-            var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
-            if (!phone) { missingCount++; continue; }
-            var result = await sendSmsSmart({ recipientName: normalizeStudentForPrint(st).name, recipientPhone: phone, message: notice.title + "\n" + notice.content + "\n\n" + (database.school.name || "School"), source: "Notice Board SMS", recipientType: "student", campaignType: "notice" });
-            if (result.success) sentCount++;
-          }
-          openAppMessageBox("Done", "SMS sent: " + sentCount + (missingCount ? ", missing phone: " + missingCount : ""), "success");
-        })();
-      });
-    });
-
-    el.querySelectorAll("[data-dash-wa-notice]").forEach(function (btn) {
-      btn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        var nid = btn.getAttribute("data-dash-wa-notice");
-        var notice = notices.find(function (x) { return x.id === nid; });
-        if (!notice) return;
-        var students = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
-        if (!students.length) { openAppMessageBox("Info", "No active students found.", "info"); return; }
-        var waText = encodeURIComponent(notice.title + "\n" + notice.content + "\n\n" + (database.school.name || "School"));
-        students.forEach(function (st) {
-          var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
-          if (phone) {
-            var cleanPhone = phone.replace(/[^0-9+]/g, "");
-            if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.substring(1);
-            window.open("https://wa.me/" + cleanPhone + "?text=" + waText, "_blank");
-          }
-        });
-        openAppMessageBox("Info", "Opening WhatsApp for " + students.length + " students. Send the message in each chat.", "info");
-      });
-    });
   }
 
   function renderDashboardEvents() {
@@ -4395,26 +4349,49 @@ document.addEventListener("DOMContentLoaded", function () {
     var events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
     var today = new Date();
     var todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
-    var upcoming = events.filter(function (ev) { return ev.date >= todayStr; }).sort(function (a, b) { return a.date > b.date ? 1 : a.date < b.date ? -1 : 0; }).slice(0, 5);
-    var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    if (!upcoming.length) {
-      el.innerHTML = '<div class="dash-empty"><i class="fas fa-calendar-alt"></i>No upcoming events. Add events from Event Calendar.</div>';
-      return;
+
+    var year = today.getFullYear();
+    var month = today.getMonth();
+    var monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    var dayNames = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+    var firstDay = new Date(year, month, 1).getDay();
+    var daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    var calHtml = '<div class="dash-cal">';
+    calHtml += '<div class="dash-cal__header"><strong>' + monthNames[month] + ' ' + year + '</strong></div>';
+    calHtml += '<div class="dash-cal__grid">';
+    for (var d = 0; d < 7; d++) { calHtml += '<div class="dash-cal__dayname">' + dayNames[d] + '</div>'; }
+    for (var c = 0; c < firstDay; c++) { calHtml += '<div class="dash-cal__cell dash-cal__cell--empty"></div>'; }
+    for (var day = 1; day <= daysInMonth; day++) {
+      var ds = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+      var isToday = day === today.getDate();
+      var hasEvent = events.some(function (ev) { return ev.date === ds; });
+      var evType = "";
+      if (hasEvent) { var found = events.find(function (ev) { return ev.date === ds; }); evType = found ? (found.type || "custom") : "custom"; }
+      var cls = "dash-cal__cell";
+      if (isToday) cls += " dash-cal__cell--today";
+      if (hasEvent) cls += " dash-cal__cell--event dash-cal__cell--" + escapeAttr(evType);
+      calHtml += '<div class="' + cls + '" title="' + escapeAttr(hasEvent ? events.find(function (ev) { return ev.date === ds; }).title : day) + '">' + day + '</div>';
     }
-    el.innerHTML = upcoming.map(function (ev) {
-      var d = new Date(ev.date);
-      var dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getDay()];
-      var type = ev.type || "custom";
-      var typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
-      return '<div class="dash-event">' +
-        '<div class="dash-event__bar dash-event__bar--' + escapeAttr(type) + '"></div>' +
-        '<div class="dash-event__content">' +
-          '<p class="dash-event__title">' + escapeHtml(ev.title) + '</p>' +
-          '<p class="dash-event__meta">' + dayName + ', ' + d.getDate() + ' ' + monthNames[d.getMonth()] + ' ' + d.getFullYear() + (ev.description ? ' &middot; ' + escapeHtml(ev.description) : '') + '</p>' +
-        '</div>' +
-        '<span class="dash-event__badge dash-event__badge--' + escapeAttr(type) + '">' + escapeHtml(typeLabel) + '</span>' +
-      '</div>';
-    }).join("");
+    calHtml += '</div></div>';
+
+    var upcoming = events.filter(function (ev) { return ev.date >= todayStr; }).sort(function (a, b) { return a.date > b.date ? 1 : a.date < b.date ? -1 : 0; }).slice(0, 4);
+    if (upcoming.length) {
+      calHtml += '<div class="dash-events-upcoming">';
+      calHtml += '<div class="dash-events-upcoming__header"><strong>Upcoming</strong></div>';
+      upcoming.forEach(function (ev) {
+        var d = new Date(ev.date);
+        var dayLabel = d.getDate() + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
+        var type = ev.type || "custom";
+        calHtml += '<div class="dash-events-upcoming__item">' +
+          '<span class="dash-events-upcoming__date">' + dayLabel + '</span>' +
+          '<span class="dash-events-upcoming__dot dash-events-upcoming__dot--' + escapeAttr(type) + '"></span>' +
+          '<span class="dash-events-upcoming__title">' + escapeHtml(ev.title) + '</span>' +
+        '</div>';
+      });
+      calHtml += '</div>';
+    }
+    el.innerHTML = calHtml;
   }
 
   function getMonthKeyFromValue(value) {
@@ -17844,7 +17821,8 @@ ${allContent}
           noticeHtml += '<button class="table-action-btn" type="button" data-delete-notice="' + escapeAttr(n.id) + '">Delete</button>';
           noticeHtml += '<button class="table-action-btn" type="button" data-push-notice="' + escapeAttr(n.id) + '">' + (n.pushed ? 'Unpush' : 'Push to Dashboard') + '</button>';
           noticeHtml += '<button class="table-action-btn" type="button" data-sms-notice="' + escapeAttr(n.id) + '"><i class="fas fa-sms"></i> SMS All</button>';
-          noticeHtml += '<button class="table-action-btn" type="button" data-wa-notice="' + escapeAttr(n.id) + '"><i class="fab fa-whatsapp"></i> WhatsApp Each</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-pdf-notice="' + escapeAttr(n.id) + '"><i class="fas fa-file-pdf"></i> PDF</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-print-notice="' + escapeAttr(n.id) + '"><i class="fas fa-print"></i> Print</button>';
           noticeHtml += '</div></div>';
         }
       }
@@ -17919,33 +17897,94 @@ ${allContent}
           }
           return;
         }
-        var waBtn = e.target.closest("[data-wa-notice]");
-        if (waBtn) {
-          var nid3 = waBtn.getAttribute("data-wa-notice");
-          var notice3 = notices.find(function (x) { return x.id === nid3; });
-          if (notice3) {
-            var target3 = notice3.target || "all";
-            var waRecipients = [];
-            if (target3 === "students" || target3 === "all") {
-              (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; }).forEach(function (st) {
-                var phone = normalizeSmsPhone(normalizeStudentForPrint(st).phone || normalizeStudentForPrint(st).fatherPhone || "");
-                if (phone) waRecipients.push({ name: normalizeStudentForPrint(st).name, phone: phone });
-              });
-            }
-            if (target3 === "teachers" || target3 === "all") {
-              (database.teachers || []).filter(function (e) { return String(e.status || "").toLowerCase() === "active" || !e.status; }).forEach(function (t) {
-                var phone = normalizeSmsPhone(t.phone || "");
-                if (phone) waRecipients.push({ name: t.name || "Teacher", phone: phone });
-              });
-            }
-            if (!waRecipients.length) { openAppMessageBox("Info", "No recipients with phone numbers found.", "info"); return; }
-            var waText = encodeURIComponent(notice3.title + "\n" + notice3.content + "\n\n" + (database.school.name || "School"));
-            waRecipients.forEach(function (r) {
-              var cleanPhone = r.phone.replace(/[^0-9+]/g, "");
-              if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.substring(1);
-              window.open("https://wa.me/" + cleanPhone + "?text=" + waText, "_blank");
-            });
-            openAppMessageBox("Info", "Opening WhatsApp for " + waRecipients.length + " recipients. Send the message in each chat.", "info");
+        var pdfBtn = e.target.closest("[data-pdf-notice]");
+        if (pdfBtn) {
+          var nidPDF = pdfBtn.getAttribute("data-pdf-notice");
+          var noticePDF = notices.find(function (x) { return x.id === nidPDF; });
+          if (noticePDF) {
+            var schoolName = (database.school && database.school.name) || "School";
+            var noticeNum = "NB-" + String(notices.indexOf(noticePDF) + 1).padStart(3, "0");
+            var pdfContent = '<html><head><style>';
+            pdfContent += 'body{font-family:Arial,sans-serif;margin:40px;color:#102542;}';
+            pdfContent += '.header{text-align:center;border-bottom:3px solid #102542;padding-bottom:15px;margin-bottom:20px;}';
+            pdfContent += '.header h1{margin:0;font-size:22px;color:#102542;}';
+            pdfContent += '.header p{margin:4px 0 0;font-size:12px;color:#666;}';
+            pdfContent += '.notice-info{display:flex;justify-content:space-between;margin:15px 0;padding:10px;background:#f5f5f5;border-radius:6px;font-size:12px;}';
+            pdfContent += '.notice-info div{flex:1;}';
+            pdfContent += '.notice-title{font-size:18px;font-weight:bold;margin:15px 0;padding:10px;border-left:4px solid #102542;background:#f9fafb;}';
+            pdfContent += '.notice-content{font-size:14px;line-height:1.6;margin:15px 0;white-space:pre-wrap;}';
+            pdfContent += '.footer{margin-top:30px;border-top:1px solid #ddd;padding-top:15px;font-size:11px;color:#666;}';
+            pdfContent += '.priority{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:bold;text-transform:uppercase;}';
+            pdfContent += '.priority-urgent{background:#fdeaea;color:#d32f2f;}';
+            pdfContent += '.priority-important{background:#fff8e1;color:#f9a825;}';
+            pdfContent += '.priority-normal{background:#e3f2fd;color:#1976d2;}';
+            pdfContent += '</style></head><body>';
+            pdfContent += '<div class="header"><h1>' + schoolName + '</h1><p>Official Notice</p></div>';
+            pdfContent += '<div class="notice-info"><div><strong>Notice No:</strong> ' + noticeNum + '</div><div><strong>Date:</strong> ' + (noticePDF.createdAt || new Date().toLocaleString()) + '</div><div><strong>Priority:</strong> <span class="priority priority-' + (noticePDF.priority || "normal") + '">' + (noticePDF.priority || "normal").toUpperCase() + '</span></div></div>';
+            pdfContent += '<div class="notice-info"><div><strong>Target:</strong> ' + (noticePDF.target || "all").charAt(0).toUpperCase() + (noticePDF.target || "all").slice(1) + '</div>';
+            if (noticePDF.expiryDate) pdfContent += '<div><strong>Expires:</strong> ' + noticePDF.expiryDate + '</div>';
+            pdfContent += '</div>';
+            pdfContent += '<div class="notice-title">' + noticePDF.title + '</div>';
+            pdfContent += '<div class="notice-content">' + noticePDF.content + '</div>';
+            pdfContent += '<div class="footer"><p>This is a computer-generated notice from ' + schoolName + '.</p></div>';
+            pdfContent += '</body></html>';
+            var blob = new Blob([pdfContent], { type: "text/html" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = "Notice-" + noticeNum + ".html";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            openAppMessageBox("Success", "Notice downloaded as file. Open in browser and use Print to save as PDF.", "success");
+          }
+          return;
+        }
+        var printBtn = e.target.closest("[data-print-notice]");
+        if (printBtn) {
+          var nidPR = printBtn.getAttribute("data-print-notice");
+          var noticePR = notices.find(function (x) { return x.id === nidPR; });
+          if (noticePR) {
+            var schoolName2 = (database.school && database.school.name) || "School";
+            var schoolAddress = (database.school && database.school.address) || "";
+            var schoolPhone = (database.school && database.school.phone) || "";
+            var noticeNum2 = "NB-" + String(notices.indexOf(noticePR) + 1).padStart(3, "0");
+            var printWin = window.open("", "_blank", "width=800,height=600");
+            printWin.document.write('<html><head><title>Notice - ' + noticePR.title + '</title>');
+            printWin.document.write('<style>');
+            printWin.document.write('body{font-family:Arial,sans-serif;margin:30px;color:#102542;}');
+            printWin.document.write('.header{text-align:center;border-bottom:3px double #102542;padding-bottom:15px;margin-bottom:20px;}');
+            printWin.document.write('.header h1{margin:0;font-size:24px;}');
+            printWin.document.write('.header p{margin:4px 0 0;font-size:12px;color:#666;}');
+            printWin.document.write('.info-row{display:flex;justify-content:space-between;margin:12px 0;padding:8px 12px;background:#f5f5f5;border-radius:4px;font-size:13px;}');
+            printWin.document.write('.info-row div{flex:1;}');
+            printWin.document.write('.title{font-size:20px;font-weight:bold;margin:20px 0 10px;padding:12px;border-left:4px solid #102542;background:#f9fafb;}');
+            printWin.document.write('.content{font-size:14px;line-height:1.8;margin:15px 0;white-space:pre-wrap;}');
+            printWin.document.write('.footer{margin-top:40px;border-top:2px solid #102542;padding-top:15px;}');
+            printWin.document.write('.footer-row{display:flex;justify-content:space-between;margin-top:40px;}');
+            printWin.document.write('.footer-sig{width:45%;border-top:1px solid #102542;padding-top:5px;text-align:center;font-size:12px;}');
+            printWin.document.write('.badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:11px;font-weight:bold;text-transform:uppercase;}');
+            printWin.document.write('.badge-urgent{background:#fdeaea;color:#d32f2f;}');
+            printWin.document.write('.badge-important{background:#fff8e1;color:#e68a00;}');
+            printWin.document.write('.badge-normal{background:#e3f2fd;color:#1976d2;}');
+            printWin.document.write('</style></head><body>');
+            printWin.document.write('<div class="header"><h1>' + schoolName2 + '</h1>');
+            if (schoolAddress) printWin.document.write('<p>' + schoolAddress + '</p>');
+            if (schoolPhone) printWin.document.write('<p>Phone: ' + schoolPhone + '</p>');
+            printWin.document.write('<p>OFFICIAL NOTICE</p></div>');
+            printWin.document.write('<div class="info-row"><div><strong>Notice No:</strong> ' + noticeNum2 + '</div><div><strong>Date:</strong> ' + (noticePR.createdAt || new Date().toLocaleString()) + '</div><div><strong>Priority:</strong> <span class="badge badge-' + (noticePR.priority || "normal") + '">' + (noticePR.priority || "normal").toUpperCase() + '</span></div></div>');
+            printWin.document.write('<div class="info-row"><div><strong>To:</strong> ' + (noticePR.target || "all").charAt(0).toUpperCase() + (noticePR.target || "all").slice(1) + '</div>');
+            if (noticePR.expiryDate) printWin.document.write('<div><strong>Valid Until:</strong> ' + noticePR.expiryDate + '</div>');
+            printWin.document.write('</div>');
+            printWin.document.write('<div class="title">' + noticePR.title + '</div>');
+            printWin.document.write('<div class="content">' + noticePR.content + '</div>');
+            printWin.document.write('<div class="footer"><p>This is a computer-generated notice from ' + schoolName2 + '.</p>');
+            printWin.document.write('<div class="footer-row"><div class="footer-sig">Principal / Admin</div><div class="footer-sig">School Seal</div></div>');
+            printWin.document.write('</div></body></html>');
+            printWin.document.close();
+            printWin.focus();
+            setTimeout(function () { printWin.print(); }, 500);
           }
           return;
         }
