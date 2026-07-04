@@ -2287,6 +2287,74 @@ app.post("/api/sms/mark-failed", async function (req, res) {
   }
 });
 
+app.post("/api/sms/retry-failed", async function (req, res) {
+  try {
+    var schoolId = req.body.school_id;
+    if (!schoolId) return res.status(400).json({ success: false, message: "school_id required" });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.status(500).json({ success: false, message: "Supabase not configured" });
+    var url = supabaseUrl + "/rest/v1/sms_queue?school_id=eq." + encodeURIComponent(schoolId) + "&status=eq.failed";
+    var patchUrl = supabaseUrl + "/rest/v1/sms_queue?school_id=eq." + encodeURIComponent(schoolId) + "&status=eq.failed";
+    var countResp = await fetch(url, {
+      method: "GET",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json", "Prefer": "count=exact" }
+    });
+    var count = 0;
+    try {
+      var countHeader = countResp.headers.get("content-range") || "";
+      var match = countHeader.match(/\/(\d+)$/);
+      if (match) count = parseInt(match[1], 10);
+    } catch (_e) {}
+    if (count === 0) return res.json({ success: true, retried: 0 });
+    var patchResp = await fetch(patchUrl, {
+      method: "PATCH",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json", "Prefer": "return=minimal" },
+      body: JSON.stringify({ status: "pending", error_message: null })
+    });
+    return res.json({ success: true, retried: count });
+  } catch (e) {
+    return res.json({ success: false, message: e.message });
+  }
+});
+
+app.post("/api/sms/send", async function (req, res) {
+  try {
+    var schoolId = req.body.school_id;
+    var phone = req.body.recipient_phone;
+    var message = req.body.message;
+    var source = req.body.source || "Manual SMS";
+    var campaignType = req.body.campaign_type || "manual";
+    var recipientName = req.body.recipient_name || "-";
+    var recipientType = req.body.recipient_type || "student";
+    if (!schoolId || !phone || !message) return res.status(400).json({ success: false, message: "school_id, recipient_phone, message required" });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.status(500).json({ success: false, message: "Supabase not configured" });
+    var url = supabaseUrl + "/rest/v1/sms_queue";
+    var resp = await fetch(url, {
+      method: "POST",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json", "Prefer": "return=representation" },
+      body: JSON.stringify({
+        school_id: schoolId,
+        recipient_phone: phone,
+        message: message,
+        source: source,
+        campaign_type: campaignType,
+        recipient_name: recipientName,
+        recipient_type: recipientType,
+        status: "pending"
+      })
+    });
+    var body = await resp.json();
+    if (!resp.ok || (body && body.code)) return res.json({ success: false, message: (body && body.message) || "Insert failed" });
+    var smsId = (body && body[0] && body[0].id) ? String(body[0].id) : "";
+    return res.json({ success: true, sms_id: smsId });
+  } catch (e) {
+    return res.json({ success: false, message: e.message });
+  }
+});
+
 app.post("/api/setup-sms-tables", async function (req, res) {
   try {
     if (!_pool) {
