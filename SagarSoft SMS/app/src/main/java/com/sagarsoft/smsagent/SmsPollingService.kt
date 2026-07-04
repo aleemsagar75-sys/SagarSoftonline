@@ -113,10 +113,21 @@ class SmsPollingService : Service() {
                 return
             }
 
-            for (sms in pendingSms) {
+            for ((index, sms) in pendingSms.withIndex()) {
                 val id = sms.get("id")?.asString ?: continue
                 val phone = sms.get("recipient_phone")?.asString ?: continue
                 val message = sms.get("message")?.asString ?: continue
+
+                if (phone.isBlank()) {
+                    markFailed(am, id, "empty-phone")
+                    stats.totalFailed++
+                    updateNotification()
+                    continue
+                }
+
+                if (index > 0) {
+                    delay(1500L)
+                }
 
                 val sent = sendSms(phone, message)
                 if (sent) {
@@ -143,6 +154,10 @@ class SmsPollingService : Service() {
                 stats.lastError = "SEND_SMS permission not granted"
                 return false
             }
+            if (phone.isBlank()) {
+                stats.lastError = "Empty phone number"
+                return false
+            }
             val smsManager = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 val context = applicationContext
                 context.getSystemService("telephony_sms") as? SmsManager
@@ -151,7 +166,12 @@ class SmsPollingService : Service() {
                 @Suppress("DEPRECATION")
                 SmsManager.getDefault()
             }
-            smsManager.sendTextMessage(phone, null, message, null, null)
+            val parts = smsManager.divideMessage(message)
+            if (parts != null && parts.size > 1) {
+                smsManager.sendMultipartTextMessage(phone, null, parts, null, null)
+            } else {
+                smsManager.sendTextMessage(phone, null, message, null, null)
+            }
             true
         } catch (e: Exception) {
             stats.lastError = e.message
