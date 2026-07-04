@@ -104,8 +104,12 @@ class SupabaseApi(private val authToken: String? = null) {
                 if (!response.isSuccessful) {
                     cont.resumeWithException(Exception("Insert error ${response.code}: $bodyStr"))
                 } else {
-                    val arr = gson.fromJson(bodyStr, Array<JsonObject>::class.java)
-                    cont.resume(arr.firstOrNull())
+                    try {
+                        val arr = gson.fromJson(bodyStr, Array<JsonObject>::class.java)
+                        cont.resume(arr?.firstOrNull())
+                    } catch (_: Exception) {
+                        cont.resume(null)
+                    }
                 }
             }
         })
