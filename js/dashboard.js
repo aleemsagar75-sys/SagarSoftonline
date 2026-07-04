@@ -3304,7 +3304,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     database.users.forEach(function (user) {
-      if (user.role === "teacher" && user.name) {
+      if (user.role === "teacher" && user.name && String(user.id || "").indexOf("DEMO") === -1) {
         names.push(user.name);
       }
     });
