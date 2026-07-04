@@ -519,6 +519,14 @@
 
   loadDatabaseFromServer();
 
+  function setSchoolId(schoolId) {
+    if (schoolId) config.schoolId = String(schoolId);
+  }
+
+  function getConfig() {
+    return { apiBaseUrl: config.apiBaseUrl, schoolId: config.schoolId, apiKey: config.apiKey };
+  }
+
   function clearCache() {
     cachedDatabase = null;
     try { sessionStorage.removeItem(CACHE_KEY); } catch (_e) {}
@@ -534,6 +542,8 @@
     reloadDatabase: reloadDatabase,
     flushRemoteSave: flushRemoteSave,
     clearCache: clearCache,
+    setSchoolId: setSchoolId,
+    getConfig: getConfig,
     defaultDatabase: defaultDatabase
   };
 })();
