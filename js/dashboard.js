@@ -2444,25 +2444,31 @@ document.addEventListener("DOMContentLoaded", function () {
     var messageText = String(payload.message || "").trim();
     if (!phone) return { success: false, reason: "phone-missing" };
     if (!messageText) return { success: false, reason: "message-missing" };
+    var sb = initSupabase();
+    if (!sb) return { success: false, reason: "supabase-not-configured", error: "Supabase not configured. Go to Settings > SMS Services." };
+    var cfg = getSupabaseConfig();
+    if (!cfg.tablesCreated) {
+      var initResult = await ensureSupabaseTables();
+      if (!initResult.ok) return { success: false, reason: "table-init-failed", error: initResult.error };
+      cfg.tablesCreated = true;
+      if (database.generalSettings && database.generalSettings.supabaseConfig) {
+        database.generalSettings.supabaseConfig.tablesCreated = true;
+      }
+    }
     try {
-      var apiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
-      var resp = await fetch(apiBase + "/api/sms/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          school_id: schoolId,
-          recipient_phone: phone,
-          message: messageText,
-          source: payload.source || "Manual SMS",
-          campaign_type: payload.campaignType || "manual",
-          recipient_name: payload.recipientName || "-",
-          recipient_type: payload.recipientType || "student"
-        })
-      });
-      var result = await resp.json();
-      if (!result.success) return { success: false, reason: "server-error", error: result.message };
+      var { data, error } = await sb.from("sms_queue").insert({
+        school_id: schoolId,
+        recipient_phone: phone,
+        message: messageText,
+        source: payload.source || "Manual SMS",
+        campaign_type: payload.campaignType || "manual",
+        recipient_name: payload.recipientName || "-",
+        recipient_type: payload.recipientType || "student",
+        status: "pending"
+      }).select("id").single();
+      if (error) return { success: false, reason: "db-error", error: error.message };
       var outboxItem = pushSmsOutboxEntry({
-        id: result.sms_id || "",
+        id: data && data.id ? String(data.id) : "",
         recipientName: payload.recipientName || "-",
         recipientPhone: phone,
         message: messageText,
@@ -2478,7 +2484,48 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   async function sendSmsSmart(payload) {
-    return await sendSmsViaQueue(payload);
+    var result = await sendSmsViaQueue(payload);
+    if (!result.success && (result.reason === "supabase-not-configured" || result.reason === "table-init-failed" || result.reason === "db-error" || result.reason === "exception")) {
+      try {
+        var apiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
+        var schoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || (database.school && database.school.id) || "";
+        var phone = normalizeSmsPhone(payload.recipientPhone || "");
+        var messageText = String(payload.message || "").trim();
+        if (schoolId && phone && messageText) {
+          var resp = await fetch(apiBase + "/api/sms/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              school_id: schoolId,
+              recipient_phone: phone,
+              message: messageText,
+              source: payload.source || "Manual SMS",
+              campaign_type: payload.campaignType || "manual",
+              recipient_name: payload.recipientName || "-",
+              recipient_type: payload.recipientType || "student"
+            })
+          });
+          var text = await resp.text();
+          try {
+            var json = JSON.parse(text);
+            if (json.success) {
+              var outboxItem = pushSmsOutboxEntry({
+                id: json.sms_id || "",
+                recipientName: payload.recipientName || "-",
+                recipientPhone: phone,
+                message: messageText,
+                status: "queued",
+                source: payload.source || "Manual SMS",
+                recipientType: payload.recipientType || "student",
+                campaignType: payload.campaignType || "manual"
+              });
+              return { success: true, outboxItem: outboxItem };
+            }
+          } catch (parseErr) {}
+        }
+      } catch (fallbackErr) {}
+    }
+    return result;
   }
 
   function openWhatsAppWithFallback(appUrl, webUrl) {
