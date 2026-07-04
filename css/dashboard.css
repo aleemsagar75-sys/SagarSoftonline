@@ -6501,6 +6501,94 @@ body[data-theme="dark"] .calendar-nav button { background: #161b22; border-color
 body[data-theme="dark"] .calendar-nav button:hover { background: #42a5f5; color: #0d1117; }
 body[data-theme="dark"] .calendar-event-legend__item { color: #8b949e; }
 
+/* ===== ATTENDANCE DONUT CHART ===== */
+.attendance-donut-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+}
+.attendance-donut {
+  flex-shrink: 0;
+  width: 160px;
+  height: 160px;
+}
+.attendance-donut__svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.08));
+}
+.donut-seg {
+  transition: stroke-dasharray 0.8s ease, stroke-dashoffset 0.8s ease;
+}
+.attendance-donut__svg .donut-center-value {
+  font-size: 26px;
+  font-weight: 800;
+  fill: #102542;
+}
+.attendance-donut__svg .donut-center-label {
+  font-size: 11px;
+  font-weight: 600;
+  fill: #78909c;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.attendance-donut__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1;
+}
+.attendance-donut__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  border-radius: 8px;
+  background: #f5f7fa;
+  transition: background 0.2s;
+}
+.attendance-donut__legend-item:hover {
+  background: #e8edf2;
+}
+.attendance-donut__legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.attendance-donut__legend-label {
+  font-size: 0.78rem;
+  color: #546e7a;
+  flex: 1;
+}
+.attendance-donut__legend-item strong {
+  font-size: 0.85rem;
+  color: #102542;
+}
+.attendance-donut__legend-pct {
+  font-size: 0.72rem;
+  color: #90a4ae;
+  font-weight: 600;
+  min-width: 32px;
+  text-align: right;
+}
+
+body[data-theme="dark"] .attendance-donut__svg .donut-center-value { fill: #e6edf3; }
+body[data-theme="dark"] .attendance-donut__svg .donut-center-label { fill: #8b949e; }
+body[data-theme="dark"] .attendance-donut__svg circle:first-child { stroke: #21262d; }
+body[data-theme="dark"] .attendance-donut__legend-item { background: #161b22; }
+body[data-theme="dark"] .attendance-donut__legend-item:hover { background: #1c2333; }
+body[data-theme="dark"] .attendance-donut__legend-label { color: #8b949e; }
+body[data-theme="dark"] .attendance-donut__legend-item strong { color: #e6edf3; }
+body[data-theme="dark"] .attendance-donut__legend-pct { color: #6e7681; }
+
+@media (max-width: 600px) {
+  .attendance-donut-wrapper { flex-direction: column; align-items: center; }
+  .attendance-donut { width: 140px; height: 140px; }
+  .attendance-donut__legend { width: 100%; }
+}
+
 /* ===== DASHBOARD MINI CARDS LAYOUT ===== */
 .dashboard-grid--two-col {
   display: grid;
