@@ -1038,14 +1038,13 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
     sidebar.style.background = themeSettings.sidebarBackground || "";
+    sidebar.style.direction = (themeSettings.placement === "RTL") ? "rtl" : "ltr";
     var _topbar = document.querySelector(".topbar");
-    if (_topbar) _topbar.style.background = themeSettings.headerBackground || "";
+    if (_topbar) { _topbar.style.background = themeSettings.headerBackground || ""; _topbar.style.direction = (themeSettings.placement === "RTL") ? "rtl" : "ltr"; }
     document.documentElement.style.setProperty("--primary-color", themeSettings.activeItemBackground || "#1e5eff");
+    document.documentElement.setAttribute("dir", (themeSettings.placement === "RTL") ? "rtl" : "ltr");
     if (window.applyLanguage && themeSettings.language) {
       window.applyLanguage(themeSettings.language);
-    } else {
-      var _dir = (themeSettings.placement === "RTL") ? "rtl" : "ltr";
-      document.documentElement.setAttribute("dir", _dir);
     }
   }
 
@@ -5042,7 +5041,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var _LANG_KEYS = ["Dashboard","Students","Teachers","Classes","Attendance","Fees","Exams","Timetable","Homework","Settings","Reports","Employees","Salary","Accounts","Notifications","Search","Add","Edit","Delete","Save","Cancel","Print","Download","Upload","Name","Email","Password","Phone","Address","Class","Roll No","Father Name","Date","Month","Total","Amount","Status","Active","Inactive","Welcome","Logout","Login","Submit","Submit Fee","Collect Fee","Fee Invoice","Student Profile","Add Student","Edit Student","Add Teacher","General Settings","Theme & Language","School Profile","Backup","Restore","Activity Log","Bank Logo","School Logo","Fees Invoice","Assign Class","View","Close","Back","Next","Loading","No data found","Success","Error","Warning","Confirm","Yes","No","OK","Actions","Options","Filter","All","None","Select","Selected","Rows per page","Page","of","Previous","Next page","Previous page","Showing","entries","Description","Title","Type","Category","Priority","Low","Medium","High","Amount Received","Amount Pending","Total Paid","Total Pending","Paid","Unpaid","Partial","Overdue","Cash","Bank Transfer","Cheque","Online","Receipt No","Invoice No","Transaction","Ledger","Debit","Credit","Balance","Income","Expense","Profit","Loss","Summary","Details","Overview","Statistics","Charts","Graph","Calendar","Schedule","Reminder","Alert","Message","Compose","Inbox","Sent","Draft","Archive","Trash","Mark as read","Mark as unread","Select all","Deselect all","Bulk actions","Export","Import","Refresh","Reset","Clear","Apply","Close","Confirm action","Are you sure","This action cannot be undone","Changes saved successfully","Operation completed","Something went wrong","Please try again","Required field","Invalid input","Already exists","Not found","Access denied","Session expired","Connecting","Connected","Disconnected","Online","Offline","Sync","Last synced","Auto-sync","Manual sync","Sync now","Syncing","Sync complete","Sync failed","Settings saved","Profile updated","Password changed","Account deleted","Data exported","Report generated","Invoice created","Payment recorded","Attendance marked","Exam results published","Timetable updated","Homework assigned","Certificate issued","Notice published","SMS sent","Email sent","Call logged","Meeting scheduled","Event created","Task assigned","Goal set","Milestone reached","Report filed","Complaint registered","Feedback submitted","Suggestion noted","Rating given","Review posted","Comment added","Reply sent","Forwarded","Shared","Locked","Unlocked","Archived","Restored","Pinned","Unpinned","Starred","Unstarred","Favorited","Unfavorited","Following","Unfollowing","Subscribed","Unsubscribed","Enabled","Disabled","Visible","Hidden","Published","Draft","Pending","Approved","Rejected","Cancelled","Completed","In progress","On hold","Overdue","Expired","Renewed","Suspended","Terminated","Active","Inactive","Banned","Blocked","Verified","Unverified","Confirmed","Unconfirmed","Resolved","Unresolved","Open","Closed","New","Updated","Modified","Deleted","Created","Added","Removed","Changed","Moved","Copied","Duplicated","Cloned","Imported","Exported","Uploaded","Downloaded","Attached","Detached","Linked","Unlinked","Connected","Disconnected","Paired","Unpaired","Matched","Unmatched","Merged","Split","Combined","Separated","Joined","Left","Joined group","Left group","Invited","Accepted","Declined","Pending","Waitlisted","Cancelled","Refunded","Charged","Credited","Debited","Transferred","Withdrawn","Depited","Deposited","Loaned","Borrowed","Lent","Repaid","Invested","Divested","Traded","Exchanged","Converted","Upgraded","Downgraded","Renewed","Expired","Valid","Invalid","Expired","Revoked","Suspended","Active","Inactive","Deleted","Archived"];
     var _TRANS = {
       "English": {},
-      "Urdu": {"Dashboard":"\u062f\u0634\u0628\u0648\u0631\u0688","Students":"\u0637\u0627\u0644\u0628","Teachers":"\u0627\u0633\u062a\u0627\u0630","Classes":"\u062c\u0646\u0627\u063a\u062a\u06cc\u0646","Attendance":"\u0647\u0638\u0631","Fees":"\u0641\u06cc\u0635","Exams":"\u0627\u0645\u062a\u062d\u0627\u0646","Timetable":"\u062a\u0645\u0645\u0631\u06cc\u0646","Homework":"\u0645\u0642\u0631\u0631\u0647","Settings":"\u062a\u0637\u0628\u06cc\u0642\u0627\u062a","Reports":"\u0631\u067e\u0648\u0631\u0678\u0686","Employees":"\u0645\u0644\u0627\u0632\u0645\u06cc\u0646","Salary":"\u062a\u0634\u062d\u0631","Accounts":"\u0627\u0646\u062f\u0627\u0632\u0647\u0627","Notifications":"\u0627\u0634\u0639\u0627\u0631\u0627\u062a","Search":"\u062a\u0644\u0627\u0634","Add":"\u0627\u0636\u0627\u0641\u0647 \u06a9\u0631\u0646","Edit":"\u062a\u0635\u062d\u06cc\u062d","Delete":"\u062d\u0630\u0641","Save":"\u0630\u06be\u06cc\u0646\u0647","Cancel":"\u0645\u0646\u0638\u0631","Print":"\u067e\u0631\u0646\u062a","Name":"\u0646\u0627\u0645","Email":"\u0627\u06cc\u0645\u06cc\u0644","Password":"\u067e\u0633\u0648\u0631\u062f","Phone":"\u0641\u0648\u0646","Address":"\u0627\u0646\u062f\u0631\u0633","Class":"\u062c\u0646\u063a","Roll No":"\u0631\u0648\u0644 \u0646\u0648","Father Name":"\u0646\u0627\u0645 \u067e\u062f\u0631","Date":"\u062a\u0627\u0631\u06cc\u062e","Month":"\u0645\u0647\u0646\u0627","Total":"\u06a9\u0644","Amount":"\u0631\u0642\u0645","Status":"\u062d\u0627\u0644\u062a","Active":"\u0641\u0639\u0627\u0644","Inactive":"\u063a\u06cc\u0631\u0641\u0639\u0627\u0644","Welcome":"\u062e\u0634\u0627\u0645\u062f\u06cc\u062f","Logout":"\u062e\u0631\u0648\u062c","Login":"\u0648\u0631\u0648\u062f","Submit":"\u062c\u0645\u0639 \u06a9\u0631\u0646","Fee Invoice":"\u0628\u06cc\u0644 \u0641\u06cc\u0635","Student Profile":"\u067e\u0631\u0648\u0641\u0627\u0626\u0644 \u0637\u0627\u0644\u0628","Add Student":"\u0637\u0627\u0644\u0628 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0631\u0646","General Settings":"\u062a\u0637\u0628\u06cc\u0642\u0627\u062a \u0639\u0645\u0648\u0645\u06cc","School Profile":"\u067e\u0631\u0648\u0641\u0627\u0626\u0644 \u0645\u062f\u0631\u0633\u0647","Close":"\u0628\u0646\u062f","Back":"\u067e\u06cc\u0688\u0647","Description":"\u062a\u0648\u0636\u06cc\u062d\u0627\u062a","Title":"\u0639\u0646\u0648\u0627\u0646","Type":"\u0646\u0648\u0639","View":"\u062f\u06cc\u06a9\u0647\u06cc\u0646\u0627\u0644","Submit Fee":"\u0641\u06cc\u0635 \u062c\u0645\u0639 \u06a9\u0631\u0646","Collect Fee":"\u0641\u06cc\u0635 \u0627\u06a9\u062a\u0633\u0627\u0628","Paid":"\u0627\u062f\u0627\u0626\u0647","Unpaid":"\u0628\u062f\u0648\u0646 \u067e\u0631\u062f\u0627\u062e\u062a","Cash":"\u0646\u0642\u062f","Bank Transfer":"\u062a\u0631\u0627\u06a9\u0646\u0634 \u0628\u0627\u0646\u06a9\u06cc","Income":"\u062f\u0631\u0627\u0645\u062f","Expense":"\u062e\u0631\u062c","Balance":"\u0628\u0642\u0627\u0646\u062f\u0647"},
+      "Urdu": {"Dashboard":"\u062f\u0634\u0628\u0648\u0631\u0688","Students":"\u0637\u0627\u0644\u0628","Teachers":"\u0627\u0633\u062a\u0627\u0630","Classes":"\u062c\u0646\u0627\u063a\u062a\u06cc\u0646","Attendance":"\u0647\u0638\u0631","Fees":"\u0641\u06cc\u0635","Exams":"\u0627\u0645\u062a\u062d\u0627\u0646","Timetable":"\u062a\u0645\u0645\u0631\u06cc\u0646","Homework":"\u0645\u0642\u0631\u0631\u0647","Settings":"\u062a\u0637\u0628\u06cc\u0642\u0627\u062a","Reports":"\u0631\u067e\u0648\u0631\u0678\u0686","Employees":"\u0645\u0644\u0627\u0632\u0645\u06cc\u0646","Salary":"\u062a\u0634\u062d\u0631","Accounts":"\u0627\u0646\u062f\u0627\u0632\u0647\u0627","Notifications":"\u0627\u0634\u0639\u0627\u0631\u0627\u062a","Search":"\u062a\u0644\u0627\u0634","Add":"\u0627\u0636\u0627\u0641\u0647 \u06a9\u0631\u0646","Edit":"\u062a\u0635\u062d\u06cc\u062d","Delete":"\u062d\u0630\u0641","Save":"\u0630\u06be\u06cc\u0646\u0647","Cancel":"\u0645\u0646\u0638\u0631","Print":"\u067e\u0631\u0646\u062a","Name":"\u0646\u0627\u0645","Email":"\u0627\u06cc\u0645\u06cc\u0644","Password":"\u067e\u0633\u0648\u0631\u062f","Phone":"\u0641\u0648\u0646","Address":"\u0627\u0646\u062f\u0631\u0633","Class":"\u062c\u0646\u063a","Roll No":"\u0631\u0648\u0644 \u0646\u0648","Father Name":"\u0646\u0627\u0645 \u067e\u062f\u0631","Date":"\u062a\u0627\u0631\u06cc\u062e","Month":"\u0645\u0647\u0646\u0627","Total":"\u06a9\u0644","Amount":"\u0631\u0642\u0645","Status":"\u062d\u0627\u0644\u062a","Active":"\u0641\u0639\u0627\u0644","Inactive":"\u063a\u06cc\u0631\u0641\u0639\u0627\u0644","Welcome":"\u062e\u0634\u0627\u0645\u062f\u06cc\u062f","Logout":"\u062e\u0631\u0648\u062c","Login":"\u0648\u0631\u0648\u062f","Submit":"\u062c\u0645\u0639 \u06a9\u0631\u0646","Fee Invoice":"\u0628\u06cc\u0644 \u0641\u06cc\u0635","Student Profile":"\u067e\u0631\u0648\u0641\u0627\u0626\u0644 \u0637\u0627\u0644\u0628","Add Student":"\u0637\u0627\u0644\u0628 \u0627\u0636\u0627\u0641\u0647 \u06a9\u0631\u0646","General Settings":"\u062au0637\u0628\u06cc\u0642\u0627\u062a \u0639\u0645\u0648\u0645\u06cc","School Profile":"\u067e\u0631\u0648\u0641\u0627\u0626\u0644 \u0645\u062f\u0631\u0633\u0647","Close":"\u0628\u0646\u062f","Back":"\u067e\u06cc\u0688\u0647","Description":"\u062a\u0648\u0636\u06cc\u062d\u0627\u062a","Title":"\u0639\u0646\u0648\u0627\u0646","Type":"\u0646\u0648\u0639","View":"\u062f\u06cc\u06a9\u0647\u06cc\u0646\u0627\u0644","Submit Fee":"\u0641\u06cc\u0635 \u062c\u0645\u0639 \u06a9\u0631\u0646","Collect Fee":"\u0641\u06cc\u0635 \u0627\u06a9\u062a\u0633\u0627\u0628","Paid":"\u0627\u062f\u0627\u0626\u0647","Unpaid":"\u0628\u062f\u0648\u0646 \u067e\u0631\u062f\u0627\u062e\u062a","Cash":"\u0646\u0642\u062f","Bank Transfer":"\u062a\u0631\u0627\u06a9\u0646\u0634 \u0628\u0627\u0646\u06a9\u06cc","Income":"\u062f\u0631\u0627\u0645\u062f","Expense":"\u062e\u0631\u062c","Balance":"\u0628\u0642\u0627\u0646\u062f\u0647"},
       "Arabic": {"Dashboard":"\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0645\u0639\u0644\u0648\u0645\u0627\u062a","Students":"\u0627\u0644\u0637\u0627\u0644\u0628","Teachers":"\u0627\u0644\u0645\u0639\u0644\u0645\u064a\u0646","Classes":"\u0627\u0644\u0641\u0635\u0648\u0644","Attendance":"\u0627\u0644\u062d\u0636\u0648\u0631","Fees":"\u0627\u0644\u0631\u0633\u0648\u0645","Exams":"\u0627\u0644\u0627\u0645\u062a\u062d\u0627\u0646\u0627\u062a","Settings":"\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a","Reports":"\u0627\u0644\u062a\u0642\u0627\u0631\u064a\u0631","Employees":"\u0627\u0644\u0645\u0648\u0638\u0641\u064a\u0646","Salary":"\u0627\u0644\u0631\u0627\u062a\u0628","Accounts":"\u0627\u0644\u062d\u0633\u0627\u0628\u0627\u062a","Search":"\u0628\u062d\u062b","Add":"\u0625\u0636\u0627\u0641\u0629","Edit":"\u062a\u0639\u062f\u064a\u0644","Delete":"\u062d\u0630\u0641","Save":"\u062d\u0641\u0638","Cancel":"\u0625\u0644\u063a\u0627\u0621","Print":"\u0637\u0628\u0627\u0639\u0629","Name":"\u0627\u0644\u0627\u0633\u0645","Email":"\u0627\u0644\u0628\u0631\u064a\u062f \u0627\u0644\u0625\u0644\u0643\u062a\u0631\u0648\u0646\u064a","Password":"\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631","Phone":"\u0627\u0644\u0647\u0627\u062a\u0641","Address":"\u0627\u0644\u0639\u0646\u0648\u0627\u0646","Class":"\u0627\u0644\u0641\u0635\u0644","Date":"\u0627\u0644\u062a\u0627\u0631\u064a\u062e","Total":"\u0627\u0644\u0625\u062c\u0645\u0627\u0644\u064a","Amount":"\u0627\u0644\u0645\u0628\u0644\u063a","Login":"\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062f\u062e\u0648\u0644","Logout":"\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u062e\u0631\u0648\u062c","Welcome":"\u0645\u0631\u062d\u0628\u064b\u0627","Fee Invoice":"\u0641\u0627\u062a\u0648\u0631\u0629 \u0627\u0644\u0631\u0633\u0648\u0645","General Settings":"\u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u0639\u0627\u0645\u0629","Close":"\u0625\u063a\u0644\u0627\u0642","Back":"\u0631\u062c\u0648\u0639","Paid":"\u0645\u062f\u0641\u0648\u0639","Unpaid":"\u063a\u064a\u0631 \u0645\u062f\u0641\u0648\u0639","Income":"\u062f\u062e\u0644","Expense":"\u0645\u0635\u0631\u0641"},
       "Hindi": {"Dashboard":"\u0921\u0948\u0936\u092c\u094b\u0930\u094d\u0921","Students":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940","Teachers":"\u0936\u093f\u0915\u094d\u0937\u0915","Classes":"\u0915\u0915\u094d\u0937\u093e\u090f\u0901","Attendance":"\u0939\u093e\u091c\u0930\u093f\u092f\u093e","Fees":"\u092b\u0940\u0938","Exams":"\u092a\u0930\u0940\u0915\u094d\u0937\u093e","Settings":"\u0938\u0947\u091f\u093f\u0902\u0917","Reports":"\u0930\u093f\u092a\u094b\u0930\u094d\u091f","Employees":"\u0915\u0930\u094d\u092e\u091a\u093e\u0930","Salary":"\u0935\u0947\u0924\u0928","Accounts":"\u0916\u093e\u0924\u093e","Search":"\u0916\u094b\u091c\u0947\u0902","Add":"\u091c\u094b\u0921\u093c\u0947\u0902","Edit":"\u0938\u0902\u092a\u093e\u0926\u093f\u0924 \u0915\u0930\u0947\u0902","Delete":"\u0939\u091f\u093e\u090f\u0901","Save":"\u0938\u0939\u0947\u091c\u0947\u0902","Cancel":"\u0930\u0946\u0915","Print":"\u092a\u094d\u0930\u093f\u0902\u091f","Name":"\u0928\u093e\u092e","Email":"\u0908\u092e\u0947\u0932","Password":"\u092a\u093e\u0938\u0935\u0930\u094d\u0921","Phone":"\u092b\u093c\u094b\u0928","Address":"\u092a\u0924\u093e","Date":"\u0924\u093e\u0930\u0940\u0916","Total":"\u0915\u0941\u0932","Amount":"\u0930\u093e\u0936\u093f","Login":"\u0932\u0949\u0917\u093f\u0928","Logout":"\u0932\u0949\u0917\u0910\u0902\u091f","Welcome":"\u0938\u094d\u0935\u093e\u0917\u0924 \u0939\u0948","General Settings":"\u0938\u093e\u092e\u093e\u0928\u094d\u092f \u0938\u0947\u091f\u093f\u0902\u0917","Paid":"\u092d\u0941\u0917\u0924\u093e","Unpaid":"\u092c\u093e\u0915\u0940","Income":"\u0906\u092e\u0926\u093e\u0928","Expense":"\u0916\u0930\u094d\u091a"},
       "Spanish": {"Dashboard":"Panel","Students":"Estudiantes","Teachers":"Profesores","Classes":"Clases","Attendance":"Asistencia","Fees":"Cuotas","Exams":"Examenes","Settings":"Configuracion","Reports":"Informes","Employees":"Empleados","Salary":"Salario","Accounts":"Cuentas","Search":"Buscar","Add":"Agregar","Edit":"Editar","Delete":"Eliminar","Save":"Guardar","Cancel":"Cancelar","Print":"Imprimir","Name":"Nombre","Email":"Correo","Password":"Contrasena","Phone":"Telefono","Address":"Direccion","Date":"Fecha","Total":"Total","Amount":"Monto","Login":"Iniciar sesion","Logout":"Cerrar sesion","Welcome":"Bienvenido","Fee Invoice":"Factura","General Settings":"Configuracion General","Close":"Cerrar","Back":"Volver","Paid":"Pagado","Unpaid":"No pagado","Income":"Ingreso","Expense":"Gasto"},
@@ -5074,23 +5073,42 @@ document.addEventListener("DOMContentLoaded", function () {
       "Ukrainian": {"Dashboard":"\u041f\u0430\u043d\u0435\u043b\u044c \u043a\u0435\u0440\u0443\u0432\u0430\u043d\u043d\u044f","Students":"\u0421\u0442\u0443\u0434\u0435\u043d\u0442\u0438","Teachers":"\u0412\u0438\u043a\u043b\u0430\u0434\u0430\u0447\u0456","Classes":"\u041a\u043b\u0430\u0441\u0438","Attendance":"\u0412\u0456\u0434\u0432\u0456\u0434\u0443\u0432\u0430\u043d\u0456\u0441\u0442\u044c","Fees":"\u041f\u043b\u0430\u0442\u0430","Exams":"\u0417\u0430\u043b\u0456\u043a\u0438","Settings":"\u041d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f","Reports":"\u0417\u0432\u0456\u0442\u0438","Employees":"\u0421\u043f\u0456\u0432\u0440\u043e\u0431\u0456\u0442\u043d\u0438\u043a\u0438","Salary":"\u0417\u0430\u0440\u043f\u043b\u0430\u0442\u0430","Accounts":"\u0420\u0430\u0445\u0443\u043d\u043a\u0438","Search":"\u041f\u043e\u0448\u0443\u043a","Add":"\u0414\u043e\u0434\u0430\u0442\u0438","Edit":"\u0420\u0435\u0434\u0430\u0433\u0443\u0432\u0430\u0442\u0438","Delete":"\u0412\u0438\u0434\u0430\u043b\u0438\u0442\u0438","Save":"\u0417\u0431\u0435\u0440\u0435\u0433\u0442\u0438","Cancel":"\u0421\u043a\u0430\u0441\u0443\u0432\u0430\u0442\u0438","Print":"\u0414\u0440\u0443\u043a\u0443\u0432\u0430\u0442\u0438","Name":"\u0418\u043c\u044f","Email":"\u0415\u043b\u0435\u043a\u0442\u0440\u043e\u043d\u043d\u0430 \u043f\u043e\u0448\u0442\u0430","Password":"\u041f\u0430\u0440\u043e\u043b\u044c","Phone":"\u0422\u0435\u043b\u0435\u0444\u043e\u043d","Address":"\u0410\u0434\u0440\u0435\u0441\u0430","Date":"\u0414\u0430\u0442\u0430","Total":"\u0412\u0441\u044c\u043e\u0433\u043e","Amount":"\u0421\u0443\u043c\u0430","Login":"\u0423\u0432\u0456\u0439\u0442\u0438","Logout":"\u0412\u0438\u0439\u0442\u0438","Welcome":"\u041b\u0430\u0441\u043a\u0430\u0432\u0430\u0454\u043c\u043e","Fee Invoice":"\u0420\u0430\u0445\u0443\u043d\u043e\u043a","General Settings":"\u0417\u0430\u0433\u0430\u043b\u044c\u043d\u0456 \u043d\u0430\u043b\u0430\u0448\u0442\u0443\u0432\u0430\u043d\u043d\u044f"},
       "Tagalog": {"Dashboard":"Dashboard","Students":"Mga Mag-aaral","Teachers":"Mga Guro","Classes":"Mga Klase","Attendance":"Pagdalo","Fees":"Bayarin","Exams":"Mga Pagsusulit","Settings":"Mga Setting","Reports":"Mga Ulat","Employees":"Mga Empleyado","Salary":"Sahod","Accounts":"Mga Account","Search":"Maghanap","Add":"Magdagdag","Edit":"I-edit","Delete":"Tanggalin","Save":"I-save","Cancel":"Kanselahin","Print":"I-print","Name":"Pangalan","Email":"Email","Password":"Password","Phone":"Telepono","Address":"Address","Date":"Petsa","Total":"Kabuuan","Amount":"Halaga","Login":"Mag-login","Logout":"Mag-logout","Welcome":"Maligayang pagdating","Fee Invoice":"Invoice","General Settings":"Mga Pangkalahatang Setting"}
     };
+    var _EXTRA_TRANS = {
+      "Urdu":{"Admission Form":"\u0627\u0646\u062a\u0642\u0627\u0644\u06cc \u0641\u0627\u0631\u0645","Student Information":"\u0637\u0627\u0644\u0628 \u06a9\u06cc \u0645\u0639\u0644\u0648\u0645\u0627\u062a","Admission details":"\u0627\u0646\u062a\u0642\u0627\u0644\u06cc \u06a9\u06cc \u062a\u0641\u0635\u06cc\u0644\u0627\u062a","Student Name*":"\u0637\u0627\u0644\u0628 \u06a9\u0627 \u0646\u0627\u0645*","Picture - Optional":"\u0639\u06a9\u0633 - \u062e\u0627\u0635\u06cc","Roll No*":"\u0631\u0648\u0644 \u0646\u0648*","Date of Admission*":"\u062a\u0627\u0631\u06cc\u062e \u0627\u0646\u062a\u0642\u0627\u0644\u06cc*","Select Class*":"\u062c\u0646\u063a \u06a9\u0631\u06cc\u0646*","Discount In Fee*":"\u0641\u06cc\u0635 \u0645\u06cc\u06ba \u0633\u0646\u062e\u062a*","Other Information":"\u062f\u0648\u0633\u0631\u0647 \u0645\u0639\u0644\u0648\u0645\u0627\u062a","Student profile":"\u0637\u0627\u0644\u0628 \u06a9\u0627 \u067e\u0631\u0648\u0641\u0627\u0626\u0644","Date Of Birth":"\u062a\u0627\u0631\u06cc\u062e \u062a\u0648\u0644\u062f","Gender":"\u062c\u0646\u0633","Blood Group":"\u06af\u0631\u0648\u0647 \u062e\u0648\u0646","Disease If Any?":"\u0642\u0631\u0627\u0631\u06c1 \u0627\u06af\u0631 \u06a9\u0648\u06cc \u06c1\u0648?","Student Birth Form ID / NIC":"\u0627\u06cc\u0686\u0646\u06c1 / \u0646\u0627\u0634\u0646\u0627\u0631\u06c1","Previous School":"\u0635\u0646\u0639\u062a\u06cc \u0645\u06a9\u062a\u0628","Previous ID / Board Roll No":"\u0642\u0628\u0644\u06cc \u0627\u06cc\u0686\u0646\u06c1 / \u0628\u0648\u0631\u0686 \u0631\u0648\u0644 \u0646\u0648","Orphan Student":"\u06cc\u062a\u06cc\u0645 \u0637\u0627\u0644\u0628","Religion":"\u0645\u0630\u0647\u0628","Father/Guardian Information":"\u0648\u0627\u0644\u062f \u062c\u0627\u0646\u0634\u06cc\u0646 \u06a9\u06cc \u0645\u0639\u0644\u0648\u0645\u0627\u062a","Guardian details":"\u0633\u0631\u067e\u0631\u0633\u062a \u06a9\u06cc \u062a\u0641\u0635\u06cc\u0644\u0627\u062a","Father Name":"\u0648\u0627\u0644\u062f \u0639\u0646\u0648\u0627\u0646 \u06a9\u0627 \u0646\u0627\u0645","Education":"\u062a\u0639\u0644\u06cc\u0645","Father National ID":"\u0648\u0627\u0644\u062f \u0639\u0646\u0648\u0627\u0646 \u06a9\u0627 \u0646\u0634\u0646\u0627\u0631\u06c1","Mobile No":"\u0645\u0648\u0628\u0627\u0626\u0644 \u0646\u0648","Occupation":"\u067e\u0636\u0634\u062a","Income":"\u0622\u0645\u062f\u0627\u0646","Monthly income":"\u0645\u0627\u06c1\u064a\u0646\u0627\u0646\u0647 \u0622\u0645\u062f\u0627\u0646","Mother Information":"\u0648\u0627\u0644\u062f\u06c1 \u06a9\u06cc \u0645\u0639\u0644\u0648\u0645\u0627\u062a","Mother details":"\u0648\u0627\u0644\u062f\u06c1 \u06a9\u06cc \u062a\u0641\u0635\u06cc\u0644\u0627\u062a","Mother Name":"\u0648\u0627\u0644\u062f\u06c1 \u06a9\u0627 \u0646\u0627\u0645","Mother National ID":"\u0648\u0627\u0644\u062f\u06c1 \u06a9\u0627 \u0646\u0634\u0646\u0627\u0631\u06c1","Save Student":"\u0637\u0627\u0644\u0628 \u0645\u06be\u0641\u0648\u0638 \u06a9\u0631\u0646","Clear":"\u0635\u0627\u0641 \u06a9\u0631\u0646","All Students View":"\u062a\u0645\u0627\u0645 \u0637\u0627\u0644\u0628\u0627\u0646","Recent Student Activity":"\u062a\u0627\u0632\u0647 \u063a\u0630\u0627\u06cc\u062a\u06c1","Latest updates":"\u062a\u0627\u0632\u062a\u0631\u06cc\u0646 \u062a\u0631\u062a\u06cc\u0628\u06c1","Select":"\u062e\u0627\u0631\u062c \u06a9\u0631\u06cc\u0646","School Profile":"\u0633\u0686\u06c1 \u06a9\u0627 \u067e\u0631\u0648\u0641\u0627\u0626\u0644","Theme & Language":"\u062a\u062d\u0645\u0627\u064a\u0644 \u0627\u0648\u0631 \u0632\u0628\u0627\u0646","Account Settings":"\u0627\u06a9\u0627\u0648\u0646\u0678 \u062a\u0637\u0628\u06cc\u0642\u0627\u062a","Institute Profile":"\u0627\u062f\u0627\u0631\u06c1 \u06a9\u0627 \u067e\u0631\u0648\u0641\u0627\u0626\u0644","Fee Particulars":"\u0641\u06cc\u0635 \u06a9\u06cc \u062a\u0641\u0635\u06cc\u0644\u0627\u062a","Backup & Restore":"\u0628\u06cc\u06a9\u0627\u0670\u062a \u0627\u0648\u0631 \u0628\u0647 \u0627\u0635\u0644\u0627\u06c1","SMS Services":"\u0627\u06cc\u0633 \u0627\u06cc\u0645 \u0633\u0647 \u06a9\u06cc \u062e\u062f\u0645\u062a\u06cc\u0646","Connectivity":"\u06a9\u0646\u0635\u0644\u067e\u0646","Connected":"\u0645\u062a\u0635\u0644","Disconnected":"\u0642\u0637\u0639 \u0634\u062f\u06c1","Register SIM":"\u0633\u06cc\u0645 \u0631\u062c\u0633\u062a\u0631","Send SMS":"\u0627\u06cc\u0633 \u0627\u06cc\u0645 \u0628\u0647\u062c\u0647\u06cc\u0646","Compose":"\u0627\u0637\u0644\u0627\u0639 \u06a9\u0631\u06cc\u0646","Save Settings":"\u062a\u0637\u0628\u06cc\u0642\u0627\u062a \u0645\u06be\u0641\u0648\u0638 \u06a9\u0631\u0646","Admission Letter":"\u0627\u0646\u062a\u0642\u0627\u0644\u06cc \u0644\u0647\u062a\u0631","Student Info":"\u0637\u0627\u0644\u0628 \u06a9\u06cc \u0645\u0639\u0644\u0648\u0645\u0627\u062a","Father / Guardian Information":"\u0648\u0627\u0644\u062f \u0639\u0646\u0648\u0627\u0646 \u0627\u0631 \u0633\u0631\u067e\u0631\u0633\u062a \u06a9\u06cc \u0645\u0639\u0644\u0648\u0645\u0627\u062a"},
+      "Arabic":{"Admission Form":"\u0646\u0645\u0637\u0639 \u0627\u0644\u0642\u0628\u0648\u0644","Student Information":"\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0627\u0644\u0637\u0627\u0644\u0628","Admission details":"\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0642\u0628\u0648\u0644","Student Name*":"\u0627\u0633\u0645 \u0627\u0644\u0637\u0627\u0644\u0628*","Picture - Optional":"\u0635\u0648\u0631\u0629 - \u0627\u062e\u062a\u064a\u0627\u0631\u064a","Roll No*":"\u0631\u0642\u0645 \u0627\u0644\u0633\u062c\u0644*","Date of Admission*":"\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0642\u0628\u0648\u0644*","Select Class*":"\u062e\u0637 \u0627\u0644\u0641\u0635\u0644*","Other Information":"\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0623\u062e\u0631\u0649","Student profile":"\u0645\u0644\u0641 \u0627\u0644\u0637\u0627\u0644\u0628","Date Of Birth":"\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0645\u064a\u0644\u0627\u062f","Gender":"\u0627\u0644\u062c\u0646\u0633","Blood Group":"\u0645\u062c\u0645\u0648\u0639\u0629 \u0627\u0644\u062f\u0645","Father/Guardian Information":"\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0627\u0644\u0623\u0628 \u0627\u0644\u0648\u0644\u064a","Guardian details":"\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0648\u0643\u064a\u0644","Father Name":"\u0633\u0645 \u0627\u0644\u0623\u0628","Education":"\u0627\u0644\u062a\u0639\u0644\u064a\u0645","Father National ID":"\u0647\u0648\u064a\u0629 \u0627\u0644\u0623\u0628 \u0627\u0644\u0623\u0647\u0644\u064a\u0629","Mobile No":"\u0631\u0642\u0645 \u0627\u0644\u0645\u0648\u0628\u0627\u064a\u0644","Occupation":"\u0627\u0644\u0645\u0647\u0646\u0629","Income":"\u0627\u0644\u062f\u062e\u0644","Mother Information":"\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0627\u0644\u0623\u0645","Mother details":"\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0623\u0645","Mother Name":"\u0633\u0645 \u0627\u0644\u0623\u0645","Mother National ID":"\u0647\u0648\u064a\u0629 \u0627\u0644\u0623\u0645 \u0627\u0644\u0623\u0647\u0644\u064a\u0629","Save Student":"\u062d\u0641\u0638 \u0627\u0644\u0637\u0627\u0644\u0628","Select":"\u0627\u062e\u062a\u0631","Save Settings":"\u062d\u0641\u0638 \u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a","SMS Services":"\u062e\u062f\u0645\u0629 \u0627\u0644\u0631\u0633\u0627\u0626\u0644 \u0627\u0644\u0642\u0635\u064a\u0631\u0629","Compose":"\u0643\u062a\u0627\u0628\u0629","Account Settings":"\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u062d\u0633\u0627\u0628","Connectivity":"\u0627\u0644\u062a\u0635\u0644\u064a\u062a","Connected":"\u0645\u062a\u0635\u0644","Disconnected":"\u0645\u0641\u0635\u0648\u0644","Register SIM":"\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0628\u0637\u0627\u0642\u0629","Send SMS":"\u0625\u0631\u0633\u0627\u0644 \u0631\u0633\u0627\u0626\u0644 \u0642\u0635\u064a\u0631\u0629"},
+      "Hindi":{"Admission Form":"\u092a\u094d\u0930\u0935\u0947\u0937\u0923 \u092b\u093c\u093e\u0930\u094d\u092e","Student Information":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940 \u0915\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940","Student Name*":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940 \u0915\u093e \u0928\u093e\u092e*","Roll No*":"\u0930\u094b\u0932 \u0928\u0902*","Date of Admission*":"\u092a\u094d\u0930\u0935\u0947\u0937\u0923 \u0915\u0940 \u0924\u093e\u0930\u0940\u0916*","Select Class*":"\u0915\u0915\u094d\u0937\u093e \u091a\u0941\u0928\u0947\u0902*","Other Information":"\u0905\u0928\u094d\u092f \u091c\u093e\u0928\u0915\u093e\u0930\u0940","Student profile":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940 \u0915\u093e \u092a\u094d\u0930\u094b\u092b\u093c\u093e\u0907\u0932","Date Of Birth":"\u091c\u0928\u094d\u092e \u0924\u093f\u0925\u093f","Gender":"\u0932\u093f\u0902\u0917","Blood Group":"\u0930\u0915\u094d\u0924 \u0938\u092e\u0942\u0939","Father/Guardian Information":"\u092a\u093f\u0924\u093e \u0915\u093e \u0935\u093f\u0935\u0930\u0923\u0924\u093e","Father Name":"\u092a\u093f\u0924\u093e \u0915\u093e \u0928\u093e\u092e","Education":"\u0936\u093f\u0915\u094d\u0937\u093e","Mother Information":"\u092e\u093e\u0901 \u0915\u093e \u0935\u093f\u0935\u0930\u0923\u0924\u093e","Mother Name":"\u092e\u093e\u0901 \u0915\u093e \u0928\u093e\u092e","Save Student":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940 \u0938\u0939\u0947\u091c\u0947\u0902","Select":"\u091a\u0941\u0928\u0947\u0902","Save Settings":"\u0938\u0947\u091f\u093f\u0902\u0917 \u0938\u0939\u0947\u091c\u0947\u0902","Compose":"\u0932\u093f\u0916\u0947\u0902"}
+    };
     function applyLanguage(lang) {
-      var dict = _TRANS[lang] || {};
+      var dict = Object.assign({}, _TRANS[lang] || {}, _EXTRA_TRANS[lang] || {});
       var isRTL = (lang === "Urdu" || lang === "Arabic" || lang === "Persian");
       document.documentElement.setAttribute("lang", isRTL ? lang.toLowerCase() : "en");
       document.documentElement.setAttribute("dir", isRTL ? "rtl" : "ltr");
 
       var _sidebar = document.querySelector(".sidebar");
-      if (_sidebar) { _sidebar.style.textAlign = isRTL ? "right" : "left"; }
+      if (_sidebar) { _sidebar.style.textAlign = isRTL ? "right" : "left"; _sidebar.style.direction = isRTL ? "rtl" : "ltr"; }
       var _topbar3 = document.querySelector(".topbar");
-      if (_topbar3) { _topbar3.style.textAlign = isRTL ? "right" : "left"; }
+      if (_topbar3) { _topbar3.style.textAlign = isRTL ? "right" : "left"; _topbar3.style.direction = isRTL ? "rtl" : "ltr"; }
 
       if (!lang || lang === "English") { return; }
 
-      document.querySelectorAll("[data-i18n]").forEach(function (el) {
-        var key = el.getAttribute("data-i18n");
-        if (dict[key]) { el.textContent = dict[key]; }
-      });
+      var _walkAndTranslate = function(root) {
+        var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+        var textNodes = [];
+        while (walker.nextNode()) { textNodes.push(walker.currentNode); }
+        textNodes.forEach(function(node) {
+          var parent = node.parentNode;
+          if (!parent) return;
+          var tag = parent.tagName;
+          if (tag === "SCRIPT" || tag === "STYLE" || tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+          if (parent.closest && parent.closest("script, style")) return;
+          var originalText = node.textContent.trim();
+          if (originalText && dict[originalText] && dict[originalText] !== originalText) {
+            node.textContent = node.textContent.replace(originalText, dict[originalText]);
+          }
+        });
+      };
+
+      _walkAndTranslate(document.body);
 
       var _navMap = {
         "nav-dashboard": "Dashboard", "nav-students": "Students", "nav-teachers": "Teachers",
@@ -5110,13 +5128,13 @@ document.addEventListener("DOMContentLoaded", function () {
         if (dict[text]) { span.textContent = dict[text]; }
       });
 
-      var _btnMap = { "saveGeneralSettings": "Save", "cancelGeneralSettings": "Cancel" };
-      Object.keys(_btnMap).forEach(function (id) {
-        var el = document.getElementById(id);
-        if (el && dict[_btnMap[id]]) { el.textContent = dict[_btnMap[id]]; }
+      var _allButtons = document.querySelectorAll("button");
+      _allButtons.forEach(function(btn) {
+        var text = btn.textContent.trim();
+        if (dict[text]) { btn.textContent = dict[text]; }
       });
 
-      var _headings = document.querySelectorAll(".module-header h2, .module-header h3, .card-header h3, .card-header h4");
+      var _headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
       _headings.forEach(function (h) {
         var text = h.textContent.trim();
         if (dict[text]) { h.textContent = dict[text]; }
@@ -5138,6 +5156,37 @@ document.addEventListener("DOMContentLoaded", function () {
       _placeholders.forEach(function (inp) {
         var ph = inp.getAttribute("placeholder");
         if (ph && dict[ph]) { inp.setAttribute("placeholder", dict[ph]); }
+      });
+
+      var _options = document.querySelectorAll("option");
+      _options.forEach(function(opt) {
+        var text = opt.textContent.trim();
+        if (dict[text]) { opt.textContent = dict[text]; }
+      });
+
+      var _panelLabels = document.querySelectorAll(".panel-label, .panel-card__header p, .panel-card__header h3");
+      _panelLabels.forEach(function(el) {
+        var text = el.textContent.trim();
+        if (dict[text]) { el.textContent = dict[text]; }
+      });
+
+      var _formMessages = document.querySelectorAll(".form-message, .helper-text, .empty-state, p");
+      _formMessages.forEach(function(el) {
+        var text = el.textContent.trim();
+        if (text && dict[text]) { el.textContent = dict[text]; }
+      });
+
+      var _strong = document.querySelectorAll("strong");
+      _strong.forEach(function(el) {
+        var text = el.textContent.trim().replace(/:$/, "");
+        if (dict[text]) { el.textContent = dict[text] + ":"; }
+      });
+
+      var _divs = document.querySelectorAll("div, span, p");
+      _divs.forEach(function(el) {
+        if (el.children.length > 0) return;
+        var text = el.textContent.trim();
+        if (text && text.length < 50 && dict[text]) { el.textContent = dict[text]; }
       });
     }
     window.applyLanguage = applyLanguage;
@@ -18683,10 +18732,7 @@ ${allContent}
 
         var userSchoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || "";
         if (userSchoolId) {
-          var apiBase = (typeof window !== "undefined" && window._onlineConfig && window._onlineConfig.apiBaseUrl) ? window._onlineConfig.apiBaseUrl : "";
-          if (!apiBase) {
-            try { apiBase = "https://sagarsoftonline.onrender.com"; } catch(_e) {}
-          }
+          var apiBase = "https://sagarsoftonline.onrender.com";
           if (apiBase) {
             fetch(apiBase + "/api/sms/device-status?school_id=" + encodeURIComponent(userSchoolId))
               .then(function(r) { return r.json(); })
@@ -23225,6 +23271,7 @@ ${allContent}
     }
     setTimeout(setupRevealAnimations, 50);
     applyMessagingVisibility();
+    setTimeout(function() { applySavedThemeSettings(); }, 30);
   }
 
   window.addEventListener("sagarsoft:database-loaded", function () {
@@ -23244,6 +23291,24 @@ ${allContent}
   applySidebarIcons();
   normalizeStudentsDatasetInMemory();
   saveDatabase();
+
+  (async function loadFromServerAfterInit() {
+    var license = database.generalSettings && database.generalSettings.licenseSettings;
+    var schoolId = license && license.schoolId ? String(license.schoolId).trim() : "";
+    if (schoolId && window.SagarSoftDB && window.SagarSoftDB.setSchoolId) {
+      window.SagarSoftDB.setSchoolId(schoolId);
+      try {
+        var serverDb = await window.SagarSoftDB.loadDatabaseFromServer();
+        if (serverDb) {
+          database = serverDb;
+          ensureLicenseSettings();
+          normalizeStudentsDatasetInMemory();
+          saveDatabase();
+        }
+      } catch (_e) {}
+    }
+  })();
+
   renderDashboard();
   renderNotificationList();
   runSuperAdminExpiryAlerts();
@@ -23257,6 +23322,7 @@ ${allContent}
     openAppMessageBox("Error", initialLockState.reason, "error");
   } else {
     setRoute("dashboard");
+    setTimeout(function() { applySavedThemeSettings(); }, 50);
   }
   if (currentUser.role === superAdminRole) {
     window.setInterval(runSuperAdminExpiryAlerts, 60 * 1000);
