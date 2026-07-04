@@ -22964,16 +22964,62 @@ ${allContent}
   }
 
   function buildDashboardBars(rows, maxValue) {
-    const safeMax = Math.max(1, Number(maxValue || 1));
-    return rows.map(function (item) {
-      const value = Number(item.value || 0);
-      const width = Math.round((value / safeMax) * 100);
-      const safeLabel = String(item.label || "-")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      return `<article class="report-bar-row"><p>${safeLabel}</p><div class="report-bar-track"><div class="report-bar-fill" style="width:${width}%"></div></div><strong>${value}</strong></article>`;
-    }).join("");
+    var total = rows.reduce(function (sum, r) { return sum + Number(r.value || 0); }, 0);
+    if (!total) return '<p class="empty-state">No attendance data.</p>';
+
+    var present = Number(rows[0].value || 0);
+    var leave = Number(rows[1].value || 0);
+    var absent = Number(rows[2].value || 0);
+    var unmarked = Number(rows[3].value || 0);
+
+    var pctPresent = total > 0 ? Math.round((present / total) * 100) : 0;
+    var pctLeave = total > 0 ? Math.round((leave / total) * 100) : 0;
+    var pctAbsent = total > 0 ? Math.round((absent / total) * 100) : 0;
+    var pctUnmarked = total > 0 ? Math.round((unmarked / total) * 100) : 0;
+
+    var radius = 70;
+    var circumference = 2 * Math.PI * radius;
+
+    function segArc(pct) { return (pct / 100) * circumference; }
+
+    var offset = 0;
+    var presentLen = segArc(pctPresent);
+    var leaveLen = segArc(pctLeave);
+    var absentLen = segArc(pctAbsent);
+    var unmarkedLen = segArc(pctUnmarked);
+
+    var svg = '<div class="attendance-donut-wrapper">';
+    svg += '<div class="attendance-donut">';
+    svg += '<svg viewBox="0 0 180 180" class="attendance-donut__svg">';
+    svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#e8edf2" stroke-width="22"/>';
+
+    if (pctPresent > 0) {
+      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#43a047" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + presentLen + ' ' + (circumference - presentLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--present"/>';
+      offset += presentLen;
+    }
+    if (pctLeave > 0) {
+      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#fdd835" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + leaveLen + ' ' + (circumference - leaveLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--leave"/>';
+      offset += leaveLen;
+    }
+    if (pctAbsent > 0) {
+      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#e53935" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + absentLen + ' ' + (circumference - absentLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--absent"/>';
+      offset += absentLen;
+    }
+    if (pctUnmarked > 0) {
+      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#b0bec5" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + unmarkedLen + ' ' + (circumference - unmarkedLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--unmarked"/>';
+    }
+
+    svg += '<text x="90" y="84" text-anchor="middle" class="donut-center-value">' + present + '</text>';
+    svg += '<text x="90" y="104" text-anchor="middle" class="donut-center-label">Present</text>';
+    svg += '</svg>';
+    svg += '</div>';
+    svg += '<div class="attendance-donut__legend">';
+    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#43a047;"></span><span class="attendance-donut__legend-label">Present</span><strong>' + present + '</strong><span class="attendance-donut__legend-pct">' + pctPresent + '%</span></div>';
+    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#fdd835;"></span><span class="attendance-donut__legend-label">On Leave</span><strong>' + leave + '</strong><span class="attendance-donut__legend-pct">' + pctLeave + '%</span></div>';
+    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#e53935;"></span><span class="attendance-donut__legend-label">Absent</span><strong>' + absent + '</strong><span class="attendance-donut__legend-pct">' + pctAbsent + '%</span></div>';
+    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#b0bec5;"></span><span class="attendance-donut__legend-label">Unmarked</span><strong>' + unmarked + '</strong><span class="attendance-donut__legend-pct">' + pctUnmarked + '%</span></div>';
+    svg += '</div></div>';
+    return svg;
   }
 
   function getDashboardFinanceSeries() {
