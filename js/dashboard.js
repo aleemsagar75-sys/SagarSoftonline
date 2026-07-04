@@ -4357,7 +4357,30 @@ document.addEventListener("DOMContentLoaded", function () {
     var firstDay = new Date(year, month, 1).getDay();
     var daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    var calHtml = '<div class="dash-cal">';
+    var birthdays = [];
+    (database.students || []).forEach(function (st) {
+      if (String(st.status || "").toLowerCase() !== "active") return;
+      if (!st.dateOfBirth) return;
+      var dob = new Date(st.dateOfBirth);
+      var dobMonth = dob.getMonth();
+      var dobDay = dob.getDate();
+      if (dobMonth === month) {
+        var bdayStr = year + "-" + String(dobMonth + 1).padStart(2, "0") + "-" + String(dobDay).padStart(2, "0");
+        var age = year - dob.getFullYear();
+        birthdays.push({
+          name: st.name || "Student",
+          day: dobDay,
+          date: bdayStr,
+          age: age,
+          isToday: dobDay === today.getDate()
+        });
+      }
+    });
+    birthdays.sort(function (a, b) { return a.day > b.day ? 1 : a.day < b.day ? -1 : 0; });
+
+    var calHtml = '<div style="display:grid;grid-template-columns:1fr 180px;gap:1rem;">';
+
+    calHtml += '<div class="dash-cal">';
     calHtml += '<div class="dash-cal__header"><strong>' + monthNames[month] + ' ' + year + '</strong></div>';
     calHtml += '<div class="dash-cal__grid">';
     for (var d = 0; d < 7; d++) { calHtml += '<div class="dash-cal__dayname">' + dayNames[d] + '</div>'; }
@@ -4366,16 +4389,22 @@ document.addEventListener("DOMContentLoaded", function () {
       var ds = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
       var isToday = day === today.getDate();
       var hasEvent = events.some(function (ev) { return ev.date === ds; });
+      var hasBday = birthdays.some(function (b) { return b.day === day; });
       var evType = "";
       if (hasEvent) { var found = events.find(function (ev) { return ev.date === ds; }); evType = found ? (found.type || "custom") : "custom"; }
       var cls = "dash-cal__cell";
       if (isToday) cls += " dash-cal__cell--today";
       if (hasEvent) cls += " dash-cal__cell--event dash-cal__cell--" + escapeAttr(evType);
-      calHtml += '<div class="' + cls + '" title="' + escapeAttr(hasEvent ? events.find(function (ev) { return ev.date === ds; }).title : day) + '">' + day + '</div>';
+      if (hasBday && !hasEvent) cls += " dash-cal__cell--event dash-cal__cell--birthday";
+      var title = day;
+      if (hasBday) { var bNames = birthdays.filter(function (b) { return b.day === day; }).map(function (b) { return b.name; }).join(", "); title = "🎂 " + bNames; }
+      if (hasEvent) { title = events.find(function (ev) { return ev.date === ds; }).title; }
+      calHtml += '<div class="' + cls + '" title="' + escapeAttr(title) + '">' + day + '</div>';
     }
     calHtml += '</div></div>';
 
-    var upcoming = events.filter(function (ev) { return ev.date >= todayStr; }).sort(function (a, b) { return a.date > b.date ? 1 : a.date < b.date ? -1 : 0; }).slice(0, 4);
+    calHtml += '<div class="dash-cal__side">';
+    var upcoming = events.filter(function (ev) { return ev.date >= todayStr; }).sort(function (a, b) { return a.date > b.date ? 1 : a.date < b.date ? -1 : 0; }).slice(0, 3);
     if (upcoming.length) {
       calHtml += '<div class="dash-events-upcoming">';
       calHtml += '<div class="dash-events-upcoming__header"><strong>Upcoming</strong></div>';
@@ -4391,6 +4420,21 @@ document.addEventListener("DOMContentLoaded", function () {
       });
       calHtml += '</div>';
     }
+
+    if (birthdays.length) {
+      calHtml += '<div class="dash-birthdays">';
+      calHtml += '<div class="dash-birthdays__header"><strong>🎂 Birthdays</strong></div>';
+      birthdays.forEach(function (b) {
+        var cls = b.isToday ? " dash-birthdays__item--today" : "";
+        calHtml += '<div class="dash-birthdays__item' + cls + '">' +
+          '<span class="dash-birthdays__day">' + b.day + '</span>' +
+          '<span class="dash-birthdays__name">' + escapeHtml(b.name) + '</span>' +
+          '<span class="dash-birthdays__age">' + b.age + ' yrs</span>' +
+        '</div>';
+      });
+      calHtml += '</div>';
+    }
+    calHtml += '</div></div>';
     el.innerHTML = calHtml;
   }
 
