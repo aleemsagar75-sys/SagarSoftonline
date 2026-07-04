@@ -2225,6 +2225,68 @@ app.get("/api/supabase-config", function (req, res) {
   });
 });
 
+app.get("/api/sms/device-status", async function (req, res) {
+  try {
+    var schoolId = String(req.query.school_id || "").trim();
+    if (!schoolId) return res.json({ success: true, device: null });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.json({ success: true, device: null });
+    var url = supabaseUrl + "/rest/v1/devices?school_id=eq." + encodeURIComponent(schoolId) + "&select=sim_number,last_poll_at,is_active,device_id,created_at&limit=1";
+    var resp = await fetch(url, { headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey } });
+    var data = await resp.json();
+    var device = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    return res.json({ success: true, device: device });
+  } catch (e) {
+    return res.json({ success: true, device: null, error: e.message });
+  }
+});
+
+app.post("/api/sms/mark-sent", async function (req, res) {
+  try {
+    var smsId = req.body.sms_id;
+    var deviceId = req.body.device_id || "";
+    if (!smsId) return res.status(400).json({ success: false, message: "sms_id required" });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.status(500).json({ success: false, message: "Supabase not configured" });
+    var now = new Date().toISOString();
+    var url = supabaseUrl + "/rest/v1/rpc/update_sms_status";
+    var resp = await fetch(url, {
+      method: "POST",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_sms_id: smsId, p_status: "sent", p_device_id: deviceId, p_sent_at: now })
+    });
+    if (!resp.ok) {
+      var bodyText = await resp.text();
+      return res.json({ success: true, fallback: true, message: bodyText });
+    }
+    return res.json({ success: true });
+  } catch (e) {
+    return res.json({ success: false, message: e.message });
+  }
+});
+
+app.post("/api/sms/mark-failed", async function (req, res) {
+  try {
+    var smsId = req.body.sms_id;
+    var errorMsg = req.body.error || "send-failed";
+    if (!smsId) return res.status(400).json({ success: false, message: "sms_id required" });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.status(500).json({ success: false, message: "Supabase not configured" });
+    var url = supabaseUrl + "/rest/v1/sms_queue?id=eq." + encodeURIComponent(smsId);
+    var resp = await fetch(url, {
+      method: "PATCH",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json", "Prefer": "return=minimal" },
+      body: JSON.stringify({ status: "failed", error_message: errorMsg })
+    });
+    return res.json({ success: true });
+  } catch (e) {
+    return res.json({ success: false, message: e.message });
+  }
+});
+
 app.post("/api/setup-sms-tables", async function (req, res) {
   try {
     if (!_pool) {
@@ -2367,6 +2429,17 @@ app.post("/api/setup-sms-tables", async function (req, res) {
       END $$;
     `;
     try { await _pool.query(rlsPolicies); } catch (_rlsErr) { console.error("RLS policy error:", _rlsErr.message); }
+
+    var rpcFn = `
+      CREATE OR REPLACE FUNCTION update_sms_status(p_sms_id UUID, p_status TEXT, p_device_id TEXT, p_sent_at TIMESTAMPTZ)
+      RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+      BEGIN
+        UPDATE sms_queue SET status = p_status, device_id = p_device_id, sent_at = p_sent_at WHERE id = p_sms_id;
+      END; $$;
+      GRANT EXECUTE ON FUNCTION update_sms_status TO anon;
+      GRANT EXECUTE ON FUNCTION update_sms_status TO authenticated;
+    `;
+    try { await _pool.query(rpcFn); } catch (_rpcErr) { console.error("RPC function error:", _rpcErr.message); }
 
     return res.json({ success: true, message: "SMS tables created successfully." });
   } catch (error) {
