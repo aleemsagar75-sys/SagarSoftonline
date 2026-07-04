@@ -442,6 +442,29 @@
             <button class="primary-button" id="dashboardScanAttendanceBtn" type="button"><i class="fas fa-qrcode"></i> Scan Attendance</button>
           </div>
 
+          <section class="dashboard-grid dashboard-grid--two-col" style="margin-bottom:1rem;">
+            <article class="panel-card dashboard-mini-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Notice Board</p>
+                  <h3>Recent Notices</h3>
+                </div>
+                <button class="secondary-button dashboard-mini-card__viewall" type="button" data-dashboard-route="notice-board">View All</button>
+              </div>
+              <div id="dashboardNoticeBoard" class="dashboard-mini-card__body"></div>
+            </article>
+            <article class="panel-card dashboard-mini-card">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Event Calendar</p>
+                  <h3>Upcoming Events</h3>
+                </div>
+                <button class="secondary-button dashboard-mini-card__viewall" type="button" data-dashboard-route="event-calendar">View All</button>
+              </div>
+              <div id="dashboardEventCalendar" class="dashboard-mini-card__body"></div>
+            </article>
+          </section>
+
           <section class="dashboard-grid dashboard-grid--analytics">
             <article class="panel-card">
               <div class="panel-card__header">
