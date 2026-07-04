@@ -6589,6 +6589,70 @@ body[data-theme="dark"] .attendance-donut__legend-pct { color: #6e7681; }
   .attendance-donut__legend { width: 100%; }
 }
 
+/* ===== DASHBOARD BIRTHDAYS ===== */
+.dash-cal__side { display: flex; flex-direction: column; gap: 0.8rem; min-width: 160px; }
+.dash-birthdays { border-top: 1px solid rgba(16,37,66,0.06); padding-top: 0.6rem; }
+.dash-birthdays__header {
+  font-size: 0.78rem; color: #102542; margin-bottom: 0.4rem;
+}
+.dash-birthdays__item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  margin-bottom: 3px;
+  background: rgba(233,30,99,0.04);
+  transition: background 0.2s;
+}
+.dash-birthdays__item:hover { background: rgba(233,30,99,0.10); }
+.dash-birthdays__item--today {
+  background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+  border: 1px solid #f48fb1;
+  font-weight: 700;
+}
+.dash-birthdays__day {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #e91e63;
+  min-width: 20px;
+}
+.dash-birthdays__name {
+  font-size: 0.72rem;
+  color: #102542;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dash-birthdays__age {
+  font-size: 0.62rem;
+  color: #ad1457;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dash-cal__cell--birthday {
+  color: #e91e63 !important;
+  background: rgba(233,30,99,0.06);
+}
+.dash-cal__cell--birthday::after { background: #e91e63 !important; }
+
+body[data-theme="dark"] .dash-birthdays__item { background: rgba(233,30,99,0.06); }
+body[data-theme="dark"] .dash-birthdays__item:hover { background: rgba(233,30,99,0.12); }
+body[data-theme="dark"] .dash-birthdays__item--today { background: linear-gradient(135deg, #3d1111, #4a1520); border-color: #e91e63; }
+body[data-theme="dark"] .dash-birthdays__day { color: #f48fb1; }
+body[data-theme="dark"] .dash-birthdays__name { color: #fce4ec; }
+body[data-theme="dark"] .dash-birthdays__age { color: #f48fb1; }
+body[data-theme="dark"] .dash-birthdays__header { color: #f48fb1; }
+body[data-theme="dark"] .dash-cal__side { border-top-color: rgba(255,255,255,0.06); }
+body[data-theme="dark"] .dash-cal__cell--birthday { color: #f48fb1 !important; background: rgba(233,30,99,0.08); }
+body[data-theme="dark"] .dash-cal__cell--birthday::after { background: #e91e63 !important; }
+
+@media (max-width: 600px) {
+  .dash-cal { grid-template-columns: 1fr !important; }
+  .dash-cal__side { min-width: unset; }
+}
+
 /* ===== DASHBOARD MINI CARDS LAYOUT ===== */
 .dashboard-grid--two-col {
   display: grid;
