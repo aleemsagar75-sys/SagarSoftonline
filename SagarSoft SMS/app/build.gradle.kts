@@ -11,8 +11,8 @@ android {
         applicationId = "com.sagarsoft.smsagent"
         minSdk = 24
         targetSdk = 34
-        versionCode = 8
-        versionName = "2.3.3"
+        versionCode = 11
+        versionName = "2.3.6"
     }
 
     buildTypes {
