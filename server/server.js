@@ -1717,6 +1717,65 @@ app.post("/api/mobile/login", async (req, res) => {
   }
 });
 
+app.post("/api/debug-login", async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    if (!email) return res.status(400).json({ error: "email required" });
+
+    var step1_supabase = await verifySupabaseAuth(email, password);
+
+    var step2_search = await pool.query(`
+      select sd.school_id, sd.database, la.*
+      from public.school_databases sd
+      join public.license_accounts la on la.school_id = sd.school_id
+      where exists (
+        select 1
+        from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
+        where lower(app_user->>'email') = $1
+          and lower(coalesce(app_user->>'active', 'true')) <> 'false'
+      )
+      limit 1
+    `, [email]);
+
+    var step3_found = null;
+    if (step2_search.rowCount) {
+      var foundLicense = step2_search.rows[0];
+      var foundDb = foundLicense.database || {};
+      var matchedUser = Array.isArray(foundDb.users)
+        ? foundDb.users.find(function (u) {
+            return String(u.email || "").trim().toLowerCase() === email && u.active !== false;
+          })
+        : null;
+      step3_found = {
+        school_id: foundLicense.school_id,
+        user_count: (foundDb.users || []).length,
+        matchedUser: matchedUser ? { email: matchedUser.email, role: matchedUser.role, active: matchedUser.active, hasPassword: !!matchedUser.password } : null,
+        all_user_emails: (foundDb.users || []).map(u => u.email),
+        pwdCheck: matchedUser && matchedUser.password ? (password === matchedUser.password ? "plaintext_match" : "no_match") : "no_password"
+      };
+    }
+
+    var step4_lic = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+    var licInfo = step4_lic.rowCount ? { school_id: step4_lic.rows[0].school_id, email: step4_lic.rows[0].email, hasPassword: !!step4_lic.rows[0].password } : null;
+
+    var step5_pwdCheck = null;
+    if (licInfo && step4_lic.rows[0].password) {
+      step5_pwdCheck = verifyPasswordHash(password, step4_lic.rows[0].password) ? "valid" : "invalid";
+    }
+
+    return res.json({
+      supabase: step1_supabase,
+      searchQueryRows: step2_search.rowCount,
+      matchedInDb: step3_found,
+      licenseAccount: licInfo,
+      licensePwdCheck: step5_pwdCheck
+    });
+  } catch (error) {
+    return res.status(500).json({ error: error.message, stack: error.stack });
+  }
+});
+
 app.post("/api/resolve-school", async (req, res) => {
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
