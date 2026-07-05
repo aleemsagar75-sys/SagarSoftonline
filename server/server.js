@@ -1479,7 +1479,7 @@ async function getSchoolDatabase(schoolId) {
     }
   } catch (_e) {}
 
-  return result.rowCount || teachers.length || students.length || classes.length || users.length || subjects.length || attendance.length || fees.length ? database : null;
+  return result.rowCount || employees.length || students.length || classes.length || users.length || subjects.length || attendance.length || fees.length ? database : null;
 }
 
 async function findLicenseByToken(schoolId, token) {
@@ -1530,7 +1530,15 @@ app.post("/api/database/:schoolId", async (req, res) => {
   try {
     const existing = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
     if (!existing.rowCount) {
-      return res.status(403).json({ success: false, message: "School not registered. Please register via Super Admin first." });
+      const schoolName = (database.school && database.school.name) || "SagarSoft Public School";
+      const email = (database.generalSettings && database.generalSettings.accountSettings && database.generalSettings.accountSettings.username) || "";
+      const hashedPassword = email ? hashPassword("admin123") : null;
+      try {
+        await pool.query(`insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, created_at, updated_at) values ($1, $2, $3, $4, 'active', 'monthly', now(), now() + interval '1 year', $5, now(), now()) on conflict (school_id) do nothing`, [schoolId, schoolName, email, hashedPassword, generateToken()]);
+        console.log("Auto-registered school:", schoolId);
+      } catch (_regErr) {
+        console.error("Auto-register error:", _regErr.message);
+      }
     }
     await saveSchoolDatabaseWithMirrors(schoolId, database);
     return res.json({ success: true, school_id: schoolId });
