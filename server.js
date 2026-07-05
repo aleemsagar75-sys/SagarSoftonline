@@ -758,6 +758,10 @@ async function ensureSchema() {
     create index if not exists idx_certificates_school_id on public.certificates (school_id);
   `);
   console.log("Schema ready");
+  try {
+    await pool.query("drop table if exists public.teachers cascade");
+    console.log("Dropped teachers table (use employees instead)");
+  } catch (_e) {}
 }
 
 async function ensureSmsTables() {
@@ -864,12 +868,13 @@ function scopedMirrorId(schoolId, sourceId, prefix) {
 }
 
 async function syncEmployeeMirrorTables(client, schoolId, database) {
-  const employees = Array.isArray(database && database.teachers) ? database.teachers : [];
+  const employees = Array.isArray(database && database.employees) ? database.employees : [];
+  const teachers = Array.isArray(database && database.teachers) ? database.teachers : [];
+  const allStaff = employees.length >= teachers.length ? employees : teachers;
   await client.query("delete from public.employees where school_id = $1", [schoolId]);
-  await client.query("delete from public.teachers where school_id = $1", [schoolId]);
 
-  for (const employee of employees) {
-    const ids = scopedMirrorId(schoolId, employee.id, "TCH");
+  for (const employee of allStaff) {
+    const ids = scopedMirrorId(schoolId, employee.id, "EMP");
     await client.query(`
       insert into public.employees (
         id, school_id, source_id, name, subject, designation, role, phone, date_of_joining,
@@ -901,31 +906,6 @@ async function syncEmployeeMirrorTables(client, schoolId, database) {
       String(employee.phone || employee.mobile || ""),
       employee.dateOfJoining || null,
       Number(employee.monthlySalary || 0),
-      String(employee.email || ""),
-      String(employee.status || "active"),
-      JSON.stringify(employee)
-    ]);
-
-    await client.query(`
-      insert into public.teachers (id, school_id, source_id, name, designation, phone, email, status, data, created_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
-      on conflict (id)
-      do update set
-        school_id = excluded.school_id,
-        source_id = excluded.source_id,
-        name = excluded.name,
-        designation = excluded.designation,
-        phone = excluded.phone,
-        email = excluded.email,
-        status = excluded.status,
-        data = excluded.data
-    `, [
-      ids.mirrorId,
-      schoolId,
-      ids.sourceId,
-      String(employee.name || ""),
-      String(employee.designation || employee.role || ""),
-      String(employee.phone || employee.mobile || ""),
       String(employee.email || ""),
       String(employee.status || "active"),
       JSON.stringify(employee)
@@ -1407,7 +1387,6 @@ async function getSchoolDatabase(schoolId) {
   };
 
   const [
-    teachers,
     students,
     classes,
     users,
@@ -1433,7 +1412,6 @@ async function getSchoolDatabase(schoolId) {
     smsTemplates,
     accountActivity
   ] = await Promise.all([
-    readDataRows("teachers"),
     readDataRows("students"),
     readDataRows("classes"),
     readDataRows("app_users"),
@@ -1460,7 +1438,6 @@ async function getSchoolDatabase(schoolId) {
     readDataRows("account_activity")
   ]);
 
-  if (teachers.length) database.teachers = teachers;
   if (students.length) database.students = students;
   if (classes.length) database.classes = classes;
   if (users.length) database.users = users;
@@ -2288,7 +2265,6 @@ app.delete("/api/admin/notifications", requireSuperAdmin, async function (req, r
 
 var ALLOWED_TABLES = {
   students: "students",
-  teachers: "teachers",
   classes: "classes",
   subjects: "subjects",
   attendance: "attendance",
@@ -2449,9 +2425,49 @@ app.get("/api/version", function (_req, res) {
   }
 });
 
+async function migrateExistingData() {
+  if (!pool) return;
+  try {
+    var result = await pool.query("select school_id, database from public.school_databases");
+    if (!result.rowCount) { console.log("No schools to migrate."); return; }
+    for (var row of result.rows) {
+      var db = row.database || {};
+      var sid = row.school_id;
+      console.log("Migrating data for " + sid + "...");
+      var client = await pool.connect();
+      try {
+        await client.query("begin");
+        await syncEmployeeMirrorTables(client, sid, db);
+        await syncStudentMirrorTable(client, sid, db);
+        await syncClassMirrorTable(client, sid, db);
+        await syncStructuredModuleTables(client, sid, db);
+        await syncExamTables(client, sid, db);
+        await syncTimetableTable(client, sid, db);
+        await syncHomeworkTable(client, sid, db);
+        await syncClassTestTables(client, sid, db);
+        await syncQuestionPapersTable(client, sid, db);
+        await syncCertificatesTable(client, sid, db);
+        await syncAppRecordsTable(client, sid, db);
+        await client.query("commit");
+        console.log("Migration complete for " + sid);
+      } catch (err) {
+        await client.query("rollback");
+        console.error("Migration error for " + sid + ":", err.message);
+      } finally {
+        client.release();
+      }
+    }
+  } catch (err) {
+    console.error("migrateExistingData error:", err.message);
+  }
+}
+
 ensureSchema()
   .then(function () {
     return ensureSmsTables();
+  })
+  .then(function () {
+    return migrateExistingData();
   })
   .then(function () {
     app.listen(port, function () {
