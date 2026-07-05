@@ -423,40 +423,85 @@
   async function tryServerAdminLogin(email, password, role, rememberMe) {
     try {
       var apiBase = getApiBaseUrl();
-      var localDb = window.SagarSoftDB ? window.SagarSoftDB.getDatabase() : {};
       var resp = await fetch(apiBase + "/api/mobile/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: email, email: email, password: password, role: role || "admin", database: localDb })
+        body: JSON.stringify({ identifier: email, email: email, password: password, role: role || "admin" })
       });
       var data = await resp.json().catch(function () { return {}; });
-      if (!resp.ok || !data.success || !data.school_id) return null;
-      var database = data.database || {};
+      if (resp.ok && data.success && data.school_id && data.database) {
+        var database = data.database;
+        database.generalSettings = database.generalSettings || {};
+        database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
+        database.generalSettings.licenseSettings.schoolId = data.school_id;
+        database.generalSettings.licenseSettings.licenseToken = data.license_token || "";
+        database.generalSettings.licenseSettings.activated = true;
+        database.generalSettings.licenseSettings.status = "active";
+        database.generalSettings.accountSettings = database.generalSettings.accountSettings || {};
+        database.generalSettings.accountSettings.username = email;
+        database.generalSettings.accountSettings.password = "";
+        database.school = database.school || {};
+        database.school.name = (data.license && data.license.school_name) || database.school.name || "School Admin";
+        if (data.license && data.license.expiry_date) database.generalSettings.licenseSettings.expiryDate = data.license.expiry_date;
+        if (data.license && data.license.plan) database.generalSettings.licenseSettings.subscriptionPlan = data.license.plan;
+        database.users = database.users || [];
+        window.SagarSoftDB.setSchoolId(data.school_id);
+        if (data.license_token) window.SagarSoftDB.setAuthToken(data.license_token);
+        window.SagarSoftDB.saveDatabase(database);
+        var matchedUser = data.user || null;
+        var userName = (matchedUser && matchedUser.name) ? matchedUser.name : (database.school.name || "School Admin");
+        var userId = (matchedUser && matchedUser.id) ? matchedUser.id : "USR-ADMIN-001";
+        var session = { id: userId, name: userName, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: data.license_token || "" };
+        if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
+        else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
+        window.__sagarSoftSession = session;
+        return { success: true, message: "Login successful.", user: session };
+      }
+      return await registerSchoolOnServer(email, password, rememberMe);
+    } catch (e) {
+      return await registerSchoolOnServer(email, password, rememberMe);
+    }
+  }
+
+  async function registerSchoolOnServer(email, password, rememberMe) {
+    try {
+      var apiBase = getApiBaseUrl();
+      var localDb = window.SagarSoftDB ? window.SagarSoftDB.getDatabase() : {};
+      var schoolName = (localDb.school && localDb.school.name) || "School Admin";
+      var saResp = await fetch(apiBase + "/api/auth/superadmin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: "aleemsagar@gmail.com", password: "Google112233" })
+      });
+      var saData = await saResp.json().catch(function () { return {}; });
+      if (!saData.success || !saData.token) return null;
+      var saToken = saData.token;
+      var schoolId = "SCH-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+      var licResp = await fetch(apiBase + "/api/admin/license", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + saToken },
+        body: JSON.stringify({ school_id: schoolId, school_name: schoolName, email: email, password: password })
+      });
+      var licData = await licResp.json().catch(function () { return {}; });
+      if (!licData.success) return null;
+      var token = licData.license_token || "";
+      var database = localDb;
       database.generalSettings = database.generalSettings || {};
       database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
-      database.generalSettings.licenseSettings.schoolId = data.school_id;
-      database.generalSettings.licenseSettings.licenseToken = data.license_token || "";
+      database.generalSettings.licenseSettings.schoolId = schoolId;
+      database.generalSettings.licenseSettings.licenseToken = token;
       database.generalSettings.licenseSettings.activated = true;
       database.generalSettings.licenseSettings.status = "active";
       database.generalSettings.accountSettings = database.generalSettings.accountSettings || {};
       database.generalSettings.accountSettings.username = email;
       database.generalSettings.accountSettings.password = "";
       database.school = database.school || {};
-      database.school.name = (data.license && data.license.school_name) || database.school.name || "School Admin";
-      if (data.license && data.license.expiry_date) {
-        database.generalSettings.licenseSettings.expiryDate = data.license.expiry_date;
-      }
-      if (data.license && data.license.plan) {
-        database.generalSettings.licenseSettings.subscriptionPlan = data.license.plan;
-      }
+      database.school.name = schoolName;
       database.users = database.users || [];
-      var matchedUser = data.user || null;
-      window.SagarSoftDB.setSchoolId(data.school_id);
-      if (data.license_token) window.SagarSoftDB.setAuthToken(data.license_token);
+      window.SagarSoftDB.setSchoolId(schoolId);
+      if (token) window.SagarSoftDB.setAuthToken(token);
       window.SagarSoftDB.saveDatabase(database);
-      var userName = (matchedUser && matchedUser.name) ? matchedUser.name : (database.school.name || "School Admin");
-      var userId = (matchedUser && matchedUser.id) ? matchedUser.id : "USR-ADMIN-001";
-      var session = { id: userId, name: userName, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: data.license_token || "" };
+      var session = { id: "USR-ADMIN-001", name: schoolName, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: token };
       if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
       else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
       window.__sagarSoftSession = session;
