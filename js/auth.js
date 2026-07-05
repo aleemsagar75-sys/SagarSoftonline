@@ -420,6 +420,51 @@
     }
   }
 
+  async function tryServerAdminLogin(email, password, role, rememberMe) {
+    try {
+      var apiBase = getApiBaseUrl();
+      var resp = await fetch(apiBase + "/api/mobile/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ identifier: email, email: email, password: password, role: role || "admin" })
+      });
+      if (!resp.ok) return null;
+      var data = await resp.json().catch(function () { return {}; });
+      if (!data.success || !data.school_id) return null;
+      var database = data.database || {};
+      database.generalSettings = database.generalSettings || {};
+      database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
+      database.generalSettings.licenseSettings.schoolId = data.school_id;
+      database.generalSettings.licenseSettings.licenseToken = data.license_token || "";
+      database.generalSettings.licenseSettings.activated = true;
+      database.generalSettings.licenseSettings.status = "active";
+      database.generalSettings.accountSettings = database.generalSettings.accountSettings || {};
+      database.generalSettings.accountSettings.username = email;
+      database.generalSettings.accountSettings.password = "";
+      database.school = database.school || {};
+      database.school.name = (data.license && data.license.school_name) || database.school.name || "School Admin";
+      if (data.license && data.license.expiry_date) {
+        database.generalSettings.licenseSettings.expiryDate = data.license.expiry_date;
+      }
+      if (data.license && data.license.plan) {
+        database.generalSettings.licenseSettings.subscriptionPlan = data.license.plan;
+      }
+      database.users = database.users || [];
+      var existingAdmin = database.users.find(function (u) { return u && u.role === "admin"; });
+      if (!existingAdmin) {
+        database.users.push({ id: "USR-ADMIN-001", name: database.school.name, email: email, password: "", role: "admin", phone: "", active: true });
+      }
+      window.SagarSoftDB.saveDatabase(database);
+      var session = { id: "USR-ADMIN-001", name: database.school.name, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString() };
+      if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
+      else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
+      window.__sagarSoftSession = session;
+      return { success: true, message: "Login successful.", user: session };
+    } catch (e) {
+      return null;
+    }
+  }
+
   async function loginWithOnlineFallback(email, password, role, rememberMe) {
     var normalizedRole = String(role || "").toLowerCase();
     var normalizedEmail = String(email || "").trim().toLowerCase();
@@ -446,6 +491,10 @@
           if (serverToken) SUPER_ADMIN_SESSION_TOKEN = serverToken;
           return { success: true, message: "Super admin login successful", user: session };
         }
+      }
+      if (normalizedRole === "admin") {
+        var serverResult = await tryServerAdminLogin(email, password, "admin", rememberMe);
+        if (serverResult) return serverResult;
       }
       var result = await login(email, password, role, rememberMe);
       if (result.success) return result;
