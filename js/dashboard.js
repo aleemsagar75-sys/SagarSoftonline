@@ -1933,12 +1933,62 @@ document.addEventListener("DOMContentLoaded", function () {
       openAppMessageBox("Backup Failed", "No school ID configured. Go to Account Settings to set up your school.", "error");
       return false;
     }
+    var attempts = 0;
+    var maxAttempts = 3;
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        var dataToSend = {};
+        try { dataToSend = JSON.parse(JSON.stringify(database)); } catch (_e) { dataToSend = database; }
+        var payload = { school_id: schoolId, database: dataToSend };
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function () { controller.abort(); }, 60000);
+        var resp = await fetch(getApiBaseUrl() + "/api/backup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        var data = await resp.json().catch(function () { return {}; });
+        if (data.success) {
+          database.settings = database.settings || {};
+          database.settings.backupHistory = database.settings.backupHistory || [];
+          database.settings.backupHistory.push({ createdAt: new Date().toISOString(), sizeBytes: data.size_bytes || 0 });
+          if (database.settings.backupHistory.length > 50) database.settings.backupHistory = database.settings.backupHistory.slice(-50);
+          saveDatabase();
+          return true;
+        }
+        if (attempts >= maxAttempts) return false;
+      } catch (e) {
+        clearTimeout && clearTimeout();
+        if (attempts >= maxAttempts) {
+          if (e && e.name === "AbortError") {
+            openAppMessageBox("Backup Failed", "Server is waking up. Please wait a minute and try again.", "error");
+          } else {
+            openAppMessageBox("Backup Failed", "Could not reach server. Check your internet connection.", "error");
+          }
+          return false;
+        }
+      }
+      await new Promise(function (r) { setTimeout(r, 5000); });
+    }
+    return false;
+  }
+
+  async function backupToSupabaseSilent() {
+    var schoolId = (ensureLicenseSettings().schoolId || "").trim();
+    var isDemo = currentUser && (currentUser.email || "").endsWith("@sagarsoft.com");
+    if (!schoolId && isDemo) {
+      schoolId = "DEMO-SCHOOL-" + generateId();
+    }
+    if (!schoolId) return;
     try {
       var dataToSend = {};
       try { dataToSend = JSON.parse(JSON.stringify(database)); } catch (_e) { dataToSend = database; }
       var payload = { school_id: schoolId, database: dataToSend };
       var controller = new AbortController();
-      var timeoutId = setTimeout(function () { controller.abort(); }, 15000);
+      var timeoutId = setTimeout(function () { controller.abort(); }, 60000);
       var resp = await fetch(getApiBaseUrl() + "/api/backup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1952,18 +2002,8 @@ document.addEventListener("DOMContentLoaded", function () {
         database.settings.backupHistory = database.settings.backupHistory || [];
         database.settings.backupHistory.push({ createdAt: new Date().toISOString(), sizeBytes: data.size_bytes || 0 });
         if (database.settings.backupHistory.length > 50) database.settings.backupHistory = database.settings.backupHistory.slice(-50);
-        saveDatabase();
-        return true;
       }
-      return false;
-    } catch (e) {
-      if (e && e.name === "AbortError") {
-        openAppMessageBox("Backup Failed", "Request timed out. The server might be waking up. Try again in 30 seconds.", "error");
-      } else {
-        openAppMessageBox("Backup Failed", "Could not reach server. Make sure " + getApiBaseUrl() + " is accessible.", "error");
-      }
-      return false;
-    }
+    } catch (_e) {}
   }
 
   async function checkForUpdates() {
@@ -2057,16 +2097,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (backupNowBtn) {
       backupNowBtn.addEventListener("click", async function () {
-        backupNowBtn.textContent = "Backing up...";
+        backupNowBtn.textContent = "Backing up... (may take ~1 min if server is sleeping)";
         backupNowBtn.disabled = true;
         var ok = await backupToSupabase();
         backupNowBtn.textContent = ok ? "Backup Done" : "Backup Failed";
         backupNowBtn.disabled = false;
         if (ok) {
-          openAppMessageBox("Backup Complete", "Your data has been backed up to Supabase.", "success");
+          openAppMessageBox("Backup Complete", "Your data has been backed up to Supabase. Any device can now access this data.", "success");
           renderProfileDropdownMenu();
         } else {
-          openAppMessageBox("Backup Failed", "Could not backup data. Check your internet connection.", "error");
+          openAppMessageBox("Backup Failed", "Server may be waking up. Wait 1 minute then try again.", "error");
         }
       });
     }
@@ -24586,10 +24626,10 @@ ${allContent}
   });
   window.history.pushState(null, "", window.location.href);
 
-  // Auto backup every 30 minutes
+  // Auto backup every 30 minutes (silent, no dialogs)
   setInterval(function () {
     if (navigator.onLine !== false) {
-      backupToSupabase();
+      backupToSupabaseSilent();
     }
   }, 30 * 60 * 1000);
 });
