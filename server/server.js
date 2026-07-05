@@ -1659,9 +1659,21 @@ app.post("/api/mobile/login", async (req, res) => {
       if (lic3.password) {
         if (verifyPasswordHash(password, lic3.password)) pwdOk = true;
       }
+      if (!pwdOk && password === lic3.password) pwdOk = true;
       if (pwdOk) {
         pool.query("delete from public.license_accounts where lower(email) = $1 and school_id != $2 and school_id not in (select school_id from public.school_databases where school_id is not null)", [email, lic3.school_id]).catch(function(){});
         var db3 = await getSchoolDatabase(lic3.school_id);
+        db3 = db3 || {};
+        db3.generalSettings = db3.generalSettings || {};
+        db3.school = db3.school || {};
+        db3.school.name = lic3.school_name || db3.school.name || "School Admin";
+        if (!Array.isArray(db3.users)) db3.users = [];
+        var existingAdmin = db3.users.find(function(u) { return String(u.email || "").toLowerCase() === email && u.role === "admin"; });
+        if (!existingAdmin) {
+          var newUserId = "USR-ADMIN-" + Date.now();
+          db3.users.push({ id: newUserId, name: lic3.school_name || "School Admin", email: email, password: password, role: "admin", active: true, phone: "" });
+          await saveSchoolDatabaseWithMirrors(lic3.school_id, db3).catch(function(e) { console.error("Auto-add admin user error:", e.message); });
+        }
         var notes4 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic3.school_id]);
         return res.json({ success: true, license: toLicensePayload(lic3, notes4.rows), user: { id: "USR-ADMIN-001", name: lic3.school_name || "School Admin", email: email, role: "admin" }, school_id: lic3.school_id, license_token: lic3.license_token || generateToken(), database: db3 || {} });
       }
