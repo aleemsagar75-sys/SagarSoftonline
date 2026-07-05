@@ -1,21 +1,21 @@
 (function () {
-  var CACHE_KEY = "ss_db_cache";
   var STORAGE_KEY = "ss_db_local";
   var SCHOOL_ID_KEY = "ss_school_id_persistent";
   var API_KEY_KEY = "ss_api_key_persistent";
+  var TOKEN_KEY = "ss_auth_token";
   var cachedDatabase = null;
-  var serverLoaded = false;
-  var config = { apiBaseUrl: "", schoolId: "", apiKey: "" };
+  var config = { apiBaseUrl: "", schoolId: "", apiKey: "", authToken: "" };
 
   var cfg = window.SagarSoftOnlineConfig || {};
   if (cfg.apiBaseUrl) config.apiBaseUrl = String(cfg.apiBaseUrl).replace(/\/+$/, "");
   if (cfg.schoolId) config.schoolId = String(cfg.schoolId);
   if (cfg.apiKey) config.apiKey = String(cfg.apiKey);
 
-  function persistSchoolCredentials(schoolId, apiKey) {
+  function persistCredentials(schoolId, apiKey, authToken) {
     try {
       if (schoolId) localStorage.setItem(SCHOOL_ID_KEY, schoolId);
       if (apiKey) localStorage.setItem(API_KEY_KEY, apiKey);
+      if (authToken) localStorage.setItem(TOKEN_KEY, authToken);
     } catch (_e) {}
   }
 
@@ -23,59 +23,19 @@
     try {
       var sid = localStorage.getItem(SCHOOL_ID_KEY);
       var ak = localStorage.getItem(API_KEY_KEY);
-      if (sid && !config.schoolId) config.schoolId = String(sid);
-      if (ak && !config.apiKey) config.apiKey = String(ak);
+      var tk = localStorage.getItem(TOKEN_KEY);
+      if (sid) config.schoolId = String(sid);
+      if (ak) config.apiKey = String(ak);
+      if (tk) config.authToken = String(tk);
     } catch (_e) {}
   }
 
   loadPersistedCredentials();
 
-  function updateConfigFromDatabase(db) {
-    if (db && db.generalSettings && db.generalSettings.licenseSettings) {
-      var ls = db.generalSettings.licenseSettings;
-      if (ls.schoolId) {
-        config.schoolId = String(ls.schoolId);
-        persistSchoolCredentials(ls.schoolId, ls.websiteApiKey || "");
-      }
-      if (ls.websiteApiKey) config.apiKey = String(ls.websiteApiKey);
-    }
-  }
-
-  function loadFromLocalStorage() {
-    try {
-      var local = localStorage.getItem(STORAGE_KEY);
-      if (local) {
-        var parsed = JSON.parse(local);
-        if (parsed && parsed.school) {
-          cachedDatabase = parsed;
-          updateConfigFromDatabase(parsed);
-          return true;
-        }
-      }
-    } catch (_e) {}
-    return false;
-  }
-
-  function loadFromSessionStorage() {
-    try {
-      var cached = sessionStorage.getItem(CACHE_KEY);
-      if (cached) {
-        var parsed = JSON.parse(cached);
-        if (parsed && parsed.school) {
-          cachedDatabase = parsed;
-          updateConfigFromDatabase(parsed);
-          return true;
-        }
-      }
-    } catch (_e) {}
-    return false;
-  }
-
-  loadFromLocalStorage() || loadFromSessionStorage();
-
   function headers() {
     var h = { "Content-Type": "application/json" };
     if (config.apiKey) h["x-sagarsoft-api-key"] = config.apiKey;
+    if (config.authToken) h["Authorization"] = "Bearer " + config.authToken;
     return h;
   }
 
@@ -85,7 +45,7 @@
   async function apiFetch(path, options) {
     if (!config.apiBaseUrl) throw new Error("API base URL not configured.");
     var controller = new AbortController();
-    var timeoutMs = (options && options.timeoutMs) || 60000;
+    var timeoutMs = (options && options.timeoutMs) || 90000;
     var timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
     try {
       var response = await fetch(config.apiBaseUrl + path, Object.assign({
@@ -109,7 +69,6 @@
     if (attempt >= maxRetries) {
       lastSyncFailed = true;
       pendingSyncs = Math.max(0, pendingSyncs - 1);
-      try { localStorage.setItem(STORAGE_KEY + "_sync_failed", "1"); } catch (_e) {}
       return;
     }
     var delay = Math.min(1000 * Math.pow(2, attempt), 30000);
@@ -118,26 +77,14 @@
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: database }),
-        timeoutMs: 60000
+        timeoutMs: 90000
       }).then(function () {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
-        try { localStorage.removeItem(STORAGE_KEY + "_sync_failed"); } catch (_e) {}
       }).catch(function () {
         retrySyncLater(database, attempt + 1);
       });
     }, delay);
-  }
-
-  function pickStudentField(student, keys, fallback) {
-    const item = student || {};
-    for (let index = 0; index < keys.length; index += 1) {
-      const key = keys[index];
-      if (typeof item[key] !== "undefined" && item[key] !== null && String(item[key]).trim() !== "") {
-        return item[key];
-      }
-    }
-    return typeof fallback === "undefined" ? "" : fallback;
   }
 
   const defaultDatabase = {
@@ -146,12 +93,9 @@
       address: "Online Campus, Education City",
       phone: "+91 00000 00000",
       email: "info@sagarsoftschool.local",
-      rulesRegulations: "1. Students must maintain discipline on campus.\n2. Attendance below 75% may affect exam eligibility.\n3. School fee must be paid on time.\n4. Parents should keep contact details updated.\n5. School property must be handled responsibly."
+      rulesRegulations: ""
     },
-    settings: {
-      theme: "light",
-      sidebarCollapsed: false
-    },
+    settings: { theme: "light", sidebarCollapsed: false },
     generalSettings: {
       instituteProfile: {
         logo: "",
@@ -166,117 +110,16 @@
       feeStructures: {},
       discountPolicies: [],
       bankAccounts: [],
-      rulesAndRegulations: {
-        students: "1. Students must maintain discipline on campus.\n2. Attendance below 75% may affect exam eligibility.\n3. School fee must be paid on time.",
-        employees: "1. Employees must follow school timings.\n2. Professional conduct is required at all times.\n3. School policies must be strictly followed."
-      },
-      marksGrading: [
-        { grade: "A+", from: 90, upto: 100, status: "Pass", required: true },
-        { grade: "A", from: 80, upto: 89, status: "Pass", required: true },
-        { grade: "B", from: 70, upto: 79, status: "Pass", required: true },
-        { grade: "C", from: 60, upto: 69, status: "Pass", required: true },
-        { grade: "D", from: 50, upto: 59, status: "Pass", required: false },
-        { grade: "F", from: 0, upto: 49, status: "Fail", required: true }
-      ],
-      failCriteria: {
-        overallPercent: 40,
-        subjectPercent: 33,
-        subjectCount: 1
-      },
-      themeLanguage: {
-        placement: "LTR",
-        sidebarBackground: "#08172f",
-        headerBackground: "#ffffff",
-        activeItemBackground: "#1e5eff",
-        language: "English"
-      },
-      accountSettings: {
-        username: "",
-        password: "",
-        timezone: "Asia/Karachi",
-        currency: "PKR",
-        symbol: "Rs",
-        subscription: "",
-        expiry: ""
-      },
-      licenseSettings: {
-        schoolId: `SCH-${new Date().getFullYear()}-001`,
-        schoolName: "SagarSoft Public School",
-        activated: false,
-        subscriptionPlan: "monthly",
-        customDays: 30,
-        startDate: "",
-        expiryDate: "",
-        status: "inactive",
-        lastVerifiedAt: "",
-        verificationIntervalDays: 9999,
-        websiteEndpoint: "",
-        websiteApiKey: "",
-        lastServerResponse: ""
-      },
-      feeInvoices: [],
-      feeCollections: [],
-      salaryPayments: [],
-      accountsLedger: [],
-      certificateTemplates: [
-        {
-          id: "CRT-TPL-001",
-          name: "School Leaving Certificate",
-          body: "SCHOOL LEAVING CERTIFICATE\n\nThis is to certify that {{student_name}}, son/daughter of {{father_name}}, was a student of this institution. He/She was admitted on {{admission_date}} in class {{admitted_class}} and studied up to class {{last_class}}.\n\nAccording to the school record, his/her date of birth is {{dob}}.\n\nHe/She has left the school on {{leaving_date}}. His/Her conduct and behavior during his/her stay in the school was {{conduct}}.\n\nWe wish him/her every success in future.\n\nDate Issue: {{issue_date}}"
-        },
-        {
-          id: "CRT-TPL-002",
-          name: "Birth Certificate (School Record Based)",
-          body: "BIRTH CERTIFICATE\n\nThis is to certify that {{student_name}}, son/daughter of {{father_name}}, is a student of this institution.\n\nAs per the school admission record, his/her date of birth is {{dob}}.\n\nHe/She was admitted to the school on {{admission_date}}.\n\nThis certificate is issued on the request of the student/guardian for official purposes.\n\nDate Issue: {{issue_date}}"
-        }
-      ]
+      rulesAndRegulations: { students: "", employees: "" },
+      accountSettings: { username: "", password: "" },
+      licenseSettings: {}
     },
     users: [
-      {
-        id: "USR-SUPER-001",
-        name: "SagarSoft Super Admin",
-        email: "aleemsagar@gmail.com",
-        password: "Google112233",
-        role: "superadmin",
-        phone: "+91 90000 00000",
-        active: true
-      },
-      {
-        id: "USR-ADMIN-DEMO",
-        name: "School Admin",
-        email: "admin@sagarsoft.com",
-        password: "admin123",
-        role: "admin",
-        phone: "+92 300 0000000",
-        active: true
-      },
-      {
-        id: "USR-TEACHER-DEMO",
-        name: "Demo Teacher",
-        email: "teacher@sagarsoft.com",
-        password: "teacher123",
-        role: "teacher",
-        phone: "+92 300 0000001",
-        active: true
-      },
-      {
-        id: "USR-STUDENT-DEMO",
-        name: "Demo Student",
-        email: "student@sagarsoft.com",
-        password: "student123",
-        role: "student",
-        phone: "+92 300 0000002",
-        active: true
-      },
-      {
-        id: "USR-PARENT-DEMO",
-        name: "Demo Parent",
-        email: "parent@sagarsoft.com",
-        password: "parent123",
-        role: "parent",
-        phone: "+92 300 0000003",
-        active: true
-      }
+      { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: "aleemsagar@gmail.com", password: "", role: "superadmin", phone: "", active: true },
+      { id: "USR-ADMIN-DEMO", name: "School Admin", email: "admin@sagarsoft.com", password: "admin123", role: "admin", phone: "+92 300 0000000", active: true },
+      { id: "USR-TEACHER-DEMO", name: "Demo Teacher", email: "teacher@sagarsoft.com", password: "teacher123", role: "teacher", phone: "+92 300 0000001", active: true },
+      { id: "USR-STUDENT-DEMO", name: "Demo Student", email: "student@sagarsoft.com", password: "student123", role: "student", phone: "+92 300 0000002", active: true },
+      { id: "USR-PARENT-DEMO", name: "Demo Parent", email: "parent@sagarsoft.com", password: "parent123", role: "parent", phone: "+92 300 0000003", active: true }
     ],
     students: [],
     teachers: [],
@@ -284,205 +127,51 @@
     subjects: [],
     attendance: [],
     fees: [],
-    activityLogs: []
+    activityLogs: [],
+    notifications: [],
+    exams: [],
+    timetable: [],
+    homework: [],
+    certificates: [],
+    employees: [],
+    salaryPayments: [],
+    accountsLedger: []
   };
 
   function normalizeDatabase(db) {
-    if (!db) return structuredClone(defaultDatabase);
-    if (!db.school) db.school = structuredClone(defaultDatabase.school);
-    if (!db.school.rulesRegulations) db.school.rulesRegulations = defaultDatabase.school.rulesRegulations;
-    if (!db.generalSettings) db.generalSettings = structuredClone(defaultDatabase.generalSettings);
-    if (!db.generalSettings.instituteProfile) db.generalSettings.instituteProfile = structuredClone(defaultDatabase.generalSettings.instituteProfile);
-    if (!db.generalSettings.feeParticulars) db.generalSettings.feeParticulars = {};
-    if (!db.generalSettings.feeStructures) db.generalSettings.feeStructures = {};
-    if (!Array.isArray(db.generalSettings.discountPolicies)) db.generalSettings.discountPolicies = [];
-    if (!Array.isArray(db.generalSettings.bankAccounts)) db.generalSettings.bankAccounts = [];
-
-    if (!Array.isArray(db.teachers)) db.teachers = [];
-    db.teachers = db.teachers.map(function (teacher, index) {
-      const defaultTeacher = {
-        id: `TCH-MIG-${index + 1}`, name: "", subject: "", designation: "Teacher",
-        role: "Teacher", phone: "", dateOfJoining: "", monthlySalary: 0,
-        fatherOrHusbandName: "", nationalId: "", education: "", gender: "",
-        religion: "", bloodGroup: "", experience: "", email: "", dateOfBirth: "",
-        address: "", picture: "", status: "active"
-      };
-      const teacherStatus = String(teacher.status || "active").toLowerCase();
-      const normalizedStatus = teacherStatus === "inactive" ? "inactive" : "active";
-      return Object.assign({}, defaultTeacher, teacher, {
-        status: normalizedStatus,
-        designation: teacher.designation || teacher.role || "Teacher",
-        role: teacher.role || "Teacher",
-        dateOfJoining: teacher.dateOfJoining || "",
-        monthlySalary: Number(teacher.monthlySalary || 0),
-        fatherOrHusbandName: teacher.fatherOrHusbandName || "",
-        nationalId: teacher.nationalId || "",
-        education: teacher.education || "",
-        gender: teacher.gender || "",
-        religion: teacher.religion || "",
-        bloodGroup: teacher.bloodGroup || "",
-        experience: teacher.experience || "",
-        email: teacher.email || "",
-        dateOfBirth: teacher.dateOfBirth || "",
-        address: teacher.address || "",
-        picture: teacher.picture || ""
-      });
-    });
-
-    if (!db.generalSettings.rulesAndRegulations) db.generalSettings.rulesAndRegulations = structuredClone(defaultDatabase.generalSettings.rulesAndRegulations);
-    if (!Array.isArray(db.generalSettings.marksGrading)) db.generalSettings.marksGrading = structuredClone(defaultDatabase.generalSettings.marksGrading);
-    if (!db.generalSettings.failCriteria) db.generalSettings.failCriteria = structuredClone(defaultDatabase.generalSettings.failCriteria);
-    if (!db.generalSettings.themeLanguage) db.generalSettings.themeLanguage = structuredClone(defaultDatabase.generalSettings.themeLanguage);
-    if (!db.generalSettings.accountSettings) db.generalSettings.accountSettings = structuredClone(defaultDatabase.generalSettings.accountSettings);
-
-    if (db.generalSettings.accountSettings && db.generalSettings.accountSettings.symbol) {
-      const symbol = String(db.generalSettings.accountSettings.symbol);
-      if (/\d/.test(symbol) || symbol.length > 5) db.generalSettings.accountSettings.symbol = "Rs";
-    }
-
-    if (!db.generalSettings.licenseSettings) db.generalSettings.licenseSettings = structuredClone(defaultDatabase.generalSettings.licenseSettings);
-    db.generalSettings.licenseSettings = Object.assign({}, defaultDatabase.generalSettings.licenseSettings, db.generalSettings.licenseSettings);
-    if (!db.generalSettings.licenseSettings.schoolId) db.generalSettings.licenseSettings.schoolId = `SCH-${new Date().getFullYear()}-001`;
-    if (!db.generalSettings.licenseSettings.schoolName) {
-      db.generalSettings.licenseSettings.schoolName =
-        (db.generalSettings.instituteProfile && db.generalSettings.instituteProfile.name) ||
-        db.school.name || "SagarSoft Public School";
-    }
-
-    if (!Array.isArray(db.generalSettings.feeInvoices)) db.generalSettings.feeInvoices = [];
-    if (!Array.isArray(db.generalSettings.feeCollections)) db.generalSettings.feeCollections = [];
-    if (!Array.isArray(db.generalSettings.salaryPayments)) db.generalSettings.salaryPayments = [];
-    if (!Array.isArray(db.generalSettings.accountsLedger)) db.generalSettings.accountsLedger = [];
-    if (!Array.isArray(db.generalSettings.certificateTemplates)) db.generalSettings.certificateTemplates = structuredClone(defaultDatabase.generalSettings.certificateTemplates || []);
-
-    db.generalSettings.accountsLedger = (db.generalSettings.accountsLedger || []).map(function (entry) {
-      if (!entry || typeof entry !== "object") return null;
-      return Object.assign({}, entry, { amount: Number(entry.amount || 0) });
-    }).filter(function (entry) {
-      return entry && entry.id && entry.date && entry.type && entry.category &&
-        Number.isFinite(entry.amount);
-    });
-
+    if (!db || typeof db !== "object") return JSON.parse(JSON.stringify(defaultDatabase));
+    if (!db.school) db.school = JSON.parse(JSON.stringify(defaultDatabase.school));
+    if (!db.settings) db.settings = { theme: "light", sidebarCollapsed: false };
+    if (!db.generalSettings) db.generalSettings = JSON.parse(JSON.stringify(defaultDatabase.generalSettings));
+    if (!db.generalSettings.instituteProfile) db.generalSettings.instituteProfile = JSON.parse(JSON.stringify(defaultDatabase.generalSettings.instituteProfile));
+    if (!db.generalSettings.accountSettings) db.generalSettings.accountSettings = { username: "", password: "" };
+    if (!db.generalSettings.licenseSettings) db.generalSettings.licenseSettings = {};
     if (!Array.isArray(db.users)) db.users = [];
-    const superUser = db.users.find(function (user) { return user.id === "USR-SUPER-001"; });
-    if (!superUser) {
-      db.users.push(structuredClone(defaultDatabase.users[0]));
-    } else {
-      if (!superUser.name) superUser.name = "SagarSoft Super Admin";
-      if (!superUser.role) superUser.role = "superadmin";
-      if (typeof superUser.active === "undefined") superUser.active = true;
-      if (!superUser.email) superUser.email = "aleemsagar@gmail.com";
-      if (!superUser.password) superUser.password = "Google112233";
-    }
-
     if (!Array.isArray(db.students)) db.students = [];
-    db.students = db.students.filter(function (s) { return s && typeof s === "object"; }).map(function (student, index) {
-      const defaultStudent = {};
-      const fallbackId = student.id || `STU-MIG-${index + 1}`;
-      const statusValue = String(pickStudentField(student, ["status"], "active")).toLowerCase();
-      const normalizedStatus = statusValue === "inactive" ? "inactive" : "active";
-      return Object.assign({}, defaultStudent, student, {
-        id: String(pickStudentField(student, ["id", "studentId"], fallbackId)),
-        admissionNo: String(pickStudentField(student, ["admissionNo", "rollNo", "registrationNo", "rollNumber"], defaultStudent.admissionNo || "")),
-        name: String(pickStudentField(student, ["name", "studentName", "fullName"], defaultStudent.name || "")),
-        picture: String(pickStudentField(student, ["picture", "photo", "profilePicture", "avatar"], student.picture || "")),
-        className: String(pickStudentField(student, ["className", "class", "classTitle"], defaultStudent.className || "")),
-        section: String(pickStudentField(student, ["section", "classSection"], defaultStudent.section || "")),
-        dateOfAdmission: String(pickStudentField(student, ["dateOfAdmission", "admissionDate"], student.dateOfAdmission || "")),
-        discountInFee: String(pickStudentField(student, ["discountInFee"], student.discountInFee || "")),
-        dateOfBirth: String(pickStudentField(student, ["dateOfBirth", "dob"], student.dateOfBirth || "")),
-        gender: String(pickStudentField(student, ["gender"], student.gender || "")),
-        bloodGroup: String(pickStudentField(student, ["bloodGroup"], student.bloodGroup || "")),
-        diseaseInfo: String(pickStudentField(student, ["diseaseInfo", "disease"], student.diseaseInfo || "")),
-        birthId: String(pickStudentField(student, ["birthId", "bForm", "nic"], student.birthId || "")),
-        previousSchool: String(pickStudentField(student, ["previousSchool"], student.previousSchool || "")),
-        previousId: String(pickStudentField(student, ["previousId", "previousBoardRollNo"], student.previousId || "")),
-        orphanStatus: String(pickStudentField(student, ["orphanStatus"], student.orphanStatus || "")),
-        religion: String(pickStudentField(student, ["religion"], student.religion || "")),
-        address: String(pickStudentField(student, ["address", "homeAddress"], student.address || "")),
-        phone: String(pickStudentField(student, ["phone", "mobile", "mobileNo"], student.phone || "")),
-        fatherName: String(pickStudentField(student, ["fatherName", "guardianName", "father"], student.fatherName || "")),
-        fatherEducation: String(pickStudentField(student, ["fatherEducation"], student.fatherEducation || "")),
-        fatherNationalId: String(pickStudentField(student, ["fatherNationalId"], student.fatherNationalId || "")),
-        fatherPhone: String(pickStudentField(student, ["fatherPhone"], student.fatherPhone || "")),
-        fatherOccupation: String(pickStudentField(student, ["fatherOccupation"], student.fatherOccupation || "")),
-        fatherIncome: String(pickStudentField(student, ["fatherIncome"], student.fatherIncome || "")),
-        motherName: String(pickStudentField(student, ["motherName"], student.motherName || "")),
-        motherEducation: String(pickStudentField(student, ["motherEducation"], student.motherEducation || "")),
-        motherNationalId: String(pickStudentField(student, ["motherNationalId"], student.motherNationalId || "")),
-        motherPhone: String(pickStudentField(student, ["motherPhone"], student.motherPhone || "")),
-        motherOccupation: String(pickStudentField(student, ["motherOccupation"], student.motherOccupation || "")),
-        status: normalizedStatus
-      });
-    });
-
+    if (!Array.isArray(db.teachers)) db.teachers = [];
     if (!Array.isArray(db.classes)) db.classes = [];
-    db.classes = db.classes.map(function (classItem) {
-      return Object.assign({}, classItem, {
-        monthlyTuitionFees: Number(classItem.monthlyTuitionFees || classItem.monthlyFees || 0),
-        classTeacher: classItem.classTeacher || classItem.teacherId || ""
-      });
-    });
-
-    if (!Array.isArray(db.attendance)) db.attendance = [];
     if (!Array.isArray(db.subjects)) db.subjects = [];
-    if (!Array.isArray(db.activityLogs)) db.activityLogs = [];
+    if (!Array.isArray(db.attendance)) db.attendance = [];
     if (!Array.isArray(db.fees)) db.fees = [];
+    if (!Array.isArray(db.activityLogs)) db.activityLogs = [];
+    if (!Array.isArray(db.notifications)) db.notifications = [];
+    if (!Array.isArray(db.exams)) db.exams = [];
+    if (!Array.isArray(db.timetable)) db.timetable = [];
+    if (!Array.isArray(db.homework)) db.homework = [];
+    if (!Array.isArray(db.certificates)) db.certificates = [];
+    if (!Array.isArray(db.employees)) db.employees = [];
+    if (!Array.isArray(db.salaryPayments)) db.salaryPayments = [];
+    if (!Array.isArray(db.accountsLedger)) db.accountsLedger = [];
+
     db.fees = db.fees.map(function (feeItem) {
       return Object.assign({}, feeItem, {
         month: feeItem.month || feeItem.feeMonth || "",
         feeMonth: feeItem.feeMonth || feeItem.month || "",
-        date: feeItem.date || "",
-        dueDate: feeItem.dueDate || "",
-        fineAfterDueDate: Number(feeItem.fineAfterDueDate || 0),
-        particulars: Array.isArray(feeItem.particulars) ? feeItem.particulars : [],
         totalAmount: Number(feeItem.totalAmount || feeItem.amount || 0),
-        deposit: Number(feeItem.deposit || (feeItem.status === "paid" ? feeItem.amount || 0 : 0)),
-        remaining: Number(feeItem.remaining || (feeItem.status === "paid" ? 0 : feeItem.amount || 0)),
-        paymentDate: feeItem.paymentDate || "",
-        bankId: feeItem.bankId || ""
+        deposit: Number(feeItem.deposit || 0),
+        remaining: Number(feeItem.remaining || 0)
       });
     });
-
-    var changed = false;
-    if (!db.__demoCleanupV3Done) {
-      changed = true;
-      const demoUserEmails = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com","rohan.teacher@sagarsoft.com"]);
-      db.users = (db.users || []).filter(function (user) {
-        var uid = String((user && user.id) || "");
-        var email = String((user && user.email) || "").trim().toLowerCase();
-        if (uid === "USR-SUPER-001") return true;
-        return !demoUserEmails.has(email);
-      });
-      db.teachers = (db.teachers || []).filter(function (t) {
-        var tid = String((t && t.id) || "");
-        return tid.indexOf("DEMO") === -1 && tid.indexOf("TCH-00") !== 0;
-      });
-      db.students = (db.students || []).filter(function (s) {
-        var sid = String((s && s.id) || "");
-        return sid.indexOf("DEMO") === -1 && !/^STU-00[0-9]/.test(sid);
-      });
-      db.classes = (db.classes || []).filter(function (c) {
-        var cid = String((c && c.id) || "");
-        return cid.indexOf("DEMO") === -1 && !/^CLS-00[0-9]/.test(cid);
-      });
-      db.subjects = (db.subjects || []).filter(function (s) {
-        var sid = String((s && s.id) || "");
-        return sid.indexOf("DEMO") === -1 && !/^SUB-00[0-9]/.test(sid);
-      });
-      db.attendance = Array.isArray(db.attendance) ? db.attendance.filter(function (item) {
-        var aid = String((item && item.id) || "");
-        return aid.indexOf("DEMO") === -1 && !/^ATT-00[0-9]/.test(aid);
-      }) : [];
-      db.fees = Array.isArray(db.fees) ? db.fees.filter(function (item) {
-        var fid = String((item && item.id) || "");
-        return fid.indexOf("DEMO") === -1 && !/^FEE-00[0-9]/.test(fid);
-      }) : [];
-      db.activityLogs = Array.isArray(db.activityLogs) ? db.activityLogs.filter(function (entry) {
-        return String((entry && entry.title) || "").toLowerCase() !== "system initialized";
-      }) : [];
-      db.__demoCleanupV3Done = true;
-    }
 
     return db;
   }
@@ -493,31 +182,32 @@
   }
 
   function saveDatabase(database) {
-    cachedDatabase = database;
-    updateConfigFromDatabase(database);
-    try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(database)); } catch (_e) {}
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(database)); } catch (_e) {}
+    cachedDatabase = normalizeDatabase(database);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
     if (database && database.generalSettings && database.generalSettings.licenseSettings) {
       var ls = database.generalSettings.licenseSettings;
-      if (ls.schoolId) persistSchoolCredentials(ls.schoolId, ls.websiteApiKey || "");
+      if (ls.schoolId) {
+        config.schoolId = String(ls.schoolId);
+        persistCredentials(ls.schoolId, ls.websiteApiKey || "", config.authToken || "");
+      }
+      if (ls.websiteApiKey) config.apiKey = String(ls.websiteApiKey);
     }
     if (config.apiBaseUrl && config.schoolId) {
       pendingSyncs++;
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
-        body: JSON.stringify({ database: database }),
-        timeoutMs: 60000
+        body: JSON.stringify({ database: cachedDatabase }),
+        timeoutMs: 90000
       }).then(function () {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
-        try { localStorage.removeItem(STORAGE_KEY + "_sync_failed"); } catch (_e) {}
       }).catch(function (err) {
         console.warn("Server sync failed, retrying:", err);
         pendingSyncs = Math.max(0, pendingSyncs - 1);
-        retrySyncLater(database, 0);
+        retrySyncLater(cachedDatabase, 0);
       });
     }
-    return database;
+    return cachedDatabase;
   }
 
   function updateDatabase(updater) {
@@ -533,15 +223,12 @@
     while (attempts < maxAttempts) {
       attempts++;
       try {
-        var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 60000 });
+        var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 90000 });
         if (payload && payload.database) {
           var db = normalizeDatabase(payload.database);
           cachedDatabase = db;
-          updateConfigFromDatabase(db);
-          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(db)); } catch (_e) {}
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (_e) {}
-          try { localStorage.removeItem(STORAGE_KEY + "_sync_failed"); } catch (_e) {}
-          window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "online" } }));
+          window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "server" } }));
           return db;
         }
       } catch (_e) {
@@ -555,7 +242,6 @@
 
   async function reloadDatabase() {
     cachedDatabase = null;
-    try { sessionStorage.removeItem(CACHE_KEY); } catch (_e) {}
     try { localStorage.removeItem(STORAGE_KEY); } catch (_e) {}
     return await loadDatabaseFromServer();
   }
@@ -566,12 +252,21 @@
         await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
           method: "POST",
           body: JSON.stringify({ database: cachedDatabase }),
-          timeoutMs: 60000
+          timeoutMs: 90000
         });
-        lastSyncFailed = false;
-        try { localStorage.removeItem(STORAGE_KEY + "_sync_failed"); } catch (_e) {}
       } catch (_e) {}
     }
+  }
+
+  async function preloadDatabaseForLogin() {
+    loadPersistedCredentials();
+    if (config.apiBaseUrl && config.schoolId) {
+      try {
+        var db = await loadDatabaseFromServer();
+        if (db) return db;
+      } catch (_e) {}
+    }
+    return null;
   }
 
   function isSyncPending() { return pendingSyncs > 0 || lastSyncFailed; }
@@ -584,44 +279,43 @@
   }
 
   window.addEventListener("focus", function () {
-    if (lastSyncFailed && cachedDatabase && config.apiBaseUrl && config.schoolId) {
-      retrySyncLater(cachedDatabase, 0);
+    if (lastSyncFailed && config.apiBaseUrl && config.schoolId) {
+      retrySyncLater(cachedDatabase || defaultDatabase, 0);
     }
   });
 
   window.addEventListener("online", function () {
-    if (cachedDatabase && config.apiBaseUrl && config.schoolId) {
-      retrySyncLater(cachedDatabase, 0);
+    if (config.apiBaseUrl && config.schoolId) {
+      loadDatabaseFromServer();
     }
   });
-
-  async function preloadDatabaseForLogin() {
-    loadPersistedCredentials();
-    if (config.apiBaseUrl && config.schoolId && !cachedDatabase) {
-      try {
-        var db = await loadDatabaseFromServer();
-        if (db) return db;
-      } catch (_e) {}
-    }
-    return cachedDatabase;
-  }
 
   loadDatabaseFromServer();
 
   function setSchoolId(schoolId) {
-    if (schoolId) config.schoolId = String(schoolId);
+    if (schoolId) {
+      config.schoolId = String(schoolId);
+      persistCredentials(schoolId, config.apiKey, config.authToken);
+    }
+  }
+
+  function setAuthToken(token) {
+    if (token) {
+      config.authToken = String(token);
+      persistCredentials(config.schoolId, config.apiKey, token);
+    }
   }
 
   function getConfig() {
-    return { apiBaseUrl: config.apiBaseUrl, schoolId: config.schoolId, apiKey: config.apiKey };
+    return { apiBaseUrl: config.apiBaseUrl, schoolId: config.schoolId, apiKey: config.apiKey, authToken: config.authToken };
   }
 
   function clearCache() {
     cachedDatabase = null;
-    try { sessionStorage.removeItem(CACHE_KEY); } catch (_e) {}
     try { localStorage.removeItem(STORAGE_KEY); } catch (_e) {}
-    config.schoolId = cfg.schoolId || localStorage.getItem(SCHOOL_ID_KEY) || "";
-    config.apiKey = cfg.apiKey || localStorage.getItem(API_KEY_KEY) || "";
+    config.schoolId = localStorage.getItem(SCHOOL_ID_KEY) || "";
+    config.apiKey = localStorage.getItem(API_KEY_KEY) || "";
+    config.authToken = localStorage.getItem(TOKEN_KEY) || "";
   }
 
   window.SagarSoftDB = {
@@ -633,6 +327,7 @@
     flushRemoteSave: flushRemoteSave,
     clearCache: clearCache,
     setSchoolId: setSchoolId,
+    setAuthToken: setAuthToken,
     getConfig: getConfig,
     defaultDatabase: defaultDatabase,
     isSyncPending: isSyncPending,
