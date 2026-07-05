@@ -428,9 +428,8 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ identifier: email, email: email, password: password, role: role || "admin" })
       });
-      if (!resp.ok) return null;
       var data = await resp.json().catch(function () { return {}; });
-      if (!data.success || !data.school_id) return null;
+      if (!resp.ok || !data.success || !data.school_id) return null;
       var database = data.database || {};
       database.generalSettings = database.generalSettings || {};
       database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
@@ -449,13 +448,17 @@
       if (data.license && data.license.plan) {
         database.generalSettings.licenseSettings.subscriptionPlan = data.license.plan;
       }
-      database.users = database.users || [];
-      var existingAdmin = database.users.find(function (u) { return u && u.role === "admin"; });
-      if (!existingAdmin) {
-        database.users.push({ id: "USR-ADMIN-001", name: database.school.name, email: email, password: "", role: "admin", phone: "", active: true });
+      if (data.license && data.license.website_endpoint) {
+        database.generalSettings.licenseSettings.websiteEndpoint = data.license.website_endpoint;
       }
+      database.users = database.users || [];
+      var matchedUser = data.user || null;
+      window.SagarSoftDB.setSchoolId(data.school_id);
+      if (data.license_token) window.SagarSoftDB.setAuthToken(data.license_token);
       window.SagarSoftDB.saveDatabase(database);
-      var session = { id: "USR-ADMIN-001", name: database.school.name, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString() };
+      var userName = (matchedUser && matchedUser.name) ? matchedUser.name : (database.school.name || "School Admin");
+      var userId = (matchedUser && matchedUser.id) ? matchedUser.id : "USR-ADMIN-001";
+      var session = { id: userId, name: userName, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: data.license_token || "" };
       if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
       else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
       window.__sagarSoftSession = session;
