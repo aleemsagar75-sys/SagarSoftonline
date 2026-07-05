@@ -112,6 +112,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (submitButton) {
       submitButton.disabled = true;
     }
+    showMessage("Syncing data from server...", "");
+
+    try {
+      if (window.SagarSoftDB && window.SagarSoftDB.preloadDatabaseForLogin) {
+        await window.SagarSoftDB.preloadDatabaseForLogin();
+      }
+    } catch (_e) {}
+
     showMessage("Checking login details...", "");
 
     var result;
