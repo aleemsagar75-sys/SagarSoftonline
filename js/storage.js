@@ -1,7 +1,10 @@
 (function () {
   var CACHE_KEY = "ss_db_cache";
   var STORAGE_KEY = "ss_db_local";
+  var SCHOOL_ID_KEY = "ss_school_id_persistent";
+  var API_KEY_KEY = "ss_api_key_persistent";
   var cachedDatabase = null;
+  var serverLoaded = false;
   var config = { apiBaseUrl: "", schoolId: "", apiKey: "" };
 
   var cfg = window.SagarSoftOnlineConfig || {};
@@ -9,10 +12,31 @@
   if (cfg.schoolId) config.schoolId = String(cfg.schoolId);
   if (cfg.apiKey) config.apiKey = String(cfg.apiKey);
 
+  function persistSchoolCredentials(schoolId, apiKey) {
+    try {
+      if (schoolId) localStorage.setItem(SCHOOL_ID_KEY, schoolId);
+      if (apiKey) localStorage.setItem(API_KEY_KEY, apiKey);
+    } catch (_e) {}
+  }
+
+  function loadPersistedCredentials() {
+    try {
+      var sid = localStorage.getItem(SCHOOL_ID_KEY);
+      var ak = localStorage.getItem(API_KEY_KEY);
+      if (sid && !config.schoolId) config.schoolId = String(sid);
+      if (ak && !config.apiKey) config.apiKey = String(ak);
+    } catch (_e) {}
+  }
+
+  loadPersistedCredentials();
+
   function updateConfigFromDatabase(db) {
     if (db && db.generalSettings && db.generalSettings.licenseSettings) {
       var ls = db.generalSettings.licenseSettings;
-      if (ls.schoolId) config.schoolId = String(ls.schoolId);
+      if (ls.schoolId) {
+        config.schoolId = String(ls.schoolId);
+        persistSchoolCredentials(ls.schoolId, ls.websiteApiKey || "");
+      }
       if (ls.websiteApiKey) config.apiKey = String(ls.websiteApiKey);
     }
   }
@@ -473,6 +497,10 @@
     updateConfigFromDatabase(database);
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(database)); } catch (_e) {}
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(database)); } catch (_e) {}
+    if (database && database.generalSettings && database.generalSettings.licenseSettings) {
+      var ls = database.generalSettings.licenseSettings;
+      if (ls.schoolId) persistSchoolCredentials(ls.schoolId, ls.websiteApiKey || "");
+    }
     if (config.apiBaseUrl && config.schoolId) {
       pendingSyncs++;
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
@@ -567,6 +595,17 @@
     }
   });
 
+  async function preloadDatabaseForLogin() {
+    loadPersistedCredentials();
+    if (config.apiBaseUrl && config.schoolId && !cachedDatabase) {
+      try {
+        var db = await loadDatabaseFromServer();
+        if (db) return db;
+      } catch (_e) {}
+    }
+    return cachedDatabase;
+  }
+
   loadDatabaseFromServer();
 
   function setSchoolId(schoolId) {
@@ -581,8 +620,8 @@
     cachedDatabase = null;
     try { sessionStorage.removeItem(CACHE_KEY); } catch (_e) {}
     try { localStorage.removeItem(STORAGE_KEY); } catch (_e) {}
-    config.schoolId = cfg.schoolId || "";
-    config.apiKey = cfg.apiKey || "";
+    config.schoolId = cfg.schoolId || localStorage.getItem(SCHOOL_ID_KEY) || "";
+    config.apiKey = cfg.apiKey || localStorage.getItem(API_KEY_KEY) || "";
   }
 
   window.SagarSoftDB = {
@@ -598,6 +637,7 @@
     defaultDatabase: defaultDatabase,
     isSyncPending: isSyncPending,
     isSyncFailed: isSyncFailed,
-    retrySyncNow: retrySyncNow
+    retrySyncNow: retrySyncNow,
+    preloadDatabaseForLogin: preloadDatabaseForLogin
   };
 })();
