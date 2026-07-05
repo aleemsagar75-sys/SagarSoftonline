@@ -1189,6 +1189,9 @@ document.addEventListener("DOMContentLoaded", function () {
     if (isDemoUser) {
       return { locked: false, reason: "" };
     }
+    if (currentUser && currentUser.serverToken) {
+      return { locked: false, reason: "" };
+    }
     if (!license.activated) {
       return { locked: true, reason: "Account activation is required. Please contact Super Admin." };
     }
@@ -24126,6 +24129,7 @@ ${allContent}
           }
           normalizeStudentsDatasetInMemory();
           saveDatabase();
+          applyRouteAccessVisibility();
         }
       } catch (_e) {}
     }
