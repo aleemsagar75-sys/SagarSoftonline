@@ -1412,6 +1412,22 @@ async function getSchoolDatabase(schoolId) {
   if (questionPapers.length) database.generalSettings.questionPapers = questionPapers;
   if (certificates.length) database.generalSettings.certificates = certificates;
 
+  try {
+    const licResult = await pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, license_token, modules_locked from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    if (licResult.rowCount) {
+      const lic = licResult.rows[0];
+      database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
+      database.generalSettings.licenseSettings.schoolId = lic.school_id;
+      database.generalSettings.licenseSettings.schoolName = lic.school_name;
+      database.generalSettings.licenseSettings.activated = (String(lic.status || "").toLowerCase() === "active" && !lic.modules_locked);
+      database.generalSettings.licenseSettings.status = lic.status || "inactive";
+      database.generalSettings.licenseSettings.subscriptionPlan = lic.plan || "monthly";
+      database.generalSettings.licenseSettings.startDate = lic.start_date || "";
+      database.generalSettings.licenseSettings.expiryDate = lic.expiry_date || "";
+      database.generalSettings.licenseSettings.licenseToken = lic.license_token || "";
+    }
+  } catch (_e) {}
+
   return result.rowCount || teachers.length || students.length || classes.length || users.length || subjects.length || attendance.length || fees.length ? database : null;
 }
 
