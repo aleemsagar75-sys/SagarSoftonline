@@ -1668,6 +1668,20 @@ app.post("/api/mobile/login", async (req, res) => {
   }
 });
 
+app.post("/api/resolve-school", async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ success: false, message: "Email required." });
+    const result = await pool.query("select school_id from public.license_accounts where lower(email) = $1 limit 1", [email]);
+    if (!result.rowCount) {
+      return res.json({ success: true, school_id: null });
+    }
+    return res.json({ success: true, school_id: result.rows[0].school_id });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 app.get("/api/mobile/database/:schoolId", async (req, res) => {
   try {
     const schoolId = normalizeSchoolId(req.params.schoolId);
