@@ -689,6 +689,65 @@ async function ensureSchema() {
       primary key (school_id, source_id)
     );
 
+    create table if not exists public.notices (
+      school_id text not null,
+      source_id text not null,
+      title text,
+      message text,
+      audience text,
+      priority text default 'normal',
+      push_to_dashboard boolean default false,
+      pinned boolean default false,
+      data jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.events (
+      school_id text not null,
+      source_id text not null,
+      title text,
+      event_date date,
+      event_type text,
+      description text,
+      all_day boolean default false,
+      color text,
+      data jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.sms_templates (
+      school_id text not null,
+      source_id text not null,
+      name text,
+      message text,
+      category text default 'general',
+      data jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.account_activity (
+      school_id text not null,
+      source_id text not null,
+      title text,
+      message text,
+      role text,
+      user_email text,
+      device_info text,
+      data jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create index if not exists idx_notices_school_id on public.notices (school_id);
+    create index if not exists idx_events_school_id on public.events (school_id);
+    create index if not exists idx_sms_templates_school_id on public.sms_templates (school_id);
+    create index if not exists idx_account_activity_school_id on public.account_activity (school_id);
     create index if not exists idx_exams_school_id on public.exams (school_id);
     create index if not exists idx_exam_marks_school_id on public.exam_marks (school_id);
     create index if not exists idx_timetable_school_id on public.timetable (school_id);
@@ -1367,7 +1426,12 @@ async function getSchoolDatabase(schoolId) {
     classTests,
     classTestMarks,
     questionPapers,
-    certificates
+    certificates,
+    employees,
+    notices,
+    events,
+    smsTemplates,
+    accountActivity
   ] = await Promise.all([
     readDataRows("teachers"),
     readDataRows("students"),
@@ -1388,7 +1452,12 @@ async function getSchoolDatabase(schoolId) {
     readDataRows("class_tests"),
     readDataRows("class_test_marks"),
     readDataRows("question_papers"),
-    readDataRows("certificates")
+    readDataRows("certificates"),
+    readDataRows("employees"),
+    readDataRows("notices"),
+    readDataRows("events"),
+    readDataRows("sms_templates"),
+    readDataRows("account_activity")
   ]);
 
   if (teachers.length) database.teachers = teachers;
@@ -1398,7 +1467,12 @@ async function getSchoolDatabase(schoolId) {
   if (subjects.length) database.subjects = subjects;
   if (attendance.length) database.attendance = attendance;
   if (fees.length) database.fees = fees;
+  if (employees.length) database.employees = employees;
+  if (notices.length) database.notices = notices;
+  if (events.length) database.events = events;
   if (activityLogs.length) database.activityLogs = activityLogs;
+  if (accountActivity.length) database.accountActivity = accountActivity;
+  if (smsTemplates.length) database.smsTemplates = smsTemplates;
   if (feeInvoices.length) database.generalSettings.feeInvoices = feeInvoices;
   if (feeCollections.length) database.generalSettings.feeCollections = feeCollections;
   if (salaryPayments.length) database.generalSettings.salaryPayments = salaryPayments;
@@ -1411,6 +1485,22 @@ async function getSchoolDatabase(schoolId) {
   if (classTestMarks.length) database.generalSettings.classTestMarks = classTestMarks;
   if (questionPapers.length) database.generalSettings.questionPapers = questionPapers;
   if (certificates.length) database.generalSettings.certificates = certificates;
+
+  try {
+    const licResult = await pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, license_token, modules_locked from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    if (licResult.rowCount) {
+      const lic = licResult.rows[0];
+      database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
+      database.generalSettings.licenseSettings.schoolId = lic.school_id;
+      database.generalSettings.licenseSettings.schoolName = lic.school_name;
+      database.generalSettings.licenseSettings.activated = (String(lic.status || "").toLowerCase() === "active" && !lic.modules_locked);
+      database.generalSettings.licenseSettings.status = lic.status || "inactive";
+      database.generalSettings.licenseSettings.subscriptionPlan = lic.plan || "monthly";
+      database.generalSettings.licenseSettings.startDate = lic.start_date || "";
+      database.generalSettings.licenseSettings.expiryDate = lic.expiry_date || "";
+      database.generalSettings.licenseSettings.licenseToken = lic.license_token || "";
+    }
+  } catch (_e) {}
 
   return result.rowCount || teachers.length || students.length || classes.length || users.length || subjects.length || attendance.length || fees.length ? database : null;
 }
@@ -1463,14 +1553,7 @@ app.post("/api/database/:schoolId", async (req, res) => {
   try {
     const existing = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
     if (!existing.rowCount) {
-      const schoolName = (database.generalSettings && database.generalSettings.instituteProfile && database.generalSettings.instituteProfile.name) || (database.school && database.school.name) || "School Admin";
-      const email = (database.generalSettings && database.generalSettings.accountSettings && database.generalSettings.accountSettings.username) || "";
-      const token = generateToken();
-      await pool.query(`
-        insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, modules_locked, updated_at)
-        values ($1, $2, $3, '', 'active', 'monthly', CURRENT_DATE, CURRENT_DATE + interval '1 year', $4, false, now())
-        on conflict (school_id) do nothing
-      `, [schoolId, schoolName, email, token]);
+      return res.status(403).json({ success: false, message: "School not registered. Please register via Super Admin first." });
     }
     await saveSchoolDatabaseWithMirrors(schoolId, database);
     return res.json({ success: true, school_id: schoolId });
@@ -1675,7 +1758,15 @@ app.post("/api/mobile/login", async (req, res) => {
           await saveSchoolDatabaseWithMirrors(lic3.school_id, db3).catch(function(e) { console.error("Auto-add admin user error:", e.message); });
         }
         var notes4 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic3.school_id]);
-        return res.json({ success: true, license: toLicensePayload(lic3, notes4.rows), user: { id: "USR-ADMIN-001", name: lic3.school_name || "School Admin", email: email, role: "admin" }, school_id: lic3.school_id, license_token: lic3.license_token || generateToken(), database: db3 || {} });
+        var loginRole = "admin";
+        var loginUserId = "USR-ADMIN-" + Date.now();
+        if (existingAdmin) { loginUserId = existingAdmin.id; loginRole = existingAdmin.role || "admin"; }
+        var actId = "ACT-" + Date.now();
+        pool.query("insert into public.account_activity (school_id, source_id, title, message, role, user_email, data, created_at) values ($1, $2, $3, $4, $5, $6, $7::jsonb, now()) on conflict (school_id, source_id) do nothing", [
+          lic3.school_id, actId, loginRole + " login", (lic3.school_name || "School Admin") + " signed in successfully.", loginRole, email,
+          JSON.stringify({ id: actId, title: loginRole + " login", role: loginRole, email: email, createdAt: new Date().toISOString() })
+        ]).catch(function(e) { console.error("account_activity log error:", e.message); });
+        return res.json({ success: true, license: toLicensePayload(lic3, notes4.rows), user: { id: loginUserId, name: lic3.school_name || "School Admin", email: email, role: loginRole }, school_id: lic3.school_id, license_token: lic3.license_token || generateToken(), database: db3 || {} });
       }
     }
 
@@ -2215,7 +2306,12 @@ var ALLOWED_TABLES = {
   class_tests: "class_tests",
   class_test_marks: "class_test_marks",
   question_papers: "question_papers",
-  certificates: "certificates"
+  certificates: "certificates",
+  employees: "employees",
+  notices: "notices",
+  events: "events",
+  sms_templates: "sms_templates",
+  account_activity: "account_activity"
 };
 
 function sanitizeTableName(table) {
