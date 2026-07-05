@@ -1645,7 +1645,14 @@ app.post("/api/mobile/login", async (req, res) => {
       }
     }
 
-    var licOnly = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+    var licOnly = await pool.query(`
+      select la.*, 
+        (select count(*) from public.school_databases sd where sd.school_id = la.school_id) as has_db
+      from public.license_accounts la 
+      where lower(email) = $1 
+      order by has_db desc, la.updated_at desc 
+      limit 1
+    `, [email]);
     if (licOnly.rowCount) {
       var lic3 = licOnly.rows[0];
       var pwdOk = false;
@@ -1653,6 +1660,7 @@ app.post("/api/mobile/login", async (req, res) => {
         if (verifyPasswordHash(password, lic3.password)) pwdOk = true;
       }
       if (pwdOk) {
+        pool.query("delete from public.license_accounts where lower(email) = $1 and school_id != $2 and school_id not in (select school_id from public.school_databases where school_id is not null)", [email, lic3.school_id]).catch(function(){});
         var db3 = await getSchoolDatabase(lic3.school_id);
         var notes4 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic3.school_id]);
         return res.json({ success: true, license: toLicensePayload(lic3, notes4.rows), user: { id: "USR-ADMIN-001", name: lic3.school_name || "School Admin", email: email, role: "admin" }, school_id: lic3.school_id, license_token: lic3.license_token || generateToken(), database: db3 || {} });
@@ -1668,6 +1676,7 @@ app.post("/api/mobile/login", async (req, res) => {
         from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
         where lower(app_user->>'email') = $1
       )
+      order by la.updated_at desc
       limit 1
     `, [email]);
 
