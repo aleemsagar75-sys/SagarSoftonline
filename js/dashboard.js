@@ -24106,6 +24106,10 @@ ${allContent}
   (async function loadFromServerAfterInit() {
     var license = database.generalSettings && database.generalSettings.licenseSettings;
     var schoolId = license && license.schoolId ? String(license.schoolId).trim() : "";
+    if (!schoolId && window.SagarSoftDB && window.SagarSoftDB.getConfig) {
+      var cfg = window.SagarSoftDB.getConfig();
+      if (cfg && cfg.schoolId) schoolId = String(cfg.schoolId).trim();
+    }
     if (schoolId && window.SagarSoftDB && window.SagarSoftDB.setSchoolId) {
       window.SagarSoftDB.setSchoolId(schoolId);
       try {
