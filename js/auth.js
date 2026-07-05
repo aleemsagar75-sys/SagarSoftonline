@@ -476,14 +476,32 @@
       var saData = await saResp.json().catch(function () { return {}; });
       if (!saData.success || !saData.token) return null;
       var saToken = saData.token;
-      var schoolId = "SCH-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
-      var licResp = await fetch(apiBase + "/api/admin/license", {
+      var resolveResp = await fetch(apiBase + "/api/resolve-school", {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": "Bearer " + saToken },
-        body: JSON.stringify({ school_id: schoolId, school_name: schoolName, email: email, password: password })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email })
       });
-      var licData = await licResp.json().catch(function () { return {}; });
-      if (!licData.success) return null;
+      var resolveData = await resolveResp.json().catch(function () { return {}; });
+      var schoolId;
+      if (resolveData.success && resolveData.school_id) {
+        schoolId = resolveData.school_id;
+        var licResp = await fetch(apiBase + "/api/admin/license", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + saToken },
+          body: JSON.stringify({ school_id: schoolId, school_name: schoolName, email: email, password: password })
+        });
+        var licData = await licResp.json().catch(function () { return {}; });
+        if (!licData.success) return null;
+      } else {
+        schoolId = "SCH-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+        var licResp = await fetch(apiBase + "/api/admin/license", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + saToken },
+          body: JSON.stringify({ school_id: schoolId, school_name: schoolName, email: email, password: password })
+        });
+        var licData = await licResp.json().catch(function () { return {}; });
+        if (!licData.success) return null;
+      }
       var token = licData.license_token || "";
       var database = localDb;
       database.generalSettings = database.generalSettings || {};
