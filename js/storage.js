@@ -201,6 +201,107 @@
     if (overlay) { overlay.style.display = "none"; }
   }
 
+  function flushPendingSync() {
+    if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
+    if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
+      _pendingSave = false;
+      pendingSyncs++;
+      apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
+        method: "POST",
+        body: JSON.stringify({ database: cachedDatabase }),
+        timeoutMs: 90000
+      }).then(function () {
+        pendingSyncs = Math.max(0, pendingSyncs - 1);
+        lastSyncFailed = false;
+        showSyncBadge("synced");
+      }).catch(function () {
+        pendingSyncs = Math.max(0, pendingSyncs - 1);
+        showSyncBadge("failed");
+        retrySyncLater(cachedDatabase, 0);
+      });
+    }
+  }
+
+  var _syncBadgeTimer = null;
+  function showSyncBadge(status) {
+    var badge = document.getElementById("sagarsoft-sync-badge");
+    if (!badge) {
+      badge = document.createElement("div");
+      badge.id = "sagarsoft-sync-badge";
+      badge.style.cssText = "position:fixed;bottom:16px;right:16px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;z-index:99999;transition:opacity 0.3s;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.15);";
+      document.body.appendChild(badge);
+    }
+    if (status === "syncing") {
+      badge.textContent = "Syncing...";
+      badge.style.background = "#e3f2fd";
+      badge.style.color = "#1976d2";
+    } else if (status === "synced") {
+      badge.textContent = "Synced";
+      badge.style.background = "#e8f5e9";
+      badge.style.color = "#2e7d32";
+    } else if (status === "failed") {
+      badge.textContent = "Sync failed";
+      badge.style.background = "#fce4ec";
+      badge.style.color = "#c62828";
+    }
+    badge.style.opacity = "1";
+    if (_syncBadgeTimer) clearTimeout(_syncBadgeTimer);
+    _syncBadgeTimer = setTimeout(function () { badge.style.opacity = "0"; }, 2500);
+  }
+
+  function scheduleServerSync() {
+    if (_saveDbTimer) clearTimeout(_saveDbTimer);
+    _pendingSave = true;
+    showSyncBadge("syncing");
+    _saveDbTimer = setTimeout(function () {
+      _saveDbTimer = null;
+      _pendingSave = false;
+      if (!config.apiBaseUrl || !config.schoolId || !cachedDatabase) return;
+      pendingSyncs++;
+      apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
+        method: "POST",
+        body: JSON.stringify({ database: cachedDatabase }),
+        timeoutMs: 90000
+      }).then(function () {
+        pendingSyncs = Math.max(0, pendingSyncs - 1);
+        lastSyncFailed = false;
+        showSyncBadge("synced");
+      }).catch(function () {
+        pendingSyncs = Math.max(0, pendingSyncs - 1);
+        showSyncBadge("failed");
+        retrySyncLater(cachedDatabase, 0);
+      });
+    }, 1500);
+  }
+
+  function saveDatabaseImmediate(database, showIndicator) {
+    cachedDatabase = normalizeDatabase(database);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
+    if (database && database.generalSettings && database.generalSettings.licenseSettings) {
+      var ls = database.generalSettings.licenseSettings;
+      if (ls.schoolId) { config.schoolId = String(ls.schoolId); persistCredentials(ls.schoolId, ls.websiteApiKey || "", config.authToken || ""); }
+      if (ls.websiteApiKey) config.apiKey = String(ls.websiteApiKey);
+    }
+    if (config.apiBaseUrl && config.schoolId) {
+      if (showIndicator) showSyncBadge("syncing");
+      pendingSyncs++;
+      apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
+        method: "POST",
+        body: JSON.stringify({ database: cachedDatabase }),
+        timeoutMs: 90000
+      }).then(function () {
+        pendingSyncs = Math.max(0, pendingSyncs - 1);
+        lastSyncFailed = false;
+        if (showIndicator) showSyncBadge("synced");
+      }).catch(function (err) {
+        pendingSyncs = Math.max(0, pendingSyncs - 1);
+        if (showIndicator) showSyncBadge("failed");
+        retrySyncLater(cachedDatabase, 0);
+      });
+    }
+    return cachedDatabase;
+  }
+
   function saveDatabase(database) {
     cachedDatabase = normalizeDatabase(database);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
@@ -213,22 +314,7 @@
       if (ls.websiteApiKey) config.apiKey = String(ls.websiteApiKey);
     }
     if (config.apiBaseUrl && config.schoolId) {
-      pendingSyncs++;
-      showLoading("Saving data to server...");
-      apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
-        method: "POST",
-        body: JSON.stringify({ database: cachedDatabase }),
-        timeoutMs: 90000
-      }).then(function () {
-        pendingSyncs = Math.max(0, pendingSyncs - 1);
-        lastSyncFailed = false;
-        hideLoading();
-      }).catch(function (err) {
-        console.warn("Server sync failed, retrying:", err);
-        pendingSyncs = Math.max(0, pendingSyncs - 1);
-        hideLoading();
-        retrySyncLater(cachedDatabase, 0);
-      });
+      scheduleServerSync();
     }
     return cachedDatabase;
   }
@@ -239,9 +325,10 @@
     return saveDatabase(updatedDatabase);
   }
 
-  async function loadDatabaseFromServer() {
+  async function loadDatabaseFromServer(opts) {
     if (!config.apiBaseUrl || !config.schoolId) return null;
-    showLoading("Loading data from server...");
+    var showOverlay = opts && opts.showLoading !== false;
+    if (showOverlay) showLoading("Loading data from server...");
     var attempts = 0;
     var maxAttempts = 3;
     while (attempts < maxAttempts) {
@@ -347,6 +434,8 @@
   window.SagarSoftDB = {
     getDatabase: getDatabase,
     saveDatabase: saveDatabase,
+    saveDatabaseImmediate: saveDatabaseImmediate,
+    flushPendingSync: flushPendingSync,
     updateDatabase: updateDatabase,
     loadDatabaseFromServer: loadDatabaseFromServer,
     reloadDatabase: reloadDatabase,
@@ -361,6 +450,7 @@
     retrySyncNow: retrySyncNow,
     preloadDatabaseForLogin: preloadDatabaseForLogin,
     showLoading: showLoading,
-    hideLoading: hideLoading
+    hideLoading: hideLoading,
+    showSyncBadge: showSyncBadge
   };
 })();
