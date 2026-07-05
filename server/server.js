@@ -1545,6 +1545,35 @@ async function verifySupabaseAuth(email, password) {
   }
 }
 
+async function createSupabaseUser(email, password) {
+  var supaUrl = process.env.SUPABASE_URL;
+  var supaKey = process.env.SUPABASE_SECRET_KEY;
+  if (!supaUrl || !supaKey) return null;
+  try {
+    var resp = await fetch(supaUrl + "/auth/v1/admin/users", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": supaKey, "Authorization": "Bearer " + supaKey },
+      body: JSON.stringify({ email: email, password: password, email_confirm: true })
+    });
+    if (resp.ok) return true;
+    var data = await resp.json().catch(function () { return {}; });
+    if (data.msg && data.msg.includes("already")) return true;
+    return false;
+  } catch (_e) {
+    return null;
+  }
+}
+
+async function ensureSupabaseUser(email, password) {
+  var existing = await verifySupabaseAuth(email, password);
+  if (existing === true) return true;
+  if (existing === false) {
+    var created = await createSupabaseUser(email, password);
+    if (created === true) return true;
+  }
+  return null;
+}
+
 app.post("/api/activate-school.php", async (req, res) => {
   try {
     var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
@@ -1585,66 +1614,42 @@ app.post("/api/mobile/login", async (req, res) => {
     const email = identifier.toLowerCase();
     const password = String(req.body.password || "");
     const requestedRole = String(req.body.role || "admin").trim().toLowerCase();
+    const clientDatabase = req.body.database || null;
     if (!identifier || !password) {
       return res.status(400).json({ success: false, message: "School email / ID and password are required." });
     }
-  if (!["admin", "superadmin"].includes(requestedRole)) {
-    var supaOk = await verifySupabaseAuth(email, password);
-    if (supaOk === false) return res.status(401).json({ success: false, message: "Invalid credentials." });
-    const userResult = await pool.query(`
-      select sd.school_id, sd.database, la.*
-      from public.school_databases sd
-      join public.license_accounts la on la.school_id = sd.school_id
-      where exists (
-        select 1
-        from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
-        where lower(app_user->>'email') = $1
-          and lower(app_user->>'role') = $2
-          and lower(coalesce(app_user->>'active', 'true')) <> 'false'
-      )
-      limit 1
-    `, [email, requestedRole]);
-    if (!userResult.rowCount) {
-      return res.status(401).json({ success: false, message: "Invalid app user credentials." });
-    }
-    const license = userResult.rows[0];
-    if (!isLicenseUsable(license)) {
-      return res.status(403).json({ success: false, message: "School subscription is inactive, blocked, or expired.", license: toLicensePayload(license, []) });
-    }
-    const database = userResult.rows[0].database || {};
-    const appUser = Array.isArray(database.users)
-      ? database.users.find((entry) => (
-        String(entry.email || "").trim().toLowerCase() === email &&
-        verifyPasswordHash(password, entry.password || "") &&
-        String(entry.role || "").trim().toLowerCase() === requestedRole &&
-        entry.active !== false
-      ))
-      : null;
-    if (!appUser) {
-      return res.status(401).json({ success: false, message: "Invalid app user credentials." });
-    }
-    const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [license.school_id]);
-    return res.json({
-      success: true,
-      license: toLicensePayload(license, notes.rows),
-      user: appUser || { email: identifier, role: requestedRole, name: requestedRole },
-      school_id: license.school_id,
-      license_token: license.license_token || generateToken(),
-      database: database || {}
-    });
-  }
 
-  var _resolveEmail = await pool.query("select email from public.license_accounts where lower(email) = $1 or lower(school_id) = $1 limit 1", [email]);
-  var _authEmail = _resolveEmail.rowCount ? _resolveEmail.rows[0].email : email;
-  var supaOk2 = await verifySupabaseAuth(_authEmail, password);
-  if (supaOk2 === false) {
-    var licCheck = await pool.query("select school_id, password from public.license_accounts where (lower(email) = $1 or lower(school_id) = $1) limit 1", [email]);
-    if (licCheck.rowCount && verifyPasswordHash(password, licCheck.rows[0].password)) {
-      supaOk2 = true;
+    if (requestedRole === "superadmin") {
+      var supaOk = await verifySupabaseAuth(email, password);
+      if (supaOk === true) {
+        var supaResult = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+        if (supaResult.rowCount) {
+          var lic = supaResult.rows[0];
+          var db = await getSchoolDatabase(lic.school_id);
+          var notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic.school_id]);
+          return res.json({ success: true, license: toLicensePayload(lic, notes.rows), user: { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: email, role: "superadmin" }, school_id: lic.school_id, license_token: lic.license_token || generateToken(), database: db || {} });
+        }
+      }
+      return res.status(401).json({ success: false, message: "Invalid superadmin credentials." });
     }
-  }
-  if (supaOk2 === null || supaOk2 === false) {
-    var dbResult = await pool.query(`
+
+    var supaVerified = await verifySupabaseAuth(email, password);
+
+    if (supaVerified === true) {
+      var licRow = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+      if (licRow.rowCount) {
+        var lic2 = licRow.rows[0];
+        var db2 = await getSchoolDatabase(lic2.school_id);
+        var notes2 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic2.school_id]);
+        return res.json({ success: true, license: toLicensePayload(lic2, notes2.rows), user: { id: "USR-ADMIN-001", name: lic2.school_name || "School Admin", email: email, role: "admin" }, school_id: lic2.school_id, license_token: lic2.license_token || generateToken(), database: db2 || {} });
+      }
+    }
+
+    var schoolId = null;
+    var foundDb = null;
+    var foundLicense = null;
+
+    var searchResult = await pool.query(`
       select sd.school_id, sd.database, la.*
       from public.school_databases sd
       join public.license_accounts la on la.school_id = sd.school_id
@@ -1652,72 +1657,60 @@ app.post("/api/mobile/login", async (req, res) => {
         select 1
         from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
         where lower(app_user->>'email') = $1
-          and lower(app_user->>'role') = 'admin'
           and lower(coalesce(app_user->>'active', 'true')) <> 'false'
       )
       limit 1
     `, [email]);
-    if (dbResult.rowCount) {
-      var dbLicense = dbResult.rows[0];
-      var dbData = dbLicense.database || {};
-      var dbAdminUser = Array.isArray(dbData.users)
-        ? dbData.users.find(function (u) {
-            return String(u.email || "").trim().toLowerCase() === email &&
-              String(u.role || "").trim().toLowerCase() === "admin" &&
-              u.active !== false;
+
+    if (searchResult.rowCount) {
+      foundLicense = searchResult.rows[0];
+      foundDb = foundLicense.database || {};
+      schoolId = foundLicense.school_id;
+      var matchedUser = Array.isArray(foundDb.users)
+        ? foundDb.users.find(function (u) {
+            return String(u.email || "").trim().toLowerCase() === email && u.active !== false;
           })
         : null;
-      if (dbAdminUser) {
-        var passwordMatch = false;
-        if (dbAdminUser.password && verifyPasswordHash(password, dbAdminUser.password)) {
-          passwordMatch = true;
+      if (matchedUser) {
+        var pwdOk = false;
+        if (matchedUser.password) {
+          if (verifyPasswordHash(password, matchedUser.password)) pwdOk = true;
+          if (!pwdOk && password === matchedUser.password) pwdOk = true;
         }
-        if (!passwordMatch && password === dbAdminUser.password) {
-          passwordMatch = true;
+        if (!pwdOk) {
+          return res.status(401).json({ success: false, message: "Invalid credentials." });
         }
-        if (passwordMatch) {
-          var notes2 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [dbLicense.school_id]);
-          return res.json({
-            success: true,
-            license: toLicensePayload(dbLicense, notes2.rows),
-            user: { id: "USR-ADMIN-001", name: dbAdminUser.name || dbLicense.school_name || "School Admin", email: email, role: "admin" },
-            school_id: dbLicense.school_id,
-            license_token: dbLicense.license_token || generateToken(),
-            database: dbData || {}
-          });
-        }
+        var notes3 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [schoolId]);
+        return res.json({ success: true, license: toLicensePayload(foundLicense, notes3.rows), user: { id: matchedUser.id || "USR-ADMIN-001", name: matchedUser.name || foundLicense.school_name || "School Admin", email: email, role: matchedUser.role || "admin" }, school_id: schoolId, license_token: foundLicense.license_token || generateToken(), database: foundDb || {} });
       }
     }
-    if (supaOk2 === false) return res.status(401).json({ success: false, message: "Invalid credentials." });
-  }
 
-  const result = await pool.query(`
-    select * from public.license_accounts
-    where lower(email) = $1 or lower(school_id) = $1
-    limit 1
-  `, [email]);
-  if (!result.rowCount) {
-    return res.status(401).json({ success: false, message: "Invalid school credentials." });
-  }
-  const license = result.rows[0];
-  if (!isLicenseUsable(license)) {
-    return res.status(403).json({ success: false, message: "School subscription is inactive, blocked, or expired.", license: toLicensePayload(license, []) });
-  }
-  const database = await getSchoolDatabase(license.school_id);
-  const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [license.school_id]);
-  return res.json({
-    success: true,
-    license: toLicensePayload(license, notes.rows),
-    user: {
-      id: requestedRole === "superadmin" ? "USR-SUPER-001" : "USR-ADMIN-001",
-      name: requestedRole === "superadmin" ? "SagarSoft Super Admin" : (license.school_name || "School Admin"),
-      email: license.email,
-      role: requestedRole === "superadmin" ? "superadmin" : "admin"
-    },
-    school_id: license.school_id,
-    license_token: license.license_token || generateToken(),
-    database: database || {}
-  });
+    var licOnly = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+    if (licOnly.rowCount) {
+      var lic3 = licOnly.rows[0];
+      if (verifyPasswordHash(password, lic3.password || "")) {
+        var db3 = await getSchoolDatabase(lic3.school_id);
+        var notes4 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic3.school_id]);
+        return res.json({ success: true, license: toLicensePayload(lic3, notes4.rows), user: { id: "USR-ADMIN-001", name: lic3.school_name || "School Admin", email: email, role: "admin" }, school_id: lic3.school_id, license_token: lic3.license_token || generateToken(), database: db3 || {} });
+      }
+    }
+
+    if (clientDatabase && clientDatabase.users && clientDatabase.users.length > 0) {
+      var newSchoolId = "SCH-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
+      var supaCreated = await createSupabaseUser(email, password);
+      var hashedPwd = hashPassword(password);
+      await pool.query(`
+        insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, modules_locked, updated_at)
+        values ($1, $2, $3, $4, 'active', 'monthly', CURRENT_DATE, CURRENT_DATE + interval '1 year', $5, false, now())
+        on conflict (school_id) do update set email = excluded.email, password = excluded.password, updated_at = now()
+      `, [newSchoolId, (clientDatabase.school && clientDatabase.school.name) || "School Admin", email, hashedPwd, generateToken()]);
+      await saveSchoolDatabaseWithMirrors(newSchoolId, clientDatabase);
+      var licNew = (await pool.query("select * from public.license_accounts where school_id = $1 limit 1", [newSchoolId])).rows[0];
+      var notes5 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [newSchoolId]);
+      return res.json({ success: true, license: toLicensePayload(licNew, notes5.rows), user: { id: "USR-ADMIN-001", name: (clientDatabase.school && clientDatabase.school.name) || "School Admin", email: email, role: "admin" }, school_id: newSchoolId, license_token: licNew.license_token || generateToken(), database: clientDatabase || {}, registered: true });
+    }
+
+    return res.status(401).json({ success: false, message: "Invalid credentials." });
   } catch (error) {
     console.error("POST /api/mobile/login error:", error.message);
     return res.status(500).json({ success: false, message: "Login failed. Please try again." });
