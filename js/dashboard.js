@@ -24105,10 +24105,13 @@ ${allContent}
 
   (async function loadFromServerAfterInit() {
     var license = database.generalSettings && database.generalSettings.licenseSettings;
+    var wasActivated = license && license.activated;
     var schoolId = license && license.schoolId ? String(license.schoolId).trim() : "";
+    var authToken = license && license.licenseToken;
     if (!schoolId && window.SagarSoftDB && window.SagarSoftDB.getConfig) {
       var cfg = window.SagarSoftDB.getConfig();
       if (cfg && cfg.schoolId) schoolId = String(cfg.schoolId).trim();
+      if (cfg && cfg.authToken) authToken = authToken || cfg.authToken;
     }
     if (schoolId && window.SagarSoftDB && window.SagarSoftDB.setSchoolId) {
       window.SagarSoftDB.setSchoolId(schoolId);
@@ -24117,6 +24120,10 @@ ${allContent}
         if (serverDb) {
           database = serverDb;
           ensureLicenseSettings();
+          if (wasActivated || (currentUser && currentUser.serverToken)) {
+            database.generalSettings.licenseSettings.activated = true;
+            database.generalSettings.licenseSettings.status = "active";
+          }
           normalizeStudentsDatasetInMemory();
           saveDatabase();
         }
