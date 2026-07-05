@@ -1463,14 +1463,7 @@ app.post("/api/database/:schoolId", async (req, res) => {
   try {
     const existing = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
     if (!existing.rowCount) {
-      const schoolName = (database.generalSettings && database.generalSettings.instituteProfile && database.generalSettings.instituteProfile.name) || (database.school && database.school.name) || "School Admin";
-      const email = (database.generalSettings && database.generalSettings.accountSettings && database.generalSettings.accountSettings.username) || "";
-      const token = generateToken();
-      await pool.query(`
-        insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, modules_locked, updated_at)
-        values ($1, $2, $3, '', 'active', 'monthly', CURRENT_DATE, CURRENT_DATE + interval '1 year', $4, false, now())
-        on conflict (school_id) do nothing
-      `, [schoolId, schoolName, email, token]);
+      return res.status(403).json({ success: false, message: "School not registered. Please register via Super Admin first." });
     }
     await saveSchoolDatabaseWithMirrors(schoolId, database);
     return res.json({ success: true, school_id: schoolId });
