@@ -423,10 +423,11 @@
   async function tryServerAdminLogin(email, password, role, rememberMe) {
     try {
       var apiBase = getApiBaseUrl();
+      var localDb = window.SagarSoftDB ? window.SagarSoftDB.getDatabase() : {};
       var resp = await fetch(apiBase + "/api/mobile/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ identifier: email, email: email, password: password, role: role || "admin" })
+        body: JSON.stringify({ identifier: email, email: email, password: password, role: role || "admin", database: localDb })
       });
       var data = await resp.json().catch(function () { return {}; });
       if (!resp.ok || !data.success || !data.school_id) return null;
@@ -447,9 +448,6 @@
       }
       if (data.license && data.license.plan) {
         database.generalSettings.licenseSettings.subscriptionPlan = data.license.plan;
-      }
-      if (data.license && data.license.website_endpoint) {
-        database.generalSettings.licenseSettings.websiteEndpoint = data.license.website_endpoint;
       }
       database.users = database.users || [];
       var matchedUser = data.user || null;
