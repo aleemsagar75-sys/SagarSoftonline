@@ -135,7 +135,11 @@
     certificates: [],
     employees: [],
     salaryPayments: [],
-    accountsLedger: []
+    accountsLedger: [],
+    notices: [],
+    events: [],
+    smsTemplates: [],
+    accountActivity: []
   };
 
   function normalizeDatabase(db) {
@@ -162,6 +166,10 @@
     if (!Array.isArray(db.employees)) db.employees = [];
     if (!Array.isArray(db.salaryPayments)) db.salaryPayments = [];
     if (!Array.isArray(db.accountsLedger)) db.accountsLedger = [];
+    if (!Array.isArray(db.notices)) db.notices = [];
+    if (!Array.isArray(db.events)) db.events = [];
+    if (!Array.isArray(db.smsTemplates)) db.smsTemplates = [];
+    if (!Array.isArray(db.accountActivity)) db.accountActivity = [];
 
     db.fees = db.fees.map(function (feeItem) {
       return Object.assign({}, feeItem, {
@@ -181,6 +189,18 @@
     return structuredClone(defaultDatabase);
   }
 
+  function showLoading(text) {
+    var overlay = document.getElementById("sagarsoft-loading-overlay");
+    var label = document.getElementById("sagarsoft-loading-text");
+    if (overlay) { overlay.style.display = "flex"; }
+    if (label) { label.textContent = text || "Saving data..."; }
+  }
+
+  function hideLoading() {
+    var overlay = document.getElementById("sagarsoft-loading-overlay");
+    if (overlay) { overlay.style.display = "none"; }
+  }
+
   function saveDatabase(database) {
     cachedDatabase = normalizeDatabase(database);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
@@ -194,6 +214,7 @@
     }
     if (config.apiBaseUrl && config.schoolId) {
       pendingSyncs++;
+      showLoading("Saving data to server...");
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: cachedDatabase }),
@@ -201,9 +222,11 @@
       }).then(function () {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
+        hideLoading();
       }).catch(function (err) {
         console.warn("Server sync failed, retrying:", err);
         pendingSyncs = Math.max(0, pendingSyncs - 1);
+        hideLoading();
         retrySyncLater(cachedDatabase, 0);
       });
     }
@@ -218,6 +241,7 @@
 
   async function loadDatabaseFromServer() {
     if (!config.apiBaseUrl || !config.schoolId) return null;
+    showLoading("Loading data from server...");
     var attempts = 0;
     var maxAttempts = 3;
     while (attempts < maxAttempts) {
@@ -228,6 +252,7 @@
           var db = normalizeDatabase(payload.database);
           cachedDatabase = db;
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (_e) {}
+          hideLoading();
           window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "server" } }));
           return db;
         }
@@ -237,6 +262,7 @@
         }
       }
     }
+    hideLoading();
     return null;
   }
 
@@ -333,6 +359,8 @@
     isSyncPending: isSyncPending,
     isSyncFailed: isSyncFailed,
     retrySyncNow: retrySyncNow,
-    preloadDatabaseForLogin: preloadDatabaseForLogin
+    preloadDatabaseForLogin: preloadDatabaseForLogin,
+    showLoading: showLoading,
+    hideLoading: hideLoading
   };
 })();
