@@ -197,7 +197,7 @@ if (cors) {
     return next();
   });
 }
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "50mb" }));
 
 app.use(function (_req, res, next) {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -2208,12 +2208,21 @@ ensureSchema()
   .then(function () {
     app.listen(port, function () {
       console.log("SagarSoft online API listening on " + port);
+      startKeepAlive();
     });
   })
   .catch(function (error) {
     console.error("Unable to start SagarSoft online API:", error);
     process.exit(1);
   });
+
+function startKeepAlive() {
+  var baseUrl = process.env.RENDER_EXTERNAL_URL || "";
+  if (!baseUrl) return;
+  setInterval(function () {
+    fetch(baseUrl + "/api/health").catch(function () {});
+  }, 14 * 60 * 1000);
+}
 
 app.get("/api/supabase-config", function (req, res) {
   var supabaseUrl = process.env.SUPABASE_URL || "";
