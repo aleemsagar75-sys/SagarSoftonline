@@ -55,14 +55,54 @@
     return h;
   }
 
+  var pendingSyncs = 0;
+  var lastSyncFailed = false;
+
   async function apiFetch(path, options) {
     if (!config.apiBaseUrl) throw new Error("API base URL not configured.");
-    var response = await fetch(config.apiBaseUrl + path, Object.assign({
-      headers: headers()
-    }, options));
-    var payload = await response.json().catch(function () { return {}; });
-    if (!response.ok || !payload.success) throw new Error(payload.message || "API request failed.");
-    return payload;
+    var controller = new AbortController();
+    var timeoutMs = (options && options.timeoutMs) || 60000;
+    var timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
+    try {
+      var response = await fetch(config.apiBaseUrl + path, Object.assign({
+        headers: headers(),
+        signal: controller.signal
+      }, options));
+      clearTimeout(timeoutId);
+      var payload = await response.json().catch(function () { return {}; });
+      if (!response.ok || !payload.success) throw new Error(payload.message || "API request failed.");
+      lastSyncFailed = false;
+      return payload;
+    } catch (err) {
+      clearTimeout(timeoutId);
+      throw err;
+    }
+  }
+
+  function retrySyncLater(database, attempt) {
+    attempt = attempt || 0;
+    var maxRetries = 5;
+    if (attempt >= maxRetries) {
+      lastSyncFailed = true;
+      pendingSyncs = Math.max(0, pendingSyncs - 1);
+      try { localStorage.setItem(STORAGE_KEY + "_sync_failed", "1"); } catch (_e) {}
+      return;
+    }
+    var delay = Math.min(1000 * Math.pow(2, attempt), 30000);
+    setTimeout(function () {
+      if (!config.apiBaseUrl || !config.schoolId) return;
+      apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
+        method: "POST",
+        body: JSON.stringify({ database: database }),
+        timeoutMs: 60000
+      }).then(function () {
+        pendingSyncs = Math.max(0, pendingSyncs - 1);
+        lastSyncFailed = false;
+        try { localStorage.removeItem(STORAGE_KEY + "_sync_failed"); } catch (_e) {}
+      }).catch(function () {
+        retrySyncLater(database, attempt + 1);
+      });
+    }, delay);
   }
 
   function pickStudentField(student, keys, fallback) {
@@ -434,10 +474,20 @@
     try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(database)); } catch (_e) {}
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(database)); } catch (_e) {}
     if (config.apiBaseUrl && config.schoolId) {
+      pendingSyncs++;
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
-        body: JSON.stringify({ database: database })
-      }).catch(function (err) { console.warn("Failed to sync database to server:", err); });
+        body: JSON.stringify({ database: database }),
+        timeoutMs: 60000
+      }).then(function () {
+        pendingSyncs = Math.max(0, pendingSyncs - 1);
+        lastSyncFailed = false;
+        try { localStorage.removeItem(STORAGE_KEY + "_sync_failed"); } catch (_e) {}
+      }).catch(function (err) {
+        console.warn("Server sync failed, retrying:", err);
+        pendingSyncs = Math.max(0, pendingSyncs - 1);
+        retrySyncLater(database, 0);
+      });
     }
     return database;
   }
@@ -450,18 +500,28 @@
 
   async function loadDatabaseFromServer() {
     if (!config.apiBaseUrl || !config.schoolId) return null;
-    try {
-      var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId));
-      if (payload && payload.database) {
-        var db = normalizeDatabase(payload.database);
-        cachedDatabase = db;
-        updateConfigFromDatabase(db);
-        try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(db)); } catch (_e) {}
-        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (_e) {}
-        window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "online" } }));
-        return db;
+    var attempts = 0;
+    var maxAttempts = 3;
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 60000 });
+        if (payload && payload.database) {
+          var db = normalizeDatabase(payload.database);
+          cachedDatabase = db;
+          updateConfigFromDatabase(db);
+          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(db)); } catch (_e) {}
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (_e) {}
+          try { localStorage.removeItem(STORAGE_KEY + "_sync_failed"); } catch (_e) {}
+          window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "online" } }));
+          return db;
+        }
+      } catch (_e) {
+        if (attempts < maxAttempts) {
+          await new Promise(function (r) { setTimeout(r, 3000); });
+        }
       }
-    } catch (_e) {}
+    }
     return null;
   }
 
@@ -477,11 +537,35 @@
       try {
         await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
           method: "POST",
-          body: JSON.stringify({ database: cachedDatabase })
+          body: JSON.stringify({ database: cachedDatabase }),
+          timeoutMs: 60000
         });
+        lastSyncFailed = false;
+        try { localStorage.removeItem(STORAGE_KEY + "_sync_failed"); } catch (_e) {}
       } catch (_e) {}
     }
   }
+
+  function isSyncPending() { return pendingSyncs > 0 || lastSyncFailed; }
+  function isSyncFailed() { return lastSyncFailed; }
+
+  function retrySyncNow() {
+    if (cachedDatabase && config.apiBaseUrl && config.schoolId) {
+      retrySyncLater(cachedDatabase, 0);
+    }
+  }
+
+  window.addEventListener("focus", function () {
+    if (lastSyncFailed && cachedDatabase && config.apiBaseUrl && config.schoolId) {
+      retrySyncLater(cachedDatabase, 0);
+    }
+  });
+
+  window.addEventListener("online", function () {
+    if (cachedDatabase && config.apiBaseUrl && config.schoolId) {
+      retrySyncLater(cachedDatabase, 0);
+    }
+  });
 
   loadDatabaseFromServer();
 
@@ -511,6 +595,9 @@
     clearCache: clearCache,
     setSchoolId: setSchoolId,
     getConfig: getConfig,
-    defaultDatabase: defaultDatabase
+    defaultDatabase: defaultDatabase,
+    isSyncPending: isSyncPending,
+    isSyncFailed: isSyncFailed,
+    retrySyncNow: retrySyncNow
   };
 })();
