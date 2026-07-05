@@ -108,6 +108,7 @@
 
           <button type="submit" class="primary-button">Login to Dashboard</button>
           <p id="formMessage" class="form-message" aria-live="polite"></p>
+          <p style="text-align:center;font-size:11px;color:#888;margin-top:12px;">Version: <span id="versionLabel">loading...</span></p>
         </form>
       </div>
     </section>
@@ -119,12 +120,14 @@
   <script src="./js/auth.js"></script>
   <script src="./js/login.js"></script>
   <script>
+    window.SAGARSOFT_VERSION = "v3.1.0";
+    var vEl = document.getElementById('versionLabel');
+    if (vEl) vEl.textContent = window.SAGARSOFT_VERSION + ' (' + new Date().toLocaleDateString() + ')';
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', function () {
         navigator.serviceWorker.register('./sw.js');
       });
     }
-
   </script>
 </body>
 </html>
