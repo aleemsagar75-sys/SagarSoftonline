@@ -1444,7 +1444,12 @@ async function getSchoolDatabase(schoolId) {
   if (subjects.length) database.subjects = subjects;
   if (attendance.length) database.attendance = attendance;
   if (fees.length) database.fees = fees;
-  if (employees.length) database.employees = employees;
+  if (employees.length) {
+    database.employees = employees;
+    if (!database.teachers || !database.teachers.length) {
+      database.teachers = employees.map(function(e) { return e.data || e; });
+    }
+  }
   if (notices.length) database.notices = notices;
   if (events.length) database.events = events;
   if (activityLogs.length) database.activityLogs = activityLogs;
@@ -1528,18 +1533,6 @@ app.post("/api/database/:schoolId", async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   const database = req.body && req.body.database ? req.body.database : {};
   try {
-    const existing = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
-    if (!existing.rowCount) {
-      const schoolName = (database.school && database.school.name) || "SagarSoft Public School";
-      const email = (database.generalSettings && database.generalSettings.accountSettings && database.generalSettings.accountSettings.username) || "";
-      const hashedPassword = email ? hashPassword("admin123") : null;
-      try {
-        await pool.query(`insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, created_at, updated_at) values ($1, $2, $3, $4, 'active', 'monthly', now(), now() + interval '1 year', $5, now(), now()) on conflict (school_id) do nothing`, [schoolId, schoolName, email, hashedPassword, generateToken()]);
-        console.log("Auto-registered school:", schoolId);
-      } catch (_regErr) {
-        console.error("Auto-register error:", _regErr.message);
-      }
-    }
     await saveSchoolDatabaseWithMirrors(schoolId, database);
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
