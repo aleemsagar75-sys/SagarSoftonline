@@ -1700,6 +1700,12 @@ app.post("/api/mobile/login", async (req, res) => {
       var licRow = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
       if (licRow.rowCount) {
         var lic2 = licRow.rows[0];
+        if (String(lic2.status || "").toLowerCase() !== "active") {
+          return res.status(403).json({ success: false, message: "Account not activated. Please contact Super Admin to activate your school." });
+        }
+        if (lic2.modules_locked) {
+          return res.status(403).json({ success: false, message: "Account is locked. Please contact Super Admin." });
+        }
         var db2 = await getSchoolDatabase(lic2.school_id);
         var notes2 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic2.school_id]);
         return res.json({ success: true, license: toLicensePayload(lic2, notes2.rows), user: { id: "USR-ADMIN-001", name: lic2.school_name || "School Admin", email: email, role: "admin" }, school_id: lic2.school_id, license_token: lic2.license_token || generateToken(), database: db2 || {} });
@@ -1722,6 +1728,12 @@ app.post("/api/mobile/login", async (req, res) => {
       }
       if (!pwdOk && password === lic3.password) pwdOk = true;
       if (pwdOk) {
+        if (String(lic3.status || "").toLowerCase() !== "active") {
+          return res.status(403).json({ success: false, message: "Account not activated. Please contact Super Admin to activate your school." });
+        }
+        if (lic3.modules_locked) {
+          return res.status(403).json({ success: false, message: "Account is locked. Please contact Super Admin." });
+        }
         pool.query("delete from public.license_accounts where lower(email) = $1 and school_id != $2 and school_id not in (select school_id from public.school_databases where school_id is not null)", [email, lic3.school_id]).catch(function(){});
         var db3 = await getSchoolDatabase(lic3.school_id);
         db3 = db3 || {};
@@ -1763,6 +1775,12 @@ app.post("/api/mobile/login", async (req, res) => {
 
     if (searchResult.rowCount) {
       var foundLicense = searchResult.rows[0];
+      if (String(foundLicense.status || "").toLowerCase() !== "active") {
+        return res.status(403).json({ success: false, message: "Account not activated. Please contact Super Admin to activate your school." });
+      }
+      if (foundLicense.modules_locked) {
+        return res.status(403).json({ success: false, message: "Account is locked. Please contact Super Admin." });
+      }
       var foundDb = foundLicense.database || {};
       var matchedUser = Array.isArray(foundDb.users)
         ? foundDb.users.find(function (u) {
@@ -1779,33 +1797,6 @@ app.post("/api/mobile/login", async (req, res) => {
           var notes3 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [foundLicense.school_id]);
           return res.json({ success: true, license: toLicensePayload(foundLicense, notes3.rows), user: { id: matchedUser.id || "USR-ADMIN-001", name: matchedUser.name || foundLicense.school_name || "School Admin", email: email, role: matchedUser.role || "admin" }, school_id: foundLicense.school_id, license_token: foundLicense.license_token || generateToken(), database: foundDb || {} });
         }
-      }
-    }
-
-    if (clientDatabase && clientDatabase.users && clientDatabase.users.length > 0) {
-      var existingSchool = await pool.query("select school_id from public.license_accounts where lower(email) = $1 limit 1", [email]);
-      var newSchoolId;
-      if (existingSchool.rowCount) {
-        newSchoolId = existingSchool.rows[0].school_id;
-        var hashedPwd = hashPassword(password);
-        await pool.query("update public.license_accounts set password = $1, updated_at = now() where school_id = $2", [hashedPwd, newSchoolId]);
-        await saveSchoolDatabaseWithMirrors(newSchoolId, clientDatabase);
-        var licUpd = (await pool.query("select * from public.license_accounts where school_id = $1 limit 1", [newSchoolId])).rows[0];
-        var notesUpd = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [newSchoolId]);
-        return res.json({ success: true, license: toLicensePayload(licUpd, notesUpd.rows), user: { id: "USR-ADMIN-001", name: (clientDatabase.school && clientDatabase.school.name) || "School Admin", email: email, role: "admin" }, school_id: newSchoolId, license_token: licUpd.license_token || generateToken(), database: clientDatabase || {} });
-      } else {
-        newSchoolId = "SCH-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
-        var supaCreated = await createSupabaseUser(email, password);
-        var hashedPwd2 = hashPassword(password);
-        await pool.query(`
-          insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, modules_locked, updated_at)
-          values ($1, $2, $3, $4, 'active', 'monthly', CURRENT_DATE, CURRENT_DATE + interval '1 year', $5, false, now())
-          on conflict (school_id) do update set email = excluded.email, password = excluded.password, updated_at = now()
-        `, [newSchoolId, (clientDatabase.school && clientDatabase.school.name) || "School Admin", email, hashedPwd2, generateToken()]);
-        await saveSchoolDatabaseWithMirrors(newSchoolId, clientDatabase);
-        var licNew = (await pool.query("select * from public.license_accounts where school_id = $1 limit 1", [newSchoolId])).rows[0];
-        var notes5 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [newSchoolId]);
-        return res.json({ success: true, license: toLicensePayload(licNew, notes5.rows), user: { id: "USR-ADMIN-001", name: (clientDatabase.school && clientDatabase.school.name) || "School Admin", email: email, role: "admin" }, school_id: newSchoolId, license_token: licNew.license_token || generateToken(), database: clientDatabase || {}, registered: true });
       }
     }
 
