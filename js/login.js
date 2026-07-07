@@ -112,7 +112,18 @@ document.addEventListener("DOMContentLoaded", function () {
     if (submitButton) {
       submitButton.disabled = true;
     }
-    showMessage("Syncing data from server...", "");
+
+    var overlay = document.getElementById("sagarsoft-loading-overlay");
+    var overlayText = document.getElementById("sagarsoft-loading-text");
+    function showLoginOverlay(msg) {
+      if (overlay) { overlay.style.display = "flex"; requestAnimationFrame(function(){ overlay.style.opacity = "1"; }); }
+      if (overlayText) { overlayText.textContent = msg; }
+    }
+    function hideLoginOverlay() {
+      if (overlay) { overlay.style.opacity = "0"; setTimeout(function(){ overlay.style.display = "none"; }, 250); }
+    }
+
+    showLoginOverlay("Connecting to server...");
 
     try {
       if (window.SagarSoftDB && window.SagarSoftDB.preloadDatabaseForLogin) {
@@ -120,7 +131,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     } catch (_e) {}
 
-    showMessage("Checking login details...", "");
+    showLoginOverlay("Verifying credentials...");
 
     var result;
     try {
@@ -132,6 +143,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (!result.success) {
+      hideLoginOverlay();
       showMessage(result.message, "error");
       if (submitButton) {
         submitButton.disabled = false;
@@ -139,7 +151,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
-    showMessage("Login successful. Opening your dashboard...", "success");
+    showLoginOverlay("Login successful. Loading dashboard...");
     window.setTimeout(function () {
       window.location.href = "./dashboard.html";
     }, 700);
