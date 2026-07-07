@@ -582,12 +582,16 @@
   }
 
   function getCurrentUser() {
-    const rawSession = sessionStorage.getItem(SESSION_KEY);
-
+    var rawSession = sessionStorage.getItem(SESSION_KEY);
+    if (!rawSession) {
+      rawSession = localStorage.getItem(SESSION_KEY);
+      if (rawSession) {
+        try { sessionStorage.setItem(SESSION_KEY, rawSession); } catch (e) {}
+      }
+    }
     if (!rawSession) {
       return null;
     }
-
     try {
       return JSON.parse(rawSession);
     } catch (error) {
