@@ -493,14 +493,7 @@
         var licData = await licResp.json().catch(function () { return {}; });
         if (!licData.success) return null;
       } else {
-        schoolId = "SCH-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6).toUpperCase();
-        var licResp = await fetch(apiBase + "/api/admin/license", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + saToken },
-          body: JSON.stringify({ school_id: schoolId, school_name: schoolName, email: email, password: password })
-        });
-        var licData = await licResp.json().catch(function () { return {}; });
-        if (!licData.success) return null;
+        return null;
       }
       var token = licData.license_token || "";
       var database = localDb;
