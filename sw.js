@@ -1,4 +1,4 @@
-var CACHE = "sagarsoft-v10";
+var CACHE = "sagarsoft-v11";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
@@ -12,7 +12,6 @@ const PRECACHE_URLS = [
   "./js/auth.js",
   "./js/login.js",
   "./js/dashboard.js",
-  "./assets/app-icon-256.png",
   "./assets/SagarSoft.logo.png",
   "./manifest.json"
 ];
@@ -20,7 +19,11 @@ const PRECACHE_URLS = [
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
-      return cache.addAll(PRECACHE_URLS);
+      return Promise.all(
+        PRECACHE_URLS.map(function (url) {
+          return cache.add(url).catch(function () { return null; });
+        })
+      );
     }).then(function () {
       return self.skipWaiting();
     })
@@ -42,31 +45,44 @@ self.addEventListener("activate", function (event) {
 self.addEventListener("fetch", function (event) {
   if (event.request.method !== "GET") return;
   var url = new URL(event.request.url);
+
   if (url.pathname.match(/\.(?:png|ico|svg|jpg|jpeg|gif|woff2?|ttf|eot)$/)) {
-    event.respondWith(caches.match(event.request).then(function (hit) { return hit || fetch(event.request); }));
-    return;
-  }
-  if (url.pathname.indexOf(".html") >= 0 || url.pathname === "/" || url.pathname === "") {
     event.respondWith(
-      fetch(event.request).then(function (response) {
-        return caches.open(CACHE).then(function (cache) {
-          if (response && response.status === 200) { cache.put(event.request, response.clone()); }
-          return response;
-        });
-      }).catch(function () { return caches.match(event.request); })
+      caches.match(event.request).then(function (hit) {
+        return hit || fetch(event.request).catch(function () { return new Response("", { status: 404 }); });
+      })
     );
     return;
   }
+
+  if (url.pathname.indexOf(".html") >= 0 || url.pathname === "/" || url.pathname === "") {
+    event.respondWith(
+      fetch(event.request).then(function (response) {
+        if (response && response.status === 200) {
+          var clone = response.clone();
+          caches.open(CACHE).then(function (cache) { cache.put(event.request, clone); });
+        }
+        return response;
+      }).catch(function () {
+        return caches.match(event.request).then(function (hit) {
+          return hit || new Response("Offline", { status: 503, headers: { "Content-Type": "text/plain" } });
+        });
+      })
+    );
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then(function (hit) {
-      return hit || fetch(event.request).then(function (response) {
-        return caches.open(CACHE).then(function (cache) {
-          if (response && response.status === 200) {
-            var clone = response.clone();
-            cache.put(event.request, clone);
-          }
-          return response;
-        });
+      if (hit) return hit;
+      return fetch(event.request).then(function (response) {
+        if (response && response.status === 200) {
+          var clone = response.clone();
+          caches.open(CACHE).then(function (cache) { cache.put(event.request, clone); });
+        }
+        return response;
+      }).catch(function () {
+        return new Response("", { status: 503 });
       });
     })
   );
