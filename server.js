@@ -1379,11 +1379,15 @@ async function getSchoolDatabase(schoolId) {
   database.generalSettings = database.generalSettings || {};
 
   const readDataRows = async function (tableName) {
-    const rows = await pool.query(
-      `select data from public.${tableName} where school_id = $1 and data is not null order by updated_at desc`,
-      [schoolId]
-    );
-    return rows.rows.map((row) => row.data || {}).filter((row) => row && typeof row === "object");
+    try {
+      const rows = await pool.query(
+        `select data from public.${tableName} where school_id = $1 and data is not null order by updated_at desc`,
+        [schoolId]
+      );
+      return rows.rows.map((row) => row.data || {}).filter((row) => row && typeof row === "object");
+    } catch (_e) {
+      return [];
+    }
   };
 
   const [
@@ -1484,7 +1488,7 @@ async function getSchoolDatabase(schoolId) {
     }
   } catch (_e) {}
 
-  return result.rowCount || employees.length || students.length || classes.length || users.length || subjects.length || attendance.length || fees.length ? database : null;
+  return database;
 }
 
 async function findLicenseByToken(schoolId, token) {
