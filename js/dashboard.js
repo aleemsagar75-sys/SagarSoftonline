@@ -1050,8 +1050,10 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  function saveDatabase() {
+  function saveDatabase(label) {
+    if (label) window.SagarSoftDB.showLoading(label);
     window.SagarSoftDB.saveDatabase(database);
+    if (label) setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 1500);
   }
 
   function ensureLicenseSettings() {
@@ -3572,7 +3574,7 @@ document.addEventListener("DOMContentLoaded", function () {
       setAllClassesMessage("Class created successfully.", "success");
     }
 
-    saveDatabase();
+    saveDatabase("Saving class...");
     refreshDatabase();
     renderDashboard();
     renderAllClassesTable();
@@ -7488,7 +7490,7 @@ ${allContent}
         });
         settings.__accountsLedgerUserTouched = true;
         addActivity("Fee collected", `${student.name} fee collected for ${feeMonth}.`);
-        saveDatabase();
+        saveDatabase("Saving fee collection...");
         refreshDatabase();
 
         latestReceiptData = {
@@ -9799,7 +9801,7 @@ ${allContent}
             updatedAt: new Date().toISOString()
           });
         });
-        saveDatabase();
+        saveDatabase("Saving timetable...");
         addActivity("Timetable updated", `Timetable updated for ${selectedClass}.`);
         message.textContent = "Timetable saved successfully.";
         message.className = "form-message success";
@@ -10255,7 +10257,7 @@ ${allContent}
         };
         saveExamRecord(examRecord);
         addActivity("Exam saved", `${examRecord.name} exam was saved.`);
-        saveDatabase();
+        saveDatabase("Saving exam...");
         message.textContent = "Exam saved successfully.";
         message.className = "form-message success";
         resetForm();
@@ -11796,7 +11798,7 @@ ${allContent}
           saveAttendanceRecord("student", student.id, dateInput.value, statusValue, { className: student.className });
         });
         addActivity("Students attendance updated", `Attendance updated for ${rows.length} students on ${dateInput.value}.`);
-        saveDatabase();
+        saveDatabase("Saving attendance...");
         message.textContent = "Students attendance updated successfully.";
         message.className = "form-message success";
         renderTable();
@@ -12780,9 +12782,8 @@ ${allContent}
 
         saveEmployeeRecord(employeeRecord);
         addActivity(editingEmployee ? "Employee updated" : "Employee added", `${employeeRecord.name} employee record saved.`);
-        saveDatabase();
+        saveDatabase(editingEmployee ? "Updating employee..." : "Saving employee...");
         sessionStorage.removeItem("sagarsoft_edit_employee_id");
-        renderDashboard();
         message.textContent = "Employee form submitted successfully.";
         message.className = "form-message success";
         setRoute("all-employees");
@@ -14961,7 +14962,7 @@ ${allContent}
         var notice = { id: "notice-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, content: content, priority: priority, target: target, expiryDate: expiry, createdAt: new Date().toLocaleString() };
         notices.push(notice);
         addActivity("Notice published", "Notice: " + title);
-        saveDatabase();
+        saveDatabase("Publishing notice...");
         openAppMessageBox("Success", "Notice published successfully.", "success");
         setRoute("notice-board");
       });
@@ -18722,8 +18723,8 @@ ${allContent}
             selectedHomeworkPreviewId = "";
           }
           settings.homeworkAssignments.splice(index, 1);
-          saveDatabase();
-          renderHomeworkHistory();
+        saveDatabase("Saving homework...");
+        renderHomeworkHistory();
           renderHomeworkSelectionPreview();
           message.textContent = "Homework deleted successfully.";
           message.className = "form-message success";
@@ -23728,7 +23729,7 @@ ${allContent}
       }
     }
 
-    saveDatabase();
+    saveDatabase(existingIndex >= 0 ? "Updating student..." : "Saving student...");
     renderDashboard();
     populateStudentForm(null);
     setStudentRoute("all-students");
