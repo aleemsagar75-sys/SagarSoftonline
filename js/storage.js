@@ -206,6 +206,9 @@
     }
   }
 
+  var _saveDbTimer = null;
+  var _pendingSave = false;
+
   function flushPendingSync() {
     if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
     if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
