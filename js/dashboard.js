@@ -12784,6 +12784,7 @@ ${allContent}
         addActivity(editingEmployee ? "Employee updated" : "Employee added", `${employeeRecord.name} employee record saved.`);
         saveDatabase(editingEmployee ? "Updating employee..." : "Saving employee...");
         sessionStorage.removeItem("sagarsoft_edit_employee_id");
+        renderDashboard();
         message.textContent = "Employee form submitted successfully.";
         message.className = "form-message success";
         setRoute("all-employees");
