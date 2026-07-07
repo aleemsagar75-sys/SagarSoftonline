@@ -192,13 +192,18 @@
   function showLoading(text) {
     var overlay = document.getElementById("sagarsoft-loading-overlay");
     var label = document.getElementById("sagarsoft-loading-text");
-    if (overlay) { overlay.style.display = "flex"; }
-    if (label) { label.textContent = text || "Saving data..."; }
+    var bar = document.getElementById("sagarsoft-loading-bar");
+    if (overlay) { overlay.style.display = "flex"; requestAnimationFrame(function(){ overlay.style.opacity = "1"; }); }
+    if (label) { label.textContent = text || ""; }
+    if (bar) { bar.style.display = text ? "block" : "none"; }
   }
 
   function hideLoading() {
     var overlay = document.getElementById("sagarsoft-loading-overlay");
-    if (overlay) { overlay.style.display = "none"; }
+    if (overlay) {
+      overlay.style.opacity = "0";
+      setTimeout(function () { overlay.style.display = "none"; }, 250);
+    }
   }
 
   function flushPendingSync() {
