@@ -1537,6 +1537,10 @@ app.post("/api/database/:schoolId", async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   const database = req.body && req.body.database ? req.body.database : {};
   try {
+    const licCheck = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    if (!licCheck.rowCount) {
+      return res.status(403).json({ success: false, message: "School not registered. Please login again with correct credentials." });
+    }
     await saveSchoolDatabaseWithMirrors(schoolId, database);
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
