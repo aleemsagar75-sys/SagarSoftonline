@@ -1729,7 +1729,14 @@ app.post("/api/mobile/login", async (req, res) => {
     var supaVerified = await verifySupabaseAuth(email, password);
 
     if (supaVerified === true) {
-      var licRow = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+      var licRow = await pool.query(`
+        select la.*,
+          coalesce((select sum(pg_column_size(sd.database)) from public.school_databases sd where sd.school_id = la.school_id), 0) as db_size
+        from public.license_accounts la
+        where lower(la.email) = $1
+        order by db_size desc, la.updated_at desc
+        limit 1
+      `, [email]);
       if (licRow.rowCount) {
         var lic2 = licRow.rows[0];
         if (String(lic2.status || "").toLowerCase() !== "active") {
@@ -1746,10 +1753,10 @@ app.post("/api/mobile/login", async (req, res) => {
 
     var licOnly = await pool.query(`
       select la.*, 
-        (select count(*) from public.school_databases sd where sd.school_id = la.school_id) as has_db
+        coalesce((select pg_column_size(sd.database) from public.school_databases sd where sd.school_id = la.school_id), 0) as db_size
       from public.license_accounts la 
       where lower(email) = $1 
-      order by has_db desc, la.updated_at desc 
+      order by db_size desc, la.updated_at desc 
       limit 1
     `, [email]);
     if (licOnly.rowCount) {
@@ -1793,7 +1800,8 @@ app.post("/api/mobile/login", async (req, res) => {
     }
 
     var searchResult = await pool.query(`
-      select sd.school_id, sd.database, la.*
+      select sd.school_id, sd.database, la.*,
+        pg_column_size(sd.database) as db_size
       from public.school_databases sd
       join public.license_accounts la on la.school_id = sd.school_id
       where exists (
@@ -1801,7 +1809,7 @@ app.post("/api/mobile/login", async (req, res) => {
         from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
         where lower(app_user->>'email') = $1
       )
-      order by la.updated_at desc
+      order by db_size desc, la.updated_at desc
       limit 1
     `, [email]);
 
