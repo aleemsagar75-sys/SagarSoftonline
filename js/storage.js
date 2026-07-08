@@ -41,11 +41,12 @@
 
   var pendingSyncs = 0;
   var lastSyncFailed = false;
+  var _loadingController = null;
 
   async function apiFetch(path, options) {
     if (!config.apiBaseUrl) throw new Error("API base URL not configured.");
     var controller = new AbortController();
-    var timeoutMs = (options && options.timeoutMs) || 90000;
+    var timeoutMs = (options && options.timeoutMs) || 30000;
     var timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
     try {
       var response = await fetch(config.apiBaseUrl + path, Object.assign({
@@ -77,7 +78,7 @@
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: database }),
-        timeoutMs: 90000
+        timeoutMs: 30000
       }).then(function () {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
@@ -115,11 +116,7 @@
       licenseSettings: {}
     },
     users: [
-      { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: "aleemsagar@gmail.com", password: "", role: "superadmin", phone: "", active: true },
-      { id: "USR-ADMIN-DEMO", name: "School Admin", email: "admin@sagarsoft.com", password: "admin123", role: "admin", phone: "+92 300 0000000", active: true },
-      { id: "USR-TEACHER-DEMO", name: "Demo Teacher", email: "teacher@sagarsoft.com", password: "teacher123", role: "teacher", phone: "+92 300 0000001", active: true },
-      { id: "USR-STUDENT-DEMO", name: "Demo Student", email: "student@sagarsoft.com", password: "student123", role: "student", phone: "+92 300 0000002", active: true },
-      { id: "USR-PARENT-DEMO", name: "Demo Parent", email: "parent@sagarsoft.com", password: "parent123", role: "parent", phone: "+92 300 0000003", active: true }
+      { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: "aleemsagar@gmail.com", password: "", role: "superadmin", phone: "", active: true }
     ],
     students: [],
     teachers: [],
@@ -193,40 +190,52 @@
     var overlay = document.getElementById("sagarsoft-loading-overlay");
     var label = document.getElementById("sagarsoft-loading-text");
     var bar = document.getElementById("sagarsoft-loading-bar");
+    var cancelBtn = document.getElementById("sagarsoft-loading-cancel");
     if (overlay) { overlay.style.display = "flex"; requestAnimationFrame(function(){ overlay.style.opacity = "1"; }); }
     if (label) { label.textContent = text || ""; }
     if (bar) { bar.style.display = text ? "block" : "none"; }
+    if (cancelBtn) { cancelBtn.style.display = text ? "inline-block" : "none"; }
+    _loadingController = new AbortController();
   }
 
   function hideLoading() {
     var overlay = document.getElementById("sagarsoft-loading-overlay");
+    var cancelBtn = document.getElementById("sagarsoft-loading-cancel");
+    if (cancelBtn) { cancelBtn.style.display = "none"; }
     if (overlay) {
       overlay.style.opacity = "0";
       setTimeout(function () { overlay.style.display = "none"; }, 250);
     }
   }
 
+  function cancelLoading() {
+    if (_loadingController) { _loadingController.abort(); _loadingController = null; }
+    hideLoading();
+  }
+
   var _saveDbTimer = null;
   var _pendingSave = false;
 
-  function flushPendingSync() {
+  async function flushPendingSync() {
     if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
     if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
       _pendingSave = false;
       pendingSyncs++;
-      apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
-        method: "POST",
-        body: JSON.stringify({ database: cachedDatabase }),
-        timeoutMs: 90000
-      }).then(function () {
+      try {
+        await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
+          method: "POST",
+          body: JSON.stringify({ database: cachedDatabase }),
+          timeoutMs: 30000
+        });
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
         showSyncBadge("synced");
-      }).catch(function () {
+      } catch (err) {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
+        lastSyncFailed = true;
         showSyncBadge("failed");
         retrySyncLater(cachedDatabase, 0);
-      });
+      }
     }
   }
 
@@ -264,18 +273,36 @@
     _saveDbTimer = setTimeout(function () {
       _saveDbTimer = null;
       _pendingSave = false;
-      if (!config.apiBaseUrl || !config.schoolId || !cachedDatabase) return;
+      var effectiveSchoolId = config.schoolId;
+      if (!effectiveSchoolId) {
+        try {
+          effectiveSchoolId = localStorage.getItem(SCHOOL_ID_KEY) || "";
+          if (effectiveSchoolId) config.schoolId = effectiveSchoolId;
+        } catch (_e) {}
+      }
+      if (!config.apiBaseUrl || !effectiveSchoolId || !cachedDatabase) {
+        console.warn("[SagarSoft Sync] Skipped: apiBaseUrl=" + !!config.apiBaseUrl + " schoolId=" + effectiveSchoolId + " db=" + !!cachedDatabase);
+        showSyncBadge("failed");
+        return;
+      }
+      var _session = null;
+      try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
+      var _demoEmails = ["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"];
+      var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
+      if (_isDemo) { showSyncBadge("synced"); return; }
       pendingSyncs++;
-      apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
+      apiFetch("/api/database/" + encodeURIComponent(effectiveSchoolId), {
         method: "POST",
         body: JSON.stringify({ database: cachedDatabase }),
-        timeoutMs: 90000
+        timeoutMs: 30000
       }).then(function () {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
         showSyncBadge("synced");
-      }).catch(function () {
+      }).catch(function (err) {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
+        lastSyncFailed = true;
+        console.error("[SagarSoft Sync] Failed:", err && err.message ? err.message : err);
         showSyncBadge("failed");
         retrySyncLater(cachedDatabase, 0);
       });
@@ -291,12 +318,17 @@
       if (ls.websiteApiKey) config.apiKey = String(ls.websiteApiKey);
     }
     if (config.apiBaseUrl && config.schoolId) {
+      var _session = null;
+      try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
+      var _demoEmails = ["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"];
+      var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
+      if (_isDemo) return;
       if (showIndicator) showSyncBadge("syncing");
       pendingSyncs++;
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: cachedDatabase }),
-        timeoutMs: 90000
+        timeoutMs: 30000
       }).then(function () {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
@@ -321,6 +353,12 @@
       }
       if (ls.websiteApiKey) config.apiKey = String(ls.websiteApiKey);
     }
+    if (!config.schoolId) {
+      try {
+        var sid = localStorage.getItem(SCHOOL_ID_KEY);
+        if (sid) config.schoolId = String(sid);
+      } catch (_e) {}
+    }
     if (config.apiBaseUrl && config.schoolId) {
       scheduleServerSync();
     }
@@ -342,7 +380,7 @@
     while (attempts < maxAttempts) {
       attempts++;
       try {
-        var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 90000 });
+        var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 30000 });
         if (payload && payload.database) {
           var db = normalizeDatabase(payload.database);
           cachedDatabase = db;
@@ -373,7 +411,7 @@
         await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
           method: "POST",
           body: JSON.stringify({ database: cachedDatabase }),
-          timeoutMs: 90000
+          timeoutMs: 30000
         });
       } catch (_e) {}
     }
@@ -408,6 +446,18 @@
   window.addEventListener("online", function () {
     if (config.apiBaseUrl && config.schoolId) {
       loadDatabaseFromServer();
+    }
+  });
+
+  window.addEventListener("beforeunload", function () {
+    if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
+      try {
+        var payload = JSON.stringify({ database: cachedDatabase });
+        var url = config.apiBaseUrl + "/api/database/" + encodeURIComponent(config.schoolId);
+        navigator.sendBeacon(url, new Blob([payload], { type: "application/json" }));
+        _pendingSave = false;
+        if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
+      } catch (_e) {}
     }
   });
 
@@ -459,6 +509,7 @@
     preloadDatabaseForLogin: preloadDatabaseForLogin,
     showLoading: showLoading,
     hideLoading: hideLoading,
+    cancelLoading: cancelLoading,
     showSyncBadge: showSyncBadge
   };
 })();
