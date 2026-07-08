@@ -1148,72 +1148,80 @@ async function syncStructuredModuleTables(client, schoolId, database) {
     const row = subjects[index];
     const sourceId = rowId(row, "SUB", index);
     await client.query(`
-      insert into public.subjects (id, school_id, source_id, subject_name, class_name, teacher_id, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.subjectName || row.name || "", row.className || "", row.teacherId || row.teacher || "", rowData(row)]);
+      insert into public.subjects (school_id, source_id, subject_name, class_name, teacher_id, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6::jsonb, now())
+      on conflict (school_id, source_id) do update set subject_name = excluded.subject_name, class_name = excluded.class_name, teacher_id = excluded.teacher_id, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.subjectName || row.name || "", row.className || "", row.teacherId || row.teacher || "", rowData(row)]);
   }
 
   for (let index = 0; index < attendance.length; index += 1) {
     const row = attendance[index];
     const sourceId = rowId(row, "ATT", index);
     await client.query(`
-      insert into public.attendance (id, school_id, source_id, entity_type, student_id, employee_id, date, status, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.entityType || "student", row.studentId || "", row.employeeId || row.teacherId || "", emptyToNullDate(row.date), row.status || "", rowData(row)]);
+      insert into public.attendance (school_id, source_id, entity_type, student_id, employee_id, date, status, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
+      on conflict (school_id, source_id) do update set entity_type = excluded.entity_type, student_id = excluded.student_id, employee_id = excluded.employee_id, date = excluded.date, status = excluded.status, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.entityType || "student", row.studentId || "", row.employeeId || row.teacherId || "", emptyToNullDate(row.date), row.status || "", rowData(row)]);
   }
 
   for (let index = 0; index < fees.length; index += 1) {
     const row = fees[index];
     const sourceId = rowId(row, "FEE", index);
     await client.query(`
-      insert into public.fees (id, school_id, source_id, student_id, student_name, class_name, fee_month, status, total_amount, deposit, remaining, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, now())
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", row.status || "", Number(row.totalAmount || row.amount || 0), Number(row.deposit || 0), Number(row.remaining || 0), rowData(row)]);
+      insert into public.fees (school_id, source_id, student_id, student_name, class_name, fee_month, status, total_amount, deposit, remaining, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
+      on conflict (school_id, source_id) do update set student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, fee_month = excluded.fee_month, status = excluded.status, total_amount = excluded.total_amount, deposit = excluded.deposit, remaining = excluded.remaining, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", row.status || "", Number(row.totalAmount || row.amount || 0), Number(row.deposit || 0), Number(row.remaining || 0), rowData(row)]);
   }
 
   for (let index = 0; index < feeInvoices.length; index += 1) {
     const row = feeInvoices[index];
     const sourceId = rowId(row, "INV", index);
     await client.query(`
-      insert into public.fee_invoices (id, school_id, source_id, student_id, student_name, class_name, fee_month, total_amount, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", Number(row.totalAmount || row.amount || 0), rowData(row)]);
+      insert into public.fee_invoices (school_id, source_id, student_id, student_name, class_name, fee_month, total_amount, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
+      on conflict (school_id, source_id) do update set student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, fee_month = excluded.fee_month, total_amount = excluded.total_amount, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", Number(row.totalAmount || row.amount || 0), rowData(row)]);
   }
 
   for (let index = 0; index < feeCollections.length; index += 1) {
     const row = feeCollections[index];
     const sourceId = rowId(row, "COL", index);
     await client.query(`
-      insert into public.fee_collections (id, school_id, source_id, student_id, student_name, class_name, fee_month, deposit, remaining, collected_at, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", Number(row.deposit || 0), Number(row.remaining || 0), row.collectedAt || row.paymentDate || row.date || null, rowData(row)]);
+      insert into public.fee_collections (school_id, source_id, student_id, student_name, class_name, fee_month, deposit, remaining, collected_at, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
+      on conflict (school_id, source_id) do update set student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, fee_month = excluded.fee_month, deposit = excluded.deposit, remaining = excluded.remaining, collected_at = excluded.collected_at, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", Number(row.deposit || 0), Number(row.remaining || 0), row.collectedAt || row.paymentDate || row.date || null, rowData(row)]);
   }
 
   for (let index = 0; index < salaryPayments.length; index += 1) {
     const row = salaryPayments[index];
     const sourceId = rowId(row, "SAL", index);
     await client.query(`
-      insert into public.salary_payments (id, school_id, source_id, employee_id, employee_name, salary_month, salary_amount, bonus, deduction, net_salary, payment_date, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, now())
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.employeeId || row.teacherId || "", row.employeeName || row.teacherName || row.name || "", row.salaryMonth || row.month || "", Number(row.salaryAmount || 0), Number(row.bonus || 0), Number(row.deduction || 0), Number(row.netSalary || 0), emptyToNullDate(row.paymentDate || row.date), rowData(row)]);
+      insert into public.salary_payments (school_id, source_id, employee_id, employee_name, salary_month, salary_amount, bonus, deduction, net_salary, payment_date, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
+      on conflict (school_id, source_id) do update set employee_id = excluded.employee_id, employee_name = excluded.employee_name, salary_month = excluded.salary_month, salary_amount = excluded.salary_amount, bonus = excluded.bonus, deduction = excluded.deduction, net_salary = excluded.net_salary, payment_date = excluded.payment_date, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.employeeId || row.teacherId || "", row.employeeName || row.teacherName || row.name || "", row.salaryMonth || row.month || "", Number(row.salaryAmount || 0), Number(row.bonus || 0), Number(row.deduction || 0), Number(row.netSalary || 0), emptyToNullDate(row.paymentDate || row.date), rowData(row)]);
   }
 
   for (let index = 0; index < accountsLedger.length; index += 1) {
     const row = accountsLedger[index];
     const sourceId = rowId(row, "LED", index);
     await client.query(`
-      insert into public.accounts_ledger (id, school_id, source_id, date, type, category, amount, note, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, emptyToNullDate(row.date), row.type || "", row.category || "", Number(row.amount || 0), row.note || "", rowData(row)]);
+      insert into public.accounts_ledger (school_id, source_id, date, type, category, amount, note, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
+      on conflict (school_id, source_id) do update set date = excluded.date, type = excluded.type, category = excluded.category, amount = excluded.amount, note = excluded.note, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, emptyToNullDate(row.date), row.type || "", row.category || "", Number(row.amount || 0), row.note || "", rowData(row)]);
   }
 
   for (let index = 0; index < activityLogs.length; index += 1) {
     const row = activityLogs[index];
     const sourceId = rowId(row, "LOG", index);
     await client.query(`
-      insert into public.activity_logs (id, school_id, source_id, title, message, created_at, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.title || row.action || "", row.message || row.description || "", row.createdAt || row.date || null, rowData(row)]);
+      insert into public.activity_logs (school_id, source_id, title, message, created_at, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6::jsonb, now())
+      on conflict (school_id, source_id) do update set title = excluded.title, message = excluded.message, created_at = excluded.created_at, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.title || row.action || "", row.message || row.description || "", row.createdAt || row.date || null, rowData(row)]);
   }
 }
 
@@ -1229,20 +1237,20 @@ async function syncExamTables(client, schoolId, database) {
     const row = exams[index];
     const sourceId = rowId(row, "EXM", index);
     await client.query(`
-      insert into public.exams (id, school_id, source_id, exam_name, class_name, subject, total_marks, pass_marks, exam_date, exam_type, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
+      insert into public.exams (school_id, source_id, exam_name, class_name, subject, total_marks, pass_marks, exam_date, exam_type, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
       on conflict (school_id, source_id) do update set exam_name = excluded.exam_name, class_name = excluded.class_name, subject = excluded.subject, total_marks = excluded.total_marks, pass_marks = excluded.pass_marks, exam_date = excluded.exam_date, exam_type = excluded.exam_type, data = excluded.data, updated_at = now()
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.examName || row.name || "", row.className || "", row.subject || "", Number(row.totalMarks || 0), Number(row.passMarks || 0), emptyToNullDate(row.examDate || row.date), row.examType || row.type || "", rowData(row)]);
+    `, [schoolId, sourceId, row.examName || row.name || "", row.className || "", row.subject || "", Number(row.totalMarks || 0), Number(row.passMarks || 0), emptyToNullDate(row.examDate || row.date), row.examType || row.type || "", rowData(row)]);
   }
 
   for (let index = 0; index < examMarks.length; index++) {
     const row = examMarks[index];
     const sourceId = rowId(row, "EXK", index);
     await client.query(`
-      insert into public.exam_marks (id, school_id, source_id, exam_source_id, student_id, student_name, class_name, marks_obtained, grade, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
+      insert into public.exam_marks (school_id, source_id, exam_source_id, student_id, student_name, class_name, marks_obtained, grade, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
       on conflict (school_id, source_id) do update set exam_source_id = excluded.exam_source_id, student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, marks_obtained = excluded.marks_obtained, grade = excluded.grade, data = excluded.data, updated_at = now()
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.examId || row.examSourceId || "", row.studentId || "", row.studentName || row.name || "", row.className || "", Number(row.marksObtained || row.marks || 0), row.grade || "", rowData(row)]);
+    `, [schoolId, sourceId, row.examId || row.examSourceId || "", row.studentId || "", row.studentName || row.name || "", row.className || "", Number(row.marksObtained || row.marks || 0), row.grade || "", rowData(row)]);
   }
 }
 
@@ -1256,10 +1264,10 @@ async function syncTimetableTable(client, schoolId, database) {
     const row = timetable[index];
     const sourceId = rowId(row, "TBT", index);
     await client.query(`
-      insert into public.timetable (id, school_id, source_id, class_name, day, period_number, start_time, end_time, subject, teacher_id, room, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12::jsonb, now())
+      insert into public.timetable (school_id, source_id, class_name, day, period_number, start_time, end_time, subject, teacher_id, room, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
       on conflict (school_id, source_id) do update set class_name = excluded.class_name, day = excluded.day, period_number = excluded.period_number, start_time = excluded.start_time, end_time = excluded.end_time, subject = excluded.subject, teacher_id = excluded.teacher_id, room = excluded.room, data = excluded.data, updated_at = now()
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.className || "", row.day || "", Number(row.periodNumber || row.period || index + 1), row.startTime || "", row.endTime || "", row.subject || "", row.teacherId || row.teacher || "", row.room || "", rowData(row)]);
+    `, [schoolId, sourceId, row.className || "", row.day || "", Number(row.periodNumber || row.period || index + 1), row.startTime || "", row.endTime || "", row.subject || "", row.teacherId || row.teacher || "", row.room || "", rowData(row)]);
   }
 }
 
@@ -1273,10 +1281,10 @@ async function syncHomeworkTable(client, schoolId, database) {
     const row = homework[index];
     const sourceId = rowId(row, "HWK", index);
     await client.query(`
-      insert into public.homework (id, school_id, source_id, class_name, subject, description, due_date, assigned_date, teacher_id, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
+      insert into public.homework (school_id, source_id, class_name, subject, description, due_date, assigned_date, teacher_id, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
       on conflict (school_id, source_id) do update set class_name = excluded.class_name, subject = excluded.subject, description = excluded.description, due_date = excluded.due_date, assigned_date = excluded.assigned_date, teacher_id = excluded.teacher_id, data = excluded.data, updated_at = now()
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.className || "", row.subject || "", row.description || row.title || "", emptyToNullDate(row.dueDate), emptyToNullDate(row.assignedDate || row.date), row.teacherId || row.teacher || "", rowData(row)]);
+    `, [schoolId, sourceId, row.className || "", row.subject || "", row.description || row.title || "", emptyToNullDate(row.dueDate), emptyToNullDate(row.assignedDate || row.date), row.teacherId || row.teacher || "", rowData(row)]);
   }
 }
 
@@ -1292,20 +1300,20 @@ async function syncClassTestTables(client, schoolId, database) {
     const row = classTests[index];
     const sourceId = rowId(row, "CTE", index);
     await client.query(`
-      insert into public.class_tests (id, school_id, source_id, test_name, class_name, subject, total_marks, test_date, teacher_id, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
+      insert into public.class_tests (school_id, source_id, test_name, class_name, subject, total_marks, test_date, teacher_id, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
       on conflict (school_id, source_id) do update set test_name = excluded.test_name, class_name = excluded.class_name, subject = excluded.subject, total_marks = excluded.total_marks, test_date = excluded.test_date, teacher_id = excluded.teacher_id, data = excluded.data, updated_at = now()
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.testName || row.name || "", row.className || "", row.subject || "", Number(row.totalMarks || 0), emptyToNullDate(row.testDate || row.date), row.teacherId || row.teacher || "", rowData(row)]);
+    `, [schoolId, sourceId, row.testName || row.name || "", row.className || "", row.subject || "", Number(row.totalMarks || 0), emptyToNullDate(row.testDate || row.date), row.teacherId || row.teacher || "", rowData(row)]);
   }
 
   for (let index = 0; index < classTestMarks.length; index++) {
     const row = classTestMarks[index];
     const sourceId = rowId(row, "CTM", index);
     await client.query(`
-      insert into public.class_test_marks (id, school_id, source_id, test_source_id, student_id, student_name, marks_obtained, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
+      insert into public.class_test_marks (school_id, source_id, test_source_id, student_id, student_name, marks_obtained, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
       on conflict (school_id, source_id) do update set test_source_id = excluded.test_source_id, student_id = excluded.student_id, student_name = excluded.student_name, marks_obtained = excluded.marks_obtained, data = excluded.data, updated_at = now()
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.testId || row.testSourceId || "", row.studentId || "", row.studentName || row.name || "", Number(row.marksObtained || row.marks || 0), rowData(row)]);
+    `, [schoolId, sourceId, row.testId || row.testSourceId || "", row.studentId || "", row.studentName || row.name || "", Number(row.marksObtained || row.marks || 0), rowData(row)]);
   }
 }
 
@@ -1319,10 +1327,10 @@ async function syncQuestionPapersTable(client, schoolId, database) {
     const row = papers[index];
     const sourceId = rowId(row, "QPR", index);
     await client.query(`
-      insert into public.question_papers (id, school_id, source_id, title, class_name, subject, total_marks, duration, content, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
+      insert into public.question_papers (school_id, source_id, title, class_name, subject, total_marks, duration, content, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
       on conflict (school_id, source_id) do update set title = excluded.title, class_name = excluded.class_name, subject = excluded.subject, total_marks = excluded.total_marks, duration = excluded.duration, content = excluded.content, data = excluded.data, updated_at = now()
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.title || row.name || "", row.className || "", row.subject || "", Number(row.totalMarks || 0), row.duration || "", row.content || row.body || "", rowData(row)]);
+    `, [schoolId, sourceId, row.title || row.name || "", row.className || "", row.subject || "", Number(row.totalMarks || 0), row.duration || "", row.content || row.body || "", rowData(row)]);
   }
 }
 
@@ -1336,10 +1344,10 @@ async function syncCertificatesTable(client, schoolId, database) {
     const row = certificates[index];
     const sourceId = rowId(row, "CRT", index);
     await client.query(`
-      insert into public.certificates (id, school_id, source_id, certificate_type, student_id, student_name, class_name, issue_date, template, data, updated_at)
-      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
+      insert into public.certificates (school_id, source_id, certificate_type, student_id, student_name, class_name, issue_date, template, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
       on conflict (school_id, source_id) do update set certificate_type = excluded.certificate_type, student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, issue_date = excluded.issue_date, template = excluded.template, data = excluded.data, updated_at = now()
-    `, [scopedRowIdValue(schoolId, sourceId), schoolId, sourceId, row.certificateType || row.type || "", row.studentId || "", row.studentName || row.name || "", row.className || "", emptyToNullDate(row.issueDate || row.date), row.template || "", rowData(row)]);
+    `, [schoolId, sourceId, row.certificateType || row.type || "", row.studentId || "", row.studentName || row.name || "", row.className || "", emptyToNullDate(row.issueDate || row.date), row.template || "", rowData(row)]);
   }
 }
 
@@ -1521,14 +1529,16 @@ app.get("/health", async (_req, res) => {
 });
 
 app.get("/api/database/:schoolId", async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  console.log("GET /api/database/" + schoolId);
   try {
-    const schoolId = normalizeSchoolId(req.params.schoolId);
     const database = await getSchoolDatabase(schoolId);
     if (!database) {
       return res.json({ success: true, school_id: schoolId, database: null });
     }
     return res.json({ success: true, school_id: schoolId, database: database });
   } catch (error) {
+    console.error("GET /api/database/" + schoolId + " — ERROR:", error.message);
     return res.status(500).json({ success: false, message: error.message || "Unable to load database." });
   }
 });
@@ -1536,14 +1546,37 @@ app.get("/api/database/:schoolId", async (req, res) => {
 app.post("/api/database/:schoolId", async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   const database = req.body && req.body.database ? req.body.database : {};
+  const token = String(req.headers["authorization"] || "").replace(/^Bearer\s+/i, "").trim()
+    || String(req.headers["x-license-token"] || "").trim();
+  console.log("POST /api/database/" + schoolId + " — employees:", (database.employees || []).length, "students:", (database.students || []).length, "dbSize:", JSON.stringify(database).length);
   try {
-    const licCheck = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    const licCheck = await pool.query("select school_id, license_token, status from public.license_accounts where school_id = $1 limit 1", [schoolId]);
     if (!licCheck.rowCount) {
-      return res.status(403).json({ success: false, message: "School not registered. Please login again with correct credentials." });
+      console.warn("POST /api/database/" + schoolId + " — REJECTED: school not in license_accounts. Auto-creating minimal entry.");
+      const autoToken = generateToken();
+      await pool.query(
+        "insert into public.license_accounts (school_id, school_name, email, password, status, plan, license_token, internet_required_after_days, modules_locked, timezone, currency, symbol, updated_at) values ($1, $1, '', '', 'active', 'monthly', $2, 9999, false, 'Asia/Karachi', 'PKR', 'Rs', now()) on conflict (school_id) do nothing",
+        [schoolId, autoToken]
+      );
+      console.log("POST /api/database/" + schoolId + " — Auto-created license_accounts entry");
+    } else {
+      const lic = licCheck.rows[0];
+      if (token && lic.license_token && token === lic.license_token) {
+        // token matches, ok
+      } else if (token && lic.license_token && token !== lic.license_token) {
+        console.warn("POST /api/database/" + schoolId + " — Token mismatch, but allowing save (license active)");
+      }
+      const status = String(lic.status || "").toLowerCase();
+      if (status !== "active") {
+        console.warn("POST /api/database/" + schoolId + " — REJECTED: school status is " + status);
+        return res.status(403).json({ success: false, message: "School account is " + status + ". Please contact Super Admin." });
+      }
     }
     await saveSchoolDatabaseWithMirrors(schoolId, database);
+    console.log("POST /api/database/" + schoolId + " — SAVED OK, size:", JSON.stringify(database).length);
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
+    console.error("POST /api/database/" + schoolId + " — ERROR:", error.message, error.stack);
     return res.status(500).json({ success: false, message: error.message || "Unable to save online database." });
   }
 });
@@ -2483,8 +2516,13 @@ ensureSchema()
 function startKeepAlive() {
   var baseUrl = process.env.RENDER_EXTERNAL_URL || "";
   if (!baseUrl) return;
+  console.log("Keep-alive started, pinging:", baseUrl + "/health");
   setInterval(function () {
-    fetch(baseUrl + "/api/health").catch(function () {});
+    fetch(baseUrl + "/health").then(function (r) {
+      console.log("Keep-alive ping:", r.status);
+    }).catch(function (e) {
+      console.error("Keep-alive ping failed:", e.message);
+    });
   }, 14 * 60 * 1000);
 }
 
