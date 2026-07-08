@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
@@ -1053,7 +1053,13 @@ document.addEventListener("DOMContentLoaded", function () {
   function saveDatabase(label) {
     if (label) window.SagarSoftDB.showLoading(label);
     window.SagarSoftDB.saveDatabase(database);
-    if (label) setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 1500);
+    if (label) {
+      window.SagarSoftDB.flushPendingSync().then(function() {
+        setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 500);
+      }).catch(function() {
+        setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 500);
+      });
+    }
   }
 
   function ensureLicenseSettings() {
@@ -1066,9 +1072,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
     const fallbackSchoolName = profile.name || database.school.name || "SagarSoft Public School";
     const license = database.generalSettings.licenseSettings;
+    const existingSchoolId = license.schoolId ? String(license.schoolId).trim() : "";
+    const isActivatedSchool = existingSchoolId && (license.activated === true || license.status === "active");
     const accountSettings = database.generalSettings.accountSettings || {};
     const defaultLicense = {
-      schoolId: "SCH-" + generateId().toUpperCase(),
+      schoolId: existingSchoolId || "",
       schoolName: fallbackSchoolName,
       activated: false,
       subscriptionPlan: "monthly",
@@ -1948,9 +1956,13 @@ document.addEventListener("DOMContentLoaded", function () {
         var payload = { school_id: schoolId, database: dataToSend };
         var controller = new AbortController();
         var timeoutId = setTimeout(function () { controller.abort(); }, 60000);
+        var headers = { "Content-Type": "application/json" };
+        var cfg = window.SagarSoftDB && window.SagarSoftDB.getConfig ? window.SagarSoftDB.getConfig() : {};
+        if (cfg.authToken) headers["Authorization"] = "Bearer " + cfg.authToken;
+        if (cfg.apiKey) headers["x-sagarsoft-api-key"] = cfg.apiKey;
         var resp = await fetch(getApiBaseUrl() + "/api/backup", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: headers,
           body: JSON.stringify(payload),
           signal: controller.signal
         });
@@ -1994,9 +2006,15 @@ document.addEventListener("DOMContentLoaded", function () {
       var payload = { school_id: schoolId, database: dataToSend };
       var controller = new AbortController();
       var timeoutId = setTimeout(function () { controller.abort(); }, 60000);
+      var headers = { "Content-Type": "application/json" };
+      var session = null;
+      try { session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
+      var cfg = window.SagarSoftDB && window.SagarSoftDB.getConfig ? window.SagarSoftDB.getConfig() : {};
+      if (cfg.authToken) headers["Authorization"] = "Bearer " + cfg.authToken;
+      if (cfg.apiKey) headers["x-sagarsoft-api-key"] = cfg.apiKey;
       var resp = await fetch(getApiBaseUrl() + "/api/backup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: headers,
         body: JSON.stringify(payload),
         signal: controller.signal
       });
@@ -24111,12 +24129,15 @@ ${allContent}
   (async function loadFromServerAfterInit() {
     var license = database.generalSettings && database.generalSettings.licenseSettings;
     var wasActivated = license && license.activated;
-    var schoolId = license && license.schoolId ? String(license.schoolId).trim() : "";
+    var schoolId = "";
     var authToken = license && license.licenseToken;
-    if (!schoolId && window.SagarSoftDB && window.SagarSoftDB.getConfig) {
+    if (window.SagarSoftDB && window.SagarSoftDB.getConfig) {
       var cfg = window.SagarSoftDB.getConfig();
       if (cfg && cfg.schoolId) schoolId = String(cfg.schoolId).trim();
       if (cfg && cfg.authToken) authToken = authToken || cfg.authToken;
+    }
+    if (!schoolId && license && license.schoolId) {
+      schoolId = String(license.schoolId).trim();
     }
     if (schoolId && window.SagarSoftDB && window.SagarSoftDB.setSchoolId) {
       window.SagarSoftDB.setSchoolId(schoolId);
@@ -24129,8 +24150,8 @@ ${allContent}
             database.generalSettings.licenseSettings.activated = true;
             database.generalSettings.licenseSettings.status = "active";
           }
+          database.generalSettings.licenseSettings.schoolId = schoolId;
           normalizeStudentsDatasetInMemory();
-          saveDatabase();
           applyRouteAccessVisibility();
         }
       } catch (_e) {}
