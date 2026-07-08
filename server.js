@@ -870,7 +870,7 @@ function scopedMirrorId(schoolId, sourceId, prefix) {
 async function syncEmployeeMirrorTables(client, schoolId, database) {
   const employees = Array.isArray(database && database.employees) ? database.employees : [];
   const teachers = Array.isArray(database && database.teachers) ? database.teachers : [];
-  const allStaff = employees.length >= teachers.length ? employees : teachers;
+  const allStaff = employees.length > 0 ? employees : teachers;
   await client.query("delete from public.employees where school_id = $1", [schoolId]);
 
   for (const employee of allStaff) {
@@ -1450,23 +1450,23 @@ async function getSchoolDatabase(schoolId) {
     readDataRows("account_activity")
   ]);
 
-  if (students.length) database.students = students;
-  if (classes.length) database.classes = classes;
-  if (users.length) database.users = users;
-  if (subjects.length) database.subjects = subjects;
-  if (attendance.length) database.attendance = attendance;
-  if (fees.length) database.fees = fees;
-  if (employees.length) {
+  if (students.length && (!database.students || !database.students.length)) database.students = students;
+  if (classes.length && (!database.classes || !database.classes.length)) database.classes = classes;
+  if (users.length && (!database.users || !database.users.length)) database.users = users;
+  if (subjects.length && (!database.subjects || !database.subjects.length)) database.subjects = subjects;
+  if (attendance.length && (!database.attendance || !database.attendance.length)) database.attendance = attendance;
+  if (fees.length && (!database.fees || !database.fees.length)) database.fees = fees;
+  if (employees.length && (!database.employees || !database.employees.length)) {
     database.employees = employees;
     if (!database.teachers || !database.teachers.length) {
       database.teachers = employees.map(function(e) { return e.data || e; });
     }
   }
-  if (notices.length) database.notices = notices;
-  if (events.length) database.events = events;
-  if (activityLogs.length) database.activityLogs = activityLogs;
-  if (accountActivity.length) database.accountActivity = accountActivity;
-  if (smsTemplates.length) database.smsTemplates = smsTemplates;
+  if (notices.length && (!database.notices || !database.notices.length)) database.notices = notices;
+  if (events.length && (!database.events || !database.events.length)) database.events = events;
+  if (activityLogs.length && (!database.activityLogs || !database.activityLogs.length)) database.activityLogs = activityLogs;
+  if (accountActivity.length && (!database.accountActivity || !database.accountActivity.length)) database.accountActivity = accountActivity;
+  if (smsTemplates.length && (!database.smsTemplates || !database.smsTemplates.length)) database.smsTemplates = smsTemplates;
   if (feeInvoices.length) database.generalSettings.feeInvoices = feeInvoices;
   if (feeCollections.length) database.generalSettings.feeCollections = feeCollections;
   if (salaryPayments.length) database.generalSettings.salaryPayments = salaryPayments;
