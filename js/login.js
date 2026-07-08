@@ -115,11 +115,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     var overlay = document.getElementById("sagarsoft-loading-overlay");
     var overlayText = document.getElementById("sagarsoft-loading-text");
+    var cancelBtn = document.getElementById("sagarsoft-loading-cancel");
     function showLoginOverlay(msg) {
       if (overlay) { overlay.style.display = "flex"; requestAnimationFrame(function(){ overlay.style.opacity = "1"; }); }
       if (overlayText) { overlayText.textContent = msg; }
+      if (cancelBtn) { cancelBtn.style.display = "inline-block"; }
     }
     function hideLoginOverlay() {
+      if (cancelBtn) { cancelBtn.style.display = "none"; }
       if (overlay) { overlay.style.opacity = "0"; setTimeout(function(){ overlay.style.display = "none"; }, 250); }
     }
 
