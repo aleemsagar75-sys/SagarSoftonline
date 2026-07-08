@@ -1617,14 +1617,15 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function getLastEmployeeNumber() {
-    if (!database.teachers || database.teachers.length === 0) return "";
-    const numbers = database.teachers
+    const allStaff = [].concat(database.teachers || [], database.employees || []);
+    if (allStaff.length === 0) return "1";
+    const numbers = allStaff
       .map(e => {
         const match = String(e.id || "").match(/\d+$/);
         return match ? parseInt(match[0], 10) : 0;
       })
       .filter(n => n > 0);
-    return numbers.length > 0 ? String(Math.max(...numbers)) : "";
+    return numbers.length > 0 ? String(Math.max(...numbers) + 1) : "1";
   }
 
   function downloadBackupData() {
