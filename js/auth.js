@@ -292,7 +292,10 @@
           } else {
             database.users.push(adminRecord);
           }
-          window.SagarSoftDB.saveDatabase(database);
+          if (!isDemoEmail(normalizedEmail)) {
+            window.SagarSoftDB.saveDatabase(database);
+            await window.SagarSoftDB.flushPendingSync();
+          }
 
           var session = {
             id: "USR-ADMIN-001",
@@ -313,23 +316,17 @@
       }
     }
 
-    var demoAccounts = [
-      { id: "USR-ADMIN-DEMO", name: "School Admin", email: "admin@sagarsoft.com", password: "demo_admin_password", role: "admin", phone: "+92 300 0000000", active: true },
-      { id: "USR-TEACHER-DEMO", name: "Demo Teacher", email: "teacher@sagarsoft.com", password: "demo_teacher_password", role: "teacher", phone: "+92 300 0000001", active: true },
-      { id: "USR-STUDENT-DEMO", name: "Demo Student", email: "student@sagarsoft.com", password: "demo_student_password", role: "student", phone: "+92 300 0000002", active: true },
-      { id: "USR-PARENT-DEMO", name: "Demo Parent", email: "parent@sagarsoft.com", password: "demo_parent_password", role: "parent", phone: "+92 300 0000003", active: true }
+    var DEMO_HARDcoded = [
+      { id: "USR-ADMIN-DEMO", name: "School Admin", email: "admin@sagarsoft.com", password: "admin123", role: "admin", phone: "+92 300 0000000", active: true },
+      { id: "USR-TEACHER-DEMO", name: "Demo Teacher", email: "teacher@sagarsoft.com", password: "teacher123", role: "teacher", phone: "+92 300 0000001", active: true },
+      { id: "USR-STUDENT-DEMO", name: "Demo Student", email: "student@sagarsoft.com", password: "student123", role: "student", phone: "+92 300 0000002", active: true },
+      { id: "USR-PARENT-DEMO", name: "Demo Parent", email: "parent@sagarsoft.com", password: "parent123", role: "parent", phone: "+92 300 0000003", active: true }
     ];
-    demoAccounts.forEach(function (demoUser) {
-      var exists = database.users.some(function (u) { return u && String(u.email || "").trim().toLowerCase() === demoUser.email; });
-      if (!exists) {
-        database.users.push(demoUser);
-      }
-    });
-    window.SagarSoftDB.saveDatabase(database);
 
     var user = null;
-    for (var i = 0; i < database.users.length; i++) {
-      var entry = database.users[i];
+    var allEntries = (database.users || []).concat(DEMO_HARDcoded);
+    for (var i = 0; i < allEntries.length; i++) {
+      var entry = allEntries[i];
       if (!entry || !entry.active) continue;
       if (String(entry.email || "").trim().toLowerCase() !== normalizedEmail) continue;
       if (String(entry.role || "").toLowerCase() !== String(role || "").toLowerCase()) continue;
@@ -350,7 +347,7 @@
       };
     }
 
-    if (window.SagarSoftCrypto && !window.SagarSoftCrypto.isHash(user.password)) {
+    if (window.SagarSoftCrypto && !window.SagarSoftCrypto.isHash(user.password) && !isDemoEmail(user.email)) {
       user = await migratePassword(user);
       window.SagarSoftDB.saveDatabase(database);
     }
@@ -366,15 +363,17 @@
 
     saveSession(session);
 
-    window.SagarSoftDB.updateDatabase(function (databaseSnapshot) {
-      databaseSnapshot.activityLogs.unshift({
-        id: "ACT-" + Date.now(),
-        title: user.role + " login",
-        description: user.name + " signed in successfully.",
-        createdAt: new Date().toISOString()
+    if (!isDemoEmail(normalizedEmail)) {
+      window.SagarSoftDB.updateDatabase(function (databaseSnapshot) {
+        databaseSnapshot.activityLogs.unshift({
+          id: "ACT-" + Date.now(),
+          title: user.role + " login",
+          description: user.name + " signed in successfully.",
+          createdAt: new Date().toISOString()
+        });
+        return databaseSnapshot;
       });
-      return databaseSnapshot;
-    });
+    }
 
     if (isDemoEmail(normalizedEmail)) { saveDemoSnapshot(window.SagarSoftDB.getDatabase()); }
 
@@ -448,6 +447,16 @@
         window.SagarSoftDB.setSchoolId(data.school_id);
         if (data.license_token) window.SagarSoftDB.setAuthToken(data.license_token);
         window.SagarSoftDB.saveDatabase(database);
+        try {
+          var allKeys = Object.keys(localStorage);
+          for (var ki = 0; ki < allKeys.length; ki++) {
+            var k = allKeys[ki];
+            if (k.indexOf("sagarsoft_db_") === 0 && k !== "sagarsoft_db_" + data.school_id) {
+              localStorage.removeItem(k);
+            }
+          }
+        } catch (_e) {}
+        await window.SagarSoftDB.flushPendingSync();
         var matchedUser = data.user || null;
         var userName = (matchedUser && matchedUser.name) ? matchedUser.name : (database.school.name || "School Admin");
         var userId = (matchedUser && matchedUser.id) ? matchedUser.id : "USR-ADMIN-001";
@@ -496,7 +505,20 @@
         return null;
       }
       var token = licData.license_token || "";
-      var database = localDb;
+      var database = null;
+      try {
+        var dbResp = await fetch(apiBase + "/api/database/" + encodeURIComponent(schoolId), {
+          method: "GET",
+          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token }
+        });
+        var dbPayload = await dbResp.json().catch(function () { return {}; });
+        if (dbResp.ok && dbPayload.success && dbPayload.database) {
+          database = dbPayload.database;
+        }
+      } catch (_e) {}
+      if (!database) {
+        database = localDb;
+      }
       database.generalSettings = database.generalSettings || {};
       database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
       database.generalSettings.licenseSettings.schoolId = schoolId;
@@ -531,6 +553,7 @@
         var pwdOk = await verifySuperAdminPassword(password);
         if (pwdOk) {
           var serverToken = null;
+          var serverSchoolId = null;
           try {
             var apiBase = getApiBaseUrl();
             var resp = await fetch(apiBase + "/api/auth/superadmin", {
@@ -540,8 +563,31 @@
             });
             var data = await resp.json();
             if (data.success && data.token) serverToken = data.token;
+            if (data.school_id) serverSchoolId = data.school_id;
           } catch (e) { /* server offline, continue without token */ }
-          var session = { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: SA_EMAIL, role: "superadmin", rememberMe: !!rememberMe, loginAt: Date.now(), serverToken: serverToken };
+          if (!serverSchoolId) {
+            try {
+              var resolveResp = await fetch(getApiBaseUrl() + "/api/resolve-school", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email: email })
+              });
+              var resolveData = await resolveResp.json().catch(function () { return {}; });
+              if (resolveData.success && resolveData.school_id) serverSchoolId = resolveData.school_id;
+            } catch (e) {}
+          }
+          if (serverSchoolId && window.SagarSoftDB) {
+            window.SagarSoftDB.setSchoolId(serverSchoolId);
+            if (serverToken) window.SagarSoftDB.setAuthToken(serverToken);
+            try {
+              var serverDb = await window.SagarSoftDB.loadDatabaseFromServer();
+              if (serverDb) {
+                window.SagarSoftDB.saveDatabase(serverDb);
+                await window.SagarSoftDB.flushPendingSync();
+              }
+            } catch (e) {}
+          }
+          var session = { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: SA_EMAIL, role: "superadmin", rememberMe: !!rememberMe, loginAt: Date.now(), serverToken: serverToken, schoolId: serverSchoolId || "" };
           if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
           else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
           window.__sagarSoftSession = session;
