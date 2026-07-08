@@ -1552,13 +1552,8 @@ app.post("/api/database/:schoolId", async (req, res) => {
   try {
     const licCheck = await pool.query("select school_id, license_token, status from public.license_accounts where school_id = $1 limit 1", [schoolId]);
     if (!licCheck.rowCount) {
-      console.warn("POST /api/database/" + schoolId + " — REJECTED: school not in license_accounts. Auto-creating minimal entry.");
-      const autoToken = generateToken();
-      await pool.query(
-        "insert into public.license_accounts (school_id, school_name, email, password, status, plan, license_token, internet_required_after_days, modules_locked, timezone, currency, symbol, updated_at) values ($1, $1, '', '', 'active', 'monthly', $2, 9999, false, 'Asia/Karachi', 'PKR', 'Rs', now()) on conflict (school_id) do nothing",
-        [schoolId, autoToken]
-      );
-      console.log("POST /api/database/" + schoolId + " — Auto-created license_accounts entry");
+      console.warn("POST /api/database/" + schoolId + " — REJECTED: school not in license_accounts.");
+      return res.status(403).json({ success: false, message: "School not activated. Please login with activated school credentials." });
     } else {
       const lic = licCheck.rows[0];
       if (token && lic.license_token && token === lic.license_token) {
