@@ -1054,10 +1054,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (label) window.SagarSoftDB.showLoading(label);
     window.SagarSoftDB.saveDatabase(database);
     if (label) {
-      window.SagarSoftDB.flushPendingSync().then(function() {
-        setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 500);
+      var syncPromise = window.SagarSoftDB.flushPendingSync();
+      var hideTimer = setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 8000);
+      syncPromise.then(function() {
+        clearTimeout(hideTimer);
+        setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 300);
       }).catch(function() {
-        setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 500);
+        clearTimeout(hideTimer);
+        setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 300);
       });
     }
   }
