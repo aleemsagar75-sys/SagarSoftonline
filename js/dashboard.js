@@ -4105,6 +4105,8 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       database.teachers.unshift(employeeRecord);
     }
+
+    database.employees = database.teachers.slice();
   }
 
   function deleteEmployeeRecord(employeeId) {
@@ -4115,6 +4117,7 @@ document.addEventListener("DOMContentLoaded", function () {
     database.teachers = database.teachers.filter(function (item) {
       return item.id !== employeeId;
     });
+    database.employees = database.teachers.slice();
     database.users = database.users.filter(function (user) {
       return !(user.role === "teacher" && (user.employeeId === employeeId || user.name === employee.name));
     });
@@ -12775,7 +12778,7 @@ ${allContent}
 
         const role = document.getElementById("employeeRoleInput").value;
         const employeeRecord = {
-          id: editingEmployee ? editingEmployee.id : fullEmployeeId,
+          id: fullEmployeeId,
           name: document.getElementById("employeeNameInput").value.trim(),
           designation: role || "Teacher",
           role: role || "Teacher",
