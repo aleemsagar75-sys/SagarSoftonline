@@ -4095,9 +4095,10 @@ document.addEventListener("DOMContentLoaded", function () {
     };
   }
 
-  function saveEmployeeRecord(employeeRecord) {
+  function saveEmployeeRecord(employeeRecord, originalId) {
+    const lookupId = originalId || employeeRecord.id;
     const existingIndex = database.teachers.findIndex(function (employee) {
-      return employee.id === employeeRecord.id;
+      return employee.id === lookupId;
     });
 
     if (existingIndex >= 0) {
@@ -12806,7 +12807,7 @@ ${allContent}
           return;
         }
 
-        saveEmployeeRecord(employeeRecord);
+        saveEmployeeRecord(employeeRecord, editingEmployee ? editingEmployee.id : null);
         addActivity(editingEmployee ? "Employee updated" : "Employee added", `${employeeRecord.name} employee record saved.`);
         saveDatabase(editingEmployee ? "Updating employee..." : "Saving employee...");
         sessionStorage.removeItem("sagarsoft_edit_employee_id");
