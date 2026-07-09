@@ -1542,9 +1542,48 @@ app.get("/api/database/:schoolId", async (req, res) => {
   }
 });
 
+function mergeArraysById(localArr, serverArr) {
+  const merged = (serverArr || []).slice();
+  (localArr || []).forEach(function (item) {
+    if (!item || !item.id) return;
+    const idx = merged.findIndex(function (s) { return s && s.id === item.id; });
+    if (idx >= 0) {
+      merged[idx] = item;
+    } else {
+      merged.push(item);
+    }
+  });
+  return merged;
+}
+
+function mergeDatabases(incomingDb, existingDb) {
+  if (!existingDb || Object.keys(existingDb).length === 0) return incomingDb;
+  const merged = JSON.parse(JSON.stringify(existingDb));
+  const arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
+  arrKeys.forEach(function (key) {
+    if (incomingDb[key] || merged[key]) {
+      merged[key] = mergeArraysById(incomingDb[key], merged[key]);
+    }
+  });
+  const gsIn = (incomingDb.generalSettings || {});
+  const gsEx = (merged.generalSettings || {});
+  merged.generalSettings = Object.assign({}, gsEx);
+  ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates"].forEach(function (key) {
+    if (gsIn[key] || gsEx[key]) {
+      merged.generalSettings[key] = mergeArraysById(gsIn[key], gsEx[key]);
+    }
+  });
+  if (gsIn.instituteProfile) merged.generalSettings.instituteProfile = Object.assign(merged.generalSettings.instituteProfile || {}, gsIn.instituteProfile);
+  if (gsIn.accountSettings) merged.generalSettings.accountSettings = Object.assign(merged.generalSettings.accountSettings || {}, gsIn.accountSettings);
+  if (incomingDb.users || merged.users) merged.users = mergeArraysById(incomingDb.users, merged.users);
+  if (incomingDb.school) merged.school = Object.assign(merged.school || {}, incomingDb.school);
+  if (incomingDb.settings) merged.settings = Object.assign(merged.settings || {}, incomingDb.settings);
+  return merged;
+}
+
 app.post("/api/database/:schoolId", async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
-  const database = req.body && req.body.database ? req.body.database : {};
+  const incomingDb = req.body && req.body.database ? req.body.database : {};
   const token = String(req.headers["authorization"] || "").replace(/^Bearer\s+/i, "").trim()
     || String(req.headers["x-license-token"] || "").trim();
   try {
@@ -1559,8 +1598,11 @@ app.post("/api/database/:schoolId", async (req, res) => {
         return res.status(403).json({ success: false, message: "School account is " + status + ". Please contact Super Admin." });
       }
     }
-    await saveSchoolDatabaseWithMirrors(schoolId, database);
-    console.log("POST /api/database/" + schoolId + " — SAVED OK");
+    const existingResult = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
+    const existingDb = existingResult.rowCount ? (existingResult.rows[0].database || {}) : {};
+    const mergedDb = mergeDatabases(incomingDb, existingDb);
+    await saveSchoolDatabaseWithMirrors(schoolId, mergedDb);
+    console.log("POST /api/database/" + schoolId + " — SAVED OK (merged)");
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
     console.error("POST /api/database/" + schoolId + " — ERROR:", error.message);
