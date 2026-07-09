@@ -24103,7 +24103,6 @@ ${allContent}
   ensurePortalSyncData();
   applySidebarIcons();
   normalizeStudentsDatasetInMemory();
-  saveDatabase();
 
   (function initDarkMode() {
     var saved = localStorage.getItem("sagarsoft-theme");
