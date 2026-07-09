@@ -1054,6 +1054,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (label) window.SagarSoftDB.showLoading(label);
     try {
       await window.SagarSoftDB.forceSave(database);
+      refreshDatabase();
     } catch (_e) {}
     window.SagarSoftDB.hideLoading();
   }
