@@ -1467,18 +1467,18 @@ async function getSchoolDatabase(schoolId) {
   if (activityLogs.length && (!database.activityLogs || !database.activityLogs.length)) database.activityLogs = activityLogs;
   if (accountActivity.length && (!database.accountActivity || !database.accountActivity.length)) database.accountActivity = accountActivity;
   if (smsTemplates.length && (!database.smsTemplates || !database.smsTemplates.length)) database.smsTemplates = smsTemplates;
-  if (feeInvoices.length) database.generalSettings.feeInvoices = feeInvoices;
-  if (feeCollections.length) database.generalSettings.feeCollections = feeCollections;
-  if (salaryPayments.length) database.generalSettings.salaryPayments = salaryPayments;
-  if (accountsLedger.length) database.generalSettings.accountsLedger = accountsLedger;
-  if (exams.length) database.generalSettings.exams = exams;
-  if (examMarks.length) database.generalSettings.examMarks = examMarks;
-  if (timetable.length) database.generalSettings.timetableEntries = timetable;
-  if (homework.length) database.generalSettings.homework = homework;
-  if (classTests.length) database.generalSettings.classTests = classTests;
-  if (classTestMarks.length) database.generalSettings.classTestMarks = classTestMarks;
-  if (questionPapers.length) database.generalSettings.questionPapers = questionPapers;
-  if (certificates.length) database.generalSettings.certificates = certificates;
+  if (feeInvoices.length && (!database.generalSettings.feeInvoices || !database.generalSettings.feeInvoices.length)) database.generalSettings.feeInvoices = feeInvoices;
+  if (feeCollections.length && (!database.generalSettings.feeCollections || !database.generalSettings.feeCollections.length)) database.generalSettings.feeCollections = feeCollections;
+  if (salaryPayments.length && (!database.generalSettings.salaryPayments || !database.generalSettings.salaryPayments.length)) database.generalSettings.salaryPayments = salaryPayments;
+  if (accountsLedger.length && (!database.generalSettings.accountsLedger || !database.generalSettings.accountsLedger.length)) database.generalSettings.accountsLedger = accountsLedger;
+  if (exams.length && (!database.generalSettings.exams || !database.generalSettings.exams.length)) database.generalSettings.exams = exams;
+  if (examMarks.length && (!database.generalSettings.examMarks || !database.generalSettings.examMarks.length)) database.generalSettings.examMarks = examMarks;
+  if (timetable.length && (!database.generalSettings.timetableEntries || !database.generalSettings.timetableEntries.length)) database.generalSettings.timetableEntries = timetable;
+  if (homework.length && (!database.generalSettings.homework || !database.generalSettings.homework.length)) database.generalSettings.homework = homework;
+  if (classTests.length && (!database.generalSettings.classTests || !database.generalSettings.classTests.length)) database.generalSettings.classTests = classTests;
+  if (classTestMarks.length && (!database.generalSettings.classTestMarks || !database.generalSettings.classTestMarks.length)) database.generalSettings.classTestMarks = classTestMarks;
+  if (questionPapers.length && (!database.generalSettings.questionPapers || !database.generalSettings.questionPapers.length)) database.generalSettings.questionPapers = questionPapers;
+  if (certificates.length && (!database.generalSettings.certificates || !database.generalSettings.certificates.length)) database.generalSettings.certificates = certificates;
 
   try {
     const licResult = await pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, license_token, modules_locked from public.license_accounts where school_id = $1 limit 1", [schoolId]);
@@ -1557,7 +1557,11 @@ function mergeArraysById(localArr, serverArr) {
 }
 
 function mergeDatabases(incomingDb, existingDb) {
-  if (!existingDb || Object.keys(existingDb).length === 0) return incomingDb;
+  if (!existingDb || typeof existingDb !== "object" || Object.keys(existingDb).length === 0) {
+    console.log("mergeDatabases: no existing data, returning incoming as-is");
+    return incomingDb;
+  }
+  console.log("mergeDatabases: merging incoming into existing");
   const merged = JSON.parse(JSON.stringify(existingDb));
   const arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
   arrKeys.forEach(function (key) {
@@ -1578,6 +1582,7 @@ function mergeDatabases(incomingDb, existingDb) {
   if (incomingDb.users || merged.users) merged.users = mergeArraysById(incomingDb.users, merged.users);
   if (incomingDb.school) merged.school = Object.assign(merged.school || {}, incomingDb.school);
   if (incomingDb.settings) merged.settings = Object.assign(merged.settings || {}, incomingDb.settings);
+  console.log("mergeDatabases result: teachers=" + (merged.teachers || []).length + " employees=" + (merged.employees || []).length);
   return merged;
 }
 
@@ -1599,8 +1604,10 @@ app.post("/api/database/:schoolId", async (req, res) => {
       }
     }
     const existingResult = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
-    const existingDb = existingResult.rowCount ? (existingResult.rows[0].database || {}) : {};
+    let existingDb = existingResult.rowCount ? (existingResult.rows[0].database || {}) : {};
+    if (typeof existingDb === "string") { try { existingDb = JSON.parse(existingDb); } catch (_e) { existingDb = {}; } }
     const mergedDb = mergeDatabases(incomingDb, existingDb);
+    console.log("POST /api/database/" + schoolId + " — incoming keys:", Object.keys(incomingDb || {}), "existing keys:", Object.keys(existingDb || {}), "merged keys:", Object.keys(mergedDb || {}));
     await saveSchoolDatabaseWithMirrors(schoolId, mergedDb);
     console.log("POST /api/database/" + schoolId + " — SAVED OK (merged)");
     return res.json({ success: true, school_id: schoolId });
