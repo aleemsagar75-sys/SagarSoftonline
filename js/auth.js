@@ -457,6 +457,10 @@
           }
         } catch (_e) {}
         await window.SagarSoftDB.flushPendingSync();
+        try {
+          var freshDb = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
+          if (freshDb) window.SagarSoftDB.saveDatabase(freshDb);
+        } catch (_e) {}
         var matchedUser = data.user || null;
         var userName = (matchedUser && matchedUser.name) ? matchedUser.name : (database.school.name || "School Admin");
         var userId = (matchedUser && matchedUser.id) ? matchedUser.id : "USR-ADMIN-001";
@@ -517,7 +521,7 @@
         }
       } catch (_e) {}
       if (!database) {
-        database = localDb;
+        return null;
       }
       database.generalSettings = database.generalSettings || {};
       database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
@@ -534,6 +538,10 @@
       window.SagarSoftDB.setSchoolId(schoolId);
       if (token) window.SagarSoftDB.setAuthToken(token);
       window.SagarSoftDB.saveDatabase(database);
+      try {
+        var freshDb = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
+        if (freshDb) window.SagarSoftDB.saveDatabase(freshDb);
+      } catch (_e) {}
       var session = { id: "USR-ADMIN-001", name: schoolName, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: token };
       if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
       else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
