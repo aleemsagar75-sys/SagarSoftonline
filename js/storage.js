@@ -371,6 +371,19 @@
     return cachedDatabase;
   }
 
+  if (typeof window !== "undefined") {
+    window.addEventListener("beforeunload", function () {
+      if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("POST", config.apiBaseUrl + "/api/database/" + encodeURIComponent(config.schoolId), false);
+        xhr.setRequestHeader("Content-Type", "application/json");
+        if (config.apiKey) xhr.setRequestHeader("x-sagarsoft-api-key", config.apiKey);
+        if (config.authToken) xhr.setRequestHeader("Authorization", "Bearer " + config.authToken);
+        try { xhr.send(JSON.stringify({ database: cachedDatabase })); } catch (_e) {}
+      }
+    });
+  }
+
   function updateDatabase(updater) {
     var database = getDatabase();
     var updatedDatabase = updater(structuredClone(database));
