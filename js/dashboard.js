@@ -4108,7 +4108,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (id && database._deletedIds.indexOf(id) === -1) database._deletedIds.push(id);
   }
 
-  function deleteEmployeeRecord(employeeId) {
+  async function deleteEmployeeRecord(employeeId) {
     const employee = getEmployeeById(employeeId);
     if (!employee) {
       return;
@@ -4122,7 +4122,9 @@ document.addEventListener("DOMContentLoaded", function () {
       return !(user.role === "teacher" && (user.employeeId === employeeId || user.name === employee.name));
     });
     addActivity("Employee deleted", `${employee.name} record was removed.`);
-    window.SagarSoftDB.forceSave(database).catch(function () {});
+    window.SagarSoftDB.showLoading("Deleting employee...");
+    await window.SagarSoftDB.forceSave(database);
+    window.SagarSoftDB.hideLoading();
   }
 
   function ensureEmployeeLogin(employee) {
@@ -8346,7 +8348,7 @@ ${allContent}
         });
         
         addActivity("Fee deleted", "A submitted fee record was deleted.");
-        saveDatabase();
+        saveDatabase("Deleting fee...");
         refreshDatabase();
         renderDashboard();
         renderRows();
@@ -9120,7 +9122,7 @@ ${allContent}
               createdAt: new Date().toISOString()
             });
           }
-          saveDatabase();
+          saveDatabase("Deleting salary record...");
           renderReport();
         });
       });
@@ -9361,7 +9363,7 @@ ${allContent}
           return;
         }
         settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; }); trackDeletion(weekdayId);
-        saveDatabase();
+        saveDatabase("Deleting weekday...");
         renderRows();
       });
 
@@ -9524,7 +9526,7 @@ ${allContent}
           return;
         }
         settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; }); trackDeletion(periodId);
-        saveDatabase();
+        saveDatabase("Deleting time period...");
         renderRows();
       });
 
@@ -9673,7 +9675,7 @@ ${allContent}
           return;
         }
         settings.classRooms = (settings.classRooms || []).filter(function (item) { return item.id !== roomId; }); trackDeletion(roomId);
-        saveDatabase();
+        saveDatabase("Deleting classroom...");
         renderRows();
       });
 
@@ -10318,7 +10320,7 @@ ${allContent}
             settings.examMarks = (settings.examMarks || []).filter(function (item) { return item.examId !== examId; });
             settings.examSchedule = (settings.examSchedule || []).filter(function (item) { return item.examId !== examId; });
             addActivity("Exam deleted", `${examItem.name} exam was deleted.`);
-            saveDatabase();
+            saveDatabase("Deleting exam...");
             renderExamsTable();
           });
         }
@@ -14938,7 +14940,7 @@ ${allContent}
               trackDeletion(id);
               settings.accountsLedger = (settings.accountsLedger || []).filter(function (item) { return String(item.id) !== String(id); });
               settings.__accountsLedgerUserTouched = true;
-              saveDatabase();
+              saveDatabase("Deleting entry...");
               refreshDatabase();
                renderDynamicModuleWorkspace(route, title);
                (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
@@ -15005,7 +15007,7 @@ ${allContent}
         if (delBtn) {
           var nid = delBtn.getAttribute("data-delete-notice");
           var idx = notices.findIndex(function (x) { return x.id === nid; });
-          if (idx > -1) { trackDeletion(nid); notices.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
+          if (idx > -1) { trackDeletion(nid); notices.splice(idx, 1); saveDatabase("Deleting notice..."); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
           return;
         }
         var smsBtn = e.target.closest("[data-sms-notice]");
@@ -15153,7 +15155,7 @@ ${allContent}
             e.stopPropagation();
             var eid = btn.getAttribute("data-delete-event");
             var idx = events.findIndex(function (x) { return x.id === eid; });
-            if (idx > -1) { trackDeletion(eid); events.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+            if (idx > -1) { trackDeletion(eid); events.splice(idx, 1); saveDatabase("Deleting event..."); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
           });
         });
 
@@ -15263,7 +15265,7 @@ ${allContent}
               updatedSettings.accountsLedger = (updatedSettings.accountsLedger || []).filter(function (item) { return String(item.id) !== String(id); });
               updatedSettings.__accountsLedgerUserTouched = true;
               addActivity("Account entry deleted", `Ledger entry deleted: ${id}`);
-              saveDatabase();
+              saveDatabase("Deleting entry...");
               refreshDatabase();
                renderDynamicModuleWorkspace(route, title);
                (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
@@ -17485,7 +17487,7 @@ ${allContent}
         }
         if (deleteButton) {
           settings.classTestMarks = (settings.classTestMarks || []).filter(function (item) { return String(item.id) !== String(recordId); }); trackDeletion(recordId);
-          saveDatabase();
+          saveDatabase("Deleting test record...");
           renderTestResults();
           return;
         }
@@ -17663,7 +17665,7 @@ ${allContent}
           const id = button.getAttribute("data-delete-certificate-template");
           trackDeletion(id);
           settings.certificateTemplates = (settings.certificateTemplates || []).filter(function (item) { return String(item.id) !== String(id); });
-          saveDatabase();
+          saveDatabase("Deleting template...");
           renderTemplates();
         });
         renderTemplates();
@@ -17973,7 +17975,7 @@ ${allContent}
         if (delBtn) {
           var nid = delBtn.getAttribute("data-delete-notice");
           var idx = notices.findIndex(function (x) { return x.id === nid; });
-          if (idx > -1) { trackDeletion(nid); notices.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
+          if (idx > -1) { trackDeletion(nid); notices.splice(idx, 1); saveDatabase("Deleting notice..."); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
           return;
         }
         var pushBtn = e.target.closest("[data-push-notice]");
@@ -18258,7 +18260,7 @@ ${allContent}
             e.stopPropagation();
             var eid = btn.getAttribute("data-delete-event");
             var idx = events.findIndex(function (x) { return x.id === eid; });
-            if (idx > -1) { trackDeletion(eid); events.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+            if (idx > -1) { trackDeletion(eid); events.splice(idx, 1); saveDatabase("Deleting event..."); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
           });
         });
 
@@ -20427,7 +20429,7 @@ ${allContent}
             return user.id !== currentUser.id;
           });
           addActivity("Account deleted", `${currentUser.name} account deleted.`);
-          saveDatabase();
+          saveDatabase("Deleting account...");
           window.SagarSoftAuth.logout();
           location.reload();
         });
@@ -23843,8 +23845,8 @@ ${allContent}
             return user.id !== `LOGIN-${student.id}`;
           });
           addActivity("Student deleted", `${student.name} record was removed.`);
-          saveDatabase();
-          renderDashboard();
+          window.SagarSoftDB.showLoading("Deleting student...");
+          window.SagarSoftDB.forceSave(database).then(function() { window.SagarSoftDB.hideLoading(); saveDatabase(); renderDashboard(); }).catch(function() { window.SagarSoftDB.hideLoading(); });
           setStudentRoute("all-students");
         });
       }
