@@ -1556,13 +1556,32 @@ function mergeArraysById(localArr, serverArr) {
   return merged;
 }
 
+function removeDeletedFromObject(obj, deletedIds) {
+  if (!deletedIds || !deletedIds.length || !obj) return;
+  const idSet = {};
+  deletedIds.forEach(function (id) { idSet[String(id)] = true; });
+  const arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity","users"];
+  arrKeys.forEach(function (key) {
+    if (Array.isArray(obj[key])) {
+      obj[key] = obj[key].filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+    }
+  });
+  if (obj.generalSettings) {
+    ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates","timetableWeekdays","timetablePeriods","classRooms","examSchedule","questionChapters","homeworkAssignments","certificateTemplates"].forEach(function (key) {
+      if (Array.isArray(obj.generalSettings[key])) {
+        obj.generalSettings[key] = obj.generalSettings[key].filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+      }
+    });
+  }
+}
+
 function mergeDatabases(incomingDb, existingDb) {
   if (!existingDb || typeof existingDb !== "object" || Object.keys(existingDb).length === 0) {
-    console.log("mergeDatabases: no existing data, returning incoming as-is");
     return incomingDb;
   }
-  console.log("mergeDatabases: merging incoming into existing");
+  const deletedIds = incomingDb._deletedIds || [];
   const merged = JSON.parse(JSON.stringify(existingDb));
+  removeDeletedFromObject(merged, deletedIds);
   const arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
   arrKeys.forEach(function (key) {
     if (incomingDb[key] || merged[key]) {
@@ -1582,7 +1601,6 @@ function mergeDatabases(incomingDb, existingDb) {
   if (incomingDb.users || merged.users) merged.users = mergeArraysById(incomingDb.users, merged.users);
   if (incomingDb.school) merged.school = Object.assign(merged.school || {}, incomingDb.school);
   if (incomingDb.settings) merged.settings = Object.assign(merged.settings || {}, incomingDb.settings);
-  console.log("mergeDatabases result: teachers=" + (merged.teachers || []).length + " employees=" + (merged.employees || []).length);
   return merged;
 }
 
