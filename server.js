@@ -1450,35 +1450,29 @@ async function getSchoolDatabase(schoolId) {
     readDataRows("account_activity")
   ]);
 
-  if (students.length && (!database.students || !database.students.length)) database.students = students;
-  if (classes.length && (!database.classes || !database.classes.length)) database.classes = classes;
-  if (users.length && (!database.users || !database.users.length)) database.users = users;
-  if (subjects.length && (!database.subjects || !database.subjects.length)) database.subjects = subjects;
-  if (attendance.length && (!database.attendance || !database.attendance.length)) database.attendance = attendance;
-  if (fees.length && (!database.fees || !database.fees.length)) database.fees = fees;
-  if (employees.length && (!database.employees || !database.employees.length)) {
-    database.employees = employees;
-    if (!database.teachers || !database.teachers.length) {
-      database.teachers = employees.map(function(e) { return e.data || e; });
-    }
-  }
-  if (notices.length && (!database.notices || !database.notices.length)) database.notices = notices;
-  if (events.length && (!database.events || !database.events.length)) database.events = events;
-  if (activityLogs.length && (!database.activityLogs || !database.activityLogs.length)) database.activityLogs = activityLogs;
-  if (accountActivity.length && (!database.accountActivity || !database.accountActivity.length)) database.accountActivity = accountActivity;
-  if (smsTemplates.length && (!database.smsTemplates || !database.smsTemplates.length)) database.smsTemplates = smsTemplates;
-  if (feeInvoices.length && (!database.generalSettings.feeInvoices || !database.generalSettings.feeInvoices.length)) database.generalSettings.feeInvoices = feeInvoices;
-  if (feeCollections.length && (!database.generalSettings.feeCollections || !database.generalSettings.feeCollections.length)) database.generalSettings.feeCollections = feeCollections;
-  if (salaryPayments.length && (!database.generalSettings.salaryPayments || !database.generalSettings.salaryPayments.length)) database.generalSettings.salaryPayments = salaryPayments;
-  if (accountsLedger.length && (!database.generalSettings.accountsLedger || !database.generalSettings.accountsLedger.length)) database.generalSettings.accountsLedger = accountsLedger;
-  if (exams.length && (!database.generalSettings.exams || !database.generalSettings.exams.length)) database.generalSettings.exams = exams;
-  if (examMarks.length && (!database.generalSettings.examMarks || !database.generalSettings.examMarks.length)) database.generalSettings.examMarks = examMarks;
-  if (timetable.length && (!database.generalSettings.timetableEntries || !database.generalSettings.timetableEntries.length)) database.generalSettings.timetableEntries = timetable;
-  if (homework.length && (!database.generalSettings.homework || !database.generalSettings.homework.length)) database.generalSettings.homework = homework;
-  if (classTests.length && (!database.generalSettings.classTests || !database.generalSettings.classTests.length)) database.generalSettings.classTests = classTests;
-  if (classTestMarks.length && (!database.generalSettings.classTestMarks || !database.generalSettings.classTestMarks.length)) database.generalSettings.classTestMarks = classTestMarks;
-  if (questionPapers.length && (!database.generalSettings.questionPapers || !database.generalSettings.questionPapers.length)) database.generalSettings.questionPapers = questionPapers;
-  if (certificates.length && (!database.generalSettings.certificates || !database.generalSettings.certificates.length)) database.generalSettings.certificates = certificates;
+  if (students.length && !database.students) database.students = students;
+  if (classes.length && !database.classes) database.classes = classes;
+  if (users.length && !database.users) database.users = users;
+  if (subjects.length && !database.subjects) database.subjects = subjects;
+  if (attendance.length && !database.attendance) database.attendance = attendance;
+  if (fees.length && !database.fees) database.fees = fees;
+  if (notices.length && !database.notices) database.notices = notices;
+  if (events.length && !database.events) database.events = events;
+  if (activityLogs.length && !database.activityLogs) database.activityLogs = activityLogs;
+  if (accountActivity.length && !database.accountActivity) database.accountActivity = accountActivity;
+  if (smsTemplates.length && !database.smsTemplates) database.smsTemplates = smsTemplates;
+  if (feeInvoices.length && !database.generalSettings.feeInvoices) database.generalSettings.feeInvoices = feeInvoices;
+  if (feeCollections.length && !database.generalSettings.feeCollections) database.generalSettings.feeCollections = feeCollections;
+  if (salaryPayments.length && !database.generalSettings.salaryPayments) database.generalSettings.salaryPayments = salaryPayments;
+  if (accountsLedger.length && !database.generalSettings.accountsLedger) database.generalSettings.accountsLedger = accountsLedger;
+  if (exams.length && !database.generalSettings.exams) database.generalSettings.exams = exams;
+  if (examMarks.length && !database.generalSettings.examMarks) database.generalSettings.examMarks = examMarks;
+  if (timetable.length && !database.generalSettings.timetableEntries) database.generalSettings.timetableEntries = timetable;
+  if (homework.length && !database.generalSettings.homework) database.generalSettings.homework = homework;
+  if (classTests.length && !database.generalSettings.classTests) database.generalSettings.classTests = classTests;
+  if (classTestMarks.length && !database.generalSettings.classTestMarks) database.generalSettings.classTestMarks = classTestMarks;
+  if (questionPapers.length && !database.generalSettings.questionPapers) database.generalSettings.questionPapers = questionPapers;
+  if (certificates.length && !database.generalSettings.certificates) database.generalSettings.certificates = certificates;
 
   try {
     const licResult = await pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, license_token, modules_locked from public.license_accounts where school_id = $1 limit 1", [schoolId]);
