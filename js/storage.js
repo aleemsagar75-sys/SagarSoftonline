@@ -366,7 +366,8 @@
       } catch (_e) {}
     }
     if (config.apiBaseUrl && config.schoolId) {
-      scheduleServerSync();
+      _pendingSave = true;
+      flushPendingSync().catch(function () {});
     }
     return cachedDatabase;
   }
@@ -508,6 +509,27 @@
     config.authToken = localStorage.getItem(TOKEN_KEY) || "";
   }
 
+  async function forceSave(database) {
+    cachedDatabase = normalizeDatabase(database);
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
+    if (!config.schoolId) {
+      try { var sid = localStorage.getItem(SCHOOL_ID_KEY); if (sid) config.schoolId = String(sid); } catch (_e) {}
+    }
+    if (!config.apiBaseUrl || !config.schoolId) return false;
+    try {
+      await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
+        method: "POST",
+        body: JSON.stringify({ database: cachedDatabase }),
+        timeoutMs: 60000
+      });
+      showSyncBadge("synced");
+      return true;
+    } catch (err) {
+      showSyncBadge("failed");
+      return false;
+    }
+  }
+
   window.SagarSoftDB = {
     getDatabase: getDatabase,
     saveDatabase: saveDatabase,
@@ -529,6 +551,7 @@
     showLoading: showLoading,
     hideLoading: hideLoading,
     cancelLoading: cancelLoading,
-    showSyncBadge: showSyncBadge
+    showSyncBadge: showSyncBadge,
+    forceSave: forceSave
   };
 })();
