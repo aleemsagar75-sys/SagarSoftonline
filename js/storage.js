@@ -162,6 +162,12 @@
     if (!Array.isArray(db.certificates)) db.certificates = [];
     if (!Array.isArray(db.employees)) db.employees = [];
     if (!Array.isArray(db.salaryPayments)) db.salaryPayments = [];
+
+    if (db.teachers.length > 0 && db.employees.length !== db.teachers.length) {
+      db.employees = db.teachers.slice();
+    } else if (db.employees.length > 0 && db.teachers.length !== db.employees.length) {
+      db.teachers = db.employees.slice();
+    }
     if (!Array.isArray(db.accountsLedger)) db.accountsLedger = [];
     if (!Array.isArray(db.notices)) db.notices = [];
     if (!Array.isArray(db.events)) db.events = [];
