@@ -1050,20 +1050,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  function saveDatabase(label) {
+  async function saveDatabase(label) {
     if (label) window.SagarSoftDB.showLoading(label);
     window.SagarSoftDB.saveDatabase(database);
-    if (label) {
-      var syncPromise = window.SagarSoftDB.flushPendingSync();
-      var hideTimer = setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 8000);
-      syncPromise.then(function() {
-        clearTimeout(hideTimer);
-        setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 300);
-      }).catch(function() {
-        clearTimeout(hideTimer);
-        setTimeout(function(){ window.SagarSoftDB.hideLoading(); }, 300);
-      });
-    }
+    try {
+      await window.SagarSoftDB.flushPendingSync();
+    } catch (_e) {}
+    window.SagarSoftDB.hideLoading();
   }
 
   function ensureLicenseSettings() {
@@ -4123,7 +4116,8 @@ document.addEventListener("DOMContentLoaded", function () {
       return !(user.role === "teacher" && (user.employeeId === employeeId || user.name === employee.name));
     });
     addActivity("Employee deleted", `${employee.name} record was removed.`);
-    saveDatabase();
+    window.SagarSoftDB.saveDatabase(database);
+    window.SagarSoftDB.flushPendingSync().catch(function () {});
   }
 
   function ensureEmployeeLogin(employee) {
@@ -12809,7 +12803,7 @@ ${allContent}
 
         saveEmployeeRecord(employeeRecord, editingEmployee ? editingEmployee.id : null);
         addActivity(editingEmployee ? "Employee updated" : "Employee added", `${employeeRecord.name} employee record saved.`);
-        saveDatabase(editingEmployee ? "Updating employee..." : "Saving employee...");
+        await saveDatabase(editingEmployee ? "Updating employee..." : "Saving employee...");
         sessionStorage.removeItem("sagarsoft_edit_employee_id");
         renderDashboard();
         message.textContent = "Employee form submitted successfully.";
