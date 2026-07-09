@@ -1606,11 +1606,15 @@ app.post("/api/database/:schoolId", async (req, res) => {
     const existingResult = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
     let existingDb = existingResult.rowCount ? (existingResult.rows[0].database || {}) : {};
     if (typeof existingDb === "string") { try { existingDb = JSON.parse(existingDb); } catch (_e) { existingDb = {}; } }
+    const existingTeachers = (existingDb.teachers || []).length;
+    const existingEmployees = (existingDb.employees || []).length;
     const mergedDb = mergeDatabases(incomingDb, existingDb);
-    console.log("POST /api/database/" + schoolId + " — incoming keys:", Object.keys(incomingDb || {}), "existing keys:", Object.keys(existingDb || {}), "merged keys:", Object.keys(mergedDb || {}));
+    const mergedTeachers = (mergedDb.teachers || []).length;
+    const mergedEmployees = (mergedDb.employees || []).length;
+    console.log("POST MERGE DEBUG: incoming=" + (incomingDb.teachers || []).length + " existing=" + existingTeachers + " merged=" + mergedTeachers);
     await saveSchoolDatabaseWithMirrors(schoolId, mergedDb);
     console.log("POST /api/database/" + schoolId + " — SAVED OK (merged)");
-    return res.json({ success: true, school_id: schoolId });
+    return res.json({ success: true, school_id: schoolId, _debug: { incoming: (incomingDb.teachers || []).length, existing: existingTeachers, merged: mergedTeachers } });
   } catch (error) {
     console.error("POST /api/database/" + schoolId + " — ERROR:", error.message);
     return res.status(500).json({ success: false, message: error.message || "Unable to save online database." });
