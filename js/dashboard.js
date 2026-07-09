@@ -4103,11 +4103,17 @@ document.addEventListener("DOMContentLoaded", function () {
     database.employees = database.teachers.slice();
   }
 
+  function trackDeletion(id) {
+    if (!database._deletedIds) database._deletedIds = [];
+    if (id && database._deletedIds.indexOf(id) === -1) database._deletedIds.push(id);
+  }
+
   function deleteEmployeeRecord(employeeId) {
     const employee = getEmployeeById(employeeId);
     if (!employee) {
       return;
     }
+    trackDeletion(employeeId);
     database.teachers = database.teachers.filter(function (item) {
       return item.id !== employeeId;
     });
@@ -8310,6 +8316,8 @@ ${allContent}
           note: "Fee record deleted for month " + feeMonth,
           createdAt: new Date().toISOString()
         });
+        trackDeletion(collectionId);
+        trackDeletion(feeId);
         
         settings.feeCollections = (settings.feeCollections || []).filter(function (collection) {
           if (collection.id) {
@@ -9085,6 +9093,7 @@ ${allContent}
           return;
         }
         showStyledDeleteConfirmation("selected salary record", function () {
+          ids.forEach(function (id) { trackDeletion(id); });
           const idSet = new Set(ids);
           var deletedPayments = (settings.salaryPayments || []).filter(function (item) {
             return idSet.has(item.id || "");
@@ -9351,7 +9360,7 @@ ${allContent}
           message.className = "form-message error";
           return;
         }
-        settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; });
+        settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; }); trackDeletion(weekdayId);
         saveDatabase();
         renderRows();
       });
@@ -9514,7 +9523,7 @@ ${allContent}
           message.className = "form-message error";
           return;
         }
-        settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; });
+        settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; }); trackDeletion(periodId);
         saveDatabase();
         renderRows();
       });
@@ -9663,7 +9672,7 @@ ${allContent}
           message.className = "form-message error";
           return;
         }
-        settings.classRooms = (settings.classRooms || []).filter(function (item) { return item.id !== roomId; });
+        settings.classRooms = (settings.classRooms || []).filter(function (item) { return item.id !== roomId; }); trackDeletion(roomId);
         saveDatabase();
         renderRows();
       });
@@ -10304,6 +10313,7 @@ ${allContent}
         }
         if (action === "delete") {
           showStyledDeleteConfirmation(examItem.name, function() {
+            trackDeletion(examId);
             settings.exams = (settings.exams || []).filter(function (item) { return item.id !== examId; });
             settings.examMarks = (settings.examMarks || []).filter(function (item) { return item.examId !== examId; });
             settings.examSchedule = (settings.examSchedule || []).filter(function (item) { return item.examId !== examId; });
@@ -11390,6 +11400,7 @@ ${allContent}
           return;
         }
         const scheduleId = deleteBtn.dataset.scheduleDeleteId;
+        trackDeletion(scheduleId);
         settings.examSchedule = (settings.examSchedule || []).filter(function (item) {
           return item.id !== scheduleId;
         });
@@ -14924,6 +14935,7 @@ ${allContent}
           if (delBtn) {
             const id = delBtn.getAttribute("data-ledger-delete");
             showStyledDeleteConfirmation("Account Entry", function () {
+              trackDeletion(id);
               settings.accountsLedger = (settings.accountsLedger || []).filter(function (item) { return String(item.id) !== String(id); });
               settings.__accountsLedgerUserTouched = true;
               saveDatabase();
@@ -14993,7 +15005,7 @@ ${allContent}
         if (delBtn) {
           var nid = delBtn.getAttribute("data-delete-notice");
           var idx = notices.findIndex(function (x) { return x.id === nid; });
-          if (idx > -1) { notices.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
+          if (idx > -1) { trackDeletion(nid); notices.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
           return;
         }
         var smsBtn = e.target.closest("[data-sms-notice]");
@@ -15141,7 +15153,7 @@ ${allContent}
             e.stopPropagation();
             var eid = btn.getAttribute("data-delete-event");
             var idx = events.findIndex(function (x) { return x.id === eid; });
-            if (idx > -1) { events.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+            if (idx > -1) { trackDeletion(eid); events.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
           });
         });
 
@@ -16769,6 +16781,7 @@ ${allContent}
           if (deleteButton) {
             const chapterName = deleteButton.getAttribute("data-qp-delete-chapter");
             showStyledDeleteConfirmation(chapterName, function () {
+              trackDeletion(chapterName);
               settings.questionChapters = (settings.questionChapters || []).filter(function (row) {
                 return !(row.className === className && row.subject === subject && String(row.chapterName || "") === chapterName);
               });
@@ -16917,6 +16930,7 @@ ${allContent}
               return;
             }
             showStyledDeleteConfirmation(String(row.questionTitle || row.chapterName || "Question"), function () {
+              trackDeletion(rowId);
               settings.questionChapters = (settings.questionChapters || []).filter(function (item) {
                 return String(item.id) !== String(rowId);
               });
@@ -17470,7 +17484,7 @@ ${allContent}
           return;
         }
         if (deleteButton) {
-          settings.classTestMarks = (settings.classTestMarks || []).filter(function (item) { return String(item.id) !== String(recordId); });
+          settings.classTestMarks = (settings.classTestMarks || []).filter(function (item) { return String(item.id) !== String(recordId); }); trackDeletion(recordId);
           saveDatabase();
           renderTestResults();
           return;
@@ -17647,6 +17661,7 @@ ${allContent}
             return;
           }
           const id = button.getAttribute("data-delete-certificate-template");
+          trackDeletion(id);
           settings.certificateTemplates = (settings.certificateTemplates || []).filter(function (item) { return String(item.id) !== String(id); });
           saveDatabase();
           renderTemplates();
@@ -17958,7 +17973,7 @@ ${allContent}
         if (delBtn) {
           var nid = delBtn.getAttribute("data-delete-notice");
           var idx = notices.findIndex(function (x) { return x.id === nid; });
-          if (idx > -1) { notices.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
+          if (idx > -1) { trackDeletion(nid); notices.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
           return;
         }
         var pushBtn = e.target.closest("[data-push-notice]");
@@ -18243,7 +18258,7 @@ ${allContent}
             e.stopPropagation();
             var eid = btn.getAttribute("data-delete-event");
             var idx = events.findIndex(function (x) { return x.id === eid; });
-            if (idx > -1) { events.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+            if (idx > -1) { trackDeletion(eid); events.splice(idx, 1); saveDatabase(); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
           });
         });
 
@@ -18743,7 +18758,7 @@ ${allContent}
           if (selectedHomeworkPreviewId === homeworkId) {
             selectedHomeworkPreviewId = "";
           }
-          settings.homeworkAssignments.splice(index, 1);
+          settings.homeworkAssignments.splice(index, 1); trackDeletion(homeworkId);
         saveDatabase("Saving homework...");
         renderHomeworkHistory();
           renderHomeworkSelectionPreview();
@@ -20407,6 +20422,7 @@ ${allContent}
         }
 
         showStyledDeleteConfirmation(currentUser.name, function() {
+          trackDeletion(currentUser.id);
           database.users = database.users.filter(function (user) {
             return user.id !== currentUser.id;
           });
@@ -23819,6 +23835,7 @@ ${allContent}
       const student = database.students.find(function (item) { return item.id === studentId; });
       if (student) {
         showStyledDeleteConfirmation(student.name, function() {
+          trackDeletion(student.id);
           database.students = database.students.filter(function (item) {
             return item.id !== student.id;
           });
