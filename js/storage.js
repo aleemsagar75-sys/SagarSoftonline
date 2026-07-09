@@ -509,6 +509,20 @@
     config.authToken = localStorage.getItem(TOKEN_KEY) || "";
   }
 
+  function mergeArraysById(localArr, serverArr) {
+    var merged = (serverArr || []).slice();
+    (localArr || []).forEach(function (item) {
+      if (!item || !item.id) return;
+      var idx = merged.findIndex(function (s) { return s && s.id === item.id; });
+      if (idx >= 0) {
+        merged[idx] = item;
+      } else {
+        merged.push(item);
+      }
+    });
+    return merged;
+  }
+
   async function forceSave(database) {
     cachedDatabase = normalizeDatabase(database);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
@@ -517,6 +531,46 @@
     }
     if (!config.apiBaseUrl || !config.schoolId) return false;
     try {
+      var serverDb = null;
+      try {
+        var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 30000 });
+        if (getResp && getResp.database) serverDb = getResp.database;
+      } catch (_e) {}
+
+      var toSave = cachedDatabase;
+      if (serverDb) {
+        var merged = JSON.parse(JSON.stringify(serverDb));
+        var arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
+        arrKeys.forEach(function (key) {
+          if (cachedDatabase[key] || merged[key]) {
+            merged[key] = mergeArraysById(cachedDatabase[key], merged[key]);
+          }
+        });
+        if (merged.generalSettings) {
+          var gs = cachedDatabase.generalSettings || {};
+          if (gs.feeInvoices || merged.generalSettings.feeInvoices) merged.generalSettings.feeInvoices = mergeArraysById(gs.feeInvoices, merged.generalSettings.feeInvoices);
+          if (gs.feeCollections || merged.generalSettings.feeCollections) merged.generalSettings.feeCollections = mergeArraysById(gs.feeCollections, merged.generalSettings.feeCollections);
+          if (gs.salaryPayments || merged.generalSettings.salaryPayments) merged.generalSettings.salaryPayments = mergeArraysById(gs.salaryPayments, merged.generalSettings.salaryPayments);
+          if (gs.accountsLedger || merged.generalSettings.accountsLedger) merged.generalSettings.accountsLedger = mergeArraysById(gs.accountsLedger, merged.generalSettings.accountsLedger);
+          if (gs.exams || merged.generalSettings.exams) merged.generalSettings.exams = mergeArraysById(gs.exams, merged.generalSettings.exams);
+          if (gs.examMarks || merged.generalSettings.examMarks) merged.generalSettings.examMarks = mergeArraysById(gs.examMarks, merged.generalSettings.examMarks);
+          if (gs.timetableEntries || merged.generalSettings.timetableEntries) merged.generalSettings.timetableEntries = mergeArraysById(gs.timetableEntries, merged.generalSettings.timetableEntries);
+          if (gs.homework || merged.generalSettings.homework) merged.generalSettings.homework = mergeArraysById(gs.homework, merged.generalSettings.homework);
+          if (gs.classTests || merged.generalSettings.classTests) merged.generalSettings.classTests = mergeArraysById(gs.classTests, merged.generalSettings.classTests);
+          if (gs.classTestMarks || merged.generalSettings.classTestMarks) merged.generalSettings.classTestMarks = mergeArraysById(gs.classTestMarks, merged.generalSettings.classTestMarks);
+          if (gs.questionPapers || merged.generalSettings.questionPapers) merged.generalSettings.questionPapers = mergeArraysById(gs.questionPapers, merged.generalSettings.questionPapers);
+          if (gs.certificates || merged.generalSettings.certificates) merged.generalSettings.certificates = mergeArraysById(gs.certificates, merged.generalSettings.certificates);
+          if (gs.instituteProfile) merged.generalSettings.instituteProfile = Object.assign(merged.generalSettings.instituteProfile || {}, gs.instituteProfile);
+          if (gs.accountSettings) merged.generalSettings.accountSettings = Object.assign(merged.generalSettings.accountSettings || {}, gs.accountSettings);
+        }
+        if (cachedDatabase.users || merged.users) merged.users = mergeArraysById(cachedDatabase.users, merged.users);
+        if (cachedDatabase.school) merged.school = Object.assign(merged.school || {}, cachedDatabase.school);
+        if (cachedDatabase.settings) merged.settings = Object.assign(merged.settings || {}, cachedDatabase.settings);
+        toSave = merged;
+      }
+
+      cachedDatabase = normalizeDatabase(toSave);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
       await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: cachedDatabase }),
