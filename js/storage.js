@@ -523,6 +523,48 @@
     return merged;
   }
 
+  function removeDeletedFromArrays(obj, deletedIds) {
+    if (!deletedIds || !deletedIds.length) return obj;
+    var idSet = {};
+    deletedIds.forEach(function (id) { idSet[String(id)] = true; });
+    var arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity","users"];
+    arrKeys.forEach(function (key) {
+      if (Array.isArray(obj[key])) {
+        obj[key] = obj[key].filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+      }
+    });
+    if (obj.generalSettings) {
+      var gsKeys = ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates"];
+      gsKeys.forEach(function (key) {
+        if (Array.isArray(obj.generalSettings[key])) {
+          obj.generalSettings[key] = obj.generalSettings[key].filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+        }
+      });
+      if (Array.isArray(obj.generalSettings.timetableWeekdays)) {
+        obj.generalSettings.timetableWeekdays = obj.generalSettings.timetableWeekdays.filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+      }
+      if (Array.isArray(obj.generalSettings.timetablePeriods)) {
+        obj.generalSettings.timetablePeriods = obj.generalSettings.timetablePeriods.filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+      }
+      if (Array.isArray(obj.generalSettings.classRooms)) {
+        obj.generalSettings.classRooms = obj.generalSettings.classRooms.filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+      }
+      if (Array.isArray(obj.generalSettings.examSchedule)) {
+        obj.generalSettings.examSchedule = obj.generalSettings.examSchedule.filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+      }
+      if (Array.isArray(obj.generalSettings.questionChapters)) {
+        obj.generalSettings.questionChapters = obj.generalSettings.questionChapters.filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+      }
+      if (Array.isArray(obj.generalSettings.homeworkAssignments)) {
+        obj.generalSettings.homeworkAssignments = obj.generalSettings.homeworkAssignments.filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+      }
+      if (Array.isArray(obj.generalSettings.certificateTemplates)) {
+        obj.generalSettings.certificateTemplates = obj.generalSettings.certificateTemplates.filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
+      }
+    }
+    return obj;
+  }
+
   async function forceSave(database) {
     cachedDatabase = normalizeDatabase(database);
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
@@ -531,6 +573,7 @@
     }
     if (!config.apiBaseUrl || !config.schoolId) return false;
     try {
+      var deletedIds = cachedDatabase._deletedIds || [];
       var serverDb = null;
       try {
         var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 30000 });
@@ -566,9 +609,11 @@
         if (cachedDatabase.users || merged.users) merged.users = mergeArraysById(cachedDatabase.users, merged.users);
         if (cachedDatabase.school) merged.school = Object.assign(merged.school || {}, cachedDatabase.school);
         if (cachedDatabase.settings) merged.settings = Object.assign(merged.settings || {}, cachedDatabase.settings);
+        removeDeletedFromArrays(merged, deletedIds);
         toSave = merged;
       }
 
+      toSave._deletedIds = [];
       cachedDatabase = normalizeDatabase(toSave);
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
       await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
