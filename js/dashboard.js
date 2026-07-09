@@ -1052,9 +1052,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
   async function saveDatabase(label) {
     if (label) window.SagarSoftDB.showLoading(label);
-    window.SagarSoftDB.saveDatabase(database);
     try {
-      await window.SagarSoftDB.flushPendingSync();
+      await window.SagarSoftDB.forceSave(database);
     } catch (_e) {}
     window.SagarSoftDB.hideLoading();
   }
@@ -4116,8 +4115,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return !(user.role === "teacher" && (user.employeeId === employeeId || user.name === employee.name));
     });
     addActivity("Employee deleted", `${employee.name} record was removed.`);
-    window.SagarSoftDB.saveDatabase(database);
-    window.SagarSoftDB.flushPendingSync().catch(function () {});
+    window.SagarSoftDB.forceSave(database).catch(function () {});
   }
 
   function ensureEmployeeLogin(employee) {
