@@ -613,7 +613,7 @@
         toSave = merged;
       }
 
-      toSave._deletedIds = [];
+      toSave._deletedIds = deletedIds;
       cachedDatabase = normalizeDatabase(toSave);
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
       await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
@@ -621,6 +621,8 @@
         body: JSON.stringify({ database: cachedDatabase }),
         timeoutMs: 60000
       });
+      cachedDatabase._deletedIds = [];
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
       showSyncBadge("synced");
       return true;
     } catch (err) {
