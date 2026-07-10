@@ -1,4 +1,4 @@
-var CACHE = "sagarsoft-v12";
+var CACHE = "sagarsoft-v13";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
@@ -73,16 +73,15 @@ self.addEventListener("fetch", function (event) {
   }
 
   event.respondWith(
-    caches.match(event.request).then(function (hit) {
-      if (hit) return hit;
-      return fetch(event.request).then(function (response) {
-        if (response && response.status === 200) {
-          var clone = response.clone();
-          caches.open(CACHE).then(function (cache) { cache.put(event.request, clone); });
-        }
-        return response;
-      }).catch(function () {
-        return new Response("", { status: 503 });
+    fetch(event.request).then(function (response) {
+      if (response && response.status === 200) {
+        var clone = response.clone();
+        caches.open(CACHE).then(function (cache) { cache.put(event.request, clone); });
+      }
+      return response;
+    }).catch(function () {
+      return caches.match(event.request).then(function (hit) {
+        return hit || new Response("", { status: 503 });
       });
     })
   );
