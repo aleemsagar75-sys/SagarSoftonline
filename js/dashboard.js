@@ -204,10 +204,11 @@ window.handleEmployeeDeleteClick = function(employeeId) {
     return;
   }
   showStyledDeleteConfirmation(employee.name, function() {
-    deleteEmployeeRecord(employeeId);
-    renderDashboard();
-    renderDynamicModuleWorkspace("all-employees", "All Employees");
-    migrateModuleGuideToSummary();
+    deleteEmployeeRecord(employeeId).then(function() {
+      renderDashboard();
+      renderDynamicModuleWorkspace("all-employees", "All Employees");
+      migrateModuleGuideToSummary();
+    });
   });
 };
 
@@ -21069,10 +21070,11 @@ ${allContent}
 
   function showEmployeeDeleteConfirmation(employee, employeeId) {
     showStyledDeleteConfirmation(employee.name, function() {
-      deleteEmployeeRecord(employeeId);
-      renderDashboard();
-      renderDynamicModuleWorkspace("all-employees", "All Employees");
-      (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
+      deleteEmployeeRecord(employeeId).then(function() {
+        renderDashboard();
+        renderDynamicModuleWorkspace("all-employees", "All Employees");
+        (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
+      });
     });
   }
 
@@ -23954,6 +23956,7 @@ ${allContent}
       }
 
       showStyledDeleteConfirmation(classItem.name, function() {
+        trackDeletion(classId);
         const deletedClassName = String(classItem.name || "").trim();
         database.classes = database.classes.filter(function (item) {
           return item.id !== classId;
