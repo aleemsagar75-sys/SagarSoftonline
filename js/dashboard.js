@@ -10707,13 +10707,13 @@ ${allContent}
                 <p><strong>Name of student:</strong> ${escapeHtml(dmcData.student.name || "-")}</p>
                 <p><strong>Father name:</strong> ${escapeHtml(dmcData.student.fatherName || "-")}</p>
                 <p><strong>Class:</strong> ${escapeHtml(dmcData.student.className || "-")}</p>
-                <p style="white-space:nowrap;font-size:0.78rem;"><strong>Date of Admission:</strong> ${escapeHtml(dmcData.student.dateOfAdmission || "-")}</p>
-                <p style="white-space:nowrap;font-size:0.78rem;"><strong>Date of birth:</strong> ${escapeHtml(dmcData.student.dateOfBirth || "-")}</p>
+                <p style="font-size:0.78rem;"><strong>Date of Admission:</strong> ${escapeHtml(dmcData.student.dateOfAdmission || "-")}</p>
+                <p style="font-size:0.78rem;"><strong>Date of birth:</strong> ${escapeHtml(dmcData.student.dateOfBirth || "-")}</p>
                 <p><strong>Gender:</strong> ${escapeHtml(dmcData.student.gender || "-")}</p>
                 <p><strong>B.Form/NIC:</strong> ${escapeHtml(dmcData.student.birthId || "-")}</p>
               </div>
             </article>
-            <h3 class="report-title">Subject-wise Statement of Marks - ${escapeHtml(dmcData.exam.name || "-")} examination ${examYear} <span style="white-space:nowrap;font-size:0.9em;">(${escapeHtml(dmcData.exam.startDate || "-")} TO ${escapeHtml(dmcData.exam.endDate || "-")})</span></h3>
+            <h3 class="report-title">Subject-wise Statement of Marks - ${escapeHtml(dmcData.exam.name || "-")} examination ${examYear} <span style="font-size:0.9em;">(${escapeHtml(dmcData.exam.startDate || "-")} TO ${escapeHtml(dmcData.exam.endDate || "-")})</span></h3>
             <table>
               <thead><tr><th>Sr.No.</th><th>Subjects</th><th>Marks Total</th><th>Obtain</th></tr></thead>
               <tbody>${subjectRowsMarkup}</tbody>
@@ -12157,8 +12157,8 @@ ${allContent}
               <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search student by roll no / name" style="width: 100%;">
               <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
-            <label style="white-space:nowrap">From: <input id="studentsAttendanceReportFromDate" type="date"></label>
-            <label style="white-space:nowrap">To: <input id="studentsAttendanceReportToDate" type="date"></label>
+            <label style="display:flex;align-items:center;gap:4px;">From: <input id="studentsAttendanceReportFromDate" type="date"></label>
+            <label style="display:flex;align-items:center;gap:4px;">To: <input id="studentsAttendanceReportToDate" type="date"></label>
             <button class="primary-button" id="downloadStudentsAttendancePdfBtn" type="button">Download PDF</button>
           </div>
           <div class="table-wrap">
@@ -12305,8 +12305,8 @@ ${allContent}
               <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search employee by name / phone" style="width: 100%;">
               <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
-            <label style="white-space:nowrap">From: <input id="employeesAttendanceReportFromDate" type="date"></label>
-            <label style="white-space:nowrap">To: <input id="employeesAttendanceReportToDate" type="date"></label>
+            <label style="display:flex;align-items:center;gap:4px;">From: <input id="employeesAttendanceReportFromDate" type="date"></label>
+            <label style="display:flex;align-items:center;gap:4px;">To: <input id="employeesAttendanceReportToDate" type="date"></label>
             <button class="primary-button" id="downloadEmployeesAttendancePdfBtn" type="button">Download PDF</button>
           </div>
           <div class="table-wrap">
@@ -14057,14 +14057,14 @@ ${allContent}
         <article>
           <strong class="module-center-title">Student Progress Report</strong>
           <div class="toolbar toolbar--promote module-toolbar" style="flex-wrap:wrap;gap:8px;">
-            <div id="progressSearchC" style="position:relative;flex:1;min-width:180px;">
+            <div id="progressSearchC" style="position:relative;flex:1;">
               <input id="progressSearchI" type="search" placeholder="Search student by name / roll" style="width:100%;">
               <div id="progressSearchD" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
             <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;color:#6b7a8d;">From: <input id="progressFrom" type="date" value="${defFromStr}" style="height:40px;border:1.5px solid #dde4ea;border-radius:8px;padding:0 8px;"></label>
             <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;color:#6b7a8d;">To: <input id="progressTo" type="date" value="${todayStr}" style="height:40px;border:1.5px solid #dde4ea;border-radius:8px;padding:0 8px;"></label>
-            <button class="primary-button" id="progressShowBtn" type="button" style="white-space:nowrap;">Show Report</button>
-            <button class="primary-button" id="progressPrintBtn" type="button" style="white-space:nowrap;background:#2e86de;">Print</button>
+            <button class="primary-button" id="progressShowBtn" type="button">Show Report</button>
+            <button class="primary-button" id="progressPrintBtn" type="button" style="background:#2e86de;">Print</button>
           </div>
           <div id="progressContent" style="margin-top:16px;"></div>
         </article>
@@ -14557,7 +14557,7 @@ ${allContent}
             <button id="excelAccountsBtn" type="button" class="btn-account-action btn-secondary-action"><i class="fas fa-file-excel"></i>Excel</button>
           </div>
           <div class="report-cards" id="accountsStats"></div>
-          <div class="table-wrap"><table style="min-width:500px;"><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Net Balance</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
+          <div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Net Balance</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -15299,7 +15299,7 @@ ${allContent}
                 <label for="qpEditorArea">Question Editor*</label>
                 <div class="question-rich-editor-shell">
                   <div id="qpEditorToolbar" class="question-editor-toolbar">
-                    <select id="qpFontFamily" class="table-inline-input" style="min-width:160px;">
+                    <select id="qpFontFamily" class="table-inline-input">
                       <option value="Calibri, Arial, sans-serif">Calibri (Body)</option>
                       <option value="Arial, sans-serif">Arial</option>
                       <option value="'Times New Roman', serif">Times New Roman</option>
@@ -16289,7 +16289,7 @@ ${allContent}
             if (!file) return;
             const reader = new FileReader();
             reader.onload = function () {
-              insertAtCursor(`<img src="${String(reader.result || "")}" alt="editor-image" style="width:320px;height:auto;"><p><br></p>`);
+              insertAtCursor(`<img src="${String(reader.result || "")}" alt="editor-image" style="max-width:100%;width:320px;height:auto;"><p><br></p>`);
             };
             reader.readAsDataURL(file);
             imageInput.value = "";
@@ -19630,7 +19630,7 @@ ${allContent}
                   <button class="primary-button" id="resequenceIdsBtn" type="button" style="background:#6b7280;font-size:12px;padding:6px 12px;">Fix Duplicate IDs</button>
                 </div>
                 <div style="overflow-x:auto;">
-                  <table class="data-table" id="schoolsTable" style="width:100%;font-size:13px;min-width:800px;">
+                  <table class="data-table" id="schoolsTable" style="width:100%;font-size:13px;">
                     <thead>
                       <tr>
                         <th>School ID</th>
@@ -19678,7 +19678,7 @@ ${allContent}
                 <strong>Notification History</strong>
                 <p class="helper-text">Recent notifications sent to schools.</p>
                 <div style="overflow-x:auto;">
-                  <table class="data-table" id="notifHistoryTable" style="width:100%;font-size:13px;min-width:500px;">
+                  <table class="data-table" id="notifHistoryTable" style="width:100%;font-size:13px;">
                     <thead>
                       <tr><th>Date</th><th>School</th><th>Title</th><th>Message</th></tr>
                     </thead>
