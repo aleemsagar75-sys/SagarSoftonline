@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
@@ -24312,20 +24312,6 @@ ${allContent}
   profileMenuBtn.addEventListener("click", function () {
     const isExpanded = profileMenu.classList.toggle("open");
     profileMenuBtn.setAttribute("aria-expanded", String(isExpanded));
-    if (isExpanded && window.innerWidth <= 768) {
-      const dd = document.getElementById("profileDropdown");
-      if (dd) {
-        dd.style.left = "auto";
-        dd.style.right = "0";
-        requestAnimationFrame(function () {
-          var rect = dd.getBoundingClientRect();
-          if (rect.left < 0) {
-            dd.style.right = "auto";
-            dd.style.left = "0.5rem";
-          }
-        });
-      }
-    }
   });
 
   document.addEventListener("click", function (event) {
