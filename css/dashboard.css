@@ -7315,17 +7315,18 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 
   /* ===== ACCOUNT STATEMENT (opened from Revenue/Profit hero cards) ===== */
   .accounts-filter-bar {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    align-items: stretch !important;
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
     gap: 0.5rem !important;
     margin: 0 0 0.8rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
   }
   .accounts-filter-label {
-    display: flex !important;
-    flex-direction: column !important;
+    display: grid !important;
     gap: 0.25rem !important;
-    flex: 1 1 calc(50% - 0.5rem) !important;
     min-width: 0 !important;
     font-size: 0.78rem !important;
   }
@@ -7334,15 +7335,22 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
     padding: 0.55rem 0.6rem !important;
     font-size: 0.85rem !important;
     min-height: 40px !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
   }
   .btn-account-action {
-    flex: 1 1 calc(50% - 0.5rem) !important;
     min-height: 40px !important;
-    padding: 0.5rem 0.6rem !important;
-    font-size: 0.78rem !important;
+    padding: 0.5rem 0.4rem !important;
+    font-size: 0.75rem !important;
     justify-content: center !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    box-sizing: border-box !important;
+    max-width: 100% !important;
   }
   .report-cards { grid-template-columns: 1fr 1fr !important; gap: 0.6rem !important; }
+  .module-center-title { word-break: break-word !important; }
 
   /* ===== ADD INCOME / ADD EXPENSE FORMS ===== */
   .form-grid { grid-template-columns: 1fr !important; gap: 0.8rem !important; }
@@ -7420,8 +7428,9 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .view.module--timetable .table-wrap table { min-width: 700px !important; }
 
   /* Account Statement — small phone */
-  .accounts-filter-label { flex: 1 1 100% !important; }
-  .btn-account-action { flex: 1 1 calc(50% - 0.25rem) !important; min-height: 38px !important; font-size: 0.72rem !important; }
+  .accounts-filter-bar { grid-template-columns: 1fr !important; gap: 0.4rem !important; }
+  .accounts-filter-date { min-height: 38px !important; padding: 0.45rem 0.5rem !important; font-size: 0.82rem !important; }
+  .btn-account-action { min-height: 38px !important; font-size: 0.72rem !important; padding: 0.4rem 0.3rem !important; }
   .report-cards { grid-template-columns: 1fr !important; gap: 0.5rem !important; }
 
   /* Add Income/Expense — small phone */
