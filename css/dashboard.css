@@ -7256,16 +7256,18 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .ledger-form-grid { grid-template-columns: 1fr !important; }
   .ledger-summary-grid { grid-template-columns: 1fr !important; }
   .accounts-filter-bar {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr !important;
-    gap: 0.5rem !important;
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    gap: 0.4rem !important;
     margin: 0 0 0.8rem !important;
     width: 100% !important;
     max-width: 100% !important;
   }
-  .accounts-filter-label { display: grid !important; gap: 0.25rem !important; min-width: 0 !important; overflow: hidden !important; }
+  .accounts-filter-bar > * { width: 100% !important; min-width: 0 !important; max-width: 100% !important; }
+  .accounts-filter-label { display: flex !important; gap: 0.25rem !important; min-width: 0 !important; overflow: hidden !important; white-space: normal !important; }
   .accounts-filter-date { width: 100% !important; min-height: 40px !important; max-width: 100% !important; }
-  .btn-account-action { min-height: 40px !important; padding: 0.5rem 0.4rem !important; font-size: 0.75rem !important; max-width: 100% !important; }
+  .btn-account-action { min-height: 40px !important; padding: 0.5rem 0.4rem !important; font-size: 0.75rem !important; max-width: 100% !important; white-space: normal !important; text-align: center !important; }
 
   /* Report bar row */
   .report-bar-row { grid-template-columns: 60px 1fr 40px !important; gap: 0.5rem !important; }
@@ -8119,13 +8121,27 @@ img, video, svg { max-width: 100%; height: auto; }
 /* --- Account module: filter bar responsive --- */
 @media (max-width: 640px) {
   .accounts-filter-bar {
-    grid-template-columns: 1fr !important;
+    display: flex !important;
+    flex-direction: column !important;
     gap: 0.4rem !important;
   }
+  .accounts-filter-bar > * { width: 100% !important; min-width: 0 !important; }
   .accounts-filter-date {
     width: 100% !important;
     max-width: 100% !important;
   }
+  .btn-account-action { white-space: normal !important; text-align: center !important; }
+}
+
+/* --- Account statement table scroll --- */
+.view.module--accounts .table-wrap,
+.module--accounts .table-wrap {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+.view.module--accounts .table-wrap table,
+.module--accounts .table-wrap table {
+  min-width: 500px !important;
 }
 
 /* --- Modal / dialog: full screen on small phones --- */
@@ -8724,6 +8740,7 @@ img, video, svg { max-width: 100%; height: auto; }
   .accounts-filter-bar {
     display: flex !important;
     flex-direction: column !important;
+    flex-wrap: nowrap !important;
     gap: 0.4rem !important;
     max-width: 100% !important;
   }
@@ -8736,6 +8753,7 @@ img, video, svg { max-width: 100%; height: auto; }
     width: 100% !important;
     max-width: 100% !important;
   }
+  .btn-account-action { white-space: normal !important; text-align: center !important; }
 
   /* 15. Report grid / split-grid: single column */
   .report-grid,
