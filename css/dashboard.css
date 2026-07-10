@@ -5418,8 +5418,6 @@ select:focus, input:focus, textarea:focus {
     font-size: 0.85rem;
   }
 
-  .profile-copy { display: none; }
-
   .student-form-card .panel-card__header h3 { font-size: 1.4rem; }
 
   .attendance-mark-group {
@@ -5473,8 +5471,6 @@ select:focus, input:focus, textarea:focus {
   .promote-row {
     grid-template-columns: 1fr !important;
   }
-
-  .notification-menu__dropdown { width: calc(100vw - 1rem) !important; left: -0.5rem !important; right: -0.5rem !important; max-width: none !important; }
 
   .test-result-card .test-result-table-wrap { margin: 0; width: 100%; border-radius: 10px; }
 
@@ -5542,8 +5538,6 @@ select:focus, input:focus, textarea:focus {
   .btn-secondary-action { color: #0f2b3f !important; background: #e8edf0 !important; border: 1px solid #dde4ea !important; }
   .accounts-filter-bar label i { font-size: 0.6rem !important; }
 
-  .profile-menu__dropdown { right: -0.5rem; width: 200px; }
-
   .student-modal__dialog .student-layout .panel-card,
   .employee-profile-section .panel-card {
     padding: 0.75rem;
@@ -5570,17 +5564,6 @@ select:focus, input:focus, textarea:focus {
   .topbar .icon-button { width: 36px; height: 36px; }
   .topbar__right { gap: 0.35rem; }
   #pageTitle { font-size: 1rem; }
-
-  .notification-menu__dropdown { width: calc(100vw - 0.8rem) !important; left: -0.4rem !important; right: -0.4rem !important; max-width: none !important; border-radius: 12px !important; max-height: 50vh !important; }
-  .notification-menu__head { padding: 0.5rem 0.6rem !important; }
-  .notification-menu__list { padding: 0.5rem !important; gap: 0.3rem !important; max-height: 35vh !important; }
-  .notification-item { padding: 0.5rem !important; border-radius: 10px !important; }
-  .notification-item__title { font-size: 0.75rem !important; }
-  .notification-item__body { font-size: 0.68rem !important; }
-
-  .profile-menu__dropdown { right: 0 !important; left: auto !important; width: 220px !important; max-width: calc(100vw - 1rem) !important; border-radius: 12px !important; }
-  .profile-menu__trigger { padding: 0.3rem !important; }
-  .profile-avatar { width: 34px !important; height: 34px !important; font-size: 0.72rem !important; }
 
   .sidebar { width: 100vw; max-width: 100vw; padding: 0.75rem; }
   .brand-mark { width: 42px; height: 42px; border-radius: 12px; }
@@ -5684,9 +5667,6 @@ select:focus, input:focus, textarea:focus {
   .salary-circle { width: 50px; height: 50px; font-size: 0.7rem; }
   .salary-cards-row { grid-template-columns: 1fr 1fr !important; gap: 0.4rem; }
 
-  .notification-menu__dropdown { width: calc(100vw - 1rem) !important; right: 0 !important; left: auto !important; }
-  .profile-menu__dropdown { right: 0 !important; left: auto !important; width: 200px !important; }
-
   .student-modal__dialog .student-layout .panel-card,
   .employee-profile-section .panel-card { padding: 0.6rem; }
 
@@ -5709,8 +5689,6 @@ select:focus, input:focus, textarea:focus {
 @media (max-width: 768px) {
   [dir="rtl"] .sidebar { transform: translateX(100%); right: 0; left: auto; }
   [dir="rtl"] .app-shell.sidebar-open .sidebar { transform: translateX(0); }
-  [dir="rtl"] .notification-menu__dropdown { left: 0 !important; right: auto !important; }
-  [dir="rtl"] .profile-menu__dropdown { left: 0 !important; right: auto !important; }
 }
 
 /* ===== GENERAL SETTINGS RESPONSIVE ===== */
@@ -7166,11 +7144,6 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 @media (max-width: 640px) {
   .topbar__right { gap: 0.3rem !important; }
   .topbar__right .icon-button { width: 34px !important; height: 34px !important; }
-  .profile-copy { display: none !important; }
-  .profile-avatar { width: 32px !important; height: 32px !important; font-size: 0.7rem !important; }
-  .profile-menu__trigger { padding: 0.25rem !important; gap: 0 !important; }
-  .profile-menu__dropdown { right: -0.5rem !important; width: calc(100vw - 2rem) !important; max-width: 280px !important; border-radius: 16px !important; }
-  .notification-menu__dropdown { width: calc(100vw - 1rem) !important; left: auto !important; right: 0 !important; border-radius: 16px !important; }
   .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 0.8rem !important; }
   .dashboard-stat-card { padding: 1rem !important; border-radius: 16px !important; }
   .dashboard-stat-card strong { font-size: 1.5rem !important; }
@@ -7334,11 +7307,6 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .subject-meta-grid { grid-template-columns: 1fr !important; }
   .admission-letter-layout { grid-template-columns: 1fr !important; }
 
-  /* Profile + Notification dropdowns */
-  .profile-menu__dropdown { right: -0.5rem !important; width: calc(100vw - 2rem) !important; max-width: 280px !important; border-radius: 16px !important; }
-  .notification-menu__dropdown { width: calc(100vw - 1rem) !important; left: auto !important; right: 0 !important; border-radius: 16px !important; }
-  .notification-item { flex-direction: column !important; }
-
   /* Hero panel */
   .hero-metrics article { padding: 0.8rem !important; min-height: 100px !important; border-radius: 16px !important; }
   .hero-metrics strong { font-size: 1.5rem !important; }
@@ -7367,11 +7335,6 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 @media (max-width: 640px) {
   .topbar__right { gap: 0.3rem !important; }
   .topbar__right .icon-button { width: 34px !important; height: 34px !important; }
-  .profile-copy { display: none !important; }
-  .profile-avatar { width: 32px !important; height: 32px !important; font-size: 0.7rem !important; }
-  .profile-menu__trigger { padding: 0.25rem !important; gap: 0 !important; }
-  .profile-menu__dropdown { width: calc(100vw - 2rem) !important; max-width: 280px !important; border-radius: 16px !important; }
-  .notification-menu__dropdown { width: calc(100vw - 1rem) !important; border-radius: 16px !important; }
   .stats-grid { grid-template-columns: 1fr 1fr !important; gap: 0.8rem !important; }
   .dashboard-stat-card { padding: 1rem !important; border-radius: 16px !important; }
   .dashboard-stat-card strong { font-size: 1.5rem !important; }
@@ -7404,10 +7367,6 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .hero-panel h2 { font-size: 1.2rem !important; }
   .hero-metrics article { padding: 0.6rem !important; min-height: 80px !important; border-radius: 12px !important; }
   .hero-metrics strong { font-size: 1.3rem !important; }
-  .notification-menu__dropdown { width: 100vw !important; left: 0 !important; right: 0 !important; border-radius: 0 !important; top: auto !important; max-height: 50vh !important; }
-  .profile-menu__dropdown { width: calc(100vw - 1rem) !important; border-radius: 12px !important; }
-  .notification-menu__head { padding: 0.5rem 0.6rem !important; }
-  .notification-menu__list { max-height: 35vh !important; }
   .employee-card__actions { grid-template-columns: 1fr !important; }
   .salary-cards-row { grid-template-columns: 1fr !important; }
   .exam-marks-grid { grid-template-columns: 1fr !important; }
@@ -7436,3 +7395,275 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .topbar, .sidebar, .sidebar-backdrop, .mobile-menu-button, .notification-menu, .profile-menu { display: none !important; }
   .content-area { padding: 0 !important; margin: 0 !important; }
 }
+
+/* ===================================================================
+   PROFILE DROPDOWN + NOTIFICATION DROPDOWN — FULL MOBILE RESPONSIVE
+   Works on: Android, iPhone, iPad, tablets, all screen sizes
+   =================================================================== */
+
+/* --- Desktop base (1024px+) — already defined above, no changes needed --- */
+
+/* --- Tablet landscape (1024px) --- */
+@media (max-width: 1024px) {
+  .profile-menu__dropdown { min-width: 200px !important; }
+  .notification-menu__dropdown { width: min(360px, 85vw) !important; }
+}
+
+/* --- Tablet portrait (900px) --- */
+@media (max-width: 900px) {
+  .notification-menu__dropdown { width: min(340px, 82vw) !important; max-height: 400px !important; }
+  .notification-menu__list { max-height: 300px !important; }
+  .profile-menu__dropdown { min-width: 190px !important; }
+}
+
+/* --- Large phone (768px) --- */
+@media (max-width: 768px) {
+  /* Topbar compact */
+  .topbar__right { gap: 0.3rem !important; }
+  .topbar__right .icon-button { width: 36px !important; height: 36px !important; }
+  .topbar { padding: 0.45rem 0.6rem !important; gap: 0.4rem !important; }
+
+  /* Profile trigger */
+  .profile-menu__trigger { padding: 0.3rem !important; gap: 0.5rem !important; }
+  .profile-avatar { width: 36px !important; height: 36px !important; font-size: 0.72rem !important; }
+  .profile-copy { display: none !important; }
+
+  /* Profile dropdown */
+  .profile-menu__dropdown {
+    position: absolute !important;
+    right: 0 !important;
+    left: auto !important;
+    top: calc(100% + 0.5rem) !important;
+    width: 240px !important;
+    min-width: 200px !important;
+    max-width: calc(100vw - 1.5rem) !important;
+    padding: 0.5rem !important;
+    border-radius: 16px !important;
+    max-height: 70vh !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08) !important;
+  }
+  .dropdown-link {
+    min-height: 42px !important;
+    padding: 0.65rem 0.8rem !important;
+    font-size: 0.88rem !important;
+    border-radius: 12px !important;
+  }
+
+  /* Notification dropdown */
+  .notification-menu__dropdown {
+    position: absolute !important;
+    right: 0 !important;
+    left: auto !important;
+    top: calc(100% + 0.5rem) !important;
+    width: min(360px, 85vw) !important;
+    max-width: calc(100vw - 1.5rem) !important;
+    max-height: 55vh !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08) !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .notification-menu__head {
+    padding: 0.65rem 0.8rem !important;
+    font-size: 0.9rem !important;
+  }
+  .notification-menu__list {
+    padding: 0.5rem !important;
+    gap: 0.4rem !important;
+    max-height: calc(55vh - 55px) !important;
+  }
+  .notification-item {
+    padding: 0.55rem 0.7rem !important;
+    border-radius: 12px !important;
+  }
+  .notification-item strong { font-size: 0.85rem !important; }
+  .notification-item p { font-size: 0.78rem !important; line-height: 1.4 !important; }
+  .notification-item time { font-size: 0.7rem !important; }
+}
+
+/* --- Medium phone (640px) --- */
+@media (max-width: 640px) {
+  .topbar__right { gap: 0.25rem !important; }
+  .topbar__right .icon-button { width: 34px !important; height: 34px !important; }
+  .topbar__left h1 { font-size: 0.88rem !important; }
+  .topbar__left p { display: none !important; }
+  .topbar-search { margin-left: 0.3rem !important; }
+  .topbar-search input { font-size: 0.8rem !important; }
+
+  /* Profile */
+  .profile-menu__trigger { padding: 0.2rem !important; gap: 0.3rem !important; }
+  .profile-avatar { width: 32px !important; height: 32px !important; font-size: 0.68rem !important; }
+  .profile-copy { display: none !important; }
+  .profile-menu__dropdown {
+    width: 220px !important;
+    min-width: 180px !important;
+    max-width: calc(100vw - 1.2rem) !important;
+    right: -0.25rem !important;
+    border-radius: 14px !important;
+    padding: 0.4rem !important;
+  }
+  .dropdown-link {
+    min-height: 40px !important;
+    padding: 0.6rem 0.75rem !important;
+    font-size: 0.85rem !important;
+    border-radius: 10px !important;
+  }
+
+  /* Notification */
+  .notification-menu__dropdown {
+    width: min(320px, 90vw) !important;
+    max-width: calc(100vw - 1rem) !important;
+    right: -0.25rem !important;
+    border-radius: 14px !important;
+    max-height: 50vh !important;
+  }
+  .notification-menu__head { padding: 0.55rem 0.7rem !important; }
+  .notification-menu__list {
+    max-height: calc(50vh - 50px) !important;
+    gap: 0.35rem !important;
+  }
+  .notification-item { padding: 0.5rem !important; }
+  .notification-item strong { font-size: 0.82rem !important; }
+  .notification-item p { font-size: 0.75rem !important; }
+}
+
+/* --- Small phone (480px) — iPhone SE, Galaxy Mini --- */
+@media (max-width: 480px) {
+  .topbar { padding: 0.4rem 0.5rem !important; }
+  .topbar__right { gap: 0.2rem !important; }
+  .topbar__right .icon-button { width: 32px !important; height: 32px !important; border-radius: 8px !important; }
+
+  /* Profile — full-width feel */
+  .profile-menu__trigger { padding: 0.2rem !important; gap: 0.2rem !important; }
+  .profile-avatar { width: 30px !important; height: 30px !important; font-size: 0.65rem !important; border-radius: 50% !important; }
+  .profile-copy { display: none !important; }
+  .profile-menu__dropdown {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px 18px 0 0 !important;
+    max-height: 65vh !important;
+    padding: 0.5rem 0.6rem 1rem !important;
+    background: rgba(255,255,255,0.98) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.15) !important;
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transition: transform 0.3s ease !important;
+    overscroll-behavior: contain !important;
+  }
+  .profile-menu__dropdown::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 2px;
+    margin: 0 auto 0.6rem;
+  }
+  .dropdown-link {
+    min-height: 48px !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.92rem !important;
+    border-radius: 12px !important;
+    width: 100% !important;
+  }
+  .dropdown-link i, .dropdown-link svg { width: 20px !important; margin-right: 0.6rem !important; }
+
+  /* Notification — bottom sheet style */
+  .notification-menu__dropdown {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px 18px 0 0 !important;
+    max-height: 70vh !important;
+    background: rgba(255,255,255,0.98) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.15) !important;
+    transform: translateY(0) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    transition: transform 0.3s ease !important;
+    overscroll-behavior: contain !important;
+  }
+  .notification-menu__dropdown::before {
+    content: "";
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 2px;
+    margin: 0 auto 0.6rem;
+  }
+  .notification-menu__head {
+    padding: 0.5rem 0.8rem !important;
+    border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+  }
+  .notification-menu__head h3, .notification-menu__head strong { font-size: 0.95rem !important; }
+  .notification-menu__list {
+    max-height: calc(70vh - 60px) !important;
+    padding: 0.5rem 0.6rem !important;
+    gap: 0.35rem !important;
+  }
+  .notification-item {
+    padding: 0.6rem !important;
+    border-radius: 12px !important;
+    border: 1px solid rgba(0,0,0,0.06) !important;
+  }
+  .notification-item strong { font-size: 0.82rem !important; }
+  .notification-item p { font-size: 0.74rem !important; line-height: 1.4 !important; }
+  .notification-item time { font-size: 0.68rem !important; }
+}
+
+/* --- Extra small (375px) — iPhone SE 2nd gen, older phones --- */
+@media (max-width: 375px) {
+  .topbar { padding: 0.35rem 0.45rem !important; }
+  .topbar__right .icon-button { width: 30px !important; height: 30px !important; }
+  .profile-avatar { width: 28px !important; height: 28px !important; font-size: 0.6rem !important; }
+  .profile-menu__dropdown { max-height: 60vh !important; padding: 0.4rem 0.5rem 0.8rem !important; }
+  .dropdown-link { min-height: 44px !important; padding: 0.7rem 0.85rem !important; font-size: 0.88rem !important; }
+  .notification-menu__dropdown { max-height: 65vh !important; }
+  .notification-menu__list { max-height: calc(65vh - 55px) !important; }
+  .notification-item { padding: 0.45rem !important; }
+  .notification-item strong { font-size: 0.78rem !important; }
+  .notification-item p { font-size: 0.7rem !important; }
+}
+
+/* --- Tiny (320px) --- */
+@media (max-width: 320px) {
+  .topbar__right .icon-button { width: 28px !important; height: 28px !important; }
+  .profile-avatar { width: 26px !important; height: 26px !important; }
+  .profile-menu__dropdown { max-height: 55vh !important; }
+  .dropdown-link { min-height: 42px !important; font-size: 0.84rem !important; }
+  .notification-menu__dropdown { max-height: 60vh !important; }
+  .notification-menu__list { max-height: calc(60vh - 50px) !important; }
+}
+
+/* --- Dark theme support --- */
+body[data-theme="dark"] .profile-menu__dropdown {
+  background: rgba(22, 27, 34, 0.98) !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+body[data-theme="dark"] .dropdown-link { color: #c9d1d9 !important; }
+body[data-theme="dark"] .dropdown-link:hover { background: rgba(255,255,255,0.06) !important; }
+body[data-theme="dark"] .notification-menu__dropdown {
+  background: rgba(22, 27, 34, 0.98) !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+body[data-theme="dark"] .notification-item { background: rgba(255,255,255,0.03) !important; border-color: rgba(255,255,255,0.06) !important; }
+
+/* --- RTL support --- */
+[dir="rtl"] .profile-menu__dropdown { right: auto !important; left: 0 !important; }
+[dir="rtl"] .notification-menu__dropdown { right: auto !important; left: 0 !important; }
