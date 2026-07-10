@@ -4455,7 +4455,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     birthdays.sort(function (a, b) { return a.day > b.day ? 1 : a.day < b.day ? -1 : 0; });
 
-    var calHtml = '<div style="display:grid;grid-template-columns:1fr 180px;gap:1rem;">';
+    var calHtml = '<div class="dashboard-calendar-layout">';
 
     calHtml += '<div class="dash-cal">';
     calHtml += '<div class="dash-cal__header"><strong>' + monthNames[month] + ' ' + year + '</strong></div>';
@@ -7975,7 +7975,7 @@ ${allContent}
       }).join("");
       moduleSummary.innerHTML = `
         <article>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+          <div class="module-header-row">
             <strong>Fees Report</strong>
             <button class="secondary-button" id="clearAllFeesDataBtn" style="background:#fff2f2;color:#d64b4b;border-color:#ffd6d6;" type="button">Clear All Fees Data</button>
           </div>
@@ -10524,8 +10524,8 @@ ${allContent}
             </div>
           </div>
           <div class="form-actions" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1.25rem;align-items:center;">
-            <button class="primary-button" id="generateResultCardBtn" type="button" style="min-width:140px;">Generate</button>
-            <button class="secondary-button" id="generateResultCardClasswiseBtn" type="button" style="min-width:160px;">Generate Classwise</button>
+            <button class="primary-button" id="generateResultCardBtn" type="button">Generate</button>
+            <button class="secondary-button" id="generateResultCardClasswiseBtn" type="button">Generate Classwise</button>
           </div>
           <p class="form-message" id="resultCardMessage"></p>
         </article>
@@ -10538,9 +10538,9 @@ ${allContent}
             <div id="resultCardPreviewBox" class="module-preview-card" style="height:100%;overflow-y:auto;"><p>Generate result card preview.</p></div>
           </div>
           <div class="form-actions" style="display:flex;gap:6px;padding:8px 0;border-top:1px solid #e0e6f2;flex-wrap:wrap;">
-            <button class="table-action-btn" id="sendResultMessageBtn" type="button" disabled style="flex:1;min-width:120px;">Send Message</button>
-            <button class="table-action-btn" id="sendResultWhatsappBtn" type="button" disabled style="flex:1;min-width:120px;">Download DMC PDF</button>
-            <button class="primary-button" id="printDmcBtn" type="button" disabled style="flex:1;min-width:120px;">Print DMC</button>
+            <button class="table-action-btn" id="sendResultMessageBtn" type="button" disabled>Send Message</button>
+            <button class="table-action-btn" id="sendResultWhatsappBtn" type="button" disabled>Download DMC PDF</button>
+            <button class="primary-button" id="printDmcBtn" type="button" disabled>Print DMC</button>
           </div>
         </article>
       `;
@@ -17582,7 +17582,7 @@ ${allContent}
           .join('\n');
         
         const certificateHtml = `
-          <article class="report-card" style="padding: 24px 34px 24px; max-width: 900px; min-height: 560px; margin: 0 auto; page-break-after: avoid; border: 2px solid #0f2b3f; box-shadow: inset 0 0 0 5px rgba(15, 43, 63, 0.08); display: flex; flex-direction: column; font-family: Georgia, 'Times New Roman', serif;">
+          <article class="report-card certificate-print-card" style="max-width: 900px; min-height: 560px; margin: 0 auto; page-break-after: avoid; border: 2px solid #0f2b3f; box-shadow: inset 0 0 0 5px rgba(15, 43, 63, 0.08); display: flex; flex-direction: column; font-family: Georgia, 'Times New Roman', serif;">
             <div style="text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px double #0f2b3f;">
               <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #0f2b3f;">
                 ${escapeHtml(heading)}
@@ -17983,7 +17983,7 @@ ${allContent}
         }
         calHtml += '</div></div>';
 
-        calHtml += '<div style="min-width:240px;">';
+        calHtml += '<div class="calendar-event-form">';
         calHtml += '<div style="padding:1rem;border:1px solid rgba(16,37,66,0.1);border-radius:10px;background:#f9fafb;">';
         calHtml += '<h4 style="margin:0 0 0.8rem;font-size:0.95rem;color:#102542;">Add Event</h4>';
         calHtml += '<div class="field-group" style="margin-bottom:0.6rem;"><label>Title *</label><input type="text" id="eventTitle" placeholder="Event title"></div>';
@@ -18181,7 +18181,7 @@ ${allContent}
               </label>
               <label class="homework-pdf-filter" id="homeworkFilterStudentLabel" style="display:none;position:relative;">
                 <span>Student</span>
-                <input id="homeworkFilterStudentSearch" type="search" placeholder="Search by name / roll no" style="width:160px;">
+                <input id="homeworkFilterStudentSearch" type="search" placeholder="Search by name / roll no" style="width:100%;">
                 <div id="homeworkFilterSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:200px;overflow-y:auto;width:100%;margin-top:2px;"></div>
               </label>
               <label class="homework-pdf-filter" for="homeworkPdfDateInput">
