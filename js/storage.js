@@ -579,6 +579,12 @@
         var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 30000 });
         if (getResp && getResp.database) serverDb = getResp.database;
       } catch (_e) {}
+      if (serverDb && serverDb._deletedIds && serverDb._deletedIds.length) {
+        var serverIdSet = {};
+        serverDb._deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
+        deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
+        deletedIds = Object.keys(serverIdSet);
+      }
 
       var toSave = cachedDatabase;
       if (serverDb) {
@@ -621,8 +627,6 @@
         body: JSON.stringify({ database: cachedDatabase }),
         timeoutMs: 60000
       });
-      cachedDatabase._deletedIds = [];
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
       showSyncBadge("synced");
       return true;
     } catch (err) {
