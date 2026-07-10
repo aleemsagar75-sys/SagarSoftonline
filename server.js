@@ -1573,9 +1573,11 @@ function mergeDatabases(incomingDb, existingDb) {
   if (!existingDb || typeof existingDb !== "object" || Object.keys(existingDb).length === 0) {
     return incomingDb;
   }
-  const deletedIds = incomingDb._deletedIds || [];
+  var incomingDeleted = (incomingDb._deletedIds || []).map(String);
+  var existingDeleted = (existingDb._deletedIds || []).map(String);
+  var allDeleted = Array.from(new Set(incomingDeleted.concat(existingDeleted)));
   const merged = JSON.parse(JSON.stringify(existingDb));
-  removeDeletedFromObject(merged, deletedIds);
+  removeDeletedFromObject(merged, allDeleted);
   const arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
   arrKeys.forEach(function (key) {
     if (incomingDb[key] || merged[key]) {
@@ -1595,6 +1597,8 @@ function mergeDatabases(incomingDb, existingDb) {
   if (incomingDb.users || merged.users) merged.users = mergeArraysById(incomingDb.users, merged.users);
   if (incomingDb.school) merged.school = Object.assign(merged.school || {}, incomingDb.school);
   if (incomingDb.settings) merged.settings = Object.assign(merged.settings || {}, incomingDb.settings);
+  removeDeletedFromObject(merged, allDeleted);
+  merged._deletedIds = allDeleted;
   return merged;
 }
 
