@@ -1667,7 +1667,6 @@ body {
 .module-toolbar {
   margin: 0 0 1rem;
 }
-
 .test-result-toolbar {
   grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.9fr);
   align-items: start;
@@ -6503,6 +6502,26 @@ body[data-theme="dark"] .attendance-donut__legend-pct { color: #6e7681; }
   .attendance-donut__legend { width: 100%; }
 }
 
+/* ===== DASHBOARD CALENDAR LAYOUT ===== */
+.dashboard-calendar-layout {
+  display: grid;
+  grid-template-columns: 1fr 180px;
+  gap: 1rem;
+}
+
+/* ===== CERTIFICATE PRINT CARD ===== */
+.certificate-print-card {
+  padding: 24px 34px 24px;
+}
+.certificate-print-card [style*="grid-template-columns: repeat(4"] {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* ===== CALENDAR EVENT FORM ===== */
+.calendar-event-form {
+  min-width: 0;
+}
+
 /* ===== DASHBOARD BIRTHDAYS ===== */
 .dash-cal__side { display: flex; flex-direction: column; gap: 0.8rem; min-width: 160px; }
 .dash-birthdays { border-top: 1px solid rgba(16,37,66,0.06); padding-top: 0.6rem; }
@@ -7318,6 +7337,47 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   /* Student form subjects rows */
   .subjects-rows, .subject-row { grid-template-columns: 1fr !important; }
   .module-center-title { word-break: break-word !important; }
+
+  /* Test result toolbar: collapse 3-column to 1-column */
+  .test-result-toolbar { grid-template-columns: 1fr !important; }
+  .test-result-action-cell { min-width: 0 !important; }
+  .test-result-row-actions { flex-wrap: wrap !important; }
+
+  /* Certificate print preview: responsive padding */
+  .report-card[style*="padding: 24px 34px"] { padding: 12px 14px !important; }
+  .report-card[style*="padding: 24px 34px"] [style*="grid-template-columns: repeat(4"] { grid-template-columns: 1fr 1fr !important; }
+
+  /* Homework filter input: no fixed width */
+  .homework-pdf-filter input[type="search"] { width: 100% !important; min-width: 0 !important; }
+
+  /* Exam buttons: flex wrap, no fixed min-width */
+  .form-actions[style*="display:flex"] { flex-wrap: wrap !important; }
+  .form-actions[style*="display:flex"] > button { min-width: 0 !important; flex: 1 1 120px !important; }
+
+  /* Employee modal profile header: 120px 1fr → 1fr */
+  [style*="grid-template-columns: 120px 1fr"],
+  [style*="grid-template-columns:120px 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* Salary paid slip header: 70px/72px 1fr → 1fr */
+  [style*="grid-template-columns: 70px 1fr"],
+  [style*="grid-template-columns:70px 1fr"],
+  [style*="grid-template-columns: 72px 1fr"],
+  [style*="grid-template-columns:72px 1fr"] { grid-template-columns: 1fr !important; }
+
+  /* Dashboard calendar: collapse 1fr 180px to 1fr */
+  [style*="grid-template-columns:1fr 180px"],
+  [style*="grid-template-columns: 1fr 180px"] { grid-template-columns: 1fr !important; }
+
+  /* Calendar sidebar min-width: remove */
+  [style*="min-width:240px"],
+  [style*="min-width: 240px"] { min-width: 0 !important; }
+
+  /* Dashboard calendar layout: stack on mobile */
+  .dashboard-calendar-layout { grid-template-columns: 1fr !important; }
+
+  /* Certificate print card: responsive padding */
+  .certificate-print-card { padding: 12px 14px !important; }
+  .certificate-print-card [style*="grid-template-columns: repeat(4"] { grid-template-columns: 1fr 1fr !important; }
 }
 
 /* --- 640px: Compact topbar, dropdowns --- */
@@ -8896,5 +8956,51 @@ img, video, svg { max-width: 100%; height: auto; }
   }
   .dashboard-action-buttons .primary-button {
     width: 100% !important;
+  }
+
+  /* 41. Test result toolbar collapse */
+  .test-result-toolbar { grid-template-columns: 1fr !important; }
+  .test-result-action-cell { min-width: 0 !important; }
+
+  /* 42. Certificate print preview responsive */
+  .report-card[style*="padding: 24px 34px"] { padding: 12px 14px !important; }
+  .report-card[style*="padding: 24px 34px"] [style*="grid-template-columns: repeat(4"] { grid-template-columns: 1fr 1fr !important; }
+
+  /* 43. Homework filter input */
+  .homework-pdf-filter input[type="search"] { width: 100% !important; min-width: 0 !important; }
+
+  /* 44. Exam buttons flex */
+  .form-actions[style*="display:flex"] { flex-wrap: wrap !important; }
+  .form-actions[style*="display:flex"] > button { min-width: 0 !important; flex: 1 1 120px !important; }
+
+  /* 45. Inline grid overrides for uncovered patterns */
+  [style*="grid-template-columns: 120px 1fr"],
+  [style*="grid-template-columns:120px 1fr"],
+  [style*="grid-template-columns: 70px 1fr"],
+  [style*="grid-template-columns:70px 1fr"],
+  [style*="grid-template-columns: 72px 1fr"],
+  [style*="grid-template-columns:72px 1fr"],
+  [style*="grid-template-columns:1fr 180px"],
+  [style*="grid-template-columns: 1fr 180px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 46. Calendar sidebar min-width */
+  [style*="min-width:240px"],
+  [style*="min-width: 240px"] {
+    min-width: 0 !important;
+  }
+
+  /* 47. Dashboard calendar layout */
+  .dashboard-calendar-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 48. Certificate print card responsive */
+  .certificate-print-card {
+    padding: 12px 14px !important;
+  }
+  .certificate-print-card [style*="grid-template-columns: repeat(4"] {
+    grid-template-columns: 1fr 1fr !important;
   }
 }
