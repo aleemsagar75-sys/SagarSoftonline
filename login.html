@@ -15,23 +15,36 @@
   <link rel="stylesheet" href="./css/login.css">
 </head>
 <body>
-  <div id="sagarsoft-loading-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(8,23,47,0.88);backdrop-filter:blur(8px);justify-content:center;align-items:center;flex-direction:column;opacity:0;transition:opacity 0.25s ease;">
+  <div id="sagarsoft-loading-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(8,23,47,0.92);backdrop-filter:blur(12px);justify-content:center;align-items:center;flex-direction:column;opacity:0;transition:opacity 0.3s ease;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">
+    <div class="ss-loader-pulse"></div>
     <div class="ss-loader-ring">
       <div></div><div></div><div></div><div></div>
     </div>
-    <p id="sagarsoft-loading-text" style="color:rgba(255,255,255,0.9);font-size:14px;margin-top:20px;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;font-weight:500;letter-spacing:0.3px;"></p>
-    <div style="width:180px;height:3px;background:rgba(255,255,255,0.12);border-radius:3px;margin-top:12px;overflow:hidden;">
-      <div style="height:100%;width:30%;background:linear-gradient(90deg,#3b82f6,#60a5fa);border-radius:3px;animation:ssLoadBar 1.2s ease-in-out infinite;"></div>
+    <p id="sagarsoft-loading-text" style="color:rgba(255,255,255,0.92);font-size:15px;margin-top:18px;font-weight:600;letter-spacing:0.3px;max-width:280px;text-align:center;line-height:1.4;"></p>
+    <div class="ss-loader-dots"><span></span><span></span><span></span></div>
+    <div style="width:200px;height:3px;background:rgba(255,255,255,0.1);border-radius:3px;margin-top:14px;overflow:hidden;">
+      <div style="height:100%;width:30%;background:linear-gradient(90deg,#3b82f6,#60a5fa,#22d3ee);border-radius:3px;animation:ssLoadBar 1.2s ease-in-out infinite;"></div>
     </div>
-    <button id="sagarsoft-loading-cancel" onclick="window.SagarSoftDB && window.SagarSoftDB.cancelLoading && window.SagarSoftDB.cancelLoading()" style="display:none;margin-top:16px;padding:6px 20px;border:1px solid rgba(255,255,255,0.3);border-radius:6px;background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);font-size:13px;cursor:pointer;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">Cancel</button>
+    <div class="ss-network-warning"><i class="fas fa-wifi"></i> Your internet connection seems slow. Please wait...</div>
+    <button id="sagarsoft-loading-cancel" onclick="window.SagarSoftDB && window.SagarSoftDB.cancelLoading && window.SagarSoftDB.cancelLoading()" style="display:none;margin-top:14px;padding:6px 20px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;font-weight:500;">Cancel</button>
     <style>
-      .ss-loader-ring{display:inline-block;position:relative;width:56px;height:56px}
-      .ss-loader-ring div{box-sizing:border-box;display:block;position:absolute;width:44px;height:44px;margin:6px;border:3px solid transparent;border-radius:50%;animation:ssLoaderRing 1.2s cubic-bezier(0.5,0,0.5,1) infinite;border-top-color:#3b82f6}
+      .ss-loader-pulse{width:64px;height:64px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,0.6) 0%,rgba(59,130,246,0) 70%);animation:loadPulse 1.4s ease-in-out infinite}
+      @keyframes loadPulse{0%,100%{transform:scale(0.8);opacity:0.5}50%{transform:scale(1.3);opacity:1}}
+      .ss-loader-dots{display:flex;gap:6px;margin-top:16px}
+      .ss-loader-dots span{width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,0.5);animation:dotBounce 1.2s ease-in-out infinite}
+      .ss-loader-dots span:nth-child(2){animation-delay:0.2s}
+      .ss-loader-dots span:nth-child(3){animation-delay:0.4s}
+      @keyframes dotBounce{0%,80%,100%{transform:translateY(0);opacity:0.4}40%{transform:translateY(-10px);opacity:1}}
+      .ss-loader-ring{display:inline-block;position:relative;width:52px;height:52px;margin-top:-8px}
+      .ss-loader-ring div{box-sizing:border-box;display:block;position:absolute;width:42px;height:42px;margin:5px;border:2.5px solid transparent;border-radius:50%;animation:ssLoaderRing 1.2s cubic-bezier(0.5,0,0.5,1) infinite;border-top-color:rgba(96,165,250,0.9)}
       .ss-loader-ring div:nth-child(1){animation-delay:-0.45s}
-      .ss-loader-ring div:nth-child(2){animation-delay:-0.3s}
-      .ss-loader-ring div:nth-child(3){animation-delay:-0.15s}
+      .ss-loader-ring div:nth-child(2){animation-delay:-0.3s;border-top-color:rgba(34,211,238,0.7)}
+      .ss-loader-ring div:nth-child(3){animation-delay:-0.15s;border-top-color:rgba(139,92,246,0.6)}
       @keyframes ssLoaderRing{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-      @keyframes ssLoadBar{0%{width:10%;margin-left:0}50%{width:40%}100%{width:10%;margin-left:90%}}
+      @keyframes ssLoadBar{0%{width:10%;margin-left:0}50%{width:45%}100%{width:10%;margin-left:90%}}
+      #sagarsoft-loading-overlay .ss-network-warning{display:none;margin-top:14px;padding:8px 18px;border-radius:8px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;font-size:12px;font-weight:600;text-align:center;max-width:260px;line-height:1.5}
+      #sagarsoft-loading-overlay .ss-network-warning i{margin-right:4px}
+      #sagarsoft-loading-overlay.ss-slow .ss-network-warning{display:block}
     </style>
   </div>
   <main class="login-shell">
