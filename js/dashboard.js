@@ -24474,18 +24474,18 @@ ${allContent}
     if (shell) { shell.style.overflow = "hidden"; shell.style.maxWidth = "100vw"; }
 
     var content = document.querySelector(".content-area");
-    if (content) { content.style.overflowX = "hidden"; content.style.maxWidth = "100%"; content.style.width = "100%"; }
+    if (content) { content.style.overflowX = "auto"; content.style.maxWidth = "100%"; content.style.width = "100%"; }
 
     var activeViews = document.querySelectorAll(".view.active");
     for (var vi = 0; vi < activeViews.length; vi++) {
       var v = activeViews[vi];
-      v.style.overflowX = "hidden";
+      v.style.overflowX = "visible";
       v.style.maxWidth = "100%";
       v.style.width = "100%";
     }
 
     var allElements = document.querySelectorAll(
-      ".split-grid, .report-grid, .form-grid, .accounts-filter-bar, " +
+      ".split-grid, .report-grid, .form-grid, " +
       ".fees-form-grid, .fee-particulars-grid, .salary-form-grid, .salary-cards-row, " +
       ".attendance-mark-group, .exam-form-grid, .exam-marks-grid, .exam-table-grid, " +
       ".timetable-grid, .homework-actions-row, .homework-pdf-filter-controls, " +
@@ -24496,18 +24496,25 @@ ${allContent}
       ".employee-card__actions, .dashboard-notice-board-grid, " +
       ".event-calendar-layout, .offline-registry-card, " +
       ".module-line-item, .module-line-item--triple, .invoice-form-grid, " +
-      ".student-layout, .report-cards, .stacked-copy"
+      ".student-layout, .stacked-copy"
     );
     for (var i = 0; i < allElements.length; i++) {
       var el = allElements[i];
       el.style.gridTemplateColumns = "1fr";
       el.style.maxWidth = "100%";
-      el.style.overflowX = "hidden";
+    }
+
+    var reportCards = document.querySelectorAll(".report-cards");
+    for (var rc = 0; rc < reportCards.length; rc++) {
+      reportCards[rc].style.gridTemplateColumns = "1fr 1fr";
+      reportCards[rc].style.maxWidth = "100%";
+      reportCards[rc].style.gap = "8px";
     }
 
     var inlineGrids = document.querySelectorAll("[style*='grid-template-columns']");
     for (var j = 0; j < inlineGrids.length; j++) {
       var ig = inlineGrids[j];
+      if (ig.classList.contains("report-cards")) continue;
       if (ig.style.gridTemplateColumns && ig.style.gridTemplateColumns !== "1fr") {
         ig.style.gridTemplateColumns = "1fr";
       }
@@ -24516,43 +24523,36 @@ ${allContent}
 
     var filterBar = document.querySelector(".accounts-filter-bar");
     if (filterBar) {
-      filterBar.style.display = "grid";
-      filterBar.style.gridTemplateColumns = "1fr 1fr";
-      filterBar.style.gap = "0.5rem";
+      filterBar.style.display = "flex";
+      filterBar.style.flexDirection = "column";
+      filterBar.style.flexWrap = "nowrap";
+      filterBar.style.gap = "6px";
       filterBar.style.maxWidth = "100%";
     }
 
     var tableWraps = document.querySelectorAll(".table-wrap");
     for (var tw = 0; tw < tableWraps.length; tw++) {
       tableWraps[tw].style.overflowX = "auto";
+      tableWraps[tw].style.webkitOverflowScrolling = "touch";
       tableWraps[tw].style.maxWidth = "100%";
       tableWraps[tw].style.width = "100%";
       var tables = tableWraps[tw].querySelectorAll("table");
       for (var ti = 0; ti < tables.length; ti++) {
-        tables[ti].style.removeProperty("min-width");
-        tables[ti].style.minWidth = "0";
+        tables[ti].style.minWidth = "500px";
         tables[ti].style.width = "100%";
       }
-    }
-
-    var allTables = document.querySelectorAll("table[style*='min-width']");
-    for (var at = 0; at < allTables.length; at++) {
-      allTables[at].style.minWidth = "0";
-      allTables[at].style.width = "100%";
     }
 
     var panelCards = document.querySelectorAll(".panel-card");
     for (var pc = 0; pc < panelCards.length; pc++) {
       panelCards[pc].style.maxWidth = "100%";
-      panelCards[pc].style.overflow = "hidden";
     }
 
     var btnActions = document.querySelectorAll(".btn-account-action");
     for (var ba = 0; ba < btnActions.length; ba++) {
       btnActions[ba].style.maxWidth = "100%";
-      btnActions[ba].style.overflow = "hidden";
-      btnActions[ba].style.textOverflow = "ellipsis";
-      btnActions[ba].style.whiteSpace = "nowrap";
+      btnActions[ba].style.whiteSpace = "normal";
+      btnActions[ba].style.textAlign = "center";
     }
 
     var allChildren = document.querySelectorAll(".view.active *");
