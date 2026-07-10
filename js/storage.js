@@ -192,23 +192,45 @@
     return structuredClone(defaultDatabase);
   }
 
+  var _loadingSlowTimer = null;
+
   function showLoading(text) {
     var overlay = document.getElementById("sagarsoft-loading-overlay");
     var label = document.getElementById("sagarsoft-loading-text");
     var bar = document.getElementById("sagarsoft-loading-bar");
     var cancelBtn = document.getElementById("sagarsoft-loading-cancel");
-    if (overlay) { overlay.style.display = "flex"; requestAnimationFrame(function(){ overlay.style.opacity = "1"; }); }
+    if (overlay) {
+      overlay.classList.remove("ss-slow");
+      overlay.style.display = "flex";
+      requestAnimationFrame(function(){ overlay.style.opacity = "1"; });
+    }
     if (label) { label.textContent = text || ""; }
     if (bar) { bar.style.display = text ? "block" : "none"; }
     if (cancelBtn) { cancelBtn.style.display = text ? "inline-block" : "none"; }
     _loadingController = new AbortController();
+
+    if (_loadingSlowTimer) { clearTimeout(_loadingSlowTimer); _loadingSlowTimer = null; }
+    var isSlowConnection = false;
+    if (navigator.connection && navigator.connection.effectiveType) {
+      var et = navigator.connection.effectiveType;
+      if (et === "slow-2g" || et === "2g" || et === "3g") isSlowConnection = true;
+    }
+    if (isSlowConnection && overlay) {
+      overlay.classList.add("ss-slow");
+    } else if (overlay) {
+      _loadingSlowTimer = setTimeout(function() {
+        overlay.classList.add("ss-slow");
+      }, 8000);
+    }
   }
 
   function hideLoading() {
     var overlay = document.getElementById("sagarsoft-loading-overlay");
     var cancelBtn = document.getElementById("sagarsoft-loading-cancel");
     if (cancelBtn) { cancelBtn.style.display = "none"; }
+    if (_loadingSlowTimer) { clearTimeout(_loadingSlowTimer); _loadingSlowTimer = null; }
     if (overlay) {
+      overlay.classList.remove("ss-slow");
       overlay.style.opacity = "0";
       setTimeout(function () { overlay.style.display = "none"; }, 250);
     }
@@ -334,7 +356,7 @@
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: cachedDatabase }),
-        timeoutMs: 30000
+        timeoutMs: 20000
       }).then(function () {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
@@ -411,7 +433,7 @@
         }
       } catch (_e) {
         if (attempts < maxAttempts) {
-          await new Promise(function (r) { setTimeout(r, 3000); });
+          await new Promise(function (r) { setTimeout(r, 1500); });
         }
       }
     }
@@ -574,16 +596,20 @@
     if (!config.apiBaseUrl || !config.schoolId) return false;
     try {
       var deletedIds = cachedDatabase._deletedIds || [];
+      var hasDeletions = deletedIds.length > 0;
       var serverDb = null;
-      try {
-        var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 30000 });
-        if (getResp && getResp.database) serverDb = getResp.database;
-      } catch (_e) {}
-      if (serverDb && serverDb._deletedIds && serverDb._deletedIds.length) {
-        var serverIdSet = {};
-        serverDb._deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
-        deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
-        deletedIds = Object.keys(serverIdSet);
+
+      if (hasDeletions) {
+        try {
+          var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 12000 });
+          if (getResp && getResp.database) serverDb = getResp.database;
+        } catch (_e) {}
+        if (serverDb && serverDb._deletedIds && serverDb._deletedIds.length) {
+          var serverIdSet = {};
+          serverDb._deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
+          deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
+          deletedIds = Object.keys(serverIdSet);
+        }
       }
 
       var toSave = cachedDatabase;
@@ -625,8 +651,17 @@
       await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: cachedDatabase }),
-        timeoutMs: 60000
+        timeoutMs: 30000
       });
+      if (!hasDeletions) {
+        apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 8000 }).then(function (resp) {
+          if (resp && resp.database) {
+            var refreshed = normalizeDatabase(resp.database);
+            cachedDatabase = refreshed;
+            try { localStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed)); } catch (_e) {}
+          }
+        }).catch(function () {});
+      }
       showSyncBadge("synced");
       return true;
     } catch (err) {
