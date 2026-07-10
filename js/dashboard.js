@@ -1,4 +1,4 @@
-/* Major section: Dashboard shell, routing, and student management module */
+﻿/* Major section: Dashboard shell, routing, and student management module */
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
@@ -23855,12 +23855,14 @@ ${allContent}
 
     if (isStudentsModule) {
       setStudentRoute(normalizedRoute);
+      setTimeout(scheduleMobileFix, 100);
       return;
     }
 
     if (isDashboard) {
       renderDashboard();
       setTimeout(setupRevealAnimations, 50);
+      scheduleMobileFix();
       return;
     }
 
@@ -23882,6 +23884,7 @@ ${allContent}
     setTimeout(setupRevealAnimations, 50);
     applyMessagingVisibility();
     setTimeout(function() { applySavedThemeSettings(); }, 30);
+    scheduleMobileFix();
   }
 
   window.addEventListener("sagarsoft:database-loaded", function () {
@@ -24453,6 +24456,148 @@ ${allContent}
       backupToSupabaseSilent();
     }
   }, 30 * 60 * 1000);
+
+  /* ===================================================================
+     NUCLEAR MOBILE RESPONSIVE FIX — JS-based, runs after every render
+     Bypasses ALL CSS specificity wars and inline style conflicts
+     =================================================================== */
+  function forceMobileLayout() {
+    if (window.innerWidth > 768) {
+      document.documentElement.style.removeProperty("overflow-x");
+      document.body.style.removeProperty("overflow-x");
+      return;
+    }
+    document.documentElement.style.overflowX = "hidden";
+    document.body.style.overflowX = "hidden";
+
+    var shell = document.querySelector(".app-shell");
+    if (shell) { shell.style.overflow = "hidden"; shell.style.maxWidth = "100vw"; }
+
+    var content = document.querySelector(".content-area");
+    if (content) { content.style.overflowX = "hidden"; content.style.maxWidth = "100%"; content.style.width = "100%"; }
+
+    var activeViews = document.querySelectorAll(".view.active");
+    for (var vi = 0; vi < activeViews.length; vi++) {
+      var v = activeViews[vi];
+      v.style.overflowX = "hidden";
+      v.style.maxWidth = "100%";
+      v.style.width = "100%";
+    }
+
+    var allElements = document.querySelectorAll(
+      ".split-grid, .report-grid, .form-grid, .accounts-filter-bar, " +
+      ".fees-form-grid, .fee-particulars-grid, .salary-form-grid, .salary-cards-row, " +
+      ".attendance-mark-group, .exam-form-grid, .exam-marks-grid, .exam-table-grid, " +
+      ".timetable-grid, .homework-actions-row, .homework-pdf-filter-controls, " +
+      ".question-paper-grid, .certificate-grid, .student-directory-grid, " +
+      ".id-cards-grid, .class-subjects-grid, .subject-meta-grid, " +
+      ".admission-letter-layout, .account-cards-grid, .ledger-form-grid, " +
+      ".ledger-summary-grid, .employees-card-grid, .employee-card__header, " +
+      ".employee-card__actions, .dashboard-notice-board-grid, " +
+      ".event-calendar-layout, .offline-registry-card, " +
+      ".module-line-item, .module-line-item--triple, .invoice-form-grid, " +
+      ".student-layout, .report-cards, .stacked-copy"
+    );
+    for (var i = 0; i < allElements.length; i++) {
+      var el = allElements[i];
+      el.style.gridTemplateColumns = "1fr";
+      el.style.maxWidth = "100%";
+      el.style.overflowX = "hidden";
+    }
+
+    var inlineGrids = document.querySelectorAll("[style*='grid-template-columns']");
+    for (var j = 0; j < inlineGrids.length; j++) {
+      var ig = inlineGrids[j];
+      if (ig.style.gridTemplateColumns && ig.style.gridTemplateColumns !== "1fr") {
+        ig.style.gridTemplateColumns = "1fr";
+      }
+      ig.style.maxWidth = "100%";
+    }
+
+    var filterBar = document.querySelector(".accounts-filter-bar");
+    if (filterBar) {
+      filterBar.style.display = "grid";
+      filterBar.style.gridTemplateColumns = "1fr 1fr";
+      filterBar.style.gap = "0.5rem";
+      filterBar.style.maxWidth = "100%";
+    }
+
+    var tableWraps = document.querySelectorAll(".table-wrap");
+    for (var tw = 0; tw < tableWraps.length; tw++) {
+      tableWraps[tw].style.overflowX = "auto";
+      tableWraps[tw].style.maxWidth = "100%";
+      tableWraps[tw].style.width = "100%";
+      var tables = tableWraps[tw].querySelectorAll("table");
+      for (var ti = 0; ti < tables.length; ti++) {
+        tables[ti].style.removeProperty("min-width");
+        tables[ti].style.minWidth = "0";
+        tables[ti].style.width = "100%";
+      }
+    }
+
+    var allTables = document.querySelectorAll("table[style*='min-width']");
+    for (var at = 0; at < allTables.length; at++) {
+      allTables[at].style.minWidth = "0";
+      allTables[at].style.width = "100%";
+    }
+
+    var panelCards = document.querySelectorAll(".panel-card");
+    for (var pc = 0; pc < panelCards.length; pc++) {
+      panelCards[pc].style.maxWidth = "100%";
+      panelCards[pc].style.overflow = "hidden";
+    }
+
+    var btnActions = document.querySelectorAll(".btn-account-action");
+    for (var ba = 0; ba < btnActions.length; ba++) {
+      btnActions[ba].style.maxWidth = "100%";
+      btnActions[ba].style.overflow = "hidden";
+      btnActions[ba].style.textOverflow = "ellipsis";
+      btnActions[ba].style.whiteSpace = "nowrap";
+    }
+
+    var allChildren = document.querySelectorAll(".view.active *");
+    for (var c = 0; c < allChildren.length; c++) {
+      var child = allChildren[c];
+      var computed = window.getComputedStyle(child);
+      if (computed.getPropertyValue("min-width") !== "0px" &&
+          computed.getPropertyValue("min-width") !== "auto" &&
+          parseFloat(computed.getPropertyValue("min-width")) > window.innerWidth) {
+        child.style.minWidth = "0";
+        child.style.maxWidth = "100%";
+      }
+    }
+  }
+
+  var _mobileFixTimeout = null;
+  function scheduleMobileFix() {
+    if (_mobileFixTimeout) clearTimeout(_mobileFixTimeout);
+    _mobileFixTimeout = setTimeout(forceMobileLayout, 50);
+  }
+
+  forceMobileLayout();
+  scheduleMobileFix();
+  window.addEventListener("resize", forceMobileFix);
+
+  function forceMobileFix() {
+    if (_mobileFixTimeout) clearTimeout(_mobileFixTimeout);
+    _mobileFixTimeout = setTimeout(forceMobileLayout, 100);
+  }
+
+  var _mobileObserver = new MutationObserver(function (mutations) {
+    if (window.innerWidth > 768) return;
+    var needsFix = false;
+    for (var m = 0; m < mutations.length; m++) {
+      var nodes = mutations[m].addedNodes;
+      for (var n = 0; n < nodes.length; n++) {
+        if (nodes[n].nodeType === 1) { needsFix = true; break; }
+      }
+      if (needsFix) break;
+    }
+    if (needsFix) scheduleMobileFix();
+  });
+
+  var _contentArea = document.querySelector(".content-area") || document.querySelector(".app-shell") || document.body;
+  _mobileObserver.observe(_contentArea, { childList: true, subtree: true });
 });
 
 
