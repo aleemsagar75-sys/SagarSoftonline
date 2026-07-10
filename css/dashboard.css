@@ -412,7 +412,8 @@ body {
 }
 
 .topbar-search input {
-  width: 300px;
+  width: 100%;
+  max-width: 300px;
   padding: 0.6rem 1rem;
   border: 1px solid rgba(27,95,122,0.2);
   border-radius: 8px;
@@ -478,6 +479,7 @@ body {
   .account-core-card .data-table th,
   .account-core-card .data-table td { padding: 0.3rem 0.35rem; white-space: nowrap; }
   .super-admin-card .data-table { min-width: 500px; font-size: 11px; }
+  .data-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
 @media (max-width: 480px) {
@@ -671,7 +673,7 @@ body {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible;
 }
 
 .view {
@@ -685,7 +687,7 @@ body {
 
 .hero-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.9fr);
   gap: 1.2rem;
   padding: 1.5rem;
   border-radius: 30px;
@@ -1187,7 +1189,7 @@ body {
 
 .admission-letter-layout {
   display: grid;
-  grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
   gap: 1rem;
 }
 
@@ -1436,7 +1438,7 @@ body {
 
 .student-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.9fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.9fr);
   gap: 1.2rem;
 }
 
@@ -1667,7 +1669,7 @@ body {
 }
 
 .test-result-toolbar {
-  grid-template-columns: minmax(170px, 1fr) minmax(170px, 0.8fr) minmax(220px, 0.9fr);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.9fr);
   align-items: start;
 }
 
@@ -2411,7 +2413,7 @@ body {
 }
 
 .view.module--fees-defaulters .split-grid {
-  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
 }
 
 .view.module--fees-defaulters .student-directory-grid {
@@ -3060,7 +3062,7 @@ body {
 }
 
 .view.module--exam-result-card .split-grid {
-  grid-template-columns: minmax(0, 1.22fr) minmax(360px, 0.9fr);
+  grid-template-columns: minmax(0, 1.22fr) minmax(0, 0.9fr);
 }
 
 .view.module--exam-result-card .panel-card:first-child {
@@ -3186,7 +3188,7 @@ body {
 }
 
 .view.module--sms-services .split-grid {
-  grid-template-columns: minmax(0, 1.3fr) minmax(300px, 0.7fr);
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.7fr);
 }
 
 .view.module--sms-services #moduleSummary {
@@ -3353,7 +3355,7 @@ body {
 
 .view.module--homework .homework-pdf-filter-controls {
   display: grid;
-  grid-template-columns: minmax(160px, 220px) minmax(150px, 180px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 0.7rem;
   align-items: end;
   margin-left: auto;
@@ -3485,7 +3487,8 @@ body {
 
 .question-rich-editor img {
   resize: none !important;
-  overflow: visible !important;
+  overflow: hidden !important;
+  max-width: 100% !important;
   border: none !important;
   outline: none !important;
   vertical-align: top;
@@ -3493,7 +3496,8 @@ body {
 
 .question-rich-editor table {
   resize: none !important;
-  overflow: visible !important;
+  overflow: auto !important;
+  max-width: 100% !important;
   font-size: inherit;
   line-height: normal;
 }
@@ -3586,7 +3590,8 @@ body {
   display: inline-block;
   vertical-align: top;
   resize: none !important;
-  overflow: visible !important;
+  overflow: auto !important;
+  max-width: 100% !important;
   border: none !important;
   background: transparent !important;
   outline: none !important;
@@ -4460,7 +4465,7 @@ th {
   animation: viewFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ===== RICH STAT CARD TONES â€” REMOVED (using animated wave cards at bottom) ===== */
+/* ===== RICH STAT CARD TONES — REMOVED (using animated wave cards at bottom) ===== */
 
 .stat-card:hover,
 .panel-card:hover,
@@ -5702,7 +5707,7 @@ select:focus, input:focus, textarea:focus {
   .language-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)) !important; }
 }
 
-/* ===== ALL MODULES RESPONSIVE â€” COMPREHENSIVE ===== */
+/* ===== ALL MODULES RESPONSIVE — COMPREHENSIVE ===== */
 
 /* Timetable Module */
 @media (max-width: 768px) {
@@ -5815,14 +5820,14 @@ select:focus, input:focus, textarea:focus {
   .login-title { font-size: 1.2rem; }
 }
 
-/* Print Layouts â€” Hide on Mobile */
+/* Print Layouts — Hide on Mobile */
 @media print {
   .sidebar, .topbar, .mobile-menu-button, .no-print { display: none !important; }
   .content-area { padding: 0 !important; }
   body { margin: 0; padding: 0; }
 }
 
-/* Tables â€” Horizontal Scroll on Mobile */
+/* Tables — Horizontal Scroll on Mobile */
 @media (max-width: 768px) {
   .data-table, .fees-table, .salary-table, .exam-table, .homework-table,
   .timetable-table, .attendance-table, .employee-table, .class-table,
@@ -5835,7 +5840,7 @@ select:focus, input:focus, textarea:focus {
   table.data-table td { font-size: 0.72rem; padding: 0.35rem 0.4rem; white-space: nowrap; }
 }
 
-/* Modals â€” Full Width on Mobile */
+/* Modals — Full Width on Mobile */
 @media (max-width: 480px) {
   .student-modal__dialog,
   .scanner-modal__dialog,
@@ -5900,7 +5905,7 @@ select:focus, input:focus, textarea:focus {
   .invoice-print-layout .report-grid { grid-template-columns: 1fr !important; }
 }
 
-/* Buttons â€” Full Width on Mobile */
+/* Buttons — Full Width on Mobile */
 @media (max-width: 480px) {
   .table-actions { flex-direction: column; gap: 0.3rem; }
   .table-actions .table-action-btn { width: 100%; }
@@ -5953,7 +5958,7 @@ select:focus, input:focus, textarea:focus {
   }
 }
 
-/* Inline Styles Override â€” Force Responsive on ALL inline grids */
+/* Inline Styles Override — Force Responsive on ALL inline grids */
 @media (max-width: 768px) {
   [style*="grid-template-columns:1fr 1fr"],
   [style*="grid-template-columns: 1fr 1fr"],
@@ -6817,7 +6822,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .dashboard-grid--two-col { grid-template-columns: 1fr; }
 }
 
-/* ===== DASHBOARD STAT CARDS â€” SLOW COLOR WAVE ===== */
+/* ===== DASHBOARD STAT CARDS — SLOW COLOR WAVE ===== */
 @keyframes wave1 {
   0% { background-position: 0% 50%; }
   25% { background-position: 50% 0%; }
@@ -6935,7 +6940,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   text-shadow: 0 1px 3px rgba(0,0,0,0.35);
 }
 
-/* === STUDENTS â€” Sky Blue â†’ Cyan â†’ Teal === */
+/* === STUDENTS — Sky Blue → Cyan → Teal === */
 .dashboard-stat-card--students {
   background: linear-gradient(135deg, #0284c7, #0ea5e9, #06b6d4, #14b8a6, #0ea5e9, #0284c7) !important;
   background-size: 400% 400% !important;
@@ -6953,7 +6958,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === TEACHERS â€” Indigo â†’ Violet â†’ Purple === */
+/* === TEACHERS — Indigo → Violet → Purple === */
 .dashboard-stat-card--teachers {
   background: linear-gradient(135deg, #4f46e5, #6366f1, #8b5cf6, #a78bfa, #8b5cf6, #4f46e5) !important;
   background-size: 400% 400% !important;
@@ -6971,7 +6976,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === CLASSES â€” Emerald â†’ Green â†’ Lime === */
+/* === CLASSES — Emerald → Green → Lime === */
 .dashboard-stat-card--classes {
   background: linear-gradient(135deg, #059669, #10b981, #22c55e, #34d399, #22c55e, #059669) !important;
   background-size: 400% 400% !important;
@@ -6989,7 +6994,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === FEES â€” Amber â†’ Orange â†’ Red === */
+/* === FEES — Amber → Orange → Red === */
 .dashboard-stat-card--fees {
   background: linear-gradient(135deg, #d97706, #f59e0b, #f97316, #fb923c, #f97316, #d97706) !important;
   background-size: 400% 400% !important;
@@ -7007,7 +7012,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === ATTENDANCE â€” Rose â†’ Pink â†’ Fuchsia === */
+/* === ATTENDANCE — Rose → Pink → Fuchsia === */
 .dashboard-stat-card--attendance {
   background: linear-gradient(135deg, #e11d48, #f43f5e, #ec4899, #f472b6, #ec4899, #e11d48) !important;
   background-size: 400% 400% !important;
@@ -7025,7 +7030,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === PARENTS â€” Sky â†’ Blue â†’ Indigo === */
+/* === PARENTS — Sky → Blue → Indigo === */
 .dashboard-stat-card--parents {
   background: linear-gradient(135deg, #0369a1, #0284c7, #2563eb, #3b82f6, #2563eb, #0369a1) !important;
   background-size: 400% 400% !important;
@@ -7043,7 +7048,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === SUBJECTS â€” Cyan â†’ Teal â†’ Emerald === */
+/* === SUBJECTS — Cyan → Teal → Emerald === */
 .dashboard-stat-card--subjects {
   background: linear-gradient(135deg, #0891b2, #06b6d4, #14b8a6, #22d3ee, #14b8a6, #0891b2) !important;
   background-size: 400% 400% !important;
@@ -7061,7 +7066,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === ACTIVITY â€” Slate â†’ Indigo â†’ Violet === */
+/* === ACTIVITY — Slate → Indigo → Violet === */
 .dashboard-stat-card--activity {
   background: linear-gradient(135deg, #334155, #475569, #6366f1, #818cf8, #6366f1, #334155) !important;
   background-size: 400% 400% !important;
@@ -7088,7 +7093,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   box-shadow: 0 8px 28px rgba(27,95,122,0.4) !important;
 }
 
-/* ===== LOADING OVERLAY â€” PROFESSIONAL ===== */
+/* ===== LOADING OVERLAY — PROFESSIONAL ===== */
 .ss-loader-pulse {
   width: 64px; height: 64px;
   border-radius: 50%;
@@ -7130,7 +7135,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 #sagarsoft-loading-overlay .ss-network-warning i { margin-right: 4px; }
 #sagarsoft-loading-overlay.ss-slow .ss-network-warning { display: block; }
 
-/* ===== RESPONSIVE â€” TOPBAR / PROFILE / NOTIFICATION ===== */
+/* ===== RESPONSIVE — TOPBAR / PROFILE / NOTIFICATION ===== */
 @media (max-width: 900px) {
   .hero-panel { grid-template-columns: 1fr !important; }
   .hero-metrics { grid-template-columns: 1fr !important; }
@@ -7183,11 +7188,11 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 
 /* --- 768px: Primary mobile breakpoint --- */
 @media (max-width: 768px) {
-  /* === UNIVERSAL OVERFLOW PREVENTION â€” nothing escapes the viewport === */
+  /* === UNIVERSAL OVERFLOW PREVENTION — nothing escapes the viewport === */
   *, *::before, *::after { box-sizing: border-box !important; }
   html, body { overflow-x: hidden !important; max-width: 100vw !important; width: 100vw !important; }
   .app-shell { overflow: hidden !important; max-width: 100vw !important; width: 100vw !important; grid-template-columns: 1fr !important; }
-  .content-area { overflow-x: hidden !important; max-width: 100% !important; width: 100% !important; padding: 0.65rem !important; }
+  .content-area { overflow-x: visible !important; max-width: 100% !important; width: 100% !important; padding: 0.65rem !important; }
   .view.active { overflow: hidden !important; max-width: 100% !important; width: 100% !important; }
   .view.active > * { max-width: 100% !important; overflow: hidden !important; }
   .view.active > article { max-width: 100% !important; overflow: hidden !important; }
@@ -7197,7 +7202,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .stat-card, .table-card { max-width: 100% !important; overflow: hidden !important; }
   table { width: 100% !important; }
 
-  /* Override ALL inline grid-template-columns on ANY element â€” collapse to 1 column */
+  /* Override ALL inline grid-template-columns on ANY element — collapse to 1 column */
   [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
 
   /* Layout */
@@ -7219,7 +7224,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .toolbar > * { width: 100% !important; }
   .toolbar--students, .toolbar--status, .toolbar--promote, .toolbar--simple { grid-template-columns: 1fr !important; }
 
-  /* Tables â€” horizontal scroll inside their wrapper */
+  /* Tables — horizontal scroll inside their wrapper */
   .table-wrap table { min-width: 600px !important; }
 
   /* Employee module */
@@ -7356,13 +7361,13 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .exam-marks-grid { grid-template-columns: 1fr !important; }
   .view.module--timetable .table-wrap table { min-width: 700px !important; }
 
-  /* Account Statement â€” small phone */
+  /* Account Statement — small phone */
   .accounts-filter-bar { grid-template-columns: 1fr !important; gap: 0.4rem !important; }
   .accounts-filter-date { min-height: 38px !important; padding: 0.45rem 0.5rem !important; font-size: 0.82rem !important; }
   .btn-account-action { min-height: 38px !important; font-size: 0.72rem !important; padding: 0.4rem 0.3rem !important; }
   .report-cards { grid-template-columns: 1fr !important; gap: 0.5rem !important; }
 
-  /* Add Income/Expense â€” small phone */
+  /* Add Income/Expense — small phone */
   .form-grid { gap: 0.6rem !important; }
   .field-group input, .field-group select { min-height: 42px !important; padding: 0.6rem 0.75rem !important; }
   .field-group textarea { min-height: 70px !important; }
@@ -7394,12 +7399,12 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 }
 
 /* ===================================================================
-   PROFILE DROPDOWN + NOTIFICATION DROPDOWN â€” FULL MOBILE RESPONSIVE
+   PROFILE DROPDOWN + NOTIFICATION DROPDOWN — FULL MOBILE RESPONSIVE
    Works on: Android, iPhone, iPad, tablets, all screen sizes
    Mobile: centered on screen via position:fixed + left/right equal margins
    =================================================================== */
 
-/* --- Desktop base (1024px+) â€” already defined above, no changes needed --- */
+/* --- Desktop base (1024px+) — already defined above, no changes needed --- */
 
 /* --- Tablet landscape (1024px) --- */
 @media (max-width: 1024px) {
@@ -7426,7 +7431,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .profile-avatar { width: 36px !important; height: 36px !important; font-size: 0.72rem !important; }
   .profile-copy { display: none !important; }
 
-  /* Profile dropdown â€” centered on screen */
+  /* Profile dropdown — centered on screen */
   .profile-menu__dropdown {
     position: fixed !important;
     top: 52px !important;
@@ -7450,7 +7455,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
     border-radius: 12px !important;
   }
 
-  /* Notification dropdown â€” centered on screen */
+  /* Notification dropdown — centered on screen */
   .notification-menu__dropdown {
     position: fixed !important;
     top: 52px !important;
@@ -7608,3 +7613,1288 @@ body[data-theme="dark"] .notification-item { background: rgba(255,255,255,0.03) 
 /* --- RTL support --- */
 [dir="rtl"] .profile-menu__dropdown { right: auto !important; left: 0 !important; }
 [dir="rtl"] .notification-menu__dropdown { right: auto !important; left: 0 !important; }
+
+/* ===================================================================
+   COMPREHENSIVE MOBILE RESPONSIVENESS FIX — ALL MODULES
+   Hero panel, stat cards, tables, forms, buttons, overflow, options
+   =================================================================== */
+
+/* --- Global: prevent any horizontal overflow --- */
+html, body { overflow-x: clip !important; }
+* { box-sizing: border-box; }
+img, video, svg { max-width: 100%; height: auto; }
+
+/* --- Dashboard action buttons (Download/Scan) --- */
+.dashboard-action-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+}
+@media (max-width: 480px) {
+  .dashboard-action-buttons {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .dashboard-action-buttons .primary-button {
+    width: 100% !important;
+    min-height: 44px !important;
+    justify-content: center !important;
+  }
+}
+
+/* --- Dashboard two-col section (Notice Board / Event Calendar) --- */
+.dashboard-two-col-section {
+  margin-bottom: 1rem;
+  width: 100%;
+  max-width: 100%;
+}
+.card-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  overflow: hidden;
+}
+.card-header-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .card-header-row {
+    gap: 0.4rem;
+  }
+  .card-header-icon {
+    width: 22px;
+    height: 22px;
+  }
+  .card-header-row h3 {
+    font-size: 0.88rem;
+  }
+}
+
+/* --- Hero panel: responsive profit/revenue --- */
+.hero-panel {
+  overflow: hidden;
+}
+.hero-metrics article {
+  overflow: hidden;
+}
+.hero-stat-value {
+  font-size: clamp(1.2rem, 4vw, 2.4rem);
+  word-break: break-word;
+}
+.hero-stat-amount {
+  flex-wrap: wrap;
+}
+.hero-stat-symbol {
+  font-size: clamp(1rem, 2.5vw, 1.6rem);
+}
+.hero-stat-header {
+  font-size: clamp(0.65rem, 1.5vw, 0.85rem);
+}
+.hero-stat-footer {
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+.hero-stat-footer-amount {
+  font-size: clamp(0.7rem, 1.4vw, 0.85rem);
+  word-break: break-word;
+}
+.hero-panel h2 {
+  font-size: clamp(1.1rem, 3vw, 2.2rem);
+  word-break: break-word;
+}
+.hero-panel p {
+  font-size: clamp(0.8rem, 1.8vw, 1rem);
+}
+
+/* --- Hero panel responsive grid --- */
+@media (max-width: 900px) {
+  .hero-panel {
+    grid-template-columns: 1fr !important;
+    min-width: 0 !important;
+    padding: 1rem !important;
+  }
+  .hero-metrics {
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem !important;
+  }
+  .hero-metrics article {
+    min-height: auto !important;
+    padding: 0.7rem !important;
+  }
+  .hero-metrics article:last-child {
+    grid-column: auto !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 1rem !important;
+  }
+}
+@media (max-width: 640px) {
+  .hero-panel {
+    padding: 0.8rem !important;
+    border-radius: 16px !important;
+    gap: 0.8rem !important;
+  }
+  .hero-panel h2 { font-size: 1.1rem !important; }
+  .hero-panel p { font-size: 0.82rem !important; }
+  .hero-metrics { gap: 0.5rem !important; }
+  .hero-metrics article { padding: 0.6rem !important; min-height: 80px !important; border-radius: 12px !important; }
+  .hero-metrics strong { font-size: 1.2rem !important; }
+  .hero-stat-value { font-size: 1.2rem !important; }
+  .hero-stat-symbol { font-size: 1rem !important; }
+}
+@media (max-width: 480px) {
+  .hero-panel {
+    padding: 0.6rem !important;
+    border-radius: 12px !important;
+    gap: 0.6rem !important;
+  }
+  .hero-panel h2 { font-size: 1rem !important; }
+  .hero-panel p { font-size: 0.78rem !important; }
+  .hero-metrics article { padding: 0.5rem !important; min-height: 70px !important; border-radius: 10px !important; }
+  .hero-metrics strong { font-size: 1.1rem !important; }
+  .hero-stat-value { font-size: 1.1rem !important; }
+  .hero-stat-header { font-size: 0.62rem !important; }
+}
+@media (max-width: 375px) {
+  .hero-panel { padding: 0.5rem !important; border-radius: 10px !important; }
+  .hero-panel h2 { font-size: 0.92rem !important; }
+  .hero-metrics article { padding: 0.4rem !important; min-height: 60px !important; border-radius: 8px !important; }
+  .hero-metrics strong { font-size: 1rem !important; }
+  .hero-stat-value { font-size: 1rem !important; }
+}
+
+/* --- Stats grid: responsive module cards --- */
+.stats-grid {
+  width: 100%;
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.8rem !important;
+  }
+}
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.6rem !important;
+  }
+}
+@media (max-width: 375px) {
+  .stats-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+  }
+}
+
+/* --- Stat cards: prevent overflow --- */
+.stat-card, .dashboard-stat-card {
+  overflow: hidden;
+  word-break: break-word;
+  min-width: 0;
+}
+.dashboard-stat-card .panel-label,
+.dashboard-stat-card .metric-note {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  display: block;
+}
+.dashboard-stat-card strong {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* --- Download / Scan buttons: responsive --- */
+@media (max-width: 480px) {
+  [style*="display:flex"][style*="justify-content:space-between"] {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  [style*="display:flex"][style*="justify-content:space-between"] .primary-button {
+    width: 100% !important;
+    min-height: 44px !important;
+    font-size: 0.85rem !important;
+    padding: 0.65rem 1rem !important;
+    justify-content: center !important;
+  }
+}
+
+/* --- Panel cards: overflow hidden on mobile --- */
+.panel-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Tables: horizontal scroll on mobile --- */
+.table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  scrollbar-width: thin;
+}
+.table-wrap table {
+  word-break: normal;
+  word-wrap: normal;
+}
+.table-wrap::-webkit-scrollbar {
+  height: 6px;
+}
+.table-wrap::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05);
+  border-radius: 3px;
+}
+.table-wrap::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.15);
+  border-radius: 3px;
+}
+
+/* --- Forms: prevent overflow on mobile --- */
+.form-grid {
+  width: 100%;
+  max-width: 100%;
+}
+.form-grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.field-group input,
+.field-group select,
+.field-group textarea {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box;
+}
+@media (max-width: 768px) {
+  .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.7rem !important;
+  }
+  .field-group input,
+  .field-group select,
+  .field-group textarea {
+    min-height: 44px !important;
+    padding: 0.65rem 0.75rem !important;
+    font-size: 16px !important;
+  }
+}
+@media (max-width: 480px) {
+  .form-grid { gap: 0.5rem !important; }
+  .field-group input,
+  .field-group select {
+    min-height: 42px !important;
+    padding: 0.6rem 0.65rem !important;
+    font-size: 15px !important;
+  }
+  .field-group textarea { min-height: 70px !important; }
+}
+
+/* --- Toolbars: responsive on mobile --- */
+.toolbar {
+  width: 100%;
+  max-width: 100%;
+}
+.toolbar > * {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 768px) {
+  .toolbar {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .toolbar > * {
+    width: 100% !important;
+  }
+}
+
+/* --- Buttons / primary-button: prevent overflow --- */
+.primary-button, .secondary-button, .btn-account-action {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 480px) {
+  .primary-button {
+    min-height: 44px !important;
+    padding: 0.65rem 1rem !important;
+    font-size: 0.88rem !important;
+  }
+}
+
+/* --- Section head: prevent overflow --- */
+.section-head {
+  width: 100%;
+  max-width: 100%;
+}
+.section-head > * {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 768px) {
+  .section-head {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+  }
+  .section-head > * {
+    width: 100% !important;
+  }
+}
+
+/* --- Split grid: always single column on mobile --- */
+@media (max-width: 768px) {
+  .split-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.8rem !important;
+  }
+}
+
+/* --- Dashboard grids: single column on mobile --- */
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.8rem !important;
+  }
+  .dashboard-grid--two-col {
+    grid-template-columns: 1fr !important;
+  }
+  .dashboard-grid--analytics {
+    grid-template-columns: 1fr !important;
+  }
+  .dashboard-grid--attendance-detail {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* --- Content area: full width, no overflow --- */
+.content-area {
+  overflow-x: visible;
+  min-width: 0;
+  max-width: 100%;
+}
+.view.active {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Sidebar backdrop: proper stacking --- */
+@media (max-width: 900px) {
+  .sidebar-backdrop {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 25;
+  }
+}
+
+/* --- App shell: prevent overflow from children --- */
+.app-shell {
+  overflow: hidden;
+  min-width: 0;
+}
+.app-main {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Invoice/fee/salary form grids --- */
+@media (max-width: 768px) {
+  .invoice-form-grid,
+  .fees-form-grid,
+  .fee-particulars-grid,
+  .module-line-item,
+  .module-line-item--triple,
+  .salary-form-grid,
+  .exam-form-grid,
+  .ledger-form-grid,
+  .question-paper-grid,
+  .certificate-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.7rem !important;
+  }
+}
+
+/* --- Module-specific: employee, attendance, timetable, exam --- */
+@media (max-width: 768px) {
+  .employees-card-grid { grid-template-columns: 1fr !important; }
+  .employee-card__header { grid-template-columns: 55px 1fr !important; }
+  .employee-card__actions { grid-template-columns: 1fr !important; gap: 0.4rem !important; }
+  .attendance-mark-group { grid-template-columns: 1fr !important; }
+  .timetable-grid { grid-template-columns: 1fr !important; }
+  .exam-marks-grid { grid-template-columns: 1fr !important; }
+  .salary-cards-row { grid-template-columns: 1fr !important; }
+  .homework-actions-row { flex-direction: column !important; }
+  .homework-actions-row > * { width: 100% !important; flex: none !important; }
+  .homework-pdf-filter-controls { grid-template-columns: 1fr !important; }
+  .student-directory-grid { grid-template-columns: 1fr !important; }
+  .student-directory-card { flex-direction: column !important; }
+  .student-directory-card__top { flex-direction: column !important; align-items: center !important; text-align: center !important; }
+  .student-directory-actions { flex-direction: row !important; justify-content: center !important; }
+  .id-cards-grid, .class-subjects-grid, .subject-meta-grid, .admission-letter-layout { grid-template-columns: 1fr !important; }
+  .class-subjects-grid { grid-template-columns: 1fr !important; }
+  .report-grid { grid-template-columns: 1fr !important; }
+  .report-cards { grid-template-columns: 1fr !important; }
+  .account-cards-grid { grid-template-columns: 1fr !important; }
+  .ledger-summary-grid { grid-template-columns: 1fr !important; }
+}
+
+/* --- Account module: filter bar responsive --- */
+@media (max-width: 640px) {
+  .accounts-filter-bar {
+    grid-template-columns: 1fr !important;
+    gap: 0.4rem !important;
+  }
+  .accounts-filter-date {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+/* --- Modal / dialog: full screen on small phones --- */
+@media (max-width: 480px) {
+  .student-modal__dialog,
+  .employee-modal__dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    max-height: 100vh !important;
+    height: 100vh !important;
+  }
+  .app-message-box {
+    width: 96vw !important;
+    max-width: 96vw !important;
+  }
+}
+
+/* --- Homework / question paper / exam preview overflow --- */
+.result-card-preview,
+.question-paper-preview,
+.test-result-card,
+.test-result-table-wrap,
+.registry-table-wrap {
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch !important;
+  min-width: 0;
+}
+
+/* --- Attendance donut chart area --- */
+@media (max-width: 600px) {
+  .attendance-donut-wrap {
+    width: 100% !important;
+    min-height: 180px !important;
+  }
+}
+
+/* --- Dashboard mini cards (notice board, calendar) --- */
+@media (max-width: 768px) {
+  .dashboard-notice-board-card,
+  .dashboard-event-calendar-card {
+    margin-bottom: 0.8rem !important;
+  }
+}
+
+/* --- Inline style flex containers: responsive --- */
+[style*="display:flex"][style*="justify-content:space-between"] {
+  flex-wrap: wrap;
+}
+[style*="grid-template-columns"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Module header row (Fees Report, etc.) --- */
+.module-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 100%;
+  flex-wrap: wrap;
+}
+.module-header-row > * {
+  min-width: 0;
+}
+@media (max-width: 480px) {
+  .module-header-row {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  .module-header-row strong {
+    text-align: center !important;
+  }
+  .module-header-row .secondary-button {
+    width: 100% !important;
+    min-height: 40px !important;
+    justify-content: center !important;
+  }
+}
+
+/* ===================================================================
+   MODULE-SPECIFIC RESPONSIVE FIX — ACCOUNTS, FEES, EMPLOYEE, REPORTS
+   Revenue/Profit form, toolbar, search, tables, options
+   =================================================================== */
+
+/* --- Toolbars: flex wrap + min-width fix for ALL modules --- */
+.module-toolbar {
+  width: 100%;
+  max-width: 100%;
+}
+.module-toolbar > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Search containers: prevent flex expansion overflow --- */
+[style*="position: relative; flex: 1"],
+[style*="position:relative; flex:1"],
+[style*="position: relative;flex: 1"],
+[style*="position:relative;flex:1"] {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+[style*="position: relative; flex: 1"] input,
+[style*="position:relative; flex:1"] input,
+[style*="position: relative;flex: 1"] input,
+[style*="position:relative;flex:1"] input {
+  min-width: 0 !important;
+  max-width: 100% !important;
+}
+.search-dropdown {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Toolbar responsive: stack on mobile --- */
+@media (max-width: 768px) {
+  .toolbar,
+  .module-toolbar {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  .toolbar > *,
+  .module-toolbar > * {
+    width: 100% !important;
+    flex: none !important;
+  }
+  .module-toolbar .primary-button,
+  .module-toolbar .secondary-button,
+  .module-toolbar .btn-account-action {
+    width: 100% !important;
+    min-height: 42px !important;
+  }
+}
+
+/* --- Accounts module: filter bar, report cards, table --- */
+.accounts-filter-bar {
+  flex-wrap: wrap;
+  width: 100%;
+  max-width: 100%;
+}
+.accounts-filter-bar > * {
+  min-width: 0;
+  max-width: 100%;
+}
+@media (max-width: 768px) {
+  .accounts-filter-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.4rem !important;
+  }
+  .accounts-filter-date {
+    width: 100% !important;
+    min-height: 40px !important;
+  }
+  .btn-account-action {
+    width: 100% !important;
+    min-height: 40px !important;
+  }
+}
+
+/* --- Reports module: report cards collapse --- */
+.report-cards {
+  width: 100%;
+  max-width: 100%;
+}
+@media (max-width: 900px) {
+  .report-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 480px) {
+  .report-cards {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+  }
+}
+
+/* --- Reports module: first panel-card max-width --- */
+.view.module--reports .panel-card:first-child,
+.view.module--reports-colorful .panel-card:first-child {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.view.module--reports .panel-card:first-child > *,
+.view.module--reports-colorful .panel-card:first-child > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Fees report module: first panel-card --- */
+.view.module--fees-report .panel-card:first-child {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* --- Employee module: manage login table overflow --- */
+.view.module--employee .table-wrap table {
+  min-width: 600px !important;
+}
+@media (max-width: 768px) {
+  .view.module--employee .table-wrap table {
+    min-width: 500px !important;
+  }
+  .view.module--employee .table-actions {
+    flex-direction: column !important;
+    gap: 0.3rem !important;
+  }
+  .view.module--employee .table-action-btn {
+    width: 100% !important;
+    min-height: 34px !important;
+  }
+}
+
+/* --- Fees report table --- */
+.view.module--fees-report .table-wrap table {
+  min-width: 700px !important;
+}
+@media (max-width: 768px) {
+  .view.module--fees-report .table-wrap table {
+    min-width: 600px !important;
+  }
+}
+
+/* --- Fees report inline flex header --- */
+@media (max-width: 480px) {
+  .view.module--fees-report > div:first-child {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  .view.module--fees-report > div:first-child > strong {
+    text-align: center !important;
+  }
+  .view.module--fees-report > div:first-child .secondary-button {
+    width: 100% !important;
+    min-height: 40px !important;
+  }
+}
+
+/* --- Accounts report table inline min-width --- */
+.view.module--reports .table-wrap table {
+  min-width: 500px !important;
+}
+@media (max-width: 768px) {
+  .view.module--reports .table-wrap table {
+    min-width: 450px !important;
+  }
+}
+
+/* --- Reports module: split-grid / report-grid --- */
+.view.module--reports .split-grid,
+.view.module--reports .report-grid {
+  width: 100%;
+  max-width: 100%;
+}
+@media (max-width: 768px) {
+  .view.module--reports .split-grid,
+  .view.module--reports .report-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .report-chart-box {
+    min-height: 120px !important;
+  }
+}
+
+/* --- Customised reports: form-grid overflow --- */
+@media (max-width: 768px) {
+  .view.module--reports .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .view.module--reports .form-actions {
+    flex-direction: column !important;
+  }
+  .view.module--reports .form-actions > * {
+    width: 100% !important;
+  }
+}
+
+/* --- Offline registry card: overflow fix --- */
+.offline-registry-card {
+  width: 100%;
+  max-width: 100%;
+}
+.offline-registry-card > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.offline-registry-card .table-wrap {
+  overflow-x: auto !important;
+}
+
+/* --- Account settings / super admin card tables --- */
+.account-core-card,
+.super-admin-card {
+  width: 100%;
+  max-width: 100%;
+}
+.account-core-card > *,
+.super-admin-card > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Module center title: prevent overflow --- */
+.module-center-title {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  width: 100%;
+  display: block;
+  text-align: center;
+  padding: 0 0.5rem;
+}
+
+/* --- Table inline inputs (employee login) --- */
+.table-inline-input {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  border: 1px solid rgba(27,95,122,0.2);
+  border-radius: 6px;
+}
+@media (max-width: 768px) {
+  .table-inline-input {
+    font-size: 0.8rem;
+    padding: 0.35rem 0.4rem;
+  }
+}
+
+/* --- Table actions wrapper --- */
+.table-actions {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+/* --- Status pill: prevent overflow --- */
+.status-pill {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* --- Fullwidth module: panel-card first-child --- */
+.view.module--fullwidth .panel-card:first-child {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+.view.module--fullwidth .panel-card:first-child > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Revenue/Profit click → accounts-report: ensure full responsive --- */
+@media (max-width: 768px) {
+  .view.module--reports .toolbar--promote,
+  .view.module--reports .toolbar--simple,
+  .view.module--reports .toolbar--status {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .view.module--reports .toolbar--promote > *,
+  .view.module--reports .toolbar--simple > *,
+  .view.module--reports .toolbar--status > * {
+    width: 100% !important;
+    flex: none !important;
+  }
+  .view.module--reports .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .view.module--reports .form-actions {
+    flex-direction: column !important;
+  }
+  .view.module--reports .form-actions > * {
+    width: 100% !important;
+  }
+}
+
+/* --- Ensure all view modules have proper overflow handling --- */
+.view {
+  min-width: 0;
+  max-width: 100%;
+}
+.view > * {
+  min-width: 0;
+  max-width: 100%;
+}
+.view > article {
+  min-width: 0;
+  max-width: 100%;
+}
+.view .panel-card {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* --- Stats grid inside modules: overflow fix --- */
+.stats-grid > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* ===================================================================
+   FINAL OVERRIDE — NO CONTENT ESCAPES VIEWPORT (mobile only)
+   This block runs LAST and overrides all earlier overflow:visible
+   =================================================================== */
+@media (max-width: 768px) {
+  /* 1. Viewport lock */
+  html, body {
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+
+  /* 2. Shell lock */
+  .app-shell {
+    overflow: hidden !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
+  }
+
+  /* 3. Content area: allow internal scroll but prevent overflow */
+  .content-area {
+    overflow-x: visible !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 0.5rem !important;
+  }
+
+  /* 4. View: max-width enforced, overflow hidden on container */
+  .view,
+  .view.active,
+  .view > *,
+  .view > article {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* 5. Panel-card: NEVER overflow — clip children */
+  .panel-card,
+  .stat-card,
+  .table-card,
+  .dashboard-stat-card,
+  .offline-registry-card,
+  .account-core-card,
+  .super-admin-card {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    min-width: 0 !important;
+  }
+
+  /* 6. Table-wrap: the ONLY place that scrolls horizontally */
+  .table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .table-wrap table {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  /* 7. Split-grid / dashboard-grid: single column */
+  .split-grid,
+  .dashboard-grid,
+  .dashboard-grid--two-col,
+  .dashboard-grid--analytics,
+  .dashboard-grid--attendance-detail {
+    grid-template-columns: 1fr !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    gap: 0.6rem !important;
+  }
+
+  /* 8. Stats grid: 2-col on tablet, 1-col on phone */
+  .stats-grid {
+    grid-template-columns: 1fr 1fr !important;
+    max-width: 100% !important;
+    gap: 0.5rem !important;
+  }
+  @media (max-width: 375px) {
+    .stats-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  /* 9. Hero panel: single column */
+  .hero-panel {
+    grid-template-columns: 1fr !important;
+    max-width: 100% !important;
+    padding: 0.7rem !important;
+    gap: 0.6rem !important;
+    overflow: hidden !important;
+  }
+  .hero-metrics {
+    grid-template-columns: 1fr !important;
+    gap: 0.5rem !important;
+  }
+  .hero-metrics article {
+    min-height: auto !important;
+    padding: 0.6rem !important;
+    overflow: hidden !important;
+  }
+  .hero-metrics article:last-child {
+    grid-column: auto !important;
+    flex-wrap: wrap !important;
+  }
+
+  /* 10. Forms: single column, no overflow */
+  .form-grid,
+  .fees-form-grid,
+  .fee-particulars-grid,
+  .module-line-item,
+  .module-line-item--triple,
+  .invoice-form-grid,
+  .salary-form-grid,
+  .exam-form-grid,
+  .ledger-form-grid,
+  .question-paper-grid,
+  .certificate-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem !important;
+    max-width: 100% !important;
+  }
+  .form-grid > *,
+  .form-grid > .field-group,
+  .form-grid > .field-group--full {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* 11. Toolbars: stack vertically */
+  .toolbar,
+  .module-toolbar,
+  .toolbar--simple,
+  .toolbar--status,
+  .toolbar--promote,
+  .toolbar--students {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+  .toolbar > *,
+  .module-toolbar > * {
+    width: 100% !important;
+    flex: none !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .toolbar .primary-button,
+  .toolbar .secondary-button,
+  .module-toolbar .primary-button,
+  .module-toolbar .secondary-button,
+  .btn-account-action {
+    width: 100% !important;
+    min-height: 40px !important;
+  }
+
+  /* 12. Form inputs: never overflow */
+  .field-group input,
+  .field-group select,
+  .field-group textarea {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    font-size: 16px !important;
+  }
+
+  /* 13. Report cards: 2-col tablet, 1-col phone */
+  .report-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+    max-width: 100% !important;
+    gap: 0.5rem !important;
+  }
+  @media (max-width: 480px) {
+    .report-cards {
+      grid-template-columns: 1fr !important;
+    }
+  }
+
+  /* 14. Accounts filter bar: stack */
+  .accounts-filter-bar {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 0.4rem !important;
+    max-width: 100% !important;
+  }
+  .accounts-filter-bar > * {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  .accounts-filter-date {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* 15. Report grid / split-grid: single column */
+  .report-grid,
+  .split-grid.report-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 16. Module first panel-card: full width */
+  .view.module--reports .panel-card:first-child,
+  .view.module--reports-colorful .panel-card:first-child,
+  .view.module--fees-report .panel-card:first-child,
+  .view.module--employee .panel-card:first-child,
+  .view.module--fullwidth .panel-card:first-child {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* 17. Module-specific tables */
+  .view.module--employee .table-wrap table { min-width: 450px !important; }
+  .view.module--fees-report .table-wrap table { min-width: 500px !important; }
+  .view.module--reports .table-wrap table { min-width: 400px !important; }
+  .view.module--exam .table-wrap table { min-width: 500px !important; }
+  .view.module--timetable .table-wrap table { min-width: 500px !important; }
+
+  /* 18. Employee card actions: single column */
+  .employee-card__actions {
+    grid-template-columns: 1fr !important;
+    gap: 0.4rem !important;
+  }
+
+  /* 19. Homework: stack */
+  .homework-actions-row {
+    flex-direction: column !important;
+  }
+  .homework-actions-row > * {
+    width: 100% !important;
+    flex: none !important;
+  }
+  .homework-pdf-filter-controls {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 20. Student grids: single column */
+  .student-directory-grid,
+  .id-cards-grid,
+  .class-subjects-grid,
+  .subject-meta-grid,
+  .admission-letter-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 21. Modals: full width on small screens */
+  .student-modal__dialog,
+  .employee-modal__dialog {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  /* 22. Section head: stack */
+  .section-head {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+    max-width: 100% !important;
+  }
+  .section-head > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* 23. ALL inline flex containers: wrap */
+  [style*="display:flex"] {
+    flex-wrap: wrap !important;
+    max-width: 100% !important;
+  }
+  [style*="display:flex"] > * {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  [style*="flex: 1"],
+  [style*="flex:1"] {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+  [style*="width: 100%"] {
+    max-width: 100% !important;
+  }
+  [style*="min-width"] {
+    min-width: 0 !important;
+  }
+
+  /* 24. Inline style tables: override min-width */
+  table[style*="min-width"] {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  /* 25. Offline registry card */
+  .offline-registry-card {
+    position: static !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+
+  /* 26. Search dropdowns */
+  .search-dropdown {
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+
+  /* 27. Report chart box */
+  .report-chart-box {
+    min-height: 120px !important;
+    overflow: hidden !important;
+  }
+
+  /* 28. Form actions */
+  .form-actions {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .form-actions > * {
+    width: 100% !important;
+  }
+
+  /* 29. Employee table actions */
+  .table-actions {
+    flex-wrap: wrap !important;
+    gap: 0.3rem !important;
+  }
+  .table-action-btn {
+    min-height: 32px !important;
+    font-size: 0.75rem !important;
+    padding: 0.3rem 0.5rem !important;
+  }
+  .table-inline-input {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    font-size: 0.8rem !important;
+  }
+
+  /* 30. Module header row */
+  .module-header-row {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    align-items: stretch !important;
+  }
+  .module-header-row > * {
+    width: 100% !important;
+  }
+
+  /* 31. Salary cards: single column */
+  .salary-cards-row {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 32. Exam marks: single column */
+  .exam-marks-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 33. Attendance mark group */
+  .attendance-mark-group {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* 34. Timetable grid */
+  .timetable-grid {
+    grid-template-columns: 1fr !important;
+    overflow-x: auto !important;
+  }
+
+  /* 35. Module center title */
+  .module-center-title {
+    word-break: break-word !important;
+    overflow-wrap: break-word !important;
+    padding: 0 0.3rem !important;
+  }
+
+  /* 36. Status pill */
+  .status-pill {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  /* 37. Primary/secondary buttons */
+  .primary-button,
+  .secondary-button {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* 38. Content area padding */
+  .content-area {
+    padding: 0.5rem !important;
+  }
+
+  /* 39. Panel card padding */
+  .panel-card {
+    padding: 0.8rem !important;
+  }
+
+  /* 40. Dashboard action buttons */
+  .dashboard-action-buttons {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .dashboard-action-buttons .primary-button {
+    width: 100% !important;
+  }
+}
