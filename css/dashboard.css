@@ -4099,7 +4099,6 @@ th {
     padding: 1rem;
     width: 100% !important;
     max-width: 100% !important;
-    overflow-x: hidden;
     box-sizing: border-box;
   }
 
@@ -7268,6 +7267,9 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .accounts-filter-date { width: 100% !important; min-height: 40px !important; max-width: 100% !important; }
   .btn-account-action { min-height: 40px !important; padding: 0.5rem 0.4rem !important; font-size: 0.75rem !important; max-width: 100% !important; }
 
+  /* Report bar row */
+  .report-bar-row { grid-template-columns: 60px 1fr 40px !important; gap: 0.5rem !important; }
+
   /* Fees module */
   .fees-form-grid, .fee-particulars-grid, .module-line-item, .module-line-item--triple, .invoice-form-grid { grid-template-columns: 1fr !important; }
 
@@ -8997,5 +8999,14 @@ img, video, svg { max-width: 100%; height: auto; }
   }
   .certificate-print-card [style*="grid-template-columns: repeat(4"] {
     grid-template-columns: 1fr 1fr !important;
+  }
+
+  /* 49. Report bar row collapse */
+  .report-bar-row { grid-template-columns: 60px 1fr 40px !important; gap: 0.5rem !important; }
+
+  /* 50. Fee invoice 3-column grid collapse */
+  [style*="grid-template-columns:92px 1fr 92px"],
+  [style*="grid-template-columns: 92px 1fr 92px"] {
+    grid-template-columns: 1fr !important;
   }
 }
