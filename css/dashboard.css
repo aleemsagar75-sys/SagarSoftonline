@@ -7399,6 +7399,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 /* ===================================================================
    PROFILE DROPDOWN + NOTIFICATION DROPDOWN — FULL MOBILE RESPONSIVE
    Works on: Android, iPhone, iPad, tablets, all screen sizes
+   Mobile: centered on screen via position:fixed + left/right equal margins
    =================================================================== */
 
 /* --- Desktop base (1024px+) — already defined above, no changes needed --- */
@@ -7416,7 +7417,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .profile-menu__dropdown { min-width: 190px !important; }
 }
 
-/* --- Large phone (768px) --- */
+/* --- Mobile (768px and below): both dropdowns centered on screen --- */
 @media (max-width: 768px) {
   /* Topbar compact */
   .topbar__right { gap: 0.3rem !important; }
@@ -7428,15 +7429,15 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .profile-avatar { width: 36px !important; height: 36px !important; font-size: 0.72rem !important; }
   .profile-copy { display: none !important; }
 
-  /* Profile dropdown */
+  /* Profile dropdown — centered on screen */
   .profile-menu__dropdown {
-    position: absolute !important;
-    right: 0 !important;
-    left: auto !important;
-    top: calc(100% + 0.5rem) !important;
-    width: 240px !important;
-    min-width: 200px !important;
-    max-width: calc(100vw - 1.5rem) !important;
+    position: fixed !important;
+    top: 52px !important;
+    left: 1rem !important;
+    right: 1rem !important;
+    width: auto !important;
+    max-width: 300px !important;
+    margin: 0 auto !important;
     padding: 0.5rem !important;
     border-radius: 16px !important;
     max-height: 70vh !important;
@@ -7452,14 +7453,15 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
     border-radius: 12px !important;
   }
 
-  /* Notification dropdown */
+  /* Notification dropdown — centered on screen */
   .notification-menu__dropdown {
-    position: absolute !important;
-    right: 0 !important;
-    left: auto !important;
-    top: calc(100% + 0.5rem) !important;
-    width: min(360px, 85vw) !important;
-    max-width: calc(100vw - 1.5rem) !important;
+    position: fixed !important;
+    top: 52px !important;
+    left: 1rem !important;
+    right: 1rem !important;
+    width: auto !important;
+    max-width: 380px !important;
+    margin: 0 auto !important;
     max-height: 55vh !important;
     border-radius: 16px !important;
     box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(0,0,0,0.08) !important;
@@ -7498,13 +7500,10 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .profile-avatar { width: 32px !important; height: 32px !important; font-size: 0.68rem !important; }
   .profile-copy { display: none !important; }
   .profile-menu__dropdown {
-    width: 220px !important;
-    min-width: 180px !important;
-    max-width: calc(100vw - 1.2rem) !important;
-    right: -0.25rem !important;
+    top: 48px !important;
+    max-width: 280px !important;
     border-radius: 14px !important;
     padding: 0.4rem !important;
-    z-index: 9999 !important;
   }
   .dropdown-link {
     min-height: 40px !important;
@@ -7515,12 +7514,10 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 
   /* Notification */
   .notification-menu__dropdown {
-    width: min(320px, 90vw) !important;
-    max-width: calc(100vw - 1rem) !important;
-    right: -0.25rem !important;
+    top: 48px !important;
+    max-width: 340px !important;
     border-radius: 14px !important;
     max-height: 50vh !important;
-    z-index: 9999 !important;
   }
   .notification-menu__head { padding: 0.55rem 0.7rem !important; }
   .notification-menu__list {
@@ -7532,7 +7529,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .notification-item p { font-size: 0.75rem !important; }
 }
 
-/* --- Small phone (480px) — iPhone SE, Galaxy Mini --- */
+/* --- Small phone (480px) --- */
 @media (max-width: 480px) {
   .topbar { padding: 0.4rem 0.5rem !important; }
   .topbar__right { gap: 0.2rem !important; }
@@ -7543,16 +7540,10 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .profile-avatar { width: 30px !important; height: 30px !important; font-size: 0.65rem !important; border-radius: 50% !important; }
   .profile-copy { display: none !important; }
   .profile-menu__dropdown {
-    position: absolute !important;
-    right: 0 !important;
-    left: auto !important;
-    top: calc(100% + 0.4rem) !important;
-    width: 200px !important;
-    min-width: 180px !important;
-    max-width: calc(100vw - 0.8rem) !important;
+    top: 46px !important;
+    max-width: 260px !important;
     border-radius: 14px !important;
     padding: 0.4rem !important;
-    z-index: 9999 !important;
   }
   .dropdown-link {
     min-height: 44px !important;
@@ -7564,15 +7555,10 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 
   /* Notification */
   .notification-menu__dropdown {
-    position: absolute !important;
-    right: 0 !important;
-    left: auto !important;
-    top: calc(100% + 0.4rem) !important;
-    width: calc(100vw - 0.8rem) !important;
+    top: 46px !important;
     max-width: 320px !important;
     border-radius: 14px !important;
     max-height: 50vh !important;
-    z-index: 9999 !important;
   }
   .notification-menu__head { padding: 0.5rem 0.7rem !important; }
   .notification-menu__list {
@@ -7585,14 +7571,14 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .notification-item p { font-size: 0.74rem !important; line-height: 1.4 !important; }
 }
 
-/* --- Extra small (375px) — iPhone SE 2nd gen, older phones --- */
+/* --- Extra small (375px) --- */
 @media (max-width: 375px) {
   .topbar { padding: 0.35rem 0.45rem !important; }
   .topbar__right .icon-button { width: 30px !important; height: 30px !important; }
   .profile-avatar { width: 28px !important; height: 28px !important; font-size: 0.6rem !important; }
-  .profile-menu__dropdown { max-height: 60vh !important; padding: 0.4rem 0.5rem 0.8rem !important; }
+  .profile-menu__dropdown { max-height: 60vh !important; padding: 0.4rem 0.5rem 0.8rem !important; max-width: 240px !important; }
   .dropdown-link { min-height: 44px !important; padding: 0.7rem 0.85rem !important; font-size: 0.88rem !important; }
-  .notification-menu__dropdown { max-height: 65vh !important; }
+  .notification-menu__dropdown { max-height: 65vh !important; max-width: 300px !important; }
   .notification-menu__list { max-height: calc(65vh - 55px) !important; }
   .notification-item { padding: 0.45rem !important; }
   .notification-item strong { font-size: 0.78rem !important; }
@@ -7603,9 +7589,9 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 @media (max-width: 320px) {
   .topbar__right .icon-button { width: 28px !important; height: 28px !important; }
   .profile-avatar { width: 26px !important; height: 26px !important; }
-  .profile-menu__dropdown { max-height: 55vh !important; }
+  .profile-menu__dropdown { max-height: 55vh !important; max-width: 220px !important; }
   .dropdown-link { min-height: 42px !important; font-size: 0.84rem !important; }
-  .notification-menu__dropdown { max-height: 60vh !important; }
+  .notification-menu__dropdown { max-height: 60vh !important; max-width: 280px !important; }
   .notification-menu__list { max-height: calc(60vh - 50px) !important; }
 }
 
