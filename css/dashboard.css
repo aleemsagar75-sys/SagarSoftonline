@@ -7193,7 +7193,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .view.active > article { max-width: 100% !important; overflow: hidden !important; }
   .table-wrap { width: 100% !important; max-width: 100% !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
   .panel-card { max-width: 100% !important; overflow: hidden !important; }
-  .split-grid { max-width: 100% !important; }
+  .split-grid { grid-template-columns: 1fr !important; max-width: 100% !important; overflow: hidden !important; }
   .stat-card, .table-card { max-width: 100% !important; overflow: hidden !important; }
   table { width: 100% !important; }
 
