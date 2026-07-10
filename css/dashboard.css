@@ -4460,71 +4460,7 @@ th {
   animation: viewFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ===== RICH STAT CARD TONES ===== */
-.dashboard-stat-card--students {
-  background: linear-gradient(135deg, #b8f3df 0%, #8beac7 50%, #5edfae 100%);
-  border-left: 6px solid #0f9b6e;
-}
-.dashboard-stat-card--students .stat-card__top .menu-icon {
-  background: rgba(15, 155, 110, 0.25);
-  color: #0f9b6e;
-}
-.dashboard-stat-card--teachers {
-  background: linear-gradient(135deg, #b8e1d5 0%, #8ed1bf 50%, #65bfa9 100%);
-  border-left: 6px solid #145a73;
-}
-.dashboard-stat-card--teachers .stat-card__top .menu-icon {
-  background: rgba(20, 90, 115, 0.25);
-  color: #145a73;
-}
-.dashboard-stat-card--classes {
-  background: linear-gradient(135deg, #b8d5ff 0%, #8fb8ff 50%, #669bff 100%);
-  border-left: 6px solid #2b5fd9;
-}
-.dashboard-stat-card--classes .stat-card__top .menu-icon {
-  background: rgba(43, 95, 217, 0.25);
-  color: #2b5fd9;
-}
-.dashboard-stat-card--fees {
-  background: linear-gradient(135deg, #a8ebcb 0%, #7ae1b2 50%, #4dd699 100%);
-  border-left: 6px solid #0d8b4e;
-}
-.dashboard-stat-card--fees .stat-card__top .menu-icon {
-  background: rgba(13, 139, 78, 0.25);
-  color: #0d8b4e;
-}
-.dashboard-stat-card--attendance {
-  background: linear-gradient(135deg, #b9c7ff 0%, #96abff 50%, #738fff 100%);
-  border-left: 6px solid #2644a3;
-}
-.dashboard-stat-card--attendance .stat-card__top .menu-icon {
-  background: rgba(38, 68, 163, 0.25);
-  color: #2644a3;
-}
-.dashboard-stat-card--parents {
-  background: linear-gradient(135deg, #c9b9ef 0%, #b098e5 50%, #9777db 100%);
-  border-left: 6px solid #6941c6;
-}
-.dashboard-stat-card--parents .stat-card__top .menu-icon {
-  background: rgba(105, 65, 198, 0.25);
-  color: #6941c6;
-}
-.dashboard-stat-card--subjects {
-  background: linear-gradient(135deg, #f9dba8 0%, #f6ca7d 50%, #f3b952 100%);
-  border-left: 6px solid #c98a0e;
-}
-.dashboard-stat-card--subjects .stat-card__top .menu-icon {
-  background: rgba(201, 138, 14, 0.28);
-  color: #c98a0e;
-}
-.dashboard-stat-card--activity {
-  background: linear-gradient(135deg, #cdd1d8 0%, #b3b8c3 50%, #999fae 100%);
-  border-left: 6px solid #4d5b6e;
-}
-.dashboard-stat-card--activity .stat-card__top .menu-icon {
-  background: rgba(77, 91, 110, 0.25);
-  color: #4d5b6e;
-}
+/* ===== RICH STAT CARD TONES — REMOVED (using animated wave cards at bottom) ===== */
 
 .stat-card:hover,
 .panel-card:hover,
@@ -4532,11 +4468,6 @@ th {
   transform: translateY(-4px);
   box-shadow: 0 20px 48px rgba(15, 43, 63, 0.18);
   border-color: rgba(27, 95, 122, 0.3);
-}
-
-.dashboard-stat-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 24px 52px rgba(15, 43, 63, 0.22);
 }
 
 .class-card:hover,
@@ -6908,23 +6839,28 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .dashboard-grid--two-col { grid-template-columns: 1fr; }
 }
 
-/* ===== DASHBOARD STAT CARDS — COLOR WAVE ANIMATION ===== */
-@keyframes cardWave1 {
-  0%, 100% { background-position: 0% 50%; }
+/* ===== DASHBOARD STAT CARDS — SLOW COLOR WAVE ===== */
+@keyframes wave1 {
+  0% { background-position: 0% 50%; }
+  25% { background-position: 50% 0%; }
   50% { background-position: 100% 50%; }
+  75% { background-position: 50% 100%; }
+  100% { background-position: 0% 50%; }
 }
-@keyframes cardWave2 {
-  0%, 100% { background-position: 100% 0%; }
-  50% { background-position: 0% 100%; }
+@keyframes wave2 {
+  0% { background-position: 100% 100%; }
+  25% { background-position: 0% 50%; }
+  50% { background-position: 50% 0%; }
+  75% { background-position: 100% 50%; }
+  100% { background-position: 100% 100%; }
 }
-@keyframes cardShimmer {
-  0% { opacity: 0; transform: translateX(-100%) rotate(12deg); }
-  50% { opacity: 0.15; }
-  100% { opacity: 0; transform: translateX(200%) rotate(12deg); }
+@keyframes shimmerSlide {
+  0% { transform: translateX(-150%) rotate(15deg); }
+  100% { transform: translateX(250%) rotate(15deg); }
 }
-@keyframes cardPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.02); }
+@keyframes iconFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
 }
 
 .dashboard-stat-card {
@@ -6932,42 +6868,39 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   overflow: hidden;
   cursor: pointer;
   border: none !important;
-  border-radius: 20px !important;
-  padding: 1.3rem !important;
-  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.35s ease !important;
-}
-
-.dashboard-stat-card::before {
-  content: "";
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  border-radius: 20px;
-  z-index: 0;
-  transition: opacity 0.4s ease;
+  border-radius: 22px !important;
+  padding: 1.3rem 1.4rem !important;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.4s ease !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .dashboard-stat-card::after {
   content: "";
   position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.18) 45%, rgba(255,255,255,0.28) 50%, rgba(255,255,255,0.18) 55%, transparent 60%);
+  top: -60%;
+  left: -60%;
+  width: 220%;
+  height: 220%;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,0.12) 42%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.12) 58%, transparent 62%);
   z-index: 1;
   pointer-events: none;
-  animation: cardShimmer 4s ease-in-out infinite;
+  animation: shimmerSlide 6s ease-in-out infinite;
 }
 
 .dashboard-stat-card > * { position: relative; z-index: 2; }
 
 .dashboard-stat-card:hover {
-  transform: translateY(-6px) scale(1.02) !important;
-  box-shadow: 0 16px 40px rgba(0,0,0,0.18) !important;
+  transform: translateY(-8px) scale(1.03) !important;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.25) !important;
 }
 
 .dashboard-stat-card:active {
-  transform: translateY(-2px) scale(0.98) !important;
+  transform: translateY(-2px) scale(0.97) !important;
 }
 
 .dashboard-stat-card .stat-card__top {
@@ -6977,123 +6910,201 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 }
 
 .dashboard-stat-card .menu-icon {
-  width: 48px; height: 48px;
-  border-radius: 14px;
+  width: 52px; height: 52px;
+  border-radius: 16px;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(255,255,255,0.22) !important;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  background: rgba(255,255,255,0.2) !important;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  animation: iconFloat 4s ease-in-out infinite;
 }
 
 .dashboard-stat-card .menu-icon img,
 .dashboard-stat-card .menu-icon i {
-  width: 26px; height: 26px; object-fit: contain;
+  width: 28px; height: 28px; object-fit: contain;
   filter: brightness(0) invert(1);
 }
 
 .dashboard-stat-card strong {
-  font-size: 2rem;
-  font-weight: 800;
+  font-size: 2.2rem;
+  font-weight: 900;
   color: #fff !important;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.15);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.25), 0 0 20px rgba(255,255,255,0.15);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .dashboard-stat-card .panel-label {
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 700;
-  color: rgba(255,255,255,0.85) !important;
-  margin-bottom: 0.2rem;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  color: #fff !important;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  margin-bottom: 0.25rem;
+  opacity: 0.95;
 }
 
 .dashboard-stat-card .metric-note {
   display: block;
-  margin-top: 0.5rem;
-  font-size: 0.78rem;
-  color: rgba(255,255,255,0.72) !important;
-  font-weight: 500;
+  margin-top: 0.6rem;
+  font-size: 0.76rem;
+  color: rgba(255,255,255,0.88) !important;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.15);
 }
 
-/* Students — Blue → Teal wave */
+/* === STUDENTS — Sky Blue → Cyan → Teal === */
 .dashboard-stat-card--students {
-  background: linear-gradient(135deg, #0ea5e9, #06b6d4, #14b8a6, #0ea5e9) !important;
-  background-size: 300% 300% !important;
-  animation: cardWave1 6s ease infinite;
+  background: linear-gradient(135deg, #0284c7, #0ea5e9, #06b6d4, #14b8a6, #0ea5e9, #0284c7) !important;
+  background-size: 400% 400% !important;
+  animation: wave1 12s ease infinite;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(14,165,233,0.32) !important;
+  box-shadow: 0 8px 28px rgba(14,165,233,0.4) !important;
+}
+.dashboard-stat-card--students::before {
+  content: "";
+  position: absolute;
+  top: -30%; right: -20%;
+  width: 70%; height: 130%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.08) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Teachers — Indigo → Violet wave */
+/* === TEACHERS — Indigo → Violet → Purple === */
 .dashboard-stat-card--teachers {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa, #6366f1) !important;
-  background-size: 300% 300% !important;
-  animation: cardWave2 7s ease infinite;
+  background: linear-gradient(135deg, #4f46e5, #6366f1, #8b5cf6, #a78bfa, #8b5cf6, #4f46e5) !important;
+  background-size: 400% 400% !important;
+  animation: wave2 14s ease infinite;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(99,102,241,0.32) !important;
+  box-shadow: 0 8px 28px rgba(99,102,241,0.4) !important;
+}
+.dashboard-stat-card--teachers::before {
+  content: "";
+  position: absolute;
+  top: -30%; right: -20%;
+  width: 70%; height: 130%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.07) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Classes — Emerald → Green wave */
+/* === CLASSES — Emerald → Green → Lime === */
 .dashboard-stat-card--classes {
-  background: linear-gradient(135deg, #10b981, #22c55e, #34d399, #10b981) !important;
-  background-size: 300% 300% !important;
-  animation: cardWave1 6.5s ease infinite;
+  background: linear-gradient(135deg, #059669, #10b981, #22c55e, #34d399, #22c55e, #059669) !important;
+  background-size: 400% 400% !important;
+  animation: wave1 13s ease infinite;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(16,185,129,0.32) !important;
+  box-shadow: 0 8px 28px rgba(16,185,129,0.4) !important;
+}
+.dashboard-stat-card--classes::before {
+  content: "";
+  position: absolute;
+  top: -30%; right: -20%;
+  width: 70%; height: 130%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.07) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Fees — Amber → Orange wave */
+/* === FEES — Amber → Orange → Red === */
 .dashboard-stat-card--fees {
-  background: linear-gradient(135deg, #f59e0b, #f97316, #fb923c, #f59e0b) !important;
-  background-size: 300% 300% !important;
-  animation: cardWave2 5.5s ease infinite;
+  background: linear-gradient(135deg, #d97706, #f59e0b, #f97316, #fb923c, #f97316, #d97706) !important;
+  background-size: 400% 400% !important;
+  animation: wave2 11s ease infinite;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(245,158,11,0.32) !important;
+  box-shadow: 0 8px 28px rgba(245,158,11,0.4) !important;
+}
+.dashboard-stat-card--fees::before {
+  content: "";
+  position: absolute;
+  top: -30%; right: -20%;
+  width: 70%; height: 130%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.08) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Attendance — Rose → Pink wave */
+/* === ATTENDANCE — Rose → Pink → Fuchsia === */
 .dashboard-stat-card--attendance {
-  background: linear-gradient(135deg, #f43f5e, #ec4899, #f472b6, #f43f5e) !important;
-  background-size: 300% 300% !important;
-  animation: cardWave1 7s ease infinite;
+  background: linear-gradient(135deg, #e11d48, #f43f5e, #ec4899, #f472b6, #ec4899, #e11d48) !important;
+  background-size: 400% 400% !important;
+  animation: wave1 14s ease infinite;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(244,63,94,0.32) !important;
+  box-shadow: 0 8px 28px rgba(244,63,94,0.4) !important;
+}
+.dashboard-stat-card--attendance::before {
+  content: "";
+  position: absolute;
+  top: -30%; right: -20%;
+  width: 70%; height: 130%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.07) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Parents — Sky → Blue wave */
+/* === PARENTS — Sky → Blue → Indigo === */
 .dashboard-stat-card--parents {
-  background: linear-gradient(135deg, #0284c7, #2563eb, #3b82f6, #0284c7) !important;
-  background-size: 300% 300% !important;
-  animation: cardWave2 6s ease infinite;
+  background: linear-gradient(135deg, #0369a1, #0284c7, #2563eb, #3b82f6, #2563eb, #0369a1) !important;
+  background-size: 400% 400% !important;
+  animation: wave2 12s ease infinite;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(37,99,235,0.32) !important;
+  box-shadow: 0 8px 28px rgba(37,99,235,0.4) !important;
+}
+.dashboard-stat-card--parents::before {
+  content: "";
+  position: absolute;
+  top: -30%; right: -20%;
+  width: 70%; height: 130%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.07) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Subjects — Cyan → Teal wave */
+/* === SUBJECTS — Cyan → Teal → Emerald === */
 .dashboard-stat-card--subjects {
-  background: linear-gradient(135deg, #06b6d4, #0891b2, #22d3ee, #06b6d4) !important;
-  background-size: 300% 300% !important;
-  animation: cardWave1 6s ease infinite;
+  background: linear-gradient(135deg, #0891b2, #06b6d4, #14b8a6, #22d3ee, #14b8a6, #0891b2) !important;
+  background-size: 400% 400% !important;
+  animation: wave1 13s ease infinite;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(6,182,212,0.32) !important;
+  box-shadow: 0 8px 28px rgba(6,182,212,0.4) !important;
+}
+.dashboard-stat-card--subjects::before {
+  content: "";
+  position: absolute;
+  top: -30%; right: -20%;
+  width: 70%; height: 130%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.08) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Activity — Slate → Blue-gray wave */
+/* === ACTIVITY — Slate → Indigo → Violet === */
 .dashboard-stat-card--activity {
-  background: linear-gradient(135deg, #475569, #6366f1, #818cf8, #475569) !important;
-  background-size: 300% 300% !important;
-  animation: cardWave2 7.5s ease infinite;
+  background: linear-gradient(135deg, #334155, #475569, #6366f1, #818cf8, #6366f1, #334155) !important;
+  background-size: 400% 400% !important;
+  animation: wave2 15s ease infinite;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(71,85,105,0.32) !important;
+  box-shadow: 0 8px 28px rgba(99,102,241,0.35) !important;
+}
+.dashboard-stat-card--activity::before {
+  content: "";
+  position: absolute;
+  top: -30%; right: -20%;
+  width: 70%; height: 130%;
+  background: radial-gradient(ellipse, rgba(255,255,255,0.06) 0%, transparent 70%);
+  z-index: 0;
+  pointer-events: none;
 }
 
-/* Default fallback */
+/* === DEFAULT FALLBACK === */
 .dashboard-stat-card--default {
-  background: linear-gradient(135deg, #1b5f7a, #2fb08a, #3b82f6, #1b5f7a) !important;
-  background-size: 300% 300% !important;
-  animation: cardWave1 6s ease infinite;
+  background: linear-gradient(135deg, #1b5f7a, #2196f3, #2fb08a, #3b82f6, #2fb08a, #1b5f7a) !important;
+  background-size: 400% 400% !important;
+  animation: wave1 12s ease infinite;
   color: #fff;
-  box-shadow: 0 8px 24px rgba(27,95,122,0.32) !important;
+  box-shadow: 0 8px 28px rgba(27,95,122,0.4) !important;
 }
 
 /* ===== LOADING OVERLAY — PROFESSIONAL ===== */
