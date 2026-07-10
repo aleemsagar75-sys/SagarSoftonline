@@ -2373,7 +2373,7 @@ body {
 }
 
 .view.module--employee .table-wrap table {
-  min-width: 760px;
+  min-width: 600px;
 }
 
 .view.module--employee .table-wrap th,
@@ -2469,7 +2469,7 @@ body {
 
 .view.module--fees-report .table-wrap table,
 .view.module--delete-fees .table-wrap table {
-  min-width: 920px;
+  min-width: 600px;
 }
 
 .view.module--fees-report .table-wrap th,
@@ -2532,7 +2532,7 @@ body {
 }
 
 .view.module--salary-report .table-wrap table {
-  min-width: 940px;
+  min-width: 600px;
 }
 
 .view.module--salary-report .table-wrap th,
@@ -2583,7 +2583,7 @@ body {
 }
 
 .view.module--attendance .table-wrap table {
-  min-width: 860px;
+  min-width: 600px;
 }
 
 .view.module--attendance .table-wrap th,
@@ -3052,7 +3052,7 @@ body {
 }
 
 .view.module--exam .table-wrap table {
-  min-width: 960px;
+  min-width: 600px;
 }
 
 .view.module--exam .table-wrap th,
@@ -3097,7 +3097,7 @@ body {
 }
 
 .view.module--timetable .table-wrap table {
-  min-width: 1020px;
+  min-width: 600px;
 }
 
 .view.module--timetable .table-wrap th,
@@ -3174,7 +3174,7 @@ body {
 }
 
 .view.module--reports .table-wrap table {
-  min-width: 980px;
+  min-width: 600px;
 }
 
 .view.module--reports .table-wrap th,
@@ -3324,7 +3324,7 @@ body {
 }
 
 .view.module--whatsapp .whatsapp-history-card .table-wrap table {
-  min-width: 900px;
+  min-width: 600px;
 }
 
 .view.module--homework .split-grid {
@@ -3881,7 +3881,7 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 640px;
+  min-width: 500px;
 }
 
 th,
@@ -4581,7 +4581,6 @@ table tbody tr:hover {
   border: 1px solid rgba(27, 95, 122, 0.16);
   box-shadow: 0 2px 8px rgba(15, 43, 63, 0.08), 0 8px 24px rgba(15, 43, 63, 0.04);
   position: relative;
-  overflow: hidden;
 }
 .panel-card::before {
   content: "";
@@ -6055,7 +6054,7 @@ select:focus, input:focus, textarea:focus {
   .view.module--account .offline-registry-card .registry-table-wrap .table-action-btn { font-size: 9px !important; padding: 0.1rem 0.25rem !important; min-height: 22px !important; }
   .view.module--account .account-core-card { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
   .view.module--account .account-core-card .form-grid .field-group { min-width: 0 !important; }
-  .view.module--account .super-admin-card { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; overflow: hidden !important; }
+  .view.module--account .super-admin-card { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
   .view.module--account .super-admin-card .data-table { display: block !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
   .view.module--account .subscription-activation-card { width: 100% !important; max-width: 100% !important; box-sizing: border-box !important; }
   .view.module--account .subscription-activation-card .form-grid .field-group { min-width: 0 !important; }
@@ -7212,13 +7211,13 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   html, body { overflow-x: hidden !important; max-width: 100vw !important; width: 100vw !important; }
   .app-shell { overflow: hidden !important; max-width: 100vw !important; width: 100vw !important; grid-template-columns: 1fr !important; }
   .content-area { overflow-x: visible !important; max-width: 100% !important; width: 100% !important; padding: 0.65rem !important; }
-  .view.active { overflow: hidden !important; max-width: 100% !important; width: 100% !important; }
-  .view.active > * { max-width: 100% !important; overflow: hidden !important; }
-  .view.active > article { max-width: 100% !important; overflow: hidden !important; }
+  .view.active { max-width: 100% !important; width: 100% !important; }
+  .view.active > * { max-width: 100% !important; }
+  .view.active > article { max-width: 100% !important; }
   .table-wrap { width: 100% !important; max-width: 100% !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
-  .panel-card { max-width: 100% !important; overflow: hidden !important; }
-  .split-grid { grid-template-columns: 1fr !important; max-width: 100% !important; overflow: hidden !important; }
-  .stat-card, .table-card { max-width: 100% !important; overflow: hidden !important; }
+  .panel-card { max-width: 100% !important; }
+  .split-grid { grid-template-columns: 1fr !important; max-width: 100% !important; }
+  .stat-card, .table-card { max-width: 100% !important; }
   table { width: 100% !important; }
 
   /* Override ALL inline grid-template-columns on ANY element — collapse to 1 column */
@@ -7740,10 +7739,8 @@ img, video, svg { max-width: 100%; height: auto; }
 
 /* --- Hero panel: responsive profit/revenue --- */
 .hero-panel {
-  overflow: hidden;
 }
 .hero-metrics article {
-  overflow: hidden;
 }
 .hero-stat-value {
   font-size: clamp(1.2rem, 4vw, 2.4rem);
@@ -7856,8 +7853,12 @@ img, video, svg { max-width: 100%; height: auto; }
 }
 
 /* --- Stat cards: prevent overflow --- */
-.stat-card, .dashboard-stat-card {
+.dashboard-stat-card {
   overflow: hidden;
+  word-break: break-word;
+  min-width: 0;
+}
+.stat-card {
   word-break: break-word;
   min-width: 0;
 }
@@ -8562,18 +8563,17 @@ img, video, svg { max-width: 100%; height: auto; }
     padding: 0.5rem !important;
   }
 
-  /* 4. View: max-width enforced, overflow hidden on container */
+  /* 4. View: max-width enforced, min-width 0 to prevent grid blowout */
   .view,
   .view.active,
   .view > *,
   .view > article {
     max-width: 100% !important;
-    overflow: hidden !important;
     min-width: 0 !important;
     width: 100% !important;
   }
 
-  /* 5. Panel-card: NEVER overflow — clip children */
+  /* 5. Panel-card and cards: max-width enforced, no overflow clipping */
   .panel-card,
   .stat-card,
   .table-card,
@@ -8582,7 +8582,6 @@ img, video, svg { max-width: 100%; height: auto; }
   .account-core-card,
   .super-admin-card {
     max-width: 100% !important;
-    overflow: hidden !important;
     min-width: 0 !important;
   }
 
@@ -8631,7 +8630,6 @@ img, video, svg { max-width: 100%; height: auto; }
     max-width: 100% !important;
     padding: 0.7rem !important;
     gap: 0.6rem !important;
-    overflow: hidden !important;
   }
   .hero-metrics {
     grid-template-columns: 1fr !important;
@@ -8640,7 +8638,6 @@ img, video, svg { max-width: 100%; height: auto; }
   .hero-metrics article {
     min-height: auto !important;
     padding: 0.6rem !important;
-    overflow: hidden !important;
   }
   .hero-metrics article:last-child {
     grid-column: auto !important;
@@ -8752,7 +8749,6 @@ img, video, svg { max-width: 100%; height: auto; }
   .view.module--fullwidth .panel-card:first-child {
     width: 100% !important;
     max-width: 100% !important;
-    overflow: hidden !important;
   }
 
   /* 17. Module-specific tables */
@@ -8842,7 +8838,6 @@ img, video, svg { max-width: 100%; height: auto; }
   .offline-registry-card {
     position: static !important;
     max-width: 100% !important;
-    overflow: hidden !important;
   }
 
   /* 26. Search dropdowns */
