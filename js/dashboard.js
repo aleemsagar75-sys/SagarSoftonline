@@ -16146,7 +16146,7 @@ ${allContent}
               }
               btn.addEventListener("click", function () {
                 if (isImageItem) {
-                  insertAtCursor(`<img class="${className}" src="${escapeAttr(glyphSrc)}" alt="${escapeAttr(glyphText || "item")}" style="width:180px;height:auto;">`);
+                  insertAtCursor(`<img class="${className}" src="${escapeAttr(glyphSrc)}" alt="${escapeAttr(glyphText || "item")}" style="max-width:100%;width:180px;height:auto;">`);
                 } else {
                   const safe = escapeHtml(glyphText);
                   insertAtCursor(`<span class="${className}" style="font-size:24px;line-height:1.2;">${safe}</span>`);
@@ -20463,7 +20463,7 @@ ${allContent}
         var school = n.school_name || n.school_id || "All Schools";
         var title = escapeHtml(String(n.title || "Notification"));
         var msg = escapeHtml(String(n.message || ""));
-        return '<tr><td style="white-space:nowrap;">' + date + '</td><td>' + school + '</td><td>' + title + '</td><td>' + msg + '</td></tr>';
+        return '<tr><td>' + date + '</td><td>' + school + '</td><td>' + title + '</td><td>' + msg + '</td></tr>';
       }).join("") || '<tr><td colspan="4" style="text-align:center;padding:16px;">No notifications found.</td></tr>';
     } catch (_e) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;color:#d64b4b;">Failed to load history.</td></tr>';
