@@ -858,7 +858,7 @@ body {
 
 .dashboard-stat-card .panel-label,
 .dashboard-stat-card .metric-note {
-  color: rgba(15, 43, 63, 0.8);
+  color: #fff;
 }
 
 .stat-card:hover {
@@ -6935,32 +6935,26 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 }
 
 .dashboard-stat-card .panel-label {
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 900;
+  letter-spacing: 0.1em;
+  font-weight: 800;
   color: #fff !important;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.35), 0 0 8px rgba(0,0,0,0.18);
-  margin-bottom: 0.25rem;
-  display: inline-block;
-  background: rgba(0,0,0,0.18);
-  padding: 2px 8px;
-  border-radius: 6px;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  -webkit-text-fill-color: #fff !important;
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.4), 0 0 12px rgba(0,0,0,0.2);
+  margin-bottom: 0.2rem;
 }
 
 .dashboard-stat-card .metric-note {
   display: block;
-  margin-top: 0.6rem;
+  margin-top: 0.5rem;
   font-size: 0.76rem;
   color: #fff !important;
-  font-weight: 700;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.25);
-  background: rgba(0,0,0,0.12);
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 6px;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.35);
 }
 
 /* === STUDENTS — Sky Blue → Cyan → Teal === */
@@ -7263,19 +7257,19 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .accounts-filter-bar { flex-wrap: wrap !important; gap: 0.5rem !important; }
 
   /* Employee modal inline grids */
-  [style*="grid-template-columns:repeat(2"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns: repeat(2"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns:repeat(3"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns: repeat(3"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns:100px 1fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns: 100px 1fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns: 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns:86px 1fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns: 86px 1fr"] { grid-template-columns: 1fr !important; }
-  [style*="grid-template-columns:92px 1fr 92px"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns:repeat(2"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns: repeat(2"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns:repeat(3"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns: repeat(3"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns:100px 1fr"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns: 100px 1fr"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns: 1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns:86px 1fr"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns: 86px 1fr"] { grid-template-columns: 1fr !important; }
+  .view.module--employee [style*="grid-template-columns:92px 1fr 92px"] { grid-template-columns: 1fr !important; }
 
   /* Fees module */
   .view.module--fees-defaulters .split-grid { grid-template-columns: 1fr !important; }
