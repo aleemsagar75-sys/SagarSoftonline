@@ -4113,7 +4113,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!employee) {
       return;
     }
-    trackDeletion(employeeId);
+    if (!database._deletedIds) database._deletedIds = [];
+    if (database._deletedIds.indexOf(employeeId) === -1) database._deletedIds.push(employeeId);
     database.teachers = database.teachers.filter(function (item) {
       return item.id !== employeeId;
     });
@@ -4123,7 +4124,9 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     addActivity("Employee deleted", `${employee.name} record was removed.`);
     window.SagarSoftDB.showLoading("Deleting employee...");
-    await window.SagarSoftDB.forceSave(database);
+    try {
+      await window.SagarSoftDB.forceSave(database);
+    } catch (_e) {}
     window.SagarSoftDB.hideLoading();
   }
 
