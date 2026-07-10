@@ -14546,18 +14546,18 @@ ${allContent}
       var _firstOfMonth = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-01";
       var _today = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-" + String(_now.getDate()).padStart(2, "0");
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong class="module-center-title">Account Statement</strong>
-          <div class="accounts-filter-bar">
-            <label class="accounts-filter-label">From<input id="accountsFromInput" type="date" value="${_firstOfMonth}" class="accounts-filter-date"></label>
-            <label class="accounts-filter-label">To<input id="accountsToInput" type="date" value="${_today}" class="accounts-filter-date"></label>
-            <button id="clearAccountsHistoryBtn" type="button" class="btn-account-action btn-danger-action"><i class="fas fa-trash"></i>Clear History</button>
-            <button id="printAccountsBtn" type="button" class="btn-account-action btn-primary-action"><i class="fas fa-print"></i>Print</button>
-            <button id="pdfAccountsBtn" type="button" class="btn-account-action btn-secondary-action"><i class="fas fa-file-pdf"></i>PDF</button>
-            <button id="excelAccountsBtn" type="button" class="btn-account-action btn-secondary-action"><i class="fas fa-file-excel"></i>Excel</button>
+          <div class="accounts-filter-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
+            <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">From<input id="accountsFromInput" type="date" value="${_firstOfMonth}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
+            <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">To<input id="accountsToInput" type="date" value="${_today}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
+            <button id="clearAccountsHistoryBtn" type="button" class="btn-account-action btn-danger-action" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Clear History</button>
+            <button id="printAccountsBtn" type="button" class="btn-account-action btn-primary-action" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Print</button>
+            <button id="pdfAccountsBtn" type="button" class="btn-account-action btn-secondary-action" style="flex:1 1 60px;min-width:0;white-space:normal;text-align:center;justify-content:center;">PDF</button>
+            <button id="excelAccountsBtn" type="button" class="btn-account-action btn-secondary-action" style="flex:1 1 60px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Excel</button>
           </div>
-          <div class="report-cards" id="accountsStats"></div>
-          <div class="table-wrap"><table><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Net Balance</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
+          <div class="report-cards" id="accountsStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;"></div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:500px;width:100%;"><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Net Balance</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -14629,7 +14629,7 @@ ${allContent}
 
       function renderStatement() {
         var data = getStatementRows();
-        statsWrap.innerHTML = '<article class="stat-card"><strong>Total Credit</strong><span>' + data.totalCredit + '</span></article><article class="stat-card"><strong>Total Debit</strong><span>' + data.totalDebit + '</span></article><article class="stat-card"><strong>Net Balance</strong><span>' + data.netBalance + '</span></article><article class="stat-card"><strong>Transactions</strong><span>' + data.rows.length + '</span></article>';
+        statsWrap.innerHTML = '<article class="stat-card" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Credit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0f2b3f;margin-top:2px;">' + data.totalCredit + '</span></article><article class="stat-card" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Debit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0f2b3f;margin-top:2px;">' + data.totalDebit + '</span></article><article class="stat-card" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Net Balance</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0f2b3f;margin-top:2px;">' + data.netBalance + '</span></article><article class="stat-card" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Transactions</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0f2b3f;margin-top:2px;">' + data.rows.length + '</span></article>';
         var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
         var tbody = data.rows.map(function (r) {
           return '<tr><td>' + escapeHtml(r.date) + '</td><td>' + escapeHtml(r.description) + '</td><td>' + (r.debit > 0 ? r.debit : "-") + '</td><td>' + (r.credit > 0 ? r.credit : "-") + '</td><td><strong>' + currencySymbol + ' ' + r.balance + '</strong></td></tr>';
