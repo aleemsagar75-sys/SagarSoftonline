@@ -5188,6 +5188,8 @@ document.addEventListener("DOMContentLoaded", function () {
         expiry: "2027-12-31"
       };
       settings.salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
+      settings.feeCollections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
+      settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
       settings.timetableWeekdays = Array.isArray(settings.timetableWeekdays) ? settings.timetableWeekdays : [];
       settings.timetablePeriods = Array.isArray(settings.timetablePeriods) ? settings.timetablePeriods : [];
       settings.classRooms = Array.isArray(settings.classRooms) ? settings.classRooms : [];
