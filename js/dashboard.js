@@ -10055,43 +10055,19 @@ ${allContent}
 
     if (route === "create-new-exam") {
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Add New Exam</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="examNameInput">Examination Name*</label>
-              <input id="examNameInput" type="text" placeholder="Examination Name">
-            </div>
-            <div class="field-group">
-              <label for="examStartDateInput">Start Date*</label>
-              <input id="examStartDateInput" type="date">
-            </div>
-            <div class="field-group">
-              <label for="examEndDateInput">End Date*</label>
-              <input id="examEndDateInput" type="date">
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Examination Name*</label><input id="examNameInput" type="text" placeholder="Examination Name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Start Date*</label><input id="examStartDateInput" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">End Date*</label><input id="examEndDateInput" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
           </div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveExamBtn" type="button">Save</button>
-          </div>
+          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="saveExamBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Save</button></div>
           <p class="form-message" id="createExamMessage"></p>
         </article>
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;margin-top:8px;">
           <strong>All Created Exams</strong>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Exam Name</th>
-                  <th>Start Date</th>
-                  <th>End Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="allExamsTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:420px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Exam Name</th><th style="white-space:nowrap;">Start Date</th><th style="white-space:nowrap;">End Date</th><th style="white-space:nowrap;">Status</th><th style="white-space:nowrap;">Actions</th></tr></thead><tbody id="allExamsTableBody"></tbody></table></div>
           <p class="empty-state" id="allExamsEmptyState" hidden>No exams created yet.</p>
         </article>
       `;
@@ -10223,33 +10199,14 @@ ${allContent}
       }).join("");
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Add/update Exam Marks</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="examMarksExamSelect">Select Exam*</label>
-              <select id="examMarksExamSelect">
-                <option value="">Select Exam</option>
-                ${examOptionsMarkup}
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="examMarksClassSelect">Select Class*</label>
-              <select id="examMarksClassSelect">
-                <option value="">Select Class</option>
-                ${classOptionsMarkup}
-              </select>
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Exam*</label><select id="examMarksExamSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
+            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="examMarksClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
           </div>
-          <div class="form-actions">
-            <button class="primary-button" id="updateExamMarksBtn" type="button">Update Marks</button>
-          </div>
-          <div class="table-wrap">
-            <table id="examMarksTable">
-              <thead id="examMarksTableHead"></thead>
-              <tbody id="examMarksTableBody"></tbody>
-            </table>
-          </div>
+          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="updateExamMarksBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Update Marks</button></div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table id="examMarksTable" style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead id="examMarksTableHead"></thead><tbody id="examMarksTableBody"></tbody></table></div>
           <p class="empty-state" id="examMarksEmptyState" hidden>Select exam and class to update marks.</p>
           <p class="form-message" id="examMarksMessage"></p>
         </article>
@@ -10356,40 +10313,17 @@ ${allContent}
       const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Result Card</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="resultCardExamSelect">Select Exam*</label>
-              <select id="resultCardExamSelect">
-                <option value="">Select Exam</option>
-                ${examOptionsMarkup}
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="resultCardClassSelect">Select Class*</label>
-              <select id="resultCardClassSelect">
-                <option value="all">Select Class</option>
-                ${classOptionsMarkup}
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="resultCardStudentSearchInput">Search Student*</label>
-              <div id="resultCardSearchContainer" style="position: relative;">
-                <input id="resultCardStudentSearchInput" type="search" placeholder="Search by roll no / name" style="width: 100%;">
-                <div id="resultCardSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
-              </div>
-            </div>
-            <div class="field-group">
-              <label for="resultCardSendChannelSelect">Send SMS</label>
-              <select id="resultCardSendChannelSelect">
-                <option value="sms">SMS</option>
-              </select>
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Exam*</label><select id="resultCardExamSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="resultCardClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">Select Class</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 170px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search Student*</label><input id="resultCardStudentSearchInput" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="resultCardSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
+            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Send SMS</label><select id="resultCardSendChannelSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="sms">SMS</option></select></div>
           </div>
-          <div class="form-actions" style="display:flex;gap:0.75rem;flex-wrap:wrap;margin-top:1.25rem;align-items:center;">
-            <button class="primary-button" id="generateResultCardBtn" type="button">Generate</button>
-            <button class="secondary-button" id="generateResultCardClasswiseBtn" type="button">Generate Classwise</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 4px 0;">
+            <button class="primary-button" id="generateResultCardBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Generate</button>
+            <button class="secondary-button" id="generateResultCardClasswiseBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Generate Classwise</button>
           </div>
           <p class="form-message" id="resultCardMessage"></p>
         </article>
@@ -11157,53 +11091,20 @@ ${allContent}
       }).join("");
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Exam Schedule</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="examScheduleExamSelect">Select Exam*</label>
-              <select id="examScheduleExamSelect"><option value="">Select Exam</option>${examOptionsMarkup}</select>
-            </div>
-            <div class="field-group">
-              <label for="examScheduleClassSelect">Select Class*</label>
-              <select id="examScheduleClassSelect"><option value="">Select Class</option>${classOptionsMarkup}</select>
-            </div>
-            <div class="field-group">
-              <label for="examScheduleSubjectSelect">Subject*</label>
-              <select id="examScheduleSubjectSelect"><option value="">Select Subject</option></select>
-            </div>
-            <div class="field-group">
-              <label for="examScheduleDateInput">Date*</label>
-              <input id="examScheduleDateInput" type="date">
-            </div>
-            <div class="field-group">
-              <label for="examScheduleStartTimeInput">Start Time*</label>
-              <input id="examScheduleStartTimeInput" type="time">
-            </div>
-            <div class="field-group">
-              <label for="examScheduleEndTimeInput">End Time*</label>
-              <input id="examScheduleEndTimeInput" type="time">
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Exam*</label><select id="examScheduleExamSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="examScheduleClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Subject*</label><select id="examScheduleSubjectSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Subject</option></select></div>
           </div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveExamScheduleBtn" type="button">Save Schedule</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date*</label><input id="examScheduleDateInput" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Start Time*</label><input id="examScheduleStartTimeInput" type="time" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">End Time*</label><input id="examScheduleEndTimeInput" type="time" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Exam</th>
-                  <th>Class</th>
-                  <th>Subject</th>
-                  <th>Date</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody id="examScheduleTableBody"></tbody>
-            </table>
-          </div>
+          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="saveExamScheduleBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Save Schedule</button></div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:480px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Exam</th><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Subject</th><th style="white-space:nowrap;">Date</th><th style="white-space:nowrap;">Start</th><th style="white-space:nowrap;">End</th><th style="white-space:nowrap;">Action</th></tr></thead><tbody id="examScheduleTableBody"></tbody></table></div>
           <p class="form-message" id="examScheduleMessage"></p>
         </article>
       `;
@@ -11289,29 +11190,13 @@ ${allContent}
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
       }).join("");
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Date Sheet</strong>
-          <div class="toolbar toolbar--status module-toolbar">
-            <select id="dateSheetClassSelect">
-              <option value="">Select Class</option>
-              ${classOptionsMarkup}
-            </select>
-            <button class="primary-button" id="printDateSheetBtn" type="button">Print Date Sheet</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;margin:10px 0 4px 0;">
+            <div style="flex:1 1 180px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class</label><select id="dateSheetClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
+            <div style="flex:0 0 auto;"><button class="primary-button" id="printDateSheetBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Print Date Sheet</button></div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Exam</th>
-                  <th>Subject</th>
-                  <th>Date</th>
-                  <th>Start</th>
-                  <th>End</th>
-                </tr>
-              </thead>
-              <tbody id="dateSheetTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:400px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Exam</th><th style="white-space:nowrap;">Subject</th><th style="white-space:nowrap;">Date</th><th style="white-space:nowrap;">Start</th><th style="white-space:nowrap;">End</th></tr></thead><tbody id="dateSheetTableBody"></tbody></table></div>
           <p class="empty-state" id="dateSheetEmptyState" hidden>Select class to view date sheet.</p>
         </article>
       `;
@@ -11389,39 +11274,15 @@ ${allContent}
       }).join("");
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Blank Award List</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="blankAwardExamSelect">Select Exam*</label>
-              <select id="blankAwardExamSelect"><option value="">Select Exam</option>${examOptionsMarkup}</select>
-            </div>
-            <div class="field-group">
-              <label for="blankAwardClassSelect">Select Class*</label>
-              <select id="blankAwardClassSelect"><option value="">Select Class</option>${classOptionsMarkup}</select>
-            </div>
-            <div class="field-group">
-              <label for="blankAwardSubjectSelect">Select Subject*</label>
-              <select id="blankAwardSubjectSelect"><option value="">Select Subject</option></select>
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Exam*</label><select id="blankAwardExamSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="blankAwardClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Subject*</label><select id="blankAwardSubjectSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Subject</option></select></div>
           </div>
-          <div class="form-actions">
-            <button class="primary-button" id="printBlankAwardListBtn" type="button">Print Blank Award List</button>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Sr#</th>
-                  <th>Roll No</th>
-                  <th>Student Name</th>
-                  <th>Father Name</th>
-                  <th>Obtained Marks</th>
-                </tr>
-              </thead>
-              <tbody id="blankAwardTableBody"></tbody>
-            </table>
-          </div>
+          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="printBlankAwardListBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Print Blank Award List</button></div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:400px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Sr#</th><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Student Name</th><th style="white-space:nowrap;">Father Name</th><th style="white-space:nowrap;">Obtained Marks</th></tr></thead><tbody id="blankAwardTableBody"></tbody></table></div>
           <p class="empty-state" id="blankAwardEmptyState" hidden>Select exam, class, and subject.</p>
         </article>
       `;
