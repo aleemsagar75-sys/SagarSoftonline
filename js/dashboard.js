@@ -105,13 +105,13 @@ window.handleEmployeeViewClick = function(employeeId) {
         '<h4 style="margin:0 0 0.8rem;color:#0f2b3f;font-size:1rem;">Attendance Report</h4>' +
         '<div style="display:flex;gap:1.5rem;justify-content:center;margin-bottom:1rem;">' +
           '<svg width="100" height="100" viewBox="0 0 100 100">' +
-            '<circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" stroke-width="8"/>' +
             '<circle cx="50" cy="50" r="42" fill="none" stroke="'+(attPct>=75?"#10b981":attPct>=40?"#f59e0b":"#ef4444")+'" stroke-width="8" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ*(1-attPct/100))+'" transform="rotate(-90 50 50)" stroke-linecap="round"/>' +
             '<text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="18" fill="#1e293b">'+attPct+'%</text>' +
             '<text x="50" y="66" text-anchor="middle" font-weight="500" font-size="9" fill="#64748b">Overall</text>' +
           '</svg>' +
           '<svg width="100" height="100" viewBox="0 0 100 100">' +
-            '<circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" stroke-width="8"/>' +
             '<circle cx="50" cy="50" r="42" fill="none" stroke="#6366f1" stroke-width="8" stroke-dasharray="'+circ+'" stroke-dashoffset="0" transform="rotate(-90 50 50)" stroke-linecap="round"/>' +
             '<text x="50" y="44" text-anchor="middle" font-weight="700" font-size="13" fill="#1e293b">'+_eH(curMonthName)+'</text>' +
             '<text x="50" y="60" text-anchor="middle" font-weight="600" font-size="11" fill="#64748b">'+curYear+'</text>' +
@@ -8098,7 +8098,7 @@ ${allContent}
               <div style="display:grid;gap:6px;">
                 <p style="margin:0;"><strong>Submitted:</strong> ${paidCount}</p>
                 <p style="margin:0;"><strong>Due:</strong> ${dueCount}</p>
-                <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#10b981 0deg ${paidPercent * 3.6}deg,#f1f5f9 ${paidPercent * 3.6}deg 360deg);box-shadow:0 2px 8px rgba(16,185,129,0.15);"></div>
+                <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#10b981 0deg ${paidPercent * 3.6}deg,#e2e8f0 ${paidPercent * 3.6}deg 360deg);box-shadow:0 2px 8px rgba(16,185,129,0.15);"></div>
               </div>
             </article>
           `;
@@ -13538,7 +13538,7 @@ ${allContent}
           <article class="stat-card stat-card--rose"><strong>Fail</strong><span>${fail}</span></article>
           <article class="stat-card stat-card--amber"><strong>Average %</strong><span>${avg}%</span></article>
         `;
-        chartWrap.innerHTML = rows.length ? buildCircleChart(passPercent, `Pass ${pass} | Fail ${fail}`, "#6366f1", "#f1f5f9") : `<p class="empty-state">No data found.</p>`;
+        chartWrap.innerHTML = rows.length ? buildCircleChart(passPercent, `Pass ${pass} | Fail ${fail}`, "#6366f1", "#e2e8f0") : `<p class="empty-state">No data found.</p>`;
         const top = rows.slice().sort(function (a, b) { return b.result.percentage - a.result.percentage; }).slice(0, 8).map(function (row) {
           return { label: `${row.student.name}`, value: row.result.percentage };
         });
@@ -13868,7 +13868,7 @@ ${allContent}
           const active = rows.filter(function (row) { return String(row.status || "").toLowerCase() === "active"; }).length;
           const malePercent = rows.length ? Math.round((male / rows.length) * 100) : 0;
           statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>Total</strong><span>${rows.length}</span></article><article class="stat-card stat-card--emerald"><strong>Active</strong><span>${active}</span></article><article class="stat-card stat-card--sky"><strong>Male</strong><span>${male}</span></article><article class="stat-card stat-card--rose"><strong>Female</strong><span>${female}</span></article>`;
-          chartWrap.innerHTML = rows.length ? buildCircleChart(malePercent, `Male ${male} | Female ${female}`, "#6366f1", "#f1f5f9") : `<p class="empty-state">No data found.</p>`;
+          chartWrap.innerHTML = rows.length ? buildCircleChart(malePercent, `Male ${male} | Female ${female}`, "#6366f1", "#e2e8f0") : `<p class="empty-state">No data found.</p>`;
           const classStats = rows.reduce(function (map, student) { map.set(student.className || "-", (map.get(student.className || "-") || 0) + 1); return map; }, new Map());
           const barRows = Array.from(classStats.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
           const max = barRows.length ? Math.max.apply(null, barRows.map(function (item) { return item.value; })) : 1;
@@ -13983,7 +13983,7 @@ ${allContent}
         const totalDays = totalPresent + totalAbsent + totalLeave;
         const presentPercent = totalDays ? Math.round((totalPresent / totalDays) * 100) : 0;
         statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>${isStaff ? "Employees" : "Students"}</strong><span>${rows.length}</span></article><article class="stat-card stat-card--emerald"><strong>Present</strong><span>${totalPresent}</span></article><article class="stat-card stat-card--rose"><strong>Absent</strong><span>${totalAbsent}</span></article><article class="stat-card stat-card--amber"><strong>Leave</strong><span>${totalLeave}</span></article>`;
-        chartWrap.innerHTML = totalDays ? buildCircleChart(presentPercent, `Present ${totalPresent} | Absent ${totalAbsent} | Leave ${totalLeave}`, "#10b981", "#f1f5f9") : `<p class="empty-state">No attendance data.</p>`;
+        chartWrap.innerHTML = totalDays ? buildCircleChart(presentPercent, `Present ${totalPresent} | Absent ${totalAbsent} | Leave ${totalLeave}`, "#10b981", "#e2e8f0") : `<p class="empty-state">No attendance data.</p>`;
         const barsData = rows.slice().sort(function (a, b) { return b.percent - a.percent; }).slice(0, 10).map(function (row) {
           return { label: isStaff ? row.employee.name : row.student.name, value: row.percent };
         });
@@ -14113,7 +14113,7 @@ ${allContent}
           const totalDue = rows.reduce(function (sum, row) { return sum + row.remaining; }, 0);
           const paidPercent = rows.length ? Math.round((paid / rows.length) * 100) : 0;
           statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>Total Students</strong><span>${rows.length}</span></article><article class="stat-card stat-card--violet"><strong>Total Amount</strong><span>${totalAmount}</span></article><article class="stat-card stat-card--emerald"><strong>Collected</strong><span>${totalDeposit}</span></article><article class="stat-card stat-card--rose"><strong>Due</strong><span>${totalDue}</span></article>`;
-          chartWrap.innerHTML = rows.length ? buildCircleChart(paidPercent, `Paid ${paid} | Due ${due}`, "#10b981", "#f1f5f9") : `<p class="empty-state">No data found.</p>`;
+          chartWrap.innerHTML = rows.length ? buildCircleChart(paidPercent, `Paid ${paid} | Due ${due}`, "#10b981", "#e2e8f0") : `<p class="empty-state">No data found.</p>`;
           const classTotals = rows.reduce(function (map, row) { map.set(row.student.className || "-", (map.get(row.student.className || "-") || 0) + row.deposit); return map; }, new Map());
           const bars = Array.from(classTotals.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
           const max = bars.length ? Math.max.apply(null, bars.map(function (item) { return item.value; })) : 1;
@@ -14505,7 +14505,7 @@ ${allContent}
         const categoryBars = getCategoryStats(rows, "");
         statsWrap.innerHTML = `<article class="stat-card stat-card--emerald"><strong>Total Income</strong><span>${currencySymbol} ${stats.income}</span></article><article class="stat-card stat-card--rose"><strong>Total Expense</strong><span>${currencySymbol} ${stats.expense}</span></article><article class="stat-card stat-card--sky"><strong>Net Balance</strong><span>${currencySymbol} ${stats.net}</span></article><article class="stat-card stat-card--amber"><strong>Total Entries</strong><span>${rows.length}</span></article>`;
         pieWrap.innerHTML = (stats.income + stats.expense)
-          ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#10b981", "#f1f5f9")
+          ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#10b981", "#e2e8f0")
           : `<p class="empty-state">No accounting data yet.</p>`;
         barsWrap.innerHTML = categoryBars.length ? buildBarChart(categoryBars, Math.max.apply(null, categoryBars.map(function (item) { return item.value; }))) : `<p class="empty-state">No category stats yet.</p>`;
         renderLedgerTable(body, rows, true);
@@ -14594,7 +14594,7 @@ ${allContent}
         const barsRows = getCategoryStats(rows, "");
         quickStats.innerHTML = `<article class="stat-card stat-card--${isIncome ? "emerald" : "rose"}"><strong>${isIncome ? "Total Income" : "Total Expense"}</strong><span>${currencySymbol} ${Math.round(typeTotal)}</span></article><article class="stat-card stat-card--amber"><strong>${isIncome ? "Income Entries" : "Expense Entries"}</strong><span>${rows.length}</span></article><article class="stat-card stat-card--sky"><strong>Overall Balance</strong><span>${currencySymbol} ${Math.round(allStats.net)}</span></article><article class="stat-card stat-card--violet"><strong>Recent Records</strong><span>${getLedgerRecentRows(rows, 10).length}</span></article>`;
         typePie.innerHTML = (allStats.income + allStats.expense)
-          ? buildCircleChart(ratio, `${isIncome ? "Income" : "Expense"} share in total accounts`, isIncome ? "#10b981" : "#ef4444", "#f1f5f9")
+          ? buildCircleChart(ratio, `${isIncome ? "Income" : "Expense"} share in total accounts`, isIncome ? "#10b981" : "#ef4444", "#e2e8f0")
           : `<p class="empty-state">No accounting data yet.</p>`;
         categoryBars.innerHTML = barsRows.length ? buildBarChart(barsRows, Math.max.apply(null, barsRows.map(function (item) { return item.value; }))) : `<p class="empty-state">No category data.</p>`;
         renderLedgerTable(body, rows, true);
@@ -14754,7 +14754,7 @@ ${allContent}
         const barsData = getCategoryStats(rows, "");
         statsWrap.innerHTML = `<article class="stat-card stat-card--emerald"><strong>Income</strong><span>${currencySymbol} ${stats.income}</span></article><article class="stat-card stat-card--rose"><strong>Expense</strong><span>${currencySymbol} ${stats.expense}</span></article><article class="stat-card stat-card--sky"><strong>Balance</strong><span>${currencySymbol} ${stats.net}</span></article><article class="stat-card stat-card--amber"><strong>Transactions</strong><span>${rows.length}</span></article>`;
         chartWrap.innerHTML = (stats.income + stats.expense)
-          ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#10b981", "#f1f5f9")
+          ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#10b981", "#e2e8f0")
           : `<p class="empty-state">No filtered data for chart.</p>`;
         barsWrap.innerHTML = barsData.length ? buildBarChart(barsData, Math.max.apply(null, barsData.map(function (item) { return item.value; }))) : `<p class="empty-state">No category data.</p>`;
         body.innerHTML = rows.map(function (row, index) {
@@ -20286,13 +20286,13 @@ ${allContent}
             <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Attendance Report</h4>
             <div style="display: flex; gap: 1.5rem; justify-content: center; margin-bottom: 1rem;">
               <svg width="100" height="100" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" stroke-width="8"/>
                 <circle cx="50" cy="50" r="42" fill="none" stroke="${attendancePercent >= 75 ? "#10b981" : attendancePercent >= 40 ? "#f59e0b" : "#ef4444"}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - attendancePercent / 100)}" transform="rotate(-90 50 50)" stroke-linecap="round"/>
                 <text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="18" fill="#1e293b">${attendancePercent}%</text>
                 <text x="50" y="66" text-anchor="middle" font-weight="500" font-size="9" fill="#64748b">Overall</text>
               </svg>
               <svg width="100" height="100" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" stroke-width="8"/>
                 <circle cx="50" cy="50" r="42" fill="none" stroke="#6366f1" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="0" transform="rotate(-90 50 50)" stroke-linecap="round"/>
                 <text x="50" y="44" text-anchor="middle" font-weight="700" font-size="13" fill="#1e293b">${currentMonthName}</text>
                 <text x="50" y="60" text-anchor="middle" font-weight="600" font-size="11" fill="#64748b">${currentYearNum}</text>
@@ -20371,7 +20371,7 @@ ${allContent}
                 <p style="margin:0.3rem 0 0; font-size:1.1rem; font-weight:700; color:#1d9c61;">${allExamsObtained}</p>
               </div>
                <svg width="80" height="80" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#e2e8f0" stroke-width="8"/>
                 <circle cx="50" cy="50" r="42" fill="none" stroke="${overallExamPercent >= 60 ? "#10b981" : overallExamPercent >= 33 ? "#f59e0b" : "#ef4444"}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - overallExamPercent / 100)}" transform="rotate(-90 50 50)" stroke-linecap="round"/>
                 <text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="16" fill="#1e293b">${overallExamPercent}%</text>
                 <text x="50" y="64" text-anchor="middle" font-weight="500" font-size="8" fill="#64748b">Overall</text>
@@ -20691,10 +20691,10 @@ ${allContent}
         attHTML += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">';
         // Overall circle
         var circR = 34, circC = 2 * Math.PI * circR, circOff = circC - (circC * attendancePct / 100);
-        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#f1f5f9" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#10b981" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + circOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#1e293b">' + attendancePct + '%</text></svg><p style="margin:0.3rem 0 0; color:#64748b; font-size:0.8rem;">Overall</p></div>';
+        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#e2e8f0" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#10b981" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + circOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#1e293b">' + attendancePct + '%</text></svg><p style="margin:0.3rem 0 0; color:#64748b; font-size:0.8rem;">Overall</p></div>';
         // This Month circle
         var monthCircOff = circC - (circC * monthPct / 100);
-        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#f1f5f9" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#6366f1" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + monthCircOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#1e293b">' + monthPct + '%</text></svg><p style="margin:0.3rem 0 0; color:#64748b; font-size:0.8rem;">' + monthNames[currentMonth] + " " + currentYear + '</p></div>';
+        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#e2e8f0" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#6366f1" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + monthCircOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#1e293b">' + monthPct + '%</text></svg><p style="margin:0.3rem 0 0; color:#64748b; font-size:0.8rem;">' + monthNames[currentMonth] + " " + currentYear + '</p></div>';
         attHTML += '</div>';
         // 3 month cards
         attHTML += '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.6rem;">';
@@ -22481,7 +22481,7 @@ ${allContent}
     var svg = '<div class="attendance-donut-wrapper">';
     svg += '<div class="attendance-donut">';
     svg += '<svg viewBox="0 0 180 180" class="attendance-donut__svg">';
-    svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#f1f5f9" stroke-width="22"/>';
+    svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#e2e8f0" stroke-width="22"/>';
 
     if (pctPresent > 0) {
       svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#10b981" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + presentLen + ' ' + (circumference - presentLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--present"/>';
