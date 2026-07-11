@@ -10986,31 +10986,13 @@ ${allContent}
       }).join("");
       const currencySymbol = (settings.accountSettings && settings.accountSettings.symbol) ? settings.accountSettings.symbol : "Rs";
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Result Sheet</strong>
-          <div class="toolbar toolbar--status module-toolbar">
-            <select id="resultSheetClassSelect">
-              <option value="">Select Class</option>
-              ${classOptionsMarkup}
-            </select>
-            <button class="primary-button" id="printResultSheetBtn" type="button">Print Result Sheet</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;margin:10px 0 4px 0;">
+            <div style="flex:1 1 180px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class</label><select id="resultSheetClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
+            <div style="flex:0 0 auto;"><button class="primary-button" id="printResultSheetBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Print Result Sheet</button></div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Roll No</th>
-                  <th>Student Name</th>
-                  <th>Total</th>
-                  <th>Obtain</th>
-                  <th>Percentage</th>
-                  <th>Grade</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody id="resultSheetTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Student Name</th><th style="white-space:nowrap;">Total</th><th style="white-space:nowrap;">Obtain</th><th style="white-space:nowrap;">Percentage</th><th style="white-space:nowrap;">Grade</th><th style="white-space:nowrap;">Status</th></tr></thead><tbody id="resultSheetTableBody"></tbody></table></div>
           <p class="empty-state" id="resultSheetEmptyState" hidden>Select class to view result sheet.</p>
         </article>
       `;
@@ -11783,11 +11765,9 @@ ${allContent}
 
     if (route === "class-wise-report") {
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Class wise Report</strong>
-          <div class="toolbar toolbar--status module-toolbar">
-            <input id="classWiseAttendanceDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}">
-          </div>
+          <div style="margin:10px 0 4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date</label><input id="classWiseAttendanceDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;max-width:220px;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
           <div id="classWiseAttendanceCards" class="stats-grid"></div>
         </article>
       `;
@@ -13508,28 +13488,20 @@ ${allContent}
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
       }).join("");
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Students Report Card</strong>
-          <div class="toolbar toolbar--promote module-toolbar">
-            <select id="reportExamSelect"><option value="">Select Exam</option>${examOptionsMarkup}</select>
-            <select id="reportClassSelect"><option value="all">All Classes</option>${classOptionsMarkup}</select>
-            <div id="reportSearchContainer" style="position: relative; flex: 1;">
-              <input id="reportSearchInput" type="search" placeholder="Search by roll no / name" style="width: 100%;">
-              <div id="reportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
-            </div>
-            <button class="primary-button" id="printExamReportBtn" type="button">Print Report</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Exam</label><select id="reportExamSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="reportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="reportSearchInput" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="reportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
           </div>
+          <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printExamReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
           <div class="report-cards" id="examReportStats"></div>
           <div class="split-grid report-grid">
             <article class="panel-card"><strong>Result Ratio</strong><div id="examReportChart" class="report-chart-box"></div></article>
             <article class="panel-card"><strong>Top Students</strong><div id="examReportBars" class="report-bar-list"></div></article>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Roll No</th><th>Name</th><th>Class</th><th>Total</th><th>Obtain</th><th>%</th><th>Grade</th><th>Status</th><th>WhatsApp</th></tr></thead>
-              <tbody id="examReportTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:600px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Name</th><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Total</th><th style="white-space:nowrap;">Obtain</th><th style="white-space:nowrap;">%</th><th style="white-space:nowrap;">Grade</th><th style="white-space:nowrap;">Status</th><th style="white-space:nowrap;">WhatsApp</th></tr></thead><tbody id="examReportTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -13719,17 +13691,16 @@ ${allContent}
       var todayStr = today.toISOString().slice(0, 10);
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Student Progress Report</strong>
-          <div class="toolbar toolbar--promote module-toolbar" style="flex-wrap:wrap;gap:8px;">
-            <div id="progressSearchC" style="position:relative;flex:1;">
-              <input id="progressSearchI" type="search" placeholder="Search student by name / roll" style="width:100%;">
-              <div id="progressSearchD" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
-            </div>
-            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;color:#6b7a8d;">From: <input id="progressFrom" type="date" value="${defFromStr}" style="height:40px;border:1.5px solid #dde4ea;border-radius:8px;padding:0 8px;"></label>
-            <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;color:#6b7a8d;">To: <input id="progressTo" type="date" value="${todayStr}" style="height:40px;border:1.5px solid #dde4ea;border-radius:8px;padding:0 8px;"></label>
-            <button class="primary-button" id="progressShowBtn" type="button">Show Report</button>
-            <button class="primary-button" id="progressPrintBtn" type="button" style="background:#2e86de;">Print</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="progressSearchI" type="search" placeholder="Search student by name / roll" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="progressSearchD" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
+            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">From</label><input id="progressFrom" type="date" value="${defFromStr}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">To</label><input id="progressTo" type="date" value="${todayStr}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 8px 0;">
+            <button class="primary-button" id="progressShowBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Show Report</button>
+            <button class="primary-button" id="progressPrintBtn" type="button" style="padding:6px 14px;font-size:0.8rem;background:#2e86de;">Print</button>
           </div>
           <div id="progressContent" style="margin-top:16px;"></div>
         </article>
@@ -13864,25 +13835,17 @@ ${allContent}
       }).join("");
       const isParents = route === "parents-info-report";
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">${isParents ? "Parents Info Report" : "Students Info Report"}</strong>
-          <div class="toolbar toolbar--status module-toolbar">
-            <div id="infoReportSearchContainer" style="position: relative; flex: 1;">
-              <input id="infoReportSearchInput" type="search" placeholder="${isParents ? "Search by student / father / phone" : "Search by roll no / name / phone"}" style="width: 100%;">
-              <div id="infoReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
-            </div>
-            <select id="infoReportClassSelect"><option value="all">All Classes</option>${classOptionsMarkup}</select>
-            <button class="primary-button" id="printInfoReportBtn" type="button">Print Report</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="infoReportSearchInput" type="search" placeholder="${isParents ? "Search by student / father / phone" : "Search by roll no / name / phone"}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="infoReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="infoReportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
           </div>
+          <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printInfoReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
           ${isParents ? "" : `<div class="report-cards" id="studentsInfoStats"></div><div class="split-grid report-grid"><article class="panel-card"><strong>Gender Distribution</strong><div id="studentsInfoChart" class="report-chart-box"></div></article><article class="panel-card"><strong>Class Strength</strong><div id="studentsInfoBars" class="report-bar-list"></div></article></div>`}
-          <div class="table-wrap">
-            <table>
-              <thead>
-                ${isParents ? "<tr><th>Student</th><th>Roll No</th><th>Class</th><th>Father Name</th><th>Father Phone</th><th>Mother Name</th><th>Mother Phone</th><th>Address</th></tr>" : "<tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Class</th><th>Gender</th><th>Phone</th><th>Status</th></tr>"}
-              </thead>
-              <tbody id="infoReportTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead>
+            ${isParents ? "<tr><th style='white-space:nowrap;'>Student</th><th style='white-space:nowrap;'>Roll No</th><th style='white-space:nowrap;'>Class</th><th style='white-space:nowrap;'>Father Name</th><th style='white-space:nowrap;'>Father Phone</th><th style='white-space:nowrap;'>Mother Name</th><th style='white-space:nowrap;'>Mother Phone</th><th style='white-space:nowrap;'>Address</th></tr>" : "<tr><th style='white-space:nowrap;'>Roll No</th><th style='white-space:nowrap;'>Name</th><th style='white-space:nowrap;'>Father Name</th><th style='white-space:nowrap;'>Class</th><th style='white-space:nowrap;'>Gender</th><th style='white-space:nowrap;'>Phone</th><th style='white-space:nowrap;'>Status</th></tr>"}
+          </thead><tbody id="infoReportTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -13967,31 +13930,22 @@ ${allContent}
       }).join("");
       const isStaff = route === "staff-monthly-attendance-report";
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">${isStaff ? "Staff Monthly Attendance Report" : "Students Monthly Attendance Report"}</strong>
-          <div class="toolbar toolbar--promote module-toolbar">
-            <input id="attendanceReportMonthInput" type="month" value="${getCurrentMonthInputValue()}">
-            ${isStaff ? "" : `<select id="attendanceReportClassSelect"><option value="all">All Classes</option>${classOptionsMarkup}</select>`}
-            <div id="attendanceReportSearchContainer" style="position: relative; flex: 1;">
-              <input id="attendanceReportSearchInput" type="search" placeholder="${isStaff ? "Search employee by name / phone" : "Search by roll no / name"}" style="width: 100%;">
-              <div id="attendanceReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
-            </div>
-            <button class="primary-button" id="printAttendanceReportBtn" type="button">Print Report</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Month</label><input id="attendanceReportMonthInput" type="month" value="${getCurrentMonthInputValue()}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            ${isStaff ? "" : `<div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="attendanceReportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>`}
+            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="attendanceReportSearchInput" type="search" placeholder="${isStaff ? "Search employee by name / phone" : "Search by roll no / name"}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="attendanceReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
           </div>
-          ${"" /* template section removed */}
+          <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printAttendanceReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
           <div class="report-cards" id="attendanceReportStats"></div>
           <div class="split-grid report-grid">
             <article class="panel-card"><strong>Attendance Ratio</strong><div id="attendanceReportChart" class="report-chart-box"></div></article>
             <article class="panel-card"><strong>Attendance % (Bar)</strong><div id="attendanceReportBars" class="report-bar-list"></div></article>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                ${isStaff ? "<tr><th>Employee</th><th>Role</th><th>P</th><th>A</th><th>L</th><th>Total</th><th>%</th><th>WhatsApp</th></tr>" : "<tr><th>Roll No</th><th>Student</th><th>Class</th><th>P</th><th>A</th><th>L</th><th>Total</th><th>%</th></tr>"}
-              </thead>
-              <tbody id="attendanceReportBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead>
+            ${isStaff ? "<tr><th style='white-space:nowrap;'>Employee</th><th style='white-space:nowrap;'>Role</th><th style='white-space:nowrap;'>P</th><th style='white-space:nowrap;'>A</th><th style='white-space:nowrap;'>L</th><th style='white-space:nowrap;'>Total</th><th style='white-space:nowrap;'>%</th><th style='white-space:nowrap;'>WhatsApp</th></tr>" : "<tr><th style='white-space:nowrap;'>Roll No</th><th style='white-space:nowrap;'>Student</th><th style='white-space:nowrap;'>Class</th><th style='white-space:nowrap;'>P</th><th style='white-space:nowrap;'>A</th><th style='white-space:nowrap;'>L</th><th style='white-space:nowrap;'>Total</th><th style='white-space:nowrap;'>%</th></tr>"}
+          </thead><tbody id="attendanceReportBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -14122,21 +14076,18 @@ ${allContent}
           return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
         }).join("");
         moduleSummary.innerHTML = `
-          <article>
+          <article style="max-width:100%;overflow-x:hidden;">
             <strong class="module-center-title">Fee Collection Report</strong>
-            <div class="toolbar toolbar--promote module-toolbar">
-              <input id="feeReportMonthInput" type="month" value="${getCurrentMonthInputValue()}">
-              <select id="feeReportClassSelect"><option value="all">All Classes</option>${classOptionsMarkup}</select>
-              <select id="feeReportStatusSelect"><option value="all">All Status</option><option value="paid">Paid</option><option value="due">Due</option></select>
-              <div id="feeReportSearchContainer" style="position: relative; flex: 1;">
-                <input id="feeReportSearchInput" type="search" placeholder="Search by roll no / name" style="width: 100%;">
-                <div id="feeReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
-              </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Month</label><input id="feeReportMonthInput" type="month" value="${getCurrentMonthInputValue()}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="feeReportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
+              <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Status</label><select id="feeReportStatusSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Status</option><option value="paid">Paid</option><option value="due">Due</option></select></div>
+              <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="feeReportSearchInput" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="feeReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
             </div>
-            <div class="form-actions"><button class="primary-button" id="printFeeReportBtn" type="button">Print Report</button></div>
+            <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printFeeReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
             <div class="report-cards" id="feeReportStats"></div>
             <div class="split-grid report-grid"><article class="panel-card"><strong>Paid vs Due</strong><div id="feeReportChart" class="report-chart-box"></div></article><article class="panel-card"><strong>Class Collection</strong><div id="feeReportBars" class="report-bar-list"></div></article></div>
-            <div class="table-wrap"><table><thead><tr><th>Roll No</th><th>Student</th><th>Class</th><th>Month</th><th>Total</th><th>Deposit</th><th>Remaining</th><th>Status</th></tr></thead><tbody id="feeReportTableBody"></tbody></table></div>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:550px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Student</th><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Month</th><th style="white-space:nowrap;">Total</th><th style="white-space:nowrap;">Deposit</th><th style="white-space:nowrap;">Remaining</th><th style="white-space:nowrap;">Status</th></tr></thead><tbody id="feeReportTableBody"></tbody></table></div>
           </article>
         `;
         moduleGuide.innerHTML = "";
@@ -14371,22 +14322,16 @@ ${allContent}
         return `<option value="${exam.id}">${escapeHtml(exam.name)}</option>`;
       }).join("");
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Customised Reports</strong>
-          <div class="form-grid">
-            <div class="field-group"><label for="customReportType">Report Type*</label><select id="customReportType"><option value="students-info">Students Info</option><option value="parents-info">Parents Info</option><option value="student-attendance">Students Attendance (Monthly)</option><option value="staff-attendance">Staff Attendance (Monthly)</option><option value="fee-collection">Fee Collection</option><option value="student-progress">Student Progress</option><option value="accounts">Accounts</option></select></div>
-            <div class="field-group"><label for="customReportClass">Class</label><select id="customReportClass"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-            <div class="field-group"><label for="customReportMonth">Month</label><input id="customReportMonth" type="month" value="${getCurrentMonthInputValue()}"></div>
-            <div class="field-group"><label for="customReportExam">Exam</label><select id="customReportExam"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
-            <div class="field-group field-group--full">
-              <label for="customReportSearch">Search</label>
-              <div id="customReportSearchContainer" style="position: relative;">
-                <input id="customReportSearch" type="search" placeholder="Search by name / roll no / phone" style="width: 100%;">
-                <div id="customReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
-              </div>
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Report Type*</label><select id="customReportType" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="students-info">Students Info</option><option value="parents-info">Parents Info</option><option value="student-attendance">Students Attendance (Monthly)</option><option value="staff-attendance">Staff Attendance (Monthly)</option><option value="fee-collection">Fee Collection</option><option value="student-progress">Student Progress</option><option value="accounts">Accounts</option></select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="customReportClass" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Month</label><input id="customReportMonth" type="month" value="${getCurrentMonthInputValue()}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Exam</label><select id="customReportExam" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
           </div>
-          <div class="form-actions"><button class="primary-button" id="generateCustomReportBtn" type="button">Generate</button><button class="secondary-button" id="printCustomReportBtn" type="button">Print</button></div>
+          <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><div style="position:relative;"><input id="customReportSearch" type="search" placeholder="Search by name / roll no / phone" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="customReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 8px 0;"><button class="primary-button" id="generateCustomReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Generate</button><button class="secondary-button" id="printCustomReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print</button></div>
           <div class="table-wrap"><table><thead id="customReportHead"></thead><tbody id="customReportBody"></tbody></table></div>
           <p class="empty-state" id="customReportEmptyState" hidden>No report generated yet.</p>
         </article>
@@ -16702,28 +16647,23 @@ ${allContent}
       }
 
       if (route === "manage-test-marks") {
-        moduleSummary.innerHTML = `
-          <article>
-            <strong class="module-center-title">Manage Test Marks</strong>
-            <div class="toolbar toolbar--promote module-toolbar">
-              <select id="classTestClassSelect"><option value="">Select Class</option>${classOptionsMarkup}</select>
-              <select id="classTestSubjectSelect"><option value="">Select Subject</option></select>
-              <input id="classTestNameInput" type="text" placeholder="Test Name* e.g Monthly / Weekly Test">
-              <input id="classTestTotalInput" type="number" min="1" value="100" placeholder="Total Marks*">
-              <input id="classTestDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}">
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Sr#</th><th>Roll No</th><th>Student Name</th><th>Father Name</th><th>Class</th><th>Obtained</th><th>Status</th></tr></thead>
-                <tbody id="classTestMarksBody"></tbody>
-              </table>
-            </div>
-            <div class="form-actions">
-              <button class="primary-button" id="saveClassTestMarksBtn" type="button">Save Test Marks</button>
-            </div>
-            <p class="form-message" id="classTestMarksMessage"></p>
-          </article>
-        `;
+      moduleSummary.innerHTML = `
+        <article style="max-width:100%;overflow-x:hidden;">
+          <strong class="module-center-title">Manage Test Marks</strong>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="classTestClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Subject</label><select id="classTestSubjectSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Subject</option></select></div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Test Name*</label><input id="classTestNameInput" type="text" placeholder="e.g Monthly / Weekly Test" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 110px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Total Marks*</label><input id="classTestTotalInput" type="number" min="1" value="100" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date</label><input id="classTestDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:550px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Sr#</th><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Student Name</th><th style="white-space:nowrap;">Father Name</th><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Obtained</th><th style="white-space:nowrap;">Status</th></tr></thead><tbody id="classTestMarksBody"></tbody></table></div>
+          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="saveClassTestMarksBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Save Test Marks</button></div>
+          <p class="form-message" id="classTestMarksMessage"></p>
+        </article>
+      `;
         moduleGuide.innerHTML = "";
         const classSelect = document.getElementById("classTestClassSelect");
         const subjectSelect = document.getElementById("classTestSubjectSelect");
@@ -16849,18 +16789,18 @@ ${allContent}
       }
 
       moduleSummary.innerHTML = `
-        <article class="test-result-card">
+        <article class="test-result-card" style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Test Result</strong>
-          <div class="toolbar toolbar--promote module-toolbar test-result-toolbar">
-            <select id="testResultClassSelect"><option value="all">All Classes</option>${classOptionsMarkup}</select>
-            <select id="testResultNameSelect"><option value="">All Tests</option></select>
-            <div class="test-result-toolbar-actions">
-              <button class="primary-button" id="printTestResultBtn" type="button">Print Result</button>
-              <button class="table-action-btn" id="downloadTestResultPdfBtn" type="button">Download PDF</button>
-              <button class="secondary-button" id="sendTestResultSmsBtn" type="button">Send SMS To All</button>
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="testResultClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Test</label><select id="testResultNameSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">All Tests</option></select></div>
           </div>
-          <div class="table-wrap test-result-table-wrap"><table><thead><tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Class</th><th>Subject</th><th>Test</th><th>Date</th><th>Obtained</th><th>Total</th><th>%</th><th>Grade</th><th>Status</th><th>Action</th></tr></thead><tbody id="testResultBody"></tbody></table></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 8px 0;">
+            <button class="primary-button" id="printTestResultBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Print Result</button>
+            <button class="table-action-btn" id="downloadTestResultPdfBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Download PDF</button>
+            <button class="secondary-button" id="sendTestResultSmsBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Send SMS To All</button>
+          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:700px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Name</th><th style="white-space:nowrap;">Father Name</th><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Subject</th><th style="white-space:nowrap;">Test</th><th style="white-space:nowrap;">Date</th><th style="white-space:nowrap;">Obtained</th><th style="white-space:nowrap;">Total</th><th style="white-space:nowrap;">%</th><th style="white-space:nowrap;">Grade</th><th style="white-space:nowrap;">Status</th><th style="white-space:nowrap;">Action</th></tr></thead><tbody id="testResultBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -17064,15 +17004,13 @@ ${allContent}
       }).join("");
       if (route === "certificate-templates") {
         moduleSummary.innerHTML = `
-          <article>
+          <article style="max-width:100%;overflow-x:hidden;">
             <strong class="module-center-title">Certificate Templates</strong>
-            <div class="form-grid">
-              <div class="field-group"><label for="certificateTemplateName">Template Name*</label><input id="certificateTemplateName" type="text" placeholder="e.g Achievement Certificate"></div>
-              <div class="field-group field-group--full"><label for="certificateTemplateBody">Template Body*</label><textarea id="certificateTemplateBody" rows="5" placeholder="Use placeholders: {student}, {roll}, {class}, {date}, {school}"></textarea></div>
-            </div>
-            <div class="form-actions"><button class="primary-button" id="saveCertificateTemplateBtn" type="button">Save Template</button></div>
+            <div style="margin:10px 0 4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template Name*</label><input id="certificateTemplateName" type="text" placeholder="e.g Achievement Certificate" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template Body*</label><textarea id="certificateTemplateBody" rows="5" placeholder="Use placeholders: {student}, {roll}, {class}, {date}, {school}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;"></textarea></div>
+            <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="saveCertificateTemplateBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Save Template</button></div>
             <p class="form-message" id="certificateTemplateMessage"></p>
-            <div class="table-wrap"><table><thead><tr><th>Name</th><th>Template</th><th>Action</th></tr></thead><tbody id="certificateTemplateBodyRows"></tbody></table></div>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:400px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Name</th><th style="white-space:nowrap;">Template</th><th style="white-space:nowrap;">Action</th></tr></thead><tbody id="certificateTemplateBodyRows"></tbody></table></div>
           </article>
         `;
         moduleGuide.innerHTML = "";
@@ -17121,24 +17059,20 @@ ${allContent}
       }).join("");
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Generate Certificate</strong>
-          <div class="form-grid">
-            <div class="field-group"><label for="certificateClassSelect">Select Class*</label><select id="certificateClassSelect"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
-            <div class="field-group">
-              <label for="certificateStudentSearch">Search Student*</label>
-              <div id="certificateSearchContainer" style="position: relative;">
-                <input id="certificateStudentSearch" type="search" placeholder="Search by roll no / name" style="width: 100%;">
-                <div id="certificateSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
-              </div>
-            </div>
-            <div class="field-group"><label for="certificateIssueDate">Issue Date*</label><input id="certificateIssueDate" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
-            <div class="field-group"><label for="certificateLeavingDate">Leaving Date (for SLC)</label><input id="certificateLeavingDate" type="date" placeholder="Leave blank if not applicable"></div>
-            <div class="field-group"><label for="certificateConductText">Conduct (for SLC)</label><input id="certificateConductText" type="text" placeholder="e.g., Excellent, Good, Satisfactory"></div>
-            <div class="field-group"><label for="certificateTemplateSelect">Template*</label><select id="certificateTemplateSelect"><option value="">Select Template</option>${templateOptionsMarkup}</select></div>
-            <div class="field-group field-group--full"><label for="certificateBodyPreview">Certificate Text</label><textarea id="certificateBodyPreview" rows="8" placeholder="Template text will appear here"></textarea></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="certificateClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search Student*</label><input id="certificateStudentSearch" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="certificateSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Issue Date*</label><input id="certificateIssueDate" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
           </div>
-          <div class="form-actions"><button class="primary-button" id="printCertificateBtn" type="button">Print Certificate</button></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Leaving Date (SLC)</label><input id="certificateLeavingDate" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Conduct (SLC)</label><input id="certificateConductText" type="text" placeholder="e.g., Excellent, Good" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template*</label><select id="certificateTemplateSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Template</option>${templateOptionsMarkup}</select></div>
+          </div>
+          <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Certificate Text</label><textarea id="certificateBodyPreview" rows="8" placeholder="Template text will appear here" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;"></textarea></div>
+          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="printCertificateBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Print Certificate</button></div>
           <p class="form-message" id="certificateMessage"></p>
         </article>
       `;
