@@ -20094,10 +20094,10 @@ ${allContent}
     if (revenueSymbol) revenueSymbol.textContent = currencySymbol;
     if (profitSymbol) profitSymbol.textContent = currencySymbol;
     if (revenueEl) {
-      revenueEl.textContent = String(Math.round(finance.totalFeeCollection));
+      revenueEl.textContent = String(Math.round(finance.incomeTotal || 0));
     }
     if (revenueFooter) {
-      revenueFooter.textContent = `${currencySymbol} ${Math.round(finance.totalFeeCollection)}`;
+      revenueFooter.textContent = `${currencySymbol} ${Math.round(finance.incomeTotal || 0)}`;
     }
     if (profitEl) {
       profitEl.textContent = String(Math.round(finance.totalProfit));
