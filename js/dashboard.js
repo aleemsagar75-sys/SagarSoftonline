@@ -9351,23 +9351,23 @@ ${allContent}
 
     if (route === "time-periods") {
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Manage Time Periods</strong>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
             <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Period Name*</label><input id="periodLabelInput" type="text" placeholder="e.g Period 1" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
             <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Start Time*</label><input id="periodStartInput" type="time" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
             <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">End Time*</label><input id="periodEndInput" type="time" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 110px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Type*</label><select id="periodTypeInput" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="Teaching">Teaching</option><option value="Break">Break</option></select></div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:flex-end;margin:4px 0 6px 0;">
-            <div style="flex:1 1 110px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Status</label><select id="periodStatusInput" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
-            <div style="flex:0 0 auto;"><button class="primary-button" id="savePeriodBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Save Period</button></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Type*</label><select id="periodTypeInput" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="Teaching">Teaching</option><option value="Break">Break</option></select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Status</label><select id="periodStatusInput" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
           </div>
+          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="savePeriodBtn" type="button" style="padding:6px 24px;font-size:0.8rem;">Save Period</button></div>
           <p class="form-message" id="periodMessage"></p>
         </article>
-        <article style="margin-top:8px;">
+        <article style="max-width:100%;overflow-x:hidden;margin-top:8px;">
           <strong>All Time Periods</strong>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:480px;width:100%;font-size:0.82rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Period</th><th style="white-space:nowrap;">Start</th><th style="white-space:nowrap;">End</th><th style="white-space:nowrap;">Type</th><th style="white-space:nowrap;">Status</th><th style="white-space:nowrap;">Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;max-width:100%;"><table style="min-width:460px;width:100%;font-size:0.82rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Period</th><th style="white-space:nowrap;">Start</th><th style="white-space:nowrap;">End</th><th style="white-space:nowrap;">Type</th><th style="white-space:nowrap;">Status</th><th style="white-space:nowrap;">Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
