@@ -15088,80 +15088,85 @@ ${allContent}
 
       if (route === "subject-chapters") {
         moduleSummary.innerHTML = `
-          <article>
+          <article style="max-width:100%;overflow-x:hidden;">
             <strong class="module-center-title">Subject Chapters</strong>
-            <div class="form-grid">
-              <div class="field-group"><label for="qpChapterClass">Select Class*</label><select id="qpChapterClass"><option value="">Select Class</option>${qpClassOptionsMarkup}</select></div>
-              <div class="field-group"><label for="qpChapterSubject">Select Subject*</label><select id="qpChapterSubject"><option value="">Select class first</option></select></div>
-              <div class="field-group"><label for="qpChapterSection">Section*</label><select id="qpChapterSection"><option value="Section A">Section A</option><option value="Section B">Section B</option><option value="Section C">Section C</option></select></div>
-              <div class="field-group"><label for="qpChapterType">Question Type*</label><select id="qpChapterType"><option value="mcq">MCQ</option><option value="fill">Fill In The Blanks</option><option value="truefalse">True/False</option><option value="short">Short Question</option><option value="long">Long Question</option></select></div>
-              <div class="field-group"><label for="qpChapterMarks">Marks*</label><input id="qpChapterMarks" type="number" min="1" value="5"></div>
-              <div class="field-group"><label for="qpExistingChapterName">Select Chapter</label><select id="qpExistingChapterName"><option value="">New / No Chapter</option></select></div>
-              <div class="field-group"><label for="qpChapterName">Chapter Name</label><input id="qpChapterName" type="text" placeholder="Optional, e.g Chapter 1"></div>
-              <div class="field-group field-group--full"><label for="qpQuestionTitle">Question Title*</label><input id="qpQuestionTitle" type="text" placeholder="e.g Choose the correct option"></div>
-              <div class="field-group field-group--full">
-                <label for="qpEditorArea">Question Editor*</label>
-                <div class="question-rich-editor-shell">
-                  <div id="qpEditorToolbar" class="question-editor-toolbar">
-                    <select id="qpFontFamily" class="table-inline-input">
-                      <option value="Calibri, Arial, sans-serif">Calibri (Body)</option>
-                      <option value="Arial, sans-serif">Arial</option>
-                      <option value="'Times New Roman', serif">Times New Roman</option>
-                      <option value="Georgia, serif">Georgia</option>
-                      <option value="'Courier New', monospace">Courier New</option>
-                    </select>
-                    <button class="table-action-btn" type="button" data-qp-cmd="bold">Bold</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="italic">Italic</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="underline">Underline</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="strikeThrough">Strike</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="subscript">Xâ‚‚</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="superscript">XÂ²</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="insertUnorderedList">UL</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="insertOrderedList">OL</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="justifyLeft">Left</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="justifyCenter">Center</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="justifyRight">Right</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="outdent">Outdent</button>
-                    <button class="table-action-btn" type="button" data-qp-cmd="indent">Indent</button>
-                    <input id="qpFontSizeInput" class="table-inline-input" type="number" min="8" value="16" style="width:90px;" title="Size px">
-                    <button class="table-action-btn" type="button" id="qpApplyFontSize">Size</button>
-                    <input id="qpTextColorInput" class="table-inline-input" type="color" value="#0f2748" title="Text Color">
-                    <button class="table-action-btn" type="button" id="qpApplyTextColor">Color</button>
-                    <input id="qpBgColorInput" class="table-inline-input" type="color" value="#fff59d" title="Highlight">
-                    <button class="table-action-btn" type="button" id="qpApplyBgColor">Highlight</button>
-                    <button class="table-action-btn" type="button" id="qpClearFormat">Clear</button>
-                    <button class="table-action-btn" type="button" id="qpGrowSelected">+ Item</button>
-                    <button class="table-action-btn" type="button" id="qpShrinkSelected">- Item</button>
-                    <button class="table-action-btn" type="button" id="qpInsertTable">Table</button>
-                    <button class="table-action-btn" type="button" id="qpInsertImage">Image</button>
-                    <input id="qpImageInput" type="file" accept="image/*" hidden>
-                  </div>
-                  <div id="qpEditorArea" class="question-rich-editor" contenteditable="true"></div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="qpChapterClass" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${qpClassOptionsMarkup}</select></div>
+              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Subject*</label><select id="qpChapterSubject" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select class first</option></select></div>
+              <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Section*</label><select id="qpChapterSection" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="Section A">Section A</option><option value="Section B">Section B</option><option value="Section C">Section C</option></select></div>
+              <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Type*</label><select id="qpChapterType" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="mcq">MCQ</option><option value="fill">Fill In The Blanks</option><option value="truefalse">True/False</option><option value="short">Short Question</option><option value="long">Long Question</option></select></div>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
+              <div style="flex:1 1 100px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Marks*</label><input id="qpChapterMarks" type="number" min="1" value="5" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Chapter</label><select id="qpExistingChapterName" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">New / No Chapter</option></select></div>
+              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Chapter Name</label><input id="qpChapterName" type="text" placeholder="Optional, e.g Chapter 1" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            </div>
+            <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Title*</label><input id="qpQuestionTitle" type="text" placeholder="e.g Choose the correct option" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="margin:4px 0;">
+              <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Editor*</label>
+              <div class="question-rich-editor-shell" style="max-width:100%;overflow-x:hidden;">
+                <div id="qpEditorToolbar" class="question-editor-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;padding:6px;">
+                  <select id="qpFontFamily" class="table-inline-input" style="font-size:0.78rem;padding:4px;">
+                    <option value="Calibri, Arial, sans-serif">Calibri (Body)</option>
+                    <option value="Arial, sans-serif">Arial</option>
+                    <option value="'Times New Roman', serif">Times New Roman</option>
+                    <option value="Georgia, serif">Georgia</option>
+                    <option value="'Courier New', monospace">Courier New</option>
+                  </select>
+                  <button class="table-action-btn" type="button" data-qp-cmd="bold" style="padding:3px 6px;font-size:0.75rem;">Bold</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="italic" style="padding:3px 6px;font-size:0.75rem;">Italic</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="underline" style="padding:3px 6px;font-size:0.75rem;">Underline</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="strikeThrough" style="padding:3px 6px;font-size:0.75rem;">Strike</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="subscript" style="padding:3px 6px;font-size:0.75rem;">Xâ‚‚</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="superscript" style="padding:3px 6px;font-size:0.75rem;">XÂ²</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="insertUnorderedList" style="padding:3px 6px;font-size:0.75rem;">UL</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="insertOrderedList" style="padding:3px 6px;font-size:0.75rem;">OL</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="justifyLeft" style="padding:3px 6px;font-size:0.75rem;">Left</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="justifyCenter" style="padding:3px 6px;font-size:0.75rem;">Center</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="justifyRight" style="padding:3px 6px;font-size:0.75rem;">Right</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="outdent" style="padding:3px 6px;font-size:0.75rem;">Outdent</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="indent" style="padding:3px 6px;font-size:0.75rem;">Indent</button>
+                  <input id="qpFontSizeInput" class="table-inline-input" type="number" min="8" value="16" style="width:50px;padding:3px;font-size:0.78rem;" title="Size px">
+                  <button class="table-action-btn" type="button" id="qpApplyFontSize" style="padding:3px 6px;font-size:0.75rem;">Size</button>
+                  <input id="qpTextColorInput" class="table-inline-input" type="color" value="#0f2748" style="width:28px;height:24px;padding:1px;" title="Text Color">
+                  <button class="table-action-btn" type="button" id="qpApplyTextColor" style="padding:3px 6px;font-size:0.75rem;">Color</button>
+                  <input id="qpBgColorInput" class="table-inline-input" type="color" value="#fff59d" style="width:28px;height:24px;padding:1px;" title="Highlight">
+                  <button class="table-action-btn" type="button" id="qpApplyBgColor" style="padding:3px 6px;font-size:0.75rem;">Highlight</button>
+                  <button class="table-action-btn" type="button" id="qpClearFormat" style="padding:3px 6px;font-size:0.75rem;">Clear</button>
+                  <button class="table-action-btn" type="button" id="qpGrowSelected" style="padding:3px 6px;font-size:0.75rem;">+ Item</button>
+                  <button class="table-action-btn" type="button" id="qpShrinkSelected" style="padding:3px 6px;font-size:0.75rem;">- Item</button>
+                  <button class="table-action-btn" type="button" id="qpInsertTable" style="padding:3px 6px;font-size:0.75rem;">Table</button>
+                  <button class="table-action-btn" type="button" id="qpInsertImage" style="padding:3px 6px;font-size:0.75rem;">Image</button>
+                  <input id="qpImageInput" type="file" accept="image/*" hidden>
                 </div>
-              </div>
-              <div class="field-group field-group--full" id="qpMcqOptionsField" hidden>
-                <label>MCQ Options</label>
-                <div id="qpMcqRows" class="question-options-grid"></div>
-                <div class="form-actions">
-                  <button class="table-action-btn" type="button" id="qpAddMcq">Add Option</button>
-                  <button class="table-action-btn danger" type="button" id="qpRemoveMcq">Remove Option</button>
-                </div>
-              </div>
-              <div class="field-group field-group--full" id="qpFillOptionsField" hidden>
-                <label>Fill/True-False Options</label>
-                <div class="form-grid">
-                  <div class="field-group"><label for="qpFillOption1">Option 1</label><input id="qpFillOption1" type="text" value="true"></div>
-                  <div class="field-group"><label for="qpFillOption2">Option 2</label><input id="qpFillOption2" type="text" value="false"></div>
-                </div>
-              </div>
-              <div class="field-group field-group--full" id="qpLinesField" hidden>
-                <label for="qpAnswerLines">Number Of Lines (Short/Long Question)</label>
-                <input id="qpAnswerLines" type="number" min="1" value="3">
+                <div id="qpEditorArea" class="question-rich-editor" contenteditable="true" style="min-height:120px;max-width:100%;overflow-x:auto;"></div>
               </div>
             </div>
-            <div class="form-actions"><button class="primary-button" type="button" id="qpSaveQuestion">Save Question</button></div>
+            <div id="qpMcqOptionsField" hidden style="margin:4px 0;">
+              <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">MCQ Options</label>
+              <div id="qpMcqRows" class="question-options-grid" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">
+                <button class="table-action-btn" type="button" id="qpAddMcq" style="padding:4px 10px;font-size:0.78rem;">Add Option</button>
+                <button class="table-action-btn danger" type="button" id="qpRemoveMcq" style="padding:4px 10px;font-size:0.78rem;">Remove Option</button>
+              </div>
+            </div>
+            <div id="qpFillOptionsField" hidden style="margin:4px 0;">
+              <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Fill/True-False Options</label>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.75rem;margin-bottom:2px;">Option 1</label><input id="qpFillOption1" type="text" value="true" style="width:100%;box-sizing:border-box;padding:5px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+                <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.75rem;margin-bottom:2px;">Option 2</label><input id="qpFillOption2" type="text" value="false" style="width:100%;box-sizing:border-box;padding:5px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+              </div>
+            </div>
+            <div id="qpLinesField" hidden style="margin:4px 0;">
+              <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Number Of Lines (Short/Long Question)</label>
+              <input id="qpAnswerLines" type="number" min="1" value="3" style="width:100%;max-width:200px;box-sizing:border-box;padding:5px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+            </div>
+            <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" type="button" id="qpSaveQuestion" style="padding:6px 20px;font-size:0.8rem;">Save Question</button></div>
             <p class="form-message" id="qpChapterMessage"></p>
-            <div class="table-wrap"><table><thead><tr><th>Class</th><th>Subject</th><th>Chapter</th><th>Section</th><th>Type</th><th>Marks</th><th>Question Title</th><th>Question</th><th>Action</th></tr></thead><tbody id="qpChapterBody"></tbody></table></div>
+          </article>
+          <article style="max-width:100%;overflow-x:hidden;margin-top:8px;">
+            <strong>Questions</strong>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:700px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Subject</th><th style="white-space:nowrap;">Chapter</th><th style="white-space:nowrap;">Section</th><th style="white-space:nowrap;">Type</th><th style="white-space:nowrap;">Marks</th><th style="white-space:nowrap;">Question Title</th><th style="white-space:nowrap;">Question</th><th style="white-space:nowrap;">Action</th></tr></thead><tbody id="qpChapterBody"></tbody></table></div>
           </article>
         `;
         moduleGuide.innerHTML = "";
@@ -16162,35 +16167,30 @@ ${allContent}
 
       if (route === "question-bank") {
         moduleSummary.innerHTML = `
-          <article>
+          <article style="max-width:100%;overflow-x:hidden;">
             <strong class="module-center-title">Question Bank</strong>
-            <div class="form-grid">
-              <div class="field-group"><label for="qpBankClass">Select Class*</label><select id="qpBankClass"><option value="">Select Class</option>${qpClassOptionsMarkup}</select></div>
-              <div class="field-group"><label for="qpBankSubject">Select Subject*</label><select id="qpBankSubject"><option value="">Select class first</option></select></div>
-              <div class="field-group"><label for="qpBankTitle">Paper Title*</label><input id="qpBankTitle" type="text" placeholder="e.g Mid Term Paper"></div>
-              <div class="field-group"><label for="qpBankDate">Date*</label><input id="qpBankDate" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
-              <div class="field-group field-group--full">
-                <label for="qpBankChapters">Select Chapters (Multi Select)*</label>
-                <select id="qpBankChapters" multiple size="6"></select>
-                <div id="qpBankChapterActions" class="compact-list" style="margin-top:8px;"></div>
-              </div>
-              <div class="field-group field-group--full">
-                <label>Question Type and Number</label>
-                <div class="table-wrap">
-                  <table>
-                    <thead><tr><th>Use</th><th>Question Type</th><th>Number</th></tr></thead>
-                    <tbody id="qpBankTypeRows"></tbody>
-                  </table>
-                </div>
-              </div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="qpBankClass" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${qpClassOptionsMarkup}</select></div>
+              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Subject*</label><select id="qpBankSubject" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select class first</option></select></div>
+              <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Paper Title*</label><input id="qpBankTitle" type="text" placeholder="e.g Mid Term Paper" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+              <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date*</label><input id="qpBankDate" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
             </div>
-            <article class="panel-card question-paper-preview-card">
+            <div style="margin:4px 0;">
+              <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Chapters (Multi Select)*</label>
+              <select id="qpBankChapters" multiple size="6" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></select>
+              <div id="qpBankChapterActions" class="compact-list" style="margin-top:8px;"></div>
+            </div>
+            <div style="margin:4px 0;">
+              <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Type and Number</label>
+              <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:300px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Use</th><th style="white-space:nowrap;">Question Type</th><th style="white-space:nowrap;">Number</th></tr></thead><tbody id="qpBankTypeRows"></tbody></table></div>
+            </div>
+            <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow-x:hidden;">
               <strong>Loaded Questions Preview</strong>
-              <div id="qpBankPreview" class="module-preview-card"><p>Select filters then click Load Questions.</p></div>
+              <div id="qpBankPreview" class="module-preview-card" style="max-width:100%;overflow-x:auto;"><p>Select filters then click Load Questions.</p></div>
             </article>
-            <div class="form-actions">
-              <button class="table-action-btn" type="button" id="qpLoadQuestions">Load Questions</button>
-              <button class="table-action-btn" type="button" id="qpSavePaper">Save Paper</button>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 4px 0;">
+              <button class="table-action-btn" type="button" id="qpLoadQuestions" style="padding:6px 14px;font-size:0.8rem;">Load Questions</button>
+              <button class="table-action-btn" type="button" id="qpSavePaper" style="padding:6px 14px;font-size:0.8rem;">Save Paper</button>
             </div>
             <p class="form-message" id="qpBankMessage"></p>
           </article>
@@ -16588,22 +16588,22 @@ ${allContent}
       }
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Create Question Paper</strong>
-          <div class="form-grid">
-            <div class="field-group"><label for="qpPrintClass">Select Class*</label><select id="qpPrintClass"><option value="">Select Class</option>${qpClassOptionsMarkup}</select></div>
-            <div class="field-group"><label for="qpPrintSubject">Select Subject*</label><select id="qpPrintSubject"><option value="">Select class first</option></select></div>
-            <div class="field-group"><label for="qpPrintTitle">Select Paper Title*</label><select id="qpPrintTitle"><option value="">Select subject first</option></select></div>
-            <div class="field-group"><label for="qpPrintDate">Date*</label><input id="qpPrintDate" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
-            <div class="field-group field-group--full"><label for="qpPrintInstructions">Instructions</label><textarea id="qpPrintInstructions" rows="3">Attempt all questions. Write neat and clean answers.</textarea></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="qpPrintClass" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${qpClassOptionsMarkup}</select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Subject*</label><select id="qpPrintSubject" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select class first</option></select></div>
+            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Paper Title*</label><select id="qpPrintTitle" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select subject first</option></select></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date*</label><input id="qpPrintDate" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
           </div>
-          <article class="panel-card question-paper-preview-card">
+          <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Instructions</label><textarea id="qpPrintInstructions" rows="3" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;">Attempt all questions. Write neat and clean answers.</textarea></div>
+          <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow-x:hidden;">
             <strong>Question Paper Preview</strong>
-            <div id="qpPrintPreview" class="module-preview-card"><p>Select class, subject, paper title and click Load.</p></div>
+            <div id="qpPrintPreview" class="module-preview-card" style="max-width:100%;overflow-x:auto;"><p>Select class, subject, paper title and click Load.</p></div>
           </article>
-          <div class="form-actions">
-            <button class="table-action-btn" type="button" id="qpLoadSavedPaper">Load</button>
-            <button class="primary-button" type="button" id="qpPrintPaper">Print Question Paper</button>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 4px 0;">
+            <button class="table-action-btn" type="button" id="qpLoadSavedPaper" style="padding:6px 14px;font-size:0.8rem;">Load</button>
+            <button class="primary-button" type="button" id="qpPrintPaper" style="padding:6px 16px;font-size:0.8rem;">Print Question Paper</button>
           </div>
           <p class="form-message" id="qpPrintMessage"></p>
         </article>
