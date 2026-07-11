@@ -348,11 +348,11 @@ body {
 }
 
 .panel-label {
-  background: linear-gradient(135deg, rgba(27, 95, 122, 0.8) 0%, rgba(47, 176, 138, 0.7) 100%);
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.85) 0%, rgba(16, 185, 129, 0.75) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  color: rgba(27, 95, 122, 0.8);
+  color: rgba(99, 102, 241, 0.85);
 }
 
 .sidebar-card strong {
@@ -692,10 +692,11 @@ body {
   padding: 1.5rem;
   border-radius: 30px;
   background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.22), transparent 30%),
-    linear-gradient(135deg, #0f2b3f, #1b5f7a 60%, #2fb08a);
+    radial-gradient(circle at top right, rgba(255, 255, 255, 0.18), transparent 30%),
+    radial-gradient(circle at bottom left, rgba(16, 185, 129, 0.2), transparent 50%),
+    linear-gradient(135deg, #0f172a 0%, #1e293b 25%, #1b5f7a 55%, #10b981 100%);
   color: #fff;
-  box-shadow: 0 26px 46px rgba(13, 55, 108, 0.22);
+  box-shadow: 0 26px 46px rgba(15, 23, 42, 0.25), 0 0 0 1px rgba(255,255,255,0.05) inset;
 }
 
 .hero-panel h2 {
@@ -834,7 +835,19 @@ body {
   gap: 0.65rem;
   padding: 1.2rem;
   transition: transform var(--transition-base), box-shadow var(--transition-base);
-  border-left: 4px solid rgba(27, 95, 122, 0.3);
+  border-left: 4px solid #6366f1;
+  background: linear-gradient(135deg, #fafbff 0%, #f0f1fe 100%);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0;
+  width: 60px; height: 60px;
+  background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .dashboard-stat-card {
@@ -910,11 +923,11 @@ body {
 .panel-card__header h3,
 .section-head h2 {
   margin: 0.2rem 0 0;
-  background: linear-gradient(135deg, #0f2b3f 0%, #1b5f7a 50%, #2fb08a 100%);
+  background: linear-gradient(135deg, #1e293b 0%, #6366f1 45%, #10b981 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  color: #1b5f7a;
+  color: #6366f1;
 }
 
 .activity-list,
@@ -3805,8 +3818,8 @@ body {
 
 .report-circle {
   --fill: 0;
-  --color-a: #1b5f7a;
-  --color-b: #e5ecfa;
+  --color-a: #6366f1;
+  --color-b: #f1f5f9;
   width: 122px;
   height: 122px;
   border-radius: 50%;
@@ -3815,21 +3828,24 @@ body {
   justify-content: center;
   position: relative;
   background: conic-gradient(var(--color-a) calc(var(--fill) * 1%), var(--color-b) 0);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.15);
 }
 
 .report-circle::before {
   content: "";
   position: absolute;
-  inset: 12px;
+  inset: 16px;
   border-radius: 50%;
   background: #fff;
+  box-shadow: 0 0 8px rgba(0,0,0,0.04);
 }
 
 .report-circle span {
   position: relative;
   z-index: 1;
   font-weight: 700;
-  color: #17345f;
+  color: #1e293b;
+  font-size: 0.85rem;
 }
 
 .report-chart-label {
@@ -3866,7 +3882,7 @@ body {
 .report-bar-fill {
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(135deg, #1b5f7a, #2fb08a);
+  background: linear-gradient(135deg, #6366f1, #10b981);
 }
 
 .promote-checkbox {
@@ -4588,13 +4604,13 @@ table tbody tr:hover {
   left: 0;
   right: 0;
   height: 6px;
-  background: linear-gradient(90deg, #0f2b3f 0%, #1b5f7a 40%, #2fb08a 70%, #2fb08a 100%);
+  background: linear-gradient(90deg, #6366f1 0%, #10b981 50%, #f59e0b 100%);
 }
 .panel-card:hover {
   box-shadow: 0 4px 16px rgba(15, 43, 63, 0.08), 0 16px 40px rgba(15, 43, 63, 0.06);
 }
 .panel-card:hover .panel-card__header h3 {
-  background: linear-gradient(135deg, #0f2b3f 0%, #1b5f7a 30%, #2fb08a 70%, #1b5f7a 100%);
+  background: linear-gradient(135deg, #6366f1 0%, #10b981 50%, #f59e0b 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -4983,11 +4999,19 @@ select:focus, input:focus, textarea:focus {
 
 /* ===== REPORT CARDS PREMIUM ===== */
 .report-card {
-  background: linear-gradient(180deg, #f8fafa 0%, #f0f5f3 100%);
-  border: 1px solid rgba(27, 95, 122, 0.16);
-  box-shadow: 0 2px 8px rgba(15, 43, 63, 0.08), 0 8px 24px rgba(15, 43, 63, 0.04);
+  background: linear-gradient(135deg, #fafbff 0%, #f0f1fe 50%, #e8f4f0 100%);
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.06), 0 8px 24px rgba(15, 43, 63, 0.04);
   border-radius: 18px;
   position: relative;
+  overflow: hidden;
+}
+.report-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #6366f1, #10b981, #f59e0b);
 }
 
 /* ===== ATTENDANCE CLASS CARDS PREMIUM ===== */
