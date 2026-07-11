@@ -5189,6 +5189,21 @@ document.addEventListener("DOMContentLoaded", function () {
       };
       settings.salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
       settings.feeCollections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
+      if (settings.feeCollections.length === 0 && Array.isArray(database.fees) && database.fees.length > 0) {
+        settings.feeCollections = database.fees.map(function (f, i) {
+          return {
+            id: f.id || ("COL-SYNC-" + (i + 1)),
+            feeId: f.id || "",
+            studentId: f.studentId || "",
+            studentName: f.studentName || f.name || "-",
+            feeMonth: f.feeMonth || f.month || "-",
+            totalAmount: Number(f.totalAmount || f.amount || 0),
+            deposit: Number(f.deposit || 0),
+            remaining: Number(f.remaining || 0),
+            collectedAt: f.paymentDate || f.date || f.createdAt || new Date().toISOString()
+          };
+        });
+      }
       settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
       settings.timetableWeekdays = Array.isArray(settings.timetableWeekdays) ? settings.timetableWeekdays : [];
       settings.timetablePeriods = Array.isArray(settings.timetablePeriods) ? settings.timetablePeriods : [];
@@ -8237,31 +8252,64 @@ ${allContent}
         const search = searchInput.value.trim().toLowerCase();
         const selectedClass = classFilter.value;
         const collections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
-        return collections.map(function (collection, index) {
-          const feeItem = database.fees.find(function (item) { return item.id === collection.feeId; }) ||
-            database.fees.find(function (item) {
-              return item.studentId === collection.studentId && (item.feeMonth || item.month) === collection.feeMonth;
-            }) ||
-            null;
-          const student = database.students.find(function (item) { return item.id === collection.studentId; }) || {};
-          const remaining = Number(collection.remaining != null ? collection.remaining : (feeItem ? feeItem.remaining : 0));
-          const collectionStatus = remaining === 0 ? "paid" : "unpaid";
-          return {
-            ...collection,
-            id: collection.id || `COL-ROW-${index}`,
-            feeId: feeItem ? feeItem.id : "",
-            feeMonth: (feeItem ? feeItem.feeMonth : "") || (feeItem ? feeItem.month : "") || collection.feeMonth || "-",
-            month: (feeItem ? feeItem.month : "") || (feeItem ? feeItem.feeMonth : "") || collection.feeMonth || "-",
-            status: collectionStatus,
-            paymentDate: String(collection.collectedAt || "").slice(0, 10) || (feeItem ? feeItem.paymentDate : "") || (feeItem ? feeItem.date : "") || "-",
-            rollNo: student.admissionNo || "-",
-            name: student.name || "-",
-            fatherName: student.fatherName || "-",
-            className: (feeItem ? feeItem.className : "") || student.className || "-"
-          };
-        }).filter(Boolean).filter(function (row) {
-          const classMatch = selectedClass === "all" || row.className === selectedClass;
-          const searchMatch = !search ||
+        var rows = [];
+        if (collections.length > 0) {
+          rows = collections.map(function (collection, index) {
+            var feeItem = database.fees.find(function (item) { return item.id === collection.feeId; }) ||
+              database.fees.find(function (item) {
+                return item.studentId === collection.studentId && (item.feeMonth || item.month) === collection.feeMonth;
+              }) ||
+              null;
+            var student = database.students.find(function (item) { return item.id === collection.studentId; }) || {};
+            var remaining = Number(collection.remaining != null ? collection.remaining : (feeItem ? feeItem.remaining : 0));
+            var collectionStatus = remaining === 0 ? "paid" : "unpaid";
+            return {
+              collectionId: collection.id || "",
+              feeId: feeItem ? feeItem.id : (collection.feeId || ""),
+              studentId: collection.studentId || "",
+              feeMonth: (feeItem ? feeItem.feeMonth : "") || (feeItem ? feeItem.month : "") || collection.feeMonth || "-",
+              month: (feeItem ? feeItem.month : "") || (feeItem ? feeItem.feeMonth : "") || collection.feeMonth || "-",
+              status: collectionStatus,
+              deposit: Number(collection.deposit || (feeItem ? feeItem.deposit : 0) || 0),
+              totalAmount: Number(collection.totalAmount || (feeItem ? feeItem.totalAmount : 0) || 0),
+              remaining: remaining,
+              paymentDate: String(collection.collectedAt || "").slice(0, 10) || (feeItem ? feeItem.paymentDate : "") || (feeItem ? feeItem.date : "") || "-",
+              rollNo: student.admissionNo || "-",
+              name: student.name || "-",
+              fatherName: student.fatherName || "-",
+              className: (feeItem ? feeItem.className : "") || student.className || "-"
+            };
+          }).filter(Boolean);
+        }
+        if (rows.length === 0 && database.fees.length > 0) {
+          rows = database.fees.map(function (feeItem, index) {
+            var student = database.students.find(function (item) { return item.id === feeItem.studentId; }) || {};
+            var remaining = Number(feeItem.remaining || 0);
+            var feeStatus = remaining === 0 ? "paid" : "unpaid";
+            var matchingCollection = collections.find(function (col) {
+              return col.feeId === feeItem.id || (col.studentId === feeItem.studentId && col.feeMonth === (feeItem.feeMonth || feeItem.month));
+            });
+            return {
+              collectionId: matchingCollection ? matchingCollection.id : "",
+              feeId: feeItem.id || "",
+              studentId: feeItem.studentId || "",
+              feeMonth: feeItem.feeMonth || feeItem.month || "-",
+              month: feeItem.month || feeItem.feeMonth || "-",
+              status: feeStatus,
+              deposit: Number(feeItem.deposit || 0),
+              totalAmount: Number(feeItem.totalAmount || feeItem.amount || 0),
+              remaining: remaining,
+              paymentDate: (feeItem.paymentDate || feeItem.date || feeItem.createdAt || "").slice(0, 10) || "-",
+              rollNo: student.admissionNo || "-",
+              name: student.name || "-",
+              fatherName: student.fatherName || "-",
+              className: feeItem.className || student.className || "-"
+            };
+          }).filter(Boolean);
+        }
+        return rows.filter(function (row) {
+          var classMatch = selectedClass === "all" || row.className === selectedClass;
+          var searchMatch = !search ||
             String(row.name || "").toLowerCase().includes(search) ||
             String(row.rollNo || "").toLowerCase().includes(search);
           return classMatch && searchMatch;
@@ -8280,7 +8328,7 @@ ${allContent}
               <td>${escapeHtml(row.feeMonth || row.month || "-")}</td>
               <td><span class="status-pill ${row.status === "paid" ? "paid" : "unpaid"}">${escapeHtml(row.status)}</span></td>
               <td>${escapeHtml(row.paymentDate || row.date || "-")}</td>
-              <td><button class="table-action-btn danger" type="button" data-fee-action="delete-fee-record" data-id="${row.id}" data-fee-id="${row.feeId}" data-student-id="${row.studentId || ""}" data-student-name="${row.studentName || ""}" data-deposit="${row.deposit || 0}" data-month="${row.feeMonth || row.month || ""}">Delete</button></td>
+              <td><button class="table-action-btn danger" type="button" data-fee-action="delete-fee-record" data-id="${row.collectionId || ""}" data-fee-id="${row.feeId || ""}" data-student-id="${row.studentId || ""}" data-student-name="${row.name || ""}" data-deposit="${row.deposit || 0}" data-month="${row.feeMonth || row.month || ""}">Delete</button></td>
             </tr>
           `;
         }).join("");
