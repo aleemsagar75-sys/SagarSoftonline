@@ -24403,6 +24403,7 @@ ${allContent}
     var allChildren = document.querySelectorAll(".view.active *");
     for (var c = 0; c < allChildren.length; c++) {
       var child = allChildren[c];
+      if (child.tagName === "TABLE" || child.closest("div[style*='overflow-x:auto']")) continue;
       var computed = window.getComputedStyle(child);
       if (computed.getPropertyValue("min-width") !== "0px" &&
           computed.getPropertyValue("min-width") !== "auto" &&
