@@ -7308,8 +7308,8 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 
   /* Employee module */
   .employees-card-grid { grid-template-columns: 1fr !important; }
-  .employee-card__header { grid-template-columns: 60px 1fr !important; gap: 0.9rem !important; padding: 0.8rem !important; }
-  .employee-card__info { padding-right: 0.5rem; }
+  .employee-card__header { grid-template-columns: 60px 1fr !important; gap: 1rem !important; padding: 0.8rem !important; }
+  .employee-card__info { padding-right: 1rem; }
   .employee-card__actions { grid-template-columns: 1fr 1fr !important; }
 
   /* Account module */
