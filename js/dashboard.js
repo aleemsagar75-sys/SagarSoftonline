@@ -8838,10 +8838,10 @@ ${allContent}
         const totalBonus = rows.reduce(function (sum, row) { return sum + Number(row.bonus || 0); }, 0);
         const totalNet = rows.reduce(function (sum, row) { return sum + Number(row.netSalary || 0); }, 0);
         cards.innerHTML = `
-          <article class="stat-card"><p class="panel-label">Records</p><strong>${rows.length}</strong></article>
-          <article class="stat-card"><p class="panel-label">Total Salary</p><strong>${currencySymbol} ${totalPaid}</strong></article>
-          <article class="stat-card"><p class="panel-label">Total Bonus</p><strong>${currencySymbol} ${totalBonus}</strong></article>
-          <article class="stat-card"><p class="panel-label">Total Net</p><strong>${currencySymbol} ${totalNet}</strong></article>
+          <article class="stat-card stat-card--indigo"><p class="panel-label">Records</p><strong>${rows.length}</strong></article>
+          <article class="stat-card stat-card--emerald"><p class="panel-label">Total Salary</p><strong>${currencySymbol} ${totalPaid}</strong></article>
+          <article class="stat-card stat-card--amber"><p class="panel-label">Total Bonus</p><strong>${currencySymbol} ${totalBonus}</strong></article>
+          <article class="stat-card stat-card--sky"><p class="panel-label">Total Net</p><strong>${currencySymbol} ${totalNet}</strong></article>
         `;
       }
 
@@ -13533,10 +13533,10 @@ ${allContent}
         const avg = rows.length ? Math.round(rows.reduce(function (sum, row) { return sum + row.result.percentage; }, 0) / rows.length) : 0;
         const passPercent = rows.length ? Math.round((pass / rows.length) * 100) : 0;
         statsWrap.innerHTML = `
-          <article class="stat-card"><strong>Total</strong><span>${rows.length}</span></article>
-          <article class="stat-card"><strong>Pass</strong><span>${pass}</span></article>
-          <article class="stat-card"><strong>Fail</strong><span>${fail}</span></article>
-          <article class="stat-card"><strong>Average %</strong><span>${avg}%</span></article>
+          <article class="stat-card stat-card--indigo"><strong>Total</strong><span>${rows.length}</span></article>
+          <article class="stat-card stat-card--emerald"><strong>Pass</strong><span>${pass}</span></article>
+          <article class="stat-card stat-card--rose"><strong>Fail</strong><span>${fail}</span></article>
+          <article class="stat-card stat-card--amber"><strong>Average %</strong><span>${avg}%</span></article>
         `;
         chartWrap.innerHTML = rows.length ? buildCircleChart(passPercent, `Pass ${pass} | Fail ${fail}`, "#6366f1", "#f1f5f9") : `<p class="empty-state">No data found.</p>`;
         const top = rows.slice().sort(function (a, b) { return b.result.percentage - a.result.percentage; }).slice(0, 8).map(function (row) {
@@ -13867,7 +13867,7 @@ ${allContent}
           const female = rows.filter(function (row) { return row.gender === "Female"; }).length;
           const active = rows.filter(function (row) { return String(row.status || "").toLowerCase() === "active"; }).length;
           const malePercent = rows.length ? Math.round((male / rows.length) * 100) : 0;
-          statsWrap.innerHTML = `<article class="stat-card"><strong>Total</strong><span>${rows.length}</span></article><article class="stat-card"><strong>Active</strong><span>${active}</span></article><article class="stat-card"><strong>Male</strong><span>${male}</span></article><article class="stat-card"><strong>Female</strong><span>${female}</span></article>`;
+          statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>Total</strong><span>${rows.length}</span></article><article class="stat-card stat-card--emerald"><strong>Active</strong><span>${active}</span></article><article class="stat-card stat-card--sky"><strong>Male</strong><span>${male}</span></article><article class="stat-card stat-card--rose"><strong>Female</strong><span>${female}</span></article>`;
           chartWrap.innerHTML = rows.length ? buildCircleChart(malePercent, `Male ${male} | Female ${female}`, "#6366f1", "#f1f5f9") : `<p class="empty-state">No data found.</p>`;
           const classStats = rows.reduce(function (map, student) { map.set(student.className || "-", (map.get(student.className || "-") || 0) + 1); return map; }, new Map());
           const barRows = Array.from(classStats.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
@@ -13982,7 +13982,7 @@ ${allContent}
         const totalLeave = rows.reduce(function (sum, row) { return sum + row.leave; }, 0);
         const totalDays = totalPresent + totalAbsent + totalLeave;
         const presentPercent = totalDays ? Math.round((totalPresent / totalDays) * 100) : 0;
-        statsWrap.innerHTML = `<article class="stat-card"><strong>${isStaff ? "Employees" : "Students"}</strong><span>${rows.length}</span></article><article class="stat-card"><strong>Present</strong><span>${totalPresent}</span></article><article class="stat-card"><strong>Absent</strong><span>${totalAbsent}</span></article><article class="stat-card"><strong>Leave</strong><span>${totalLeave}</span></article>`;
+        statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>${isStaff ? "Employees" : "Students"}</strong><span>${rows.length}</span></article><article class="stat-card stat-card--emerald"><strong>Present</strong><span>${totalPresent}</span></article><article class="stat-card stat-card--rose"><strong>Absent</strong><span>${totalAbsent}</span></article><article class="stat-card stat-card--amber"><strong>Leave</strong><span>${totalLeave}</span></article>`;
         chartWrap.innerHTML = totalDays ? buildCircleChart(presentPercent, `Present ${totalPresent} | Absent ${totalAbsent} | Leave ${totalLeave}`, "#10b981", "#f1f5f9") : `<p class="empty-state">No attendance data.</p>`;
         const barsData = rows.slice().sort(function (a, b) { return b.percent - a.percent; }).slice(0, 10).map(function (row) {
           return { label: isStaff ? row.employee.name : row.student.name, value: row.percent };
@@ -14112,7 +14112,7 @@ ${allContent}
           const totalDeposit = rows.reduce(function (sum, row) { return sum + row.deposit; }, 0);
           const totalDue = rows.reduce(function (sum, row) { return sum + row.remaining; }, 0);
           const paidPercent = rows.length ? Math.round((paid / rows.length) * 100) : 0;
-          statsWrap.innerHTML = `<article class="stat-card"><strong>Total Students</strong><span>${rows.length}</span></article><article class="stat-card"><strong>Total Amount</strong><span>${totalAmount}</span></article><article class="stat-card"><strong>Collected</strong><span>${totalDeposit}</span></article><article class="stat-card"><strong>Due</strong><span>${totalDue}</span></article>`;
+          statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>Total Students</strong><span>${rows.length}</span></article><article class="stat-card stat-card--violet"><strong>Total Amount</strong><span>${totalAmount}</span></article><article class="stat-card stat-card--emerald"><strong>Collected</strong><span>${totalDeposit}</span></article><article class="stat-card stat-card--rose"><strong>Due</strong><span>${totalDue}</span></article>`;
           chartWrap.innerHTML = rows.length ? buildCircleChart(paidPercent, `Paid ${paid} | Due ${due}`, "#10b981", "#f1f5f9") : `<p class="empty-state">No data found.</p>`;
           const classTotals = rows.reduce(function (map, row) { map.set(row.student.className || "-", (map.get(row.student.className || "-") || 0) + row.deposit); return map; }, new Map());
           const bars = Array.from(classTotals.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
@@ -14503,7 +14503,7 @@ ${allContent}
         const stats = getLedgerStats(rows);
         const incomePercent = (stats.income + stats.expense) ? Math.round((stats.income / (stats.income + stats.expense)) * 100) : 0;
         const categoryBars = getCategoryStats(rows, "");
-        statsWrap.innerHTML = `<article class="stat-card"><strong>Total Income</strong><span>${currencySymbol} ${stats.income}</span></article><article class="stat-card"><strong>Total Expense</strong><span>${currencySymbol} ${stats.expense}</span></article><article class="stat-card"><strong>Net Balance</strong><span>${currencySymbol} ${stats.net}</span></article><article class="stat-card"><strong>Total Entries</strong><span>${rows.length}</span></article>`;
+        statsWrap.innerHTML = `<article class="stat-card stat-card--emerald"><strong>Total Income</strong><span>${currencySymbol} ${stats.income}</span></article><article class="stat-card stat-card--rose"><strong>Total Expense</strong><span>${currencySymbol} ${stats.expense}</span></article><article class="stat-card stat-card--sky"><strong>Net Balance</strong><span>${currencySymbol} ${stats.net}</span></article><article class="stat-card stat-card--amber"><strong>Total Entries</strong><span>${rows.length}</span></article>`;
         pieWrap.innerHTML = (stats.income + stats.expense)
           ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#10b981", "#f1f5f9")
           : `<p class="empty-state">No accounting data yet.</p>`;
@@ -14592,7 +14592,7 @@ ${allContent}
           ? ((allStats.income + allStats.expense) ? Math.round((allStats.income / (allStats.income + allStats.expense)) * 100) : 0)
           : ((allStats.income + allStats.expense) ? Math.round((allStats.expense / (allStats.income + allStats.expense)) * 100) : 0);
         const barsRows = getCategoryStats(rows, "");
-        quickStats.innerHTML = `<article class="stat-card"><strong>${isIncome ? "Total Income" : "Total Expense"}</strong><span>${currencySymbol} ${Math.round(typeTotal)}</span></article><article class="stat-card"><strong>${isIncome ? "Income Entries" : "Expense Entries"}</strong><span>${rows.length}</span></article><article class="stat-card"><strong>Overall Balance</strong><span>${currencySymbol} ${Math.round(allStats.net)}</span></article><article class="stat-card"><strong>Recent Records</strong><span>${getLedgerRecentRows(rows, 10).length}</span></article>`;
+        quickStats.innerHTML = `<article class="stat-card stat-card--${isIncome ? "emerald" : "rose"}"><strong>${isIncome ? "Total Income" : "Total Expense"}</strong><span>${currencySymbol} ${Math.round(typeTotal)}</span></article><article class="stat-card stat-card--amber"><strong>${isIncome ? "Income Entries" : "Expense Entries"}</strong><span>${rows.length}</span></article><article class="stat-card stat-card--sky"><strong>Overall Balance</strong><span>${currencySymbol} ${Math.round(allStats.net)}</span></article><article class="stat-card stat-card--violet"><strong>Recent Records</strong><span>${getLedgerRecentRows(rows, 10).length}</span></article>`;
         typePie.innerHTML = (allStats.income + allStats.expense)
           ? buildCircleChart(ratio, `${isIncome ? "Income" : "Expense"} share in total accounts`, isIncome ? "#10b981" : "#ef4444", "#f1f5f9")
           : `<p class="empty-state">No accounting data yet.</p>`;
@@ -14752,7 +14752,7 @@ ${allContent}
         const stats = getLedgerStats(rows);
         const incomePercent = (stats.income + stats.expense) ? Math.round((stats.income / (stats.income + stats.expense)) * 100) : 0;
         const barsData = getCategoryStats(rows, "");
-        statsWrap.innerHTML = `<article class="stat-card"><strong>Income</strong><span>${currencySymbol} ${stats.income}</span></article><article class="stat-card"><strong>Expense</strong><span>${currencySymbol} ${stats.expense}</span></article><article class="stat-card"><strong>Balance</strong><span>${currencySymbol} ${stats.net}</span></article><article class="stat-card"><strong>Transactions</strong><span>${rows.length}</span></article>`;
+        statsWrap.innerHTML = `<article class="stat-card stat-card--emerald"><strong>Income</strong><span>${currencySymbol} ${stats.income}</span></article><article class="stat-card stat-card--rose"><strong>Expense</strong><span>${currencySymbol} ${stats.expense}</span></article><article class="stat-card stat-card--sky"><strong>Balance</strong><span>${currencySymbol} ${stats.net}</span></article><article class="stat-card stat-card--amber"><strong>Transactions</strong><span>${rows.length}</span></article>`;
         chartWrap.innerHTML = (stats.income + stats.expense)
           ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#10b981", "#f1f5f9")
           : `<p class="empty-state">No filtered data for chart.</p>`;
