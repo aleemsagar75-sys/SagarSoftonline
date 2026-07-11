@@ -849,6 +849,22 @@ body {
   background: radial-gradient(circle, rgba(99,102,241,0.08) 0%, transparent 70%);
   pointer-events: none;
 }
+.stat-card--indigo { border-left-color: #6366f1; background: linear-gradient(135deg, #fafbff, #f0f1fe); }
+.stat-card--indigo::after { background: radial-gradient(circle, rgba(99,102,241,0.1) 0%, transparent 70%); }
+.stat-card--emerald { border-left-color: #10b981; background: linear-gradient(135deg, #f0fdf8, #e6f9f0); }
+.stat-card--emerald::after { background: radial-gradient(circle, rgba(16,185,129,0.1) 0%, transparent 70%); }
+.stat-card--amber { border-left-color: #f59e0b; background: linear-gradient(135deg, #fffbeb, #fef3c7); }
+.stat-card--amber::after { background: radial-gradient(circle, rgba(245,158,11,0.1) 0%, transparent 70%); }
+.stat-card--rose { border-left-color: #f43f5e; background: linear-gradient(135deg, #fff1f2, #ffe4e6); }
+.stat-card--rose::after { background: radial-gradient(circle, rgba(244,63,94,0.1) 0%, transparent 70%); }
+.stat-card--sky { border-left-color: #0ea5e9; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); }
+.stat-card--sky::after { background: radial-gradient(circle, rgba(14,165,233,0.1) 0%, transparent 70%); }
+.stat-card--violet { border-left-color: #8b5cf6; background: linear-gradient(135deg, #f5f3ff, #ede9fe); }
+.stat-card--violet::after { background: radial-gradient(circle, rgba(139,92,246,0.1) 0%, transparent 70%); }
+.stat-card--teal { border-left-color: #14b8a6; background: linear-gradient(135deg, #f0fdfa, #ccfbf1); }
+.stat-card--teal::after { background: radial-gradient(circle, rgba(20,184,166,0.1) 0%, transparent 70%); }
+.stat-card--orange { border-left-color: #f97316; background: linear-gradient(135deg, #fff7ed, #ffedd5); }
+.stat-card--orange::after { background: radial-gradient(circle, rgba(249,115,22,0.1) 0%, transparent 70%); }
 
 .dashboard-stat-card {
   cursor: pointer;
