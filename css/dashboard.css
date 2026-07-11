@@ -849,30 +849,30 @@ body {
   background: radial-gradient(circle, rgba(203,213,225,0.1) 0%, transparent 70%);
   pointer-events: none;
 }
-.stat-card--indigo { border-left-color: #6366f1; background: linear-gradient(135deg, #eef2ff, #e0e7ff); }
-.stat-card--indigo::after { background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%); }
-.stat-card--indigo strong, .stat-card--indigo .panel-label { color: #4338ca; }
-.stat-card--emerald { border-left-color: #10b981; background: linear-gradient(135deg, #ecfdf5, #d1fae5); }
-.stat-card--emerald::after { background: radial-gradient(circle, rgba(16,185,129,0.15) 0%, transparent 70%); }
-.stat-card--emerald strong, .stat-card--emerald .panel-label { color: #047857; }
-.stat-card--amber { border-left-color: #f59e0b; background: linear-gradient(135deg, #fffbeb, #fef3c7); }
-.stat-card--amber::after { background: radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%); }
-.stat-card--amber strong, .stat-card--amber .panel-label { color: #b45309; }
-.stat-card--rose { border-left-color: #f43f5e; background: linear-gradient(135deg, #fff1f2, #ffe4e6); }
-.stat-card--rose::after { background: radial-gradient(circle, rgba(244,63,94,0.15) 0%, transparent 70%); }
-.stat-card--rose strong, .stat-card--rose .panel-label { color: #be123c; }
-.stat-card--sky { border-left-color: #0ea5e9; background: linear-gradient(135deg, #f0f9ff, #e0f2fe); }
-.stat-card--sky::after { background: radial-gradient(circle, rgba(14,165,233,0.15) 0%, transparent 70%); }
-.stat-card--sky strong, .stat-card--sky .panel-label { color: #0369a1; }
-.stat-card--violet { border-left-color: #8b5cf6; background: linear-gradient(135deg, #f5f3ff, #ede9fe); }
-.stat-card--violet::after { background: radial-gradient(circle, rgba(139,92,246,0.15) 0%, transparent 70%); }
-.stat-card--violet strong, .stat-card--violet .panel-label { color: #6d28d9; }
-.stat-card--teal { border-left-color: #14b8a6; background: linear-gradient(135deg, #f0fdfa, #ccfbf1); }
-.stat-card--teal::after { background: radial-gradient(circle, rgba(20,184,166,0.15) 0%, transparent 70%); }
-.stat-card--teal strong, .stat-card--teal .panel-label { color: #0f766e; }
-.stat-card--orange { border-left-color: #f97316; background: linear-gradient(135deg, #fff7ed, #ffedd5); }
-.stat-card--orange::after { background: radial-gradient(circle, rgba(249,115,22,0.15) 0%, transparent 70%); }
-.stat-card--orange strong, .stat-card--orange .panel-label { color: #c2410c; }
+.stat-card--indigo { border-left-color: #4f46e5; background: linear-gradient(135deg, #c7d2fe, #a5b4fc); }
+.stat-card--indigo::after { background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%); }
+.stat-card--indigo strong, .stat-card--indigo .panel-label { color: #312e81; }
+.stat-card--emerald { border-left-color: #059669; background: linear-gradient(135deg, #a7f3d0, #6ee7b7); }
+.stat-card--emerald::after { background: radial-gradient(circle, rgba(16,185,129,0.2) 0%, transparent 70%); }
+.stat-card--emerald strong, .stat-card--emerald .panel-label { color: #064e3b; }
+.stat-card--amber { border-left-color: #d97706; background: linear-gradient(135deg, #fde68a, #fcd34d); }
+.stat-card--amber::after { background: radial-gradient(circle, rgba(245,158,11,0.2) 0%, transparent 70%); }
+.stat-card--amber strong, .stat-card--amber .panel-label { color: #78350f; }
+.stat-card--rose { border-left-color: #e11d48; background: linear-gradient(135deg, #fecdd3, #fda4af); }
+.stat-card--rose::after { background: radial-gradient(circle, rgba(244,63,94,0.2) 0%, transparent 70%); }
+.stat-card--rose strong, .stat-card--rose .panel-label { color: #881337; }
+.stat-card--sky { border-left-color: #0284c7; background: linear-gradient(135deg, #bae6fd, #7dd3fc); }
+.stat-card--sky::after { background: radial-gradient(circle, rgba(14,165,233,0.2) 0%, transparent 70%); }
+.stat-card--sky strong, .stat-card--sky .panel-label { color: #0c4a6e; }
+.stat-card--violet { border-left-color: #7c3aed; background: linear-gradient(135deg, #ddd6fe, #c4b5fd); }
+.stat-card--violet::after { background: radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%); }
+.stat-card--violet strong, .stat-card--violet .panel-label { color: #4c1d95; }
+.stat-card--teal { border-left-color: #0d9488; background: linear-gradient(135deg, #99f6e4, #5eead4); }
+.stat-card--teal::after { background: radial-gradient(circle, rgba(20,184,166,0.2) 0%, transparent 70%); }
+.stat-card--teal strong, .stat-card--teal .panel-label { color: #134e4a; }
+.stat-card--orange { border-left-color: #ea580c; background: linear-gradient(135deg, #fed7aa, #fdba74); }
+.stat-card--orange::after { background: radial-gradient(circle, rgba(249,115,22,0.2) 0%, transparent 70%); }
+.stat-card--orange strong, .stat-card--orange .panel-label { color: #7c2d12; }
 
 .dashboard-stat-card {
   cursor: pointer;
