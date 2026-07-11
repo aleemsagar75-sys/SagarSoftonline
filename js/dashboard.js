@@ -14209,6 +14209,8 @@ ${allContent}
           <div class="accounts-filter-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
             <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">From<input id="accountsFromInput" type="date" value="${_firstOfMonth}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
             <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">To<input id="accountsToInput" type="date" value="${_today}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.72rem;font-weight:600;margin-bottom:2px;">Type</label><select id="accountsTypeFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Types</option><option value="fees">Fees</option><option value="income">Income</option><option value="expense">Expense</option></select></div>
+            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.72rem;font-weight:600;margin-bottom:2px;">Search</label><input id="accountsSearchInput" type="search" placeholder="Search description..." style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
             <button id="clearAccountsHistoryBtn" type="button" class="btn-account-action btn-danger-action" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Clear History</button>
             <button id="printAccountsBtn" type="button" class="btn-account-action btn-primary-action" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Print</button>
             <button id="pdfAccountsBtn" type="button" class="btn-account-action btn-secondary-action" style="flex:1 1 60px;min-width:0;white-space:normal;text-align:center;justify-content:center;">PDF</button>
@@ -14221,6 +14223,8 @@ ${allContent}
       moduleGuide.innerHTML = "";
       const fromInput = document.getElementById("accountsFromInput");
       const toInput = document.getElementById("accountsToInput");
+      const typeFilter = document.getElementById("accountsTypeFilter");
+      const searchFilter = document.getElementById("accountsSearchInput");
       const statsWrap = document.getElementById("accountsStats");
       const tableBody = document.getElementById("accountsTableBody");
 
@@ -14240,25 +14244,30 @@ ${allContent}
         (settings.accountsLedger || []).forEach(function (item) {
           if (!inRange(item.date || item.createdAt)) return;
           var amt = Number(item.amount || 0);
+          var _type = String(item.type || "").toLowerCase();
           rows.push({
             date: String(item.date || item.createdAt || "-").substring(0, 10),
             description: item.description || item.note || item.category || "-",
-            debit: String(item.type || "").toLowerCase() === "expense" ? amt : 0,
-            credit: String(item.type || "").toLowerCase() === "income" ? amt : 0
+            debit: _type === "expense" ? amt : 0,
+            credit: _type === "income" ? amt : 0,
+            source: _type === "expense" ? "expense" : "income",
+            category: item.category || ""
           });
         });
         (settings.feeCollections || []).forEach(function (item) {
           if (!inRange(item.collectedAt || item.date || "")) return;
           var amt = Number(item.deposit || 0);
-          var _stu = (item.studentName && item.studentName !== "-") ? null : (database.students.find(function (s) { return s.id === item.studentId; }) || null);
-          var _fee = !_stu ? null : (database.fees.find(function (f) { return f.id === item.feeId; }) || database.fees.find(function (f) { return f.studentId === item.studentId && (f.feeMonth || f.month) === item.feeMonth; }) || null);
-          var sName = item.studentName || (_stu ? _stu.name : "") || (_fee ? _fee.studentName : "") || item.studentId || "-";
-          var sRoll = item.studentRollNo || (_stu ? _stu.admissionNo : "") || (_fee ? _fee.admissionNo : "") || item.studentId || "-";
+          var _stu = database.students.find(function (s) { return s.id === item.studentId; }) || null;
+          var _fee = database.fees.find(function (f) { return f.id === item.feeId; }) || database.fees.find(function (f) { return f.studentId === item.studentId && (f.feeMonth || f.month) === item.feeMonth; }) || null;
+          var sName = (_stu ? _stu.name : "") || (_fee ? _fee.studentName : "") || item.studentName || item.studentId || "-";
+          var sRoll = (_stu ? _stu.admissionNo : "") || (_fee ? _fee.admissionNo : "") || item.studentRollNo || item.studentId || "-";
           rows.push({
             date: String(item.collectedAt || item.date || "-").substring(0, 10),
             description: "Fee added for " + sName + " (" + sRoll + ")",
             debit: 0,
-            credit: amt
+            credit: amt,
+            source: "fees",
+            category: "Fee Collection"
           });
         });
         (settings.salaryPayments || []).forEach(function (item) {
@@ -14268,7 +14277,9 @@ ${allContent}
             date: String(item.paymentDate || item.date || "-").substring(0, 10),
             description: "Salary paid to " + (item.employeeName || item.employeeId || "-"),
             debit: total,
-            credit: 0
+            credit: 0,
+            source: "expense",
+            category: "Salary"
           });
         });
         rows.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
@@ -14291,6 +14302,24 @@ ${allContent}
 
       function renderStatement() {
         var data = getStatementRows();
+        var _typeVal = typeFilter ? typeFilter.value : "all";
+        var _searchVal = searchFilter ? searchFilter.value.trim().toLowerCase() : "";
+        if (_typeVal !== "all") {
+          data.rows = data.rows.filter(function (r) { return r.source === _typeVal; });
+        }
+        if (_searchVal) {
+          data.rows = data.rows.filter(function (r) {
+            return String(r.description || "").toLowerCase().includes(_searchVal) || String(r.category || "").toLowerCase().includes(_searchVal);
+          });
+        }
+        var balance = 0;
+        data.rows.forEach(function (r) {
+          balance = balance + r.credit - r.debit;
+          r.balance = balance;
+        });
+        data.totalDebit = data.rows.reduce(function (s, r) { return s + r.debit; }, 0);
+        data.totalCredit = data.rows.reduce(function (s, r) { return s + r.credit; }, 0);
+        data.netBalance = data.totalCredit - data.totalDebit;
         statsWrap.innerHTML = '<article class="stat-card stat-card--emerald" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Credit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#10b981;margin-top:2px;">' + data.totalCredit + '</span></article><article class="stat-card stat-card--rose" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Debit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#ef4444;margin-top:2px;">' + data.totalDebit + '</span></article><article class="stat-card stat-card--sky" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Net Balance</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0ea5e9;margin-top:2px;">' + data.netBalance + '</span></article><article class="stat-card stat-card--amber" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Transactions</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#f59e0b;margin-top:2px;">' + data.rows.length + '</span></article>';
         var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
         var tbody = data.rows.map(function (r) {
@@ -14356,6 +14385,8 @@ ${allContent}
 
       fromInput.addEventListener("change", renderStatement);
       toInput.addEventListener("change", renderStatement);
+      if (typeFilter) typeFilter.addEventListener("change", renderStatement);
+      if (searchFilter) searchFilter.addEventListener("input", renderStatement);
       renderStatement();
       return;
     }
