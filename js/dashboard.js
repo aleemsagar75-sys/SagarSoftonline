@@ -7515,6 +7515,7 @@ ${allContent}
           feeId: feeRecord.id,
           studentId: student.id,
           studentName: student.name || "-",
+          studentRollNo: student.admissionNo || "-",
           feeMonth: feeMonth,
           totalAmount: totalAmount,
           deposit: deposit,
@@ -8328,7 +8329,7 @@ ${allContent}
               <td>${escapeHtml(row.feeMonth || row.month || "-")}</td>
               <td><span class="status-pill ${row.status === "paid" ? "paid" : "unpaid"}">${escapeHtml(row.status)}</span></td>
               <td>${escapeHtml(row.paymentDate || row.date || "-")}</td>
-              <td><button class="table-action-btn danger" type="button" data-fee-action="delete-fee-record" data-id="${row.collectionId || ""}" data-fee-id="${row.feeId || ""}" data-student-id="${row.studentId || ""}" data-student-name="${row.name || ""}" data-deposit="${row.deposit || 0}" data-month="${row.feeMonth || row.month || ""}">Delete</button></td>
+              <td><button class="table-action-btn danger" type="button" data-fee-action="delete-fee-record" data-id="${row.collectionId || ""}" data-fee-id="${row.feeId || ""}" data-student-id="${row.studentId || ""}" data-student-name="${row.name || ""}" data-student-roll="${row.rollNo || ""}" data-deposit="${row.deposit || 0}" data-month="${row.feeMonth || row.month || ""}">Delete</button></td>
             </tr>
           `;
         }).join("");
@@ -8345,6 +8346,7 @@ ${allContent}
         const studentId = String(actionButton.dataset.studentId || "");
         const feeMonth = String(actionButton.dataset.month || "");
         const studentName = String(actionButton.dataset.studentName || "");
+        const studentRoll = String(actionButton.dataset.studentRoll || "");
         const depositAmount = Number(actionButton.dataset.deposit || 0);
         
         settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
@@ -8353,7 +8355,7 @@ ${allContent}
           date: getTodayDateISO(),
           type: "Expense",
           category: "Fee Deletion",
-          description: "Fee deleted for " + (studentName || studentId || "-"),
+          description: "Fee deleted for " + (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ")",
           amount: depositAmount,
           note: "Fee record deleted for month " + feeMonth,
           createdAt: new Date().toISOString()
@@ -14248,7 +14250,7 @@ ${allContent}
           var amt = Number(item.deposit || 0);
           rows.push({
             date: String(item.collectedAt || item.date || "-").substring(0, 10),
-            description: "Fee added for " + (item.studentName || item.studentId || "-"),
+            description: "Fee added for " + (item.studentName || item.studentId || "-") + " (" + (item.studentRollNo || item.studentId || "-") + ")",
             debit: 0,
             credit: amt
           });
