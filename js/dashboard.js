@@ -9354,13 +9354,15 @@ ${allContent}
         <article style="overflow-x:hidden;">
           <strong class="module-center-title">Manage Time Periods</strong>
           <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Period Name*</label><input id="periodLabelInput" type="text" placeholder="e.g Period 1" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Start Time*</label><input id="periodStartInput" type="time" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">End Time*</label><input id="periodEndInput" type="time" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Type*</label><select id="periodTypeInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="Teaching">Teaching</option><option value="Break">Break</option></select></div>
-            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Status</label><select id="periodStatusInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Period Name*</label><input id="periodLabelInput" type="text" placeholder="e.g Period 1" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Start Time*</label><input id="periodStartInput" type="time" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">End Time*</label><input id="periodEndInput" type="time" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
           </div>
-          <div class="form-actions"><button class="primary-button" id="savePeriodBtn" type="button">Save Period</button></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Type*</label><select id="periodTypeInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="Teaching">Teaching</option><option value="Break">Break</option></select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Status</label><select id="periodStatusInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+            <div style="flex:0 1 160px;min-width:0;display:flex;align-items:flex-end;"><button class="primary-button" id="savePeriodBtn" type="button" style="width:100%;margin:0;">Save Period</button></div>
+          </div>
           <p class="form-message" id="periodMessage"></p>
         </article>
         <article>
