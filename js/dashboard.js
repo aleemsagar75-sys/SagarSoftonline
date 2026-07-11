@@ -9230,45 +9230,19 @@ ${allContent}
 
     if (route === "weekdays") {
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong class="module-center-title">Manage Weekdays</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="weekdayNameInput">Weekday Name*</label>
-              <input id="weekdayNameInput" type="text" placeholder="e.g Monday">
-            </div>
-            <div class="field-group">
-              <label for="weekdayShortInput">Short Label*</label>
-              <input id="weekdayShortInput" type="text" placeholder="e.g Mon">
-            </div>
-            <div class="field-group">
-              <label for="weekdayStatusInput">Status</label>
-              <select id="weekdayStatusInput">
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Weekday Name*</label><input id="weekdayNameInput" type="text" placeholder="e.g Monday" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
+            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Short Label*</label><input id="weekdayShortInput" type="text" placeholder="e.g Mon" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
+            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Status</label><select id="weekdayStatusInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
           </div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveWeekdayBtn" type="button">Save Weekday</button>
-          </div>
+          <div class="form-actions"><button class="primary-button" id="saveWeekdayBtn" type="button">Save Weekday</button></div>
           <p class="form-message" id="weekdayMessage"></p>
         </article>
         <article>
           <strong>All Weekdays</strong>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Weekday</th>
-                  <th>Short Label</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="weekdayTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:400px;width:100%;"><thead><tr><th>Weekday</th><th>Short Label</th><th>Status</th><th>Actions</th></tr></thead><tbody id="weekdayTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -9377,58 +9351,21 @@ ${allContent}
 
     if (route === "time-periods") {
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong class="module-center-title">Manage Time Periods</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="periodLabelInput">Period Name*</label>
-              <input id="periodLabelInput" type="text" placeholder="e.g Period 1">
-            </div>
-            <div class="field-group">
-              <label for="periodStartInput">Start Time*</label>
-              <input id="periodStartInput" type="time">
-            </div>
-            <div class="field-group">
-              <label for="periodEndInput">End Time*</label>
-              <input id="periodEndInput" type="time">
-            </div>
-            <div class="field-group">
-              <label for="periodTypeInput">Type*</label>
-              <select id="periodTypeInput">
-                <option value="Teaching">Teaching</option>
-                <option value="Break">Break</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="periodStatusInput">Status</label>
-              <select id="periodStatusInput">
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-              </select>
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Period Name*</label><input id="periodLabelInput" type="text" placeholder="e.g Period 1" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Start Time*</label><input id="periodStartInput" type="time" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">End Time*</label><input id="periodEndInput" type="time" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Type*</label><select id="periodTypeInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="Teaching">Teaching</option><option value="Break">Break</option></select></div>
+            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Status</label><select id="periodStatusInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
           </div>
-          <div class="form-actions">
-            <button class="primary-button" id="savePeriodBtn" type="button">Save Period</button>
-          </div>
+          <div class="form-actions"><button class="primary-button" id="savePeriodBtn" type="button">Save Period</button></div>
           <p class="form-message" id="periodMessage"></p>
         </article>
         <article>
           <strong>All Time Periods</strong>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Period</th>
-                  <th>Start</th>
-                  <th>End</th>
-                  <th>Type</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="periodTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:450px;width:100%;"><thead><tr><th>Period</th><th>Start</th><th>End</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -9556,42 +9493,19 @@ ${allContent}
       }
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong class="module-center-title">Manage Class Rooms</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="roomNameInput">Room Name*</label>
-              <select id="roomNameInput" style="width:100%"></select>
-            </div>
-            <div class="field-group">
-              <label for="roomCapacityInput">Capacity</label>
-              <input id="roomCapacityInput" type="number" min="0" placeholder="30">
-            </div>
-            <div class="field-group">
-              <label for="roomLocationInput">Location</label>
-              <input id="roomLocationInput" type="text" placeholder="Main Building">
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Room Name*</label><select id="roomNameInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Capacity</label><input id="roomCapacityInput" type="number" min="0" placeholder="30" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
+            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Location</label><input id="roomLocationInput" type="text" placeholder="Main Building" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
           </div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveRoomBtn" type="button">Save Room</button>
-          </div>
+          <div class="form-actions"><button class="primary-button" id="saveRoomBtn" type="button">Save Room</button></div>
           <p class="form-message" id="roomMessage"></p>
         </article>
         <article>
           <strong>All Class Rooms</strong>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Room Name</th>
-                  <th>Capacity</th>
-                  <th>Location</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="roomTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:380px;width:100%;"><thead><tr><th>Room Name</th><th>Capacity</th><th>Location</th><th>Actions</th></tr></thead><tbody id="roomTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -9696,41 +9610,14 @@ ${allContent}
       }).join("");
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong class="module-center-title">Create Timetable</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="timetableClassSelect">Select Class*</label>
-              <select id="timetableClassSelect">
-                <option value="">Select Class</option>
-                ${classOptionsMarkup}
-              </select>
-            </div>
-            <div class="field-group">
-              <label for="timetableWeekdaySelect">Select Weekday*</label>
-              <select id="timetableWeekdaySelect">
-                <option value="">Select Weekday</option>
-                ${weekdayOptionsMarkup}
-              </select>
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+            <div style="flex:1 1 180px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Select Class*</label><select id="timetableClassSelect" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 180px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Select Weekday*</label><select id="timetableWeekdaySelect" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="">Select Weekday</option>${weekdayOptionsMarkup}</select></div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Period</th>
-                  <th>Time</th>
-                  <th>Subject</th>
-                  <th>Teacher</th>
-                  <th>Class Room</th>
-                </tr>
-              </thead>
-              <tbody id="createTimetableTableBody"></tbody>
-            </table>
-          </div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveTimetableBtn" type="button">Save Timetable</button>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:500px;width:100%;"><thead><tr><th>Period</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Class Room</th></tr></thead><tbody id="createTimetableTableBody"></tbody></table></div>
+          <div class="form-actions"><button class="primary-button" id="saveTimetableBtn" type="button">Save Timetable</button></div>
           <p class="form-message" id="createTimetableMessage"></p>
         </article>
       `;
@@ -9853,21 +9740,13 @@ ${allContent}
       const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong class="module-center-title">Generate Timetable For Class</strong>
-          <div class="toolbar toolbar--status module-toolbar">
-            <select id="timetablePrintClassSelect">
-              <option value="">Select Class</option>
-              ${classOptionsMarkup}
-            </select>
-            <button class="primary-button" id="printClassTimetableBtn" type="button">Print Timetable</button>
+          <div class="toolbar toolbar--status module-toolbar" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+            <select id="timetablePrintClassSelect" style="flex:1 1 180px;min-width:0;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="">Select Class</option>${classOptionsMarkup}</select>
+            <button class="primary-button" id="printClassTimetableBtn" type="button" style="flex:1 1 140px;white-space:normal;">Print Timetable</button>
           </div>
-          <div class="table-wrap">
-            <table id="classTimetableTable">
-              <thead id="classTimetableHead"></thead>
-              <tbody id="classTimetableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table id="classTimetableTable" style="min-width:500px;width:100%;"><thead id="classTimetableHead"></thead><tbody id="classTimetableBody"></tbody></table></div>
           <p class="empty-state" id="classTimetableEmptyState" hidden>Select class to view timetable.</p>
         </article>
       `;
@@ -9972,30 +9851,13 @@ ${allContent}
       }).join("");
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong class="module-center-title">Generate Timetable For Teacher</strong>
-          <div class="toolbar toolbar--status module-toolbar">
-            <select id="teacherTimetableSelect">
-              <option value="">Select Teacher</option>
-              ${teacherOptionsMarkup}
-            </select>
-            <button class="primary-button" id="printTeacherTimetableBtn" type="button">Print Timetable</button>
+          <div class="toolbar toolbar--status module-toolbar" style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
+            <select id="teacherTimetableSelect" style="flex:1 1 200px;min-width:0;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="">Select Teacher</option>${teacherOptionsMarkup}</select>
+            <button class="primary-button" id="printTeacherTimetableBtn" type="button" style="flex:1 1 140px;white-space:normal;">Print Timetable</button>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Weekday</th>
-                  <th>Period</th>
-                  <th>Time</th>
-                  <th>Class</th>
-                  <th>Subject</th>
-                  <th>Class Room</th>
-                </tr>
-              </thead>
-              <tbody id="teacherTimetableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:500px;width:100%;"><thead><tr><th>Weekday</th><th>Period</th><th>Time</th><th>Class</th><th>Subject</th><th>Class Room</th></tr></thead><tbody id="teacherTimetableBody"></tbody></table></div>
           <p class="empty-state" id="teacherTimetableEmptyState" hidden>Select teacher to view timetable.</p>
         </article>
       `;
