@@ -24548,11 +24548,54 @@ ${allContent}
       panelCards[pc].style.maxWidth = "100%";
     }
 
-    var btnActions = document.querySelectorAll(".btn-account-action");
-    for (var ba = 0; ba < btnActions.length; ba++) {
-      btnActions[ba].style.maxWidth = "100%";
-      btnActions[ba].style.whiteSpace = "normal";
-      btnActions[ba].style.textAlign = "center";
+    var allButtons = document.querySelectorAll(".btn-account-action, .primary-button, .secondary-button, .table-action-btn, .table-action-link");
+    for (var ba = 0; ba < allButtons.length; ba++) {
+      allButtons[ba].style.maxWidth = "100%";
+      allButtons[ba].style.whiteSpace = "normal";
+      allButtons[ba].style.textAlign = "center";
+    }
+
+    var allFormActions = document.querySelectorAll(".form-actions");
+    for (var fa = 0; fa < allFormActions.length; fa++) {
+      allFormActions[fa].style.flexWrap = "wrap";
+      allFormActions[fa].style.gap = "6px";
+    }
+    var allFormActionsBtns = document.querySelectorAll(".form-actions > *");
+    for (var fab = 0; fab < allFormActionsBtns.length; fab++) {
+      allFormActionsBtns[fab].style.flex = "1 1 100px";
+      allFormActionsBtns[fab].style.minWidth = "0";
+    }
+
+    var allToolbars = document.querySelectorAll(".toolbar, .module-toolbar");
+    for (var tb = 0; tb < allToolbars.length; tb++) {
+      allToolbars[tb].style.display = "flex";
+      allToolbars[tb].style.flexWrap = "wrap";
+      allToolbars[tb].style.gap = "6px";
+    }
+    var allToolbarChildren = document.querySelectorAll(".toolbar > *, .module-toolbar > *");
+    for (var tbc = 0; tbc < allToolbarChildren.length; tbc++) {
+      allToolbarChildren[tbc].style.flex = "1 1 140px";
+      allToolbarChildren[tbc].style.minWidth = "0";
+      allToolbarChildren[tbc].style.maxWidth = "100%";
+    }
+
+    var allFieldGroups = document.querySelectorAll(".field-group input, .field-group select, .field-group textarea");
+    for (var fg = 0; fg < allFieldGroups.length; fg++) {
+      allFieldGroups[fg].style.width = "100%";
+      allFieldGroups[fg].style.maxWidth = "100%";
+      allFieldGroups[fg].style.minWidth = "0";
+      allFieldGroups[fg].style.boxSizing = "border-box";
+    }
+
+    var allActionRows = document.querySelectorAll(".action-row, .section-head .action-row");
+    for (var ar = 0; ar < allActionRows.length; ar++) {
+      allActionRows[ar].style.flexWrap = "wrap";
+      allActionRows[ar].style.gap = "6px";
+    }
+    var allActionRowBtns = document.querySelectorAll(".action-row > *");
+    for (var arb = 0; arb < allActionRowBtns.length; arb++) {
+      allActionRowBtns[arb].style.flex = "1 1 100px";
+      allActionRowBtns[arb].style.minWidth = "0";
     }
 
     var allChildren = document.querySelectorAll(".view.active *");
