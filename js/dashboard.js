@@ -13108,7 +13108,7 @@ ${allContent}
       const value = Math.max(0, Math.min(100, Number(percent || 0)));
       return `
         <div class="report-circle" style="--fill:${value};--color-a:${colorA};--color-b:${colorB};"><span>${value}%</span></div>
-        <p class="report-chart-label">${escapeHtml(label || "")}</p>
+        <p class="report-chart-label" style="font-size:0.75rem;color:#64748b;margin-top:4px;">${escapeHtml(label || "")}</p>
       `;
     }
 
@@ -13538,7 +13538,7 @@ ${allContent}
           <article class="stat-card"><strong>Fail</strong><span>${fail}</span></article>
           <article class="stat-card"><strong>Average %</strong><span>${avg}%</span></article>
         `;
-        chartWrap.innerHTML = rows.length ? buildCircleChart(passPercent, `Pass ${pass} | Fail ${fail}`, "#1d9c61", "#d64b4b") : `<p class="empty-state">No data found.</p>`;
+        chartWrap.innerHTML = rows.length ? buildCircleChart(passPercent, `Pass ${pass} | Fail ${fail}`, "#6366f1", "#f1f5f9") : `<p class="empty-state">No data found.</p>`;
         const top = rows.slice().sort(function (a, b) { return b.result.percentage - a.result.percentage; }).slice(0, 8).map(function (row) {
           return { label: `${row.student.name}`, value: row.result.percentage };
         });
@@ -13868,7 +13868,7 @@ ${allContent}
           const active = rows.filter(function (row) { return String(row.status || "").toLowerCase() === "active"; }).length;
           const malePercent = rows.length ? Math.round((male / rows.length) * 100) : 0;
           statsWrap.innerHTML = `<article class="stat-card"><strong>Total</strong><span>${rows.length}</span></article><article class="stat-card"><strong>Active</strong><span>${active}</span></article><article class="stat-card"><strong>Male</strong><span>${male}</span></article><article class="stat-card"><strong>Female</strong><span>${female}</span></article>`;
-          chartWrap.innerHTML = rows.length ? buildCircleChart(malePercent, `Male ${male} | Female ${female}`, "#1e5eff", "#f0a327") : `<p class="empty-state">No data found.</p>`;
+          chartWrap.innerHTML = rows.length ? buildCircleChart(malePercent, `Male ${male} | Female ${female}`, "#6366f1", "#f1f5f9") : `<p class="empty-state">No data found.</p>`;
           const classStats = rows.reduce(function (map, student) { map.set(student.className || "-", (map.get(student.className || "-") || 0) + 1); return map; }, new Map());
           const barRows = Array.from(classStats.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
           const max = barRows.length ? Math.max.apply(null, barRows.map(function (item) { return item.value; })) : 1;
@@ -13983,7 +13983,7 @@ ${allContent}
         const totalDays = totalPresent + totalAbsent + totalLeave;
         const presentPercent = totalDays ? Math.round((totalPresent / totalDays) * 100) : 0;
         statsWrap.innerHTML = `<article class="stat-card"><strong>${isStaff ? "Employees" : "Students"}</strong><span>${rows.length}</span></article><article class="stat-card"><strong>Present</strong><span>${totalPresent}</span></article><article class="stat-card"><strong>Absent</strong><span>${totalAbsent}</span></article><article class="stat-card"><strong>Leave</strong><span>${totalLeave}</span></article>`;
-        chartWrap.innerHTML = totalDays ? buildCircleChart(presentPercent, `Present ${totalPresent} | Absent ${totalAbsent} | Leave ${totalLeave}`, "#1d9c61", "#f0a327") : `<p class="empty-state">No attendance data.</p>`;
+        chartWrap.innerHTML = totalDays ? buildCircleChart(presentPercent, `Present ${totalPresent} | Absent ${totalAbsent} | Leave ${totalLeave}`, "#10b981", "#f1f5f9") : `<p class="empty-state">No attendance data.</p>`;
         const barsData = rows.slice().sort(function (a, b) { return b.percent - a.percent; }).slice(0, 10).map(function (row) {
           return { label: isStaff ? row.employee.name : row.student.name, value: row.percent };
         });
@@ -14113,7 +14113,7 @@ ${allContent}
           const totalDue = rows.reduce(function (sum, row) { return sum + row.remaining; }, 0);
           const paidPercent = rows.length ? Math.round((paid / rows.length) * 100) : 0;
           statsWrap.innerHTML = `<article class="stat-card"><strong>Total Students</strong><span>${rows.length}</span></article><article class="stat-card"><strong>Total Amount</strong><span>${totalAmount}</span></article><article class="stat-card"><strong>Collected</strong><span>${totalDeposit}</span></article><article class="stat-card"><strong>Due</strong><span>${totalDue}</span></article>`;
-          chartWrap.innerHTML = rows.length ? buildCircleChart(paidPercent, `Paid ${paid} | Due ${due}`, "#1d9c61", "#d64b4b") : `<p class="empty-state">No data found.</p>`;
+          chartWrap.innerHTML = rows.length ? buildCircleChart(paidPercent, `Paid ${paid} | Due ${due}`, "#10b981", "#f1f5f9") : `<p class="empty-state">No data found.</p>`;
           const classTotals = rows.reduce(function (map, row) { map.set(row.student.className || "-", (map.get(row.student.className || "-") || 0) + row.deposit); return map; }, new Map());
           const bars = Array.from(classTotals.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
           const max = bars.length ? Math.max.apply(null, bars.map(function (item) { return item.value; })) : 1;
@@ -14505,7 +14505,7 @@ ${allContent}
         const categoryBars = getCategoryStats(rows, "");
         statsWrap.innerHTML = `<article class="stat-card"><strong>Total Income</strong><span>${currencySymbol} ${stats.income}</span></article><article class="stat-card"><strong>Total Expense</strong><span>${currencySymbol} ${stats.expense}</span></article><article class="stat-card"><strong>Net Balance</strong><span>${currencySymbol} ${stats.net}</span></article><article class="stat-card"><strong>Total Entries</strong><span>${rows.length}</span></article>`;
         pieWrap.innerHTML = (stats.income + stats.expense)
-          ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#1d9c61", "#d64b4b")
+          ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#10b981", "#f1f5f9")
           : `<p class="empty-state">No accounting data yet.</p>`;
         barsWrap.innerHTML = categoryBars.length ? buildBarChart(categoryBars, Math.max.apply(null, categoryBars.map(function (item) { return item.value; }))) : `<p class="empty-state">No category stats yet.</p>`;
         renderLedgerTable(body, rows, true);
@@ -14594,7 +14594,7 @@ ${allContent}
         const barsRows = getCategoryStats(rows, "");
         quickStats.innerHTML = `<article class="stat-card"><strong>${isIncome ? "Total Income" : "Total Expense"}</strong><span>${currencySymbol} ${Math.round(typeTotal)}</span></article><article class="stat-card"><strong>${isIncome ? "Income Entries" : "Expense Entries"}</strong><span>${rows.length}</span></article><article class="stat-card"><strong>Overall Balance</strong><span>${currencySymbol} ${Math.round(allStats.net)}</span></article><article class="stat-card"><strong>Recent Records</strong><span>${getLedgerRecentRows(rows, 10).length}</span></article>`;
         typePie.innerHTML = (allStats.income + allStats.expense)
-          ? buildCircleChart(ratio, `${isIncome ? "Income" : "Expense"} share in total accounts`, isIncome ? "#1d9c61" : "#d64b4b", isIncome ? "#d64b4b" : "#1d9c61")
+          ? buildCircleChart(ratio, `${isIncome ? "Income" : "Expense"} share in total accounts`, isIncome ? "#10b981" : "#ef4444", "#f1f5f9")
           : `<p class="empty-state">No accounting data yet.</p>`;
         categoryBars.innerHTML = barsRows.length ? buildBarChart(barsRows, Math.max.apply(null, barsRows.map(function (item) { return item.value; }))) : `<p class="empty-state">No category data.</p>`;
         renderLedgerTable(body, rows, true);
@@ -14754,7 +14754,7 @@ ${allContent}
         const barsData = getCategoryStats(rows, "");
         statsWrap.innerHTML = `<article class="stat-card"><strong>Income</strong><span>${currencySymbol} ${stats.income}</span></article><article class="stat-card"><strong>Expense</strong><span>${currencySymbol} ${stats.expense}</span></article><article class="stat-card"><strong>Balance</strong><span>${currencySymbol} ${stats.net}</span></article><article class="stat-card"><strong>Transactions</strong><span>${rows.length}</span></article>`;
         chartWrap.innerHTML = (stats.income + stats.expense)
-          ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#1d9c61", "#d64b4b")
+          ? buildCircleChart(incomePercent, `Income ${currencySymbol} ${stats.income} | Expense ${currencySymbol} ${stats.expense}`, "#10b981", "#f1f5f9")
           : `<p class="empty-state">No filtered data for chart.</p>`;
         barsWrap.innerHTML = barsData.length ? buildBarChart(barsData, Math.max.apply(null, barsData.map(function (item) { return item.value; }))) : `<p class="empty-state">No category data.</p>`;
         body.innerHTML = rows.map(function (row, index) {
@@ -22481,22 +22481,22 @@ ${allContent}
     var svg = '<div class="attendance-donut-wrapper">';
     svg += '<div class="attendance-donut">';
     svg += '<svg viewBox="0 0 180 180" class="attendance-donut__svg">';
-    svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#e8edf2" stroke-width="22"/>';
+    svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#f1f5f9" stroke-width="22"/>';
 
     if (pctPresent > 0) {
-      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#43a047" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + presentLen + ' ' + (circumference - presentLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--present"/>';
+      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#10b981" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + presentLen + ' ' + (circumference - presentLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--present"/>';
       offset += presentLen;
     }
     if (pctLeave > 0) {
-      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#fdd835" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + leaveLen + ' ' + (circumference - leaveLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--leave"/>';
+      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#f59e0b" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + leaveLen + ' ' + (circumference - leaveLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--leave"/>';
       offset += leaveLen;
     }
     if (pctAbsent > 0) {
-      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#e53935" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + absentLen + ' ' + (circumference - absentLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--absent"/>';
+      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#ef4444" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + absentLen + ' ' + (circumference - absentLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--absent"/>';
       offset += absentLen;
     }
     if (pctUnmarked > 0) {
-      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#b0bec5" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + unmarkedLen + ' ' + (circumference - unmarkedLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--unmarked"/>';
+      svg += '<circle cx="90" cy="90" r="' + radius + '" fill="none" stroke="#94a3b8" stroke-width="22" stroke-linecap="round" stroke-dasharray="' + unmarkedLen + ' ' + (circumference - unmarkedLen) + '" stroke-dashoffset="' + (-offset) + '" class="donut-seg donut-seg--unmarked"/>';
     }
 
     svg += '<text x="90" y="84" text-anchor="middle" class="donut-center-value">' + present + '</text>';
@@ -22504,10 +22504,10 @@ ${allContent}
     svg += '</svg>';
     svg += '</div>';
     svg += '<div class="attendance-donut__legend">';
-    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#43a047;"></span><span class="attendance-donut__legend-label">Present</span><strong>' + present + '</strong><span class="attendance-donut__legend-pct">' + pctPresent + '%</span></div>';
-    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#fdd835;"></span><span class="attendance-donut__legend-label">On Leave</span><strong>' + leave + '</strong><span class="attendance-donut__legend-pct">' + pctLeave + '%</span></div>';
-    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#e53935;"></span><span class="attendance-donut__legend-label">Absent</span><strong>' + absent + '</strong><span class="attendance-donut__legend-pct">' + pctAbsent + '%</span></div>';
-    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#b0bec5;"></span><span class="attendance-donut__legend-label">Unmarked</span><strong>' + unmarked + '</strong><span class="attendance-donut__legend-pct">' + pctUnmarked + '%</span></div>';
+    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#10b981;"></span><span class="attendance-donut__legend-label">Present</span><strong>' + present + '</strong><span class="attendance-donut__legend-pct">' + pctPresent + '%</span></div>';
+    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#f59e0b;"></span><span class="attendance-donut__legend-label">On Leave</span><strong>' + leave + '</strong><span class="attendance-donut__legend-pct">' + pctLeave + '%</span></div>';
+    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#ef4444;"></span><span class="attendance-donut__legend-label">Absent</span><strong>' + absent + '</strong><span class="attendance-donut__legend-pct">' + pctAbsent + '%</span></div>';
+    svg += '<div class="attendance-donut__legend-item"><span class="attendance-donut__legend-dot" style="background:#94a3b8;"></span><span class="attendance-donut__legend-label">Unmarked</span><strong>' + unmarked + '</strong><span class="attendance-donut__legend-pct">' + pctUnmarked + '%</span></div>';
     svg += '</div></div>';
     return svg;
   }
