@@ -12119,35 +12119,20 @@ ${allContent}
 
     if (route === "students-attendance-report") {
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong>Students Attendance Report</strong>
-          <div class="toolbar toolbar--promote module-toolbar">
-            <div id="studentsAttendanceReportSearchContainer" style="position: relative; flex: 1;">
-              <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search student by roll no / name" style="width: 100%;">
-              <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;">
+            <div id="studentsAttendanceReportSearchContainer" style="position:relative;flex:1 1 180px;min-width:0;">
+              <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search student by roll no / name" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
+              <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
-            <label style="display:flex;align-items:center;gap:4px;">From: <input id="studentsAttendanceReportFromDate" type="date"></label>
-            <label style="display:flex;align-items:center;gap:4px;">To: <input id="studentsAttendanceReportToDate" type="date"></label>
-            <button class="primary-button" id="downloadStudentsAttendancePdfBtn" type="button">Download PDF</button>
+            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">From: <input id="studentsAttendanceReportFromDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
+            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">To: <input id="studentsAttendanceReportToDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
+            <button class="primary-button" id="downloadStudentsAttendancePdfBtn" type="button" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;">Download PDF</button>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Sr#</th>
-                  <th>Roll No</th>
-                  <th>Photo</th>
-                  <th>Student Name</th>
-                  <th>Class</th>
-                  <th>Present</th>
-                  <th>On-leave</th>
-                  <th>Absent</th>
-                  <th>Attendance %</th>
-                </tr>
-              </thead>
-              <tbody id="studentsAttendanceReportTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:650px;width:100%;"><thead><tr>
+            <th>Sr#</th><th>Roll No</th><th>Photo</th><th>Student Name</th><th>Class</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
+          </tr></thead><tbody id="studentsAttendanceReportTableBody"></tbody></table></div>
           <p class="empty-state" id="studentsAttendanceReportEmptyState" hidden>No student attendance report found.</p>
         </article>
       `;
@@ -12267,34 +12252,20 @@ ${allContent}
 
     if (route === "employees-attendance-report") {
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong>Employees Attendance Report</strong>
-          <div class="toolbar toolbar--promote module-toolbar">
-            <div id="employeesAttendanceReportSearchContainer" style="position: relative; flex: 1;">
-              <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search employee by name / phone" style="width: 100%;">
-              <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;">
+            <div id="employeesAttendanceReportSearchContainer" style="position:relative;flex:1 1 180px;min-width:0;">
+              <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search employee by name / phone" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
+              <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
-            <label style="display:flex;align-items:center;gap:4px;">From: <input id="employeesAttendanceReportFromDate" type="date"></label>
-            <label style="display:flex;align-items:center;gap:4px;">To: <input id="employeesAttendanceReportToDate" type="date"></label>
-            <button class="primary-button" id="downloadEmployeesAttendancePdfBtn" type="button">Download PDF</button>
+            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">From: <input id="employeesAttendanceReportFromDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
+            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">To: <input id="employeesAttendanceReportToDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
+            <button class="primary-button" id="downloadEmployeesAttendancePdfBtn" type="button" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;">Download PDF</button>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Sr#</th>
-                  <th>Employee Name</th>
-                  <th>Role</th>
-                  <th>Phone</th>
-                  <th>Present</th>
-                  <th>On-leave</th>
-                  <th>Absent</th>
-                  <th>Attendance %</th>
-                </tr>
-              </thead>
-              <tbody id="employeesAttendanceReportTableBody"></tbody>
-            </table>
-          </div>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:650px;width:100%;"><thead><tr>
+            <th>Sr#</th><th>Employee Name</th><th>Photo</th><th>Role</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
+          </tr></thead><tbody id="employeesAttendanceReportTableBody"></tbody></table></div>
           <p class="empty-state" id="employeesAttendanceReportEmptyState" hidden>No employee attendance report found.</p>
         </article>
       `;
