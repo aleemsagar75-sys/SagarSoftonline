@@ -7428,7 +7428,7 @@ ${allContent}
 
         const feeMonth = normalizeFeeMonthLabel(monthSelect.value);
         const existingFee = database.fees.find(function (feeItem) {
-          return feeItem.studentId === student.id && (feeItem.feeMonth || feeItem.month) === feeMonth && feeItem.status === "paid" && Number(feeItem.remaining || 0) === 0;
+          return feeItem.studentId === student.id && (feeItem.feeMonth || feeItem.month) === feeMonth;
         });
         
         if (existingFee) {
@@ -7545,8 +7545,8 @@ ${allContent}
         message.className = "form-message success";
         searchInput.value = "";
         depositInput.value = "";
-        renderDashboard();
         renderFeeDetails();
+        setTimeout(function () { renderDashboard(); }, 500);
       });
 
       printReceiptBtn.addEventListener("click", function () {
