@@ -8205,30 +8205,32 @@ ${allContent}
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
       }).join("");
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Delete Fees</strong>
-          <div class="toolbar toolbar--status module-toolbar">
-            <div id="deleteFeeSearchContainer" style="position: relative; flex: 1;">
-              <input id="deleteFeeSearchInput" type="search" placeholder="Search by roll no. / name" style="width: 100%;">
-              <div id="deleteFeeSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 160px;min-width:0;position:relative;">
+              <input id="deleteFeeSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <div id="deleteFeeSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
-            <select id="deleteFeeClassFilter">
-              <option value="all">All Classes</option>
-              ${classOptionsMarkup}
-            </select>
+            <div style="flex:1 1 130px;min-width:0;">
+              <select id="deleteFeeClassFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+                <option value="all">All Classes</option>
+                ${classOptionsMarkup}
+              </select>
+            </div>
           </div>
-          <div class="table-wrap">
-            <table>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
+            <table style="min-width:600px;width:100%;font-size:0.8rem;border-collapse:collapse;">
               <thead>
                 <tr>
-                  <th>Roll No</th>
-                  <th>Name</th>
-                  <th>Father Name</th>
-                  <th>Class</th>
-                  <th>Month</th>
-                  <th>Fee Status</th>
-                  <th>Date</th>
-                  <th>Action</th>
+                  <th style="white-space:nowrap;">Roll No</th>
+                  <th style="white-space:nowrap;">Name</th>
+                  <th style="white-space:nowrap;">Father Name</th>
+                  <th style="white-space:nowrap;">Class</th>
+                  <th style="white-space:nowrap;">Month</th>
+                  <th style="white-space:nowrap;">Fee Status</th>
+                  <th style="white-space:nowrap;">Date</th>
+                  <th style="white-space:nowrap;">Action</th>
                 </tr>
               </thead>
               <tbody id="deleteFeesTableBody"></tbody>
@@ -8944,36 +8946,40 @@ ${allContent}
       const currencySymbol = (settings.accountSettings && settings.accountSettings.symbol) ? settings.accountSettings.symbol : "Rs";
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Salary Report</strong>
-          <div class="toolbar toolbar--promote module-toolbar">
-            <div id="salaryReportSearchContainer" style="position: relative; flex: 1;">
-              <input id="salaryReportSearchInput" type="search" placeholder="Search employee by name" style="width: 100%;">
-              <div id="salaryReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 160px;min-width:0;position:relative;">
+              <input id="salaryReportSearchInput" type="search" placeholder="Search employee by name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <div id="salaryReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
-            <select id="salaryReportMonthFilter">
-              <option value="all-time">All Time</option>
-              ${monthOptionsMarkup}
-            </select>
-            <select id="salaryReportRoleFilter">
-              <option value="all">All Roles</option>
-              ${roleOptionsMarkup}
-            </select>
-            <button class="primary-button" id="printSalaryReportBtn" type="button">Print Salary Report</button>
+            <div style="flex:1 1 130px;min-width:0;">
+              <select id="salaryReportMonthFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+                <option value="all-time">All Time</option>
+                ${monthOptionsMarkup}
+              </select>
+            </div>
+            <div style="flex:1 1 130px;min-width:0;">
+              <select id="salaryReportRoleFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+                <option value="all">All Roles</option>
+                ${roleOptionsMarkup}
+              </select>
+            </div>
+            <div style="flex:0 0 auto;"><button class="primary-button" id="printSalaryReportBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Print Salary Report</button></div>
           </div>
           <div id="salaryReportCards" class="stats-grid"></div>
-          <div class="table-wrap">
-            <table>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
+            <table style="min-width:600px;width:100%;font-size:0.8rem;border-collapse:collapse;">
               <thead>
                 <tr>
-                  <th>Employee</th>
-                  <th>Role</th>
-                  <th>Months Paid</th>
-                  <th>Total Salary</th>
-                  <th>Total Bonus</th>
-                  <th>Total Deduction</th>
-                  <th>Net Payout</th>
-                  <th>Action</th>
+                  <th style="white-space:nowrap;">Employee</th>
+                  <th style="white-space:nowrap;">Role</th>
+                  <th style="white-space:nowrap;">Months Paid</th>
+                  <th style="white-space:nowrap;">Total Salary</th>
+                  <th style="white-space:nowrap;">Total Bonus</th>
+                  <th style="white-space:nowrap;">Total Deduction</th>
+                  <th style="white-space:nowrap;">Net Payout</th>
+                  <th style="white-space:nowrap;">Action</th>
                 </tr>
               </thead>
               <tbody id="salaryReportTableBody"></tbody>
@@ -12968,24 +12974,22 @@ ${allContent}
 
     if (route === "employees-manage-login") {
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong>Manage Employee Login</strong>
-          <div class="toolbar toolbar--simple module-toolbar">
-            <div id="employeeLoginSearchContainer" style="position: relative; flex: 1;">
-              <input id="employeeLoginSearchInput" type="search" placeholder="Search by employee name or mobile no." style="width: 100%;">
-              <div id="employeeLoginSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
-            </div>
+          <div style="margin:10px 0;position:relative;">
+            <input id="employeeLoginSearchInput" type="search" placeholder="Search by employee name or mobile no." style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+            <div id="employeeLoginSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
           </div>
-          <div class="table-wrap">
-            <table>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
+            <table style="min-width:550px;width:100%;font-size:0.8rem;border-collapse:collapse;">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Role</th>
-                  <th>Username</th>
-                  <th>Password</th>
-                  <th>Status</th>
-                  <th>Action</th>
+                  <th style="white-space:nowrap;">Name</th>
+                  <th style="white-space:nowrap;">Role</th>
+                  <th style="white-space:nowrap;">Username</th>
+                  <th style="white-space:nowrap;">Password</th>
+                  <th style="white-space:nowrap;">Status</th>
+                  <th style="white-space:nowrap;">Action</th>
                 </tr>
               </thead>
               <tbody id="employeeLoginTableBody"></tbody>
@@ -14491,18 +14495,16 @@ ${allContent}
 
       if (route === "chart-of-account") {
         moduleSummary.innerHTML = `
-          <article>
+          <article style="max-width:100%;overflow-x:hidden;">
             <strong class="module-center-title">Chart Of Account</strong>
-          <div class="toolbar module-toolbar" style="display:flex;flex-wrap:wrap;align-items:center;gap:0.5rem;">
-            </div>
             <div class="report-cards" id="chartAccountStats"></div>
-            <div class="split-grid report-grid">
-              <article class="panel-card"><strong>Income vs Expense</strong><div id="chartAccountPie" class="report-chart-box"></div></article>
-              <article class="panel-card"><strong>Top Categories</strong><div id="chartAccountBars" class="report-bar-list"></div></article>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;">
+              <article style="flex:1 1 200px;min-width:0;background:#fff;border:1px solid #e0e5ec;border-radius:8px;padding:10px;"><strong style="font-size:0.85rem;">Income vs Expense</strong><div id="chartAccountPie" class="report-chart-box" style="min-height:180px;"></div></article>
+              <article style="flex:1 1 200px;min-width:0;background:#fff;border:1px solid #e0e5ec;border-radius:8px;padding:10px;"><strong style="font-size:0.85rem;">Top Categories</strong><div id="chartAccountBars" class="report-bar-list" style="min-height:180px;"></div></article>
             </div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Sr#</th><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th><th>Action</th></tr></thead>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
+              <table style="min-width:550px;width:100%;font-size:0.8rem;border-collapse:collapse;">
+                <thead><tr><th style="white-space:nowrap;">Sr#</th><th style="white-space:nowrap;">Date</th><th style="white-space:nowrap;">Type</th><th style="white-space:nowrap;">Category</th><th style="white-space:nowrap;">Amount</th><th style="white-space:nowrap;">Note</th><th style="white-space:nowrap;">Action</th></tr></thead>
                 <tbody id="chartAccountBody"></tbody>
               </table>
             </div>
@@ -14569,24 +14571,24 @@ ${allContent}
       if (route === "add-income" || route === "add-expense") {
         const isIncome = route === "add-income";
         moduleSummary.innerHTML = `
-          <article>
+          <article style="max-width:100%;overflow-x:hidden;">
             <strong class="module-center-title">${isIncome ? "Add Income" : "Add Expense"}</strong>
             <div class="report-cards" id="ledgerQuickStats"></div>
-            <div class="split-grid report-grid">
-              <article class="panel-card"><strong>${isIncome ? "Income Ratio" : "Expense Ratio"}</strong><div id="ledgerTypePie" class="report-chart-box"></div></article>
-              <article class="panel-card"><strong>${isIncome ? "Income" : "Expense"} Categories</strong><div id="ledgerCategoryBars" class="report-bar-list"></div></article>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;">
+              <article style="flex:1 1 200px;min-width:0;background:#fff;border:1px solid #e0e5ec;border-radius:8px;padding:10px;"><strong style="font-size:0.85rem;">${isIncome ? "Income Ratio" : "Expense Ratio"}</strong><div id="ledgerTypePie" class="report-chart-box" style="min-height:180px;"></div></article>
+              <article style="flex:1 1 200px;min-width:0;background:#fff;border:1px solid #e0e5ec;border-radius:8px;padding:10px;"><strong style="font-size:0.85rem;">${isIncome ? "Income" : "Expense"} Categories</strong><div id="ledgerCategoryBars" class="report-bar-list" style="min-height:180px;"></div></article>
             </div>
-            <div class="form-grid">
-              <div class="field-group"><label for="ledgerDateInput">Date*</label><input id="ledgerDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}"></div>
-              <div class="field-group"><label for="ledgerCategoryInput">Category*</label><input id="ledgerCategoryInput" type="text" inputmode="text" autocomplete="off" placeholder="${isIncome ? "e.g Fee Collection" : "e.g Utility Bills"}"></div>
-              <div class="field-group"><label for="ledgerAmountInput">Amount*</label><input id="ledgerAmountInput" type="number" min="0" step="0.01" placeholder="0"></div>
-              <div class="field-group field-group--full"><label for="ledgerNoteInput">Note</label><textarea id="ledgerNoteInput" rows="3" placeholder="Optional details"></textarea></div>
+            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px 0;">
+              <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date*</label><input id="ledgerDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+              <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Category*</label><input id="ledgerCategoryInput" type="text" inputmode="text" autocomplete="off" placeholder="${isIncome ? "e.g Fee Collection" : "e.g Utility Bills"}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+              <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Amount*</label><input id="ledgerAmountInput" type="number" min="0" step="0.01" placeholder="0" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
             </div>
-            <div class="form-actions"><button class="primary-button" id="saveLedgerBtn" type="button">${isIncome ? "Save Income" : "Save Expense"}</button></div>
+            <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Note</label><textarea id="ledgerNoteInput" rows="3" placeholder="Optional details" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;"></textarea></div>
+            <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="saveLedgerBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">${isIncome ? "Save Income" : "Save Expense"}</button></div>
             <p class="form-message" id="ledgerMessage"></p>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Sr#</th><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th><th>Action</th></tr></thead>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
+              <table style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;">
+                <thead><tr><th style="white-space:nowrap;">Sr#</th><th style="white-space:nowrap;">Date</th><th style="white-space:nowrap;">Type</th><th style="white-space:nowrap;">Category</th><th style="white-space:nowrap;">Amount</th><th style="white-space:nowrap;">Note</th><th style="white-space:nowrap;">Action</th></tr></thead>
                 <tbody id="ledgerRecentBody"></tbody>
               </table>
             </div>
@@ -14713,26 +14715,28 @@ ${allContent}
       }
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Account Statement</strong>
-          <div class="toolbar toolbar--promote module-toolbar">
-            <input id="statementFromDate" type="date">
-            <input id="statementToDate" type="date">
-            <select id="statementTypeFilter"><option value="all">All Types</option><option value="Income">Income</option><option value="Expense">Expense</option></select>
-            <div id="statementSearchContainer" style="position: relative; flex: 1;">
-              <input id="statementSearchInput" type="search" placeholder="Search by category / note" style="width: 100%;">
-              <div id="statementSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">From</label><input id="statementFromDate" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">To</label><input id="statementToDate" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Type</label><select id="statementTypeFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Types</option><option value="Income">Income</option><option value="Expense">Expense</option></select></div>
+          </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
+            <div style="flex:1 1 160px;min-width:0;position:relative;">
+              <input id="statementSearchInput" type="search" placeholder="Search by category / note" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <div id="statementSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
-            <button class="primary-button" id="printStatementBtn" type="button">Print Statement</button>
+            <div style="flex:0 0 auto;"><button class="primary-button" id="printStatementBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Print Statement</button></div>
           </div>
           <div class="report-cards" id="statementStats"></div>
-          <div class="split-grid report-grid">
-            <article class="panel-card"><strong>Filtered Ratio</strong><div id="statementChart" class="report-chart-box"></div></article>
-            <article class="panel-card"><strong>Category Breakdown</strong><div id="statementBars" class="report-bar-list"></div></article>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0;">
+            <article style="flex:1 1 200px;min-width:0;background:#fff;border:1px solid #e0e5ec;border-radius:8px;padding:10px;"><strong style="font-size:0.85rem;">Filtered Ratio</strong><div id="statementChart" class="report-chart-box" style="min-height:180px;"></div></article>
+            <article style="flex:1 1 200px;min-width:0;background:#fff;border:1px solid #e0e5ec;border-radius:8px;padding:10px;"><strong style="font-size:0.85rem;">Category Breakdown</strong><div id="statementBars" class="report-bar-list" style="min-height:180px;"></div></article>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead><tr><th>Sr#</th><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Note</th></tr></thead>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
+            <table style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;">
+              <thead><tr><th style="white-space:nowrap;">Sr#</th><th style="white-space:nowrap;">Date</th><th style="white-space:nowrap;">Type</th><th style="white-space:nowrap;">Category</th><th style="white-space:nowrap;">Amount</th><th style="white-space:nowrap;">Note</th></tr></thead>
               <tbody id="statementBody"></tbody>
             </table>
           </div>
