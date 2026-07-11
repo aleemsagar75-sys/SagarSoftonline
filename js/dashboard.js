@@ -11643,46 +11643,30 @@ ${allContent}
       }).join("");
 
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong class="module-center-title" style="display:block;margin-bottom:12px;">Add/update Attendance</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="studentsAttendanceDateInput">Date*</label>
-              <input id="studentsAttendanceDateInput" type="date" value="${getTodayDateISO()}">
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <div style="flex:1 1 140px;min-width:0;">
+              <label for="studentsAttendanceDateInput" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Date*</label>
+              <input id="studentsAttendanceDateInput" type="date" value="${getTodayDateISO()}" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
             </div>
-            <div class="field-group">
-              <label for="studentsAttendanceClassSelect">Search Class*</label>
-              <select id="studentsAttendanceClassSelect">
+            <div style="flex:1 1 140px;min-width:0;">
+              <label for="studentsAttendanceClassSelect" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Search Class*</label>
+              <select id="studentsAttendanceClassSelect" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
                 <option value="all">Select Class</option>
                 ${classOptionsMarkup}
               </select>
             </div>
-            <div class="field-group field-group--full">
-              <label>Mark Attendance</label>
-              <div class="attendance-mark-group">
-                <button class="table-action-btn" type="button" data-mark-all-status="Present">Present</button>
-                <button class="table-action-btn" type="button" data-mark-all-status="On-leave">On-leave</button>
-                <button class="table-action-btn" type="button" data-mark-all-status="Absent">Absent</button>
-              </div>
-            </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>SrNo.</th>
-                  <th>Roll No.</th>
-                  <th>Photo</th>
-                  <th>Student Name</th>
-                  <th>Father Name</th>
-                  <th>Status</th>
-                  <th>WhatsApp</th>
-                </tr>
-              </thead>
-              <tbody id="studentsAttendanceTableBody"></tbody>
-            </table>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+            <button class="table-action-btn" type="button" data-mark-all-status="Present" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Present</button>
+            <button class="table-action-btn" type="button" data-mark-all-status="On-leave" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">On-leave</button>
+            <button class="table-action-btn" type="button" data-mark-all-status="Absent" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Absent</button>
           </div>
-          <div class="form-actions">
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:550px;width:100%;"><thead><tr>
+            <th>SrNo.</th><th>Roll No.</th><th>Photo</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
+          </tr></thead><tbody id="studentsAttendanceTableBody"></tbody></table></div>
+          <div class="form-actions" style="margin-top:10px;">
             <button class="primary-button" id="saveStudentsAttendanceBtn" type="button">Update Attendance</button>
           </div>
           <p class="form-message" id="studentsAttendanceMessage"></p>
@@ -11852,38 +11836,23 @@ ${allContent}
 
     if (route === "employees-attendance") {
       moduleSummary.innerHTML = `
-        <article>
+        <article style="overflow-x:hidden;">
           <strong class="module-center-title" style="display:block;margin-bottom:12px;">Add/update Attendance</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="employeesAttendanceDateInput">Date*</label>
-              <input id="employeesAttendanceDateInput" type="date" value="${getTodayDateISO()}">
-            </div>
-            <div class="field-group field-group--full">
-              <label>Mark Attendance</label>
-              <div class="attendance-mark-group">
-                <button class="table-action-btn" type="button" data-mark-all-emp-status="Present">Present</button>
-                <button class="table-action-btn" type="button" data-mark-all-emp-status="On-leave">On-leave</button>
-                <button class="table-action-btn" type="button" data-mark-all-emp-status="Absent">Absent</button>
-              </div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+            <div style="flex:1 1 140px;min-width:0;">
+              <label for="employeesAttendanceDateInput" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Date*</label>
+              <input id="employeesAttendanceDateInput" type="date" value="${getTodayDateISO()}" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
             </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>SrNo.</th>
-                  <th>Employee Name</th>
-                  <th>Father Name</th>
-                  <th>Employee Role</th>
-                  <th>Status</th>
-                  <th>WhatsApp</th>
-                </tr>
-              </thead>
-              <tbody id="employeesAttendanceTableBody"></tbody>
-            </table>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
+            <button class="table-action-btn" type="button" data-mark-all-emp-status="Present" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Present</button>
+            <button class="table-action-btn" type="button" data-mark-all-emp-status="On-leave" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">On-leave</button>
+            <button class="table-action-btn" type="button" data-mark-all-emp-status="Absent" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Absent</button>
           </div>
-          <div class="form-actions">
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:550px;width:100%;"><thead><tr>
+            <th>SrNo.</th><th>Employee Name</th><th>Father Name</th><th>Employee Role</th><th>Status</th><th>WhatsApp</th>
+          </tr></thead><tbody id="employeesAttendanceTableBody"></tbody></table></div>
+          <div class="form-actions" style="margin-top:10px;">
             <button class="table-action-btn" id="sendEmployeeAbsenteesBtn" type="button">Send Absentees Message</button>
             <button class="primary-button" id="saveEmployeesAttendanceBtn" type="button">Update Attendance</button>
           </div>
