@@ -105,16 +105,16 @@ window.handleEmployeeViewClick = function(employeeId) {
         '<h4 style="margin:0 0 0.8rem;color:#0f2b3f;font-size:1rem;">Attendance Report</h4>' +
         '<div style="display:flex;gap:1.5rem;justify-content:center;margin-bottom:1rem;">' +
           '<svg width="100" height="100" viewBox="0 0 100 100">' +
-            '<circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>' +
-            '<circle cx="50" cy="50" r="42" fill="none" stroke="'+(attPct>=75?"#1d9c61":attPct>=40?"#f0ad4e":"#d64b4b")+'" stroke-width="8" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ*(1-attPct/100))+'" transform="rotate(-90 50 50)" stroke-linecap="round"/>' +
-            '<text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="18" fill="#0f2b3f">'+attPct+'%</text>' +
-            '<text x="50" y="66" text-anchor="middle" font-weight="500" font-size="9" fill="#888">Overall</text>' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="'+(attPct>=75?"#10b981":attPct>=40?"#f59e0b":"#ef4444")+'" stroke-width="8" stroke-dasharray="'+circ+'" stroke-dashoffset="'+(circ*(1-attPct/100))+'" transform="rotate(-90 50 50)" stroke-linecap="round"/>' +
+            '<text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="18" fill="#1e293b">'+attPct+'%</text>' +
+            '<text x="50" y="66" text-anchor="middle" font-weight="500" font-size="9" fill="#64748b">Overall</text>' +
           '</svg>' +
           '<svg width="100" height="100" viewBox="0 0 100 100">' +
-            '<circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>' +
-            '<circle cx="50" cy="50" r="42" fill="none" stroke="#1b5f7a" stroke-width="8" stroke-dasharray="'+circ+'" stroke-dashoffset="0" transform="rotate(-90 50 50)" stroke-linecap="round"/>' +
-            '<text x="50" y="44" text-anchor="middle" font-weight="700" font-size="13" fill="#0f2b3f">'+_eH(curMonthName)+'</text>' +
-            '<text x="50" y="60" text-anchor="middle" font-weight="600" font-size="11" fill="#555">'+curYear+'</text>' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>' +
+            '<circle cx="50" cy="50" r="42" fill="none" stroke="#6366f1" stroke-width="8" stroke-dasharray="'+circ+'" stroke-dashoffset="0" transform="rotate(-90 50 50)" stroke-linecap="round"/>' +
+            '<text x="50" y="44" text-anchor="middle" font-weight="700" font-size="13" fill="#1e293b">'+_eH(curMonthName)+'</text>' +
+            '<text x="50" y="60" text-anchor="middle" font-weight="600" font-size="11" fill="#64748b">'+curYear+'</text>' +
           '</svg>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.8rem;">' +
@@ -8088,7 +8088,7 @@ ${allContent}
           const dueCount = Math.max(totalStudents - paidCount, 0);
           const paidPercent = totalStudents ? Math.round((paidCount / totalStudents) * 100) : 0;
           return `
-            <article class="stat-card">
+            <article class="stat-card stat-card--indigo">
               <div class="stat-card__top">
                 <div>
                   <p class="panel-label">${escapeHtml(className)}</p>
@@ -8098,7 +8098,7 @@ ${allContent}
               <div style="display:grid;gap:6px;">
                 <p style="margin:0;"><strong>Submitted:</strong> ${paidCount}</p>
                 <p style="margin:0;"><strong>Due:</strong> ${dueCount}</p>
-                <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#1d9c61 0deg ${paidPercent * 3.6}deg,#d64b4b ${paidPercent * 3.6}deg 360deg);"></div>
+                <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#10b981 0deg ${paidPercent * 3.6}deg,#f1f5f9 ${paidPercent * 3.6}deg 360deg);box-shadow:0 2px 8px rgba(16,185,129,0.15);"></div>
               </div>
             </article>
           `;
@@ -9044,22 +9044,22 @@ ${allContent}
           <article class="stat-card salary-circle-card">
             <p class="panel-label">Employees</p>
             <strong>${employeesCount}</strong>
-            <div class="salary-circle" style="--fill:${Math.min(employeesCount * 12, 100)};--color:#1e5eff;"><span>${employeesCount}</span></div>
+            <div class="salary-circle" style="--fill:${Math.min(employeesCount * 12, 100)};--color:#6366f1;"><span>${employeesCount}</span></div>
           </article>
           <article class="stat-card salary-circle-card">
             <p class="panel-label">Net Payout Ratio</p>
             <strong>${currencySymbol} ${netPayout}</strong>
-            <div class="salary-circle" style="--fill:${netRatio};--color:#1d9c61;"><span>${netRatio}%</span></div>
+            <div class="salary-circle" style="--fill:${netRatio};--color:#10b981;"><span>${netRatio}%</span></div>
           </article>
           <article class="stat-card salary-circle-card">
             <p class="panel-label">Bonus Ratio</p>
             <strong>${currencySymbol} ${totalBonus}</strong>
-            <div class="salary-circle" style="--fill:${bonusRatio};--color:#f0a327;"><span>${bonusRatio}%</span></div>
+            <div class="salary-circle" style="--fill:${bonusRatio};--color:#f59e0b;"><span>${bonusRatio}%</span></div>
           </article>
           <article class="stat-card salary-circle-card">
             <p class="panel-label">Deduction Ratio</p>
             <strong>${currencySymbol} ${totalDeduction}</strong>
-            <div class="salary-circle" style="--fill:${deductionRatio};--color:#d64b4b;"><span>${deductionRatio}%</span></div>
+            <div class="salary-circle" style="--fill:${deductionRatio};--color:#ef4444;"><span>${deductionRatio}%</span></div>
           </article>
         `;
         tableBody.innerHTML = rows.map(function (row) {
@@ -13757,11 +13757,11 @@ ${allContent}
           '<p style="margin:2px 0 0;font-size:0.85rem;color:#6b7a8d;">Roll: ' + escapeHtml(stu.admissionNo || "-") + ' | Class: ' + escapeHtml(stu.className || "-") + ' | Father: ' + escapeHtml(stu.fatherName || "-") + '</p></div></div>' +
 
           '<div class="report-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">' +
-          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Exams Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#1e5eff;">' + eAvg + '%</span></article>' +
-          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Tests Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#1d9c61;">' + tAvg + '%</span></article>' +
-          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Overall</strong><span style="font-size:1.6rem;font-weight:700;color:#0f2b3f;">' + oAvg + '%</span></article>' +
-          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Attendance</strong><span style="font-size:1.6rem;font-weight:700;color:#f39c12;">' + aPct + '%</span></article>' +
-          '<article class="stat-card"><strong style="font-size:0.7rem;color:#6b7a8d;">Trend</strong><span style="font-size:1.6rem;font-weight:700;color:' + trendColor + ';">' + trendIcon + '</span></article></div>' +
+          '<article class="stat-card stat-card--sky"><strong style="font-size:0.7rem;color:#6b7a8d;">Exams Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#0ea5e9;">' + eAvg + '%</span></article>' +
+          '<article class="stat-card stat-card--emerald"><strong style="font-size:0.7rem;color:#6b7a8d;">Tests Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#10b981;">' + tAvg + '%</span></article>' +
+          '<article class="stat-card stat-card--indigo"><strong style="font-size:0.7rem;color:#6b7a8d;">Overall</strong><span style="font-size:1.6rem;font-weight:700;color:#6366f1;">' + oAvg + '%</span></article>' +
+          '<article class="stat-card stat-card--amber"><strong style="font-size:0.7rem;color:#6b7a8d;">Attendance</strong><span style="font-size:1.6rem;font-weight:700;color:#f59e0b;">' + aPct + '%</span></article>' +
+          '<article class="stat-card stat-card--rose"><strong style="font-size:0.7rem;color:#6b7a8d;">Trend</strong><span style="font-size:1.6rem;font-weight:700;color:' + trendColor + ';">' + trendIcon + '</span></article></div>' +
 
           (ePts.length >= 2 || tPts.length >= 2 ? '<div class="split-grid report-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
             (ePts.length >= 2 ? '<article class="panel-card"><strong style="font-size:0.9rem;">Exam Trend</strong><div style="margin-top:8px;">' + trendChart(ePts, "#1e5eff") + '</div></article>' : '') +
@@ -14233,7 +14233,7 @@ ${allContent}
 
       function renderStatement() {
         var data = getStatementRows();
-        statsWrap.innerHTML = '<article class="stat-card" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Credit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0f2b3f;margin-top:2px;">' + data.totalCredit + '</span></article><article class="stat-card" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Debit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0f2b3f;margin-top:2px;">' + data.totalDebit + '</span></article><article class="stat-card" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Net Balance</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0f2b3f;margin-top:2px;">' + data.netBalance + '</span></article><article class="stat-card" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Transactions</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0f2b3f;margin-top:2px;">' + data.rows.length + '</span></article>';
+        statsWrap.innerHTML = '<article class="stat-card stat-card--emerald" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Credit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#10b981;margin-top:2px;">' + data.totalCredit + '</span></article><article class="stat-card stat-card--rose" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Debit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#ef4444;margin-top:2px;">' + data.totalDebit + '</span></article><article class="stat-card stat-card--sky" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Net Balance</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0ea5e9;margin-top:2px;">' + data.netBalance + '</span></article><article class="stat-card stat-card--amber" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Transactions</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#f59e0b;margin-top:2px;">' + data.rows.length + '</span></article>';
         var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
         var tbody = data.rows.map(function (r) {
           return '<tr><td>' + escapeHtml(r.date) + '</td><td>' + escapeHtml(r.description) + '</td><td>' + (r.debit > 0 ? r.debit : "-") + '</td><td>' + (r.credit > 0 ? r.credit : "-") + '</td><td><strong>' + currencySymbol + ' ' + r.balance + '</strong></td></tr>';
@@ -20286,16 +20286,16 @@ ${allContent}
             <h4 style="margin: 0 0 0.8rem; color: #0f2b3f; font-size: 1rem;">Attendance Report</h4>
             <div style="display: flex; gap: 1.5rem; justify-content: center; margin-bottom: 1rem;">
               <svg width="100" height="100" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>
-                <circle cx="50" cy="50" r="42" fill="none" stroke="${attendancePercent >= 75 ? "#1d9c61" : attendancePercent >= 40 ? "#f0ad4e" : "#d64b4b"}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - attendancePercent / 100)}" transform="rotate(-90 50 50)" stroke-linecap="round"/>
-                <text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="18" fill="#0f2b3f">${attendancePercent}%</text>
-                <text x="50" y="66" text-anchor="middle" font-weight="500" font-size="9" fill="#888">Overall</text>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="${attendancePercent >= 75 ? "#10b981" : attendancePercent >= 40 ? "#f59e0b" : "#ef4444"}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - attendancePercent / 100)}" transform="rotate(-90 50 50)" stroke-linecap="round"/>
+                <text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="18" fill="#1e293b">${attendancePercent}%</text>
+                <text x="50" y="66" text-anchor="middle" font-weight="500" font-size="9" fill="#64748b">Overall</text>
               </svg>
               <svg width="100" height="100" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#1b5f7a" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="0" transform="rotate(-90 50 50)" stroke-linecap="round"/>
-                <text x="50" y="44" text-anchor="middle" font-weight="700" font-size="13" fill="#0f2b3f">${currentMonthName}</text>
-                <text x="50" y="60" text-anchor="middle" font-weight="600" font-size="11" fill="#555">${currentYearNum}</text>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#6366f1" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="0" transform="rotate(-90 50 50)" stroke-linecap="round"/>
+                <text x="50" y="44" text-anchor="middle" font-weight="700" font-size="13" fill="#1e293b">${currentMonthName}</text>
+                <text x="50" y="60" text-anchor="middle" font-weight="600" font-size="11" fill="#64748b">${currentYearNum}</text>
               </svg>
             </div>
             <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8rem;">
@@ -20370,11 +20370,11 @@ ${allContent}
                 <p style="margin:0; font-size:0.8rem; color:#888; font-weight:600;">Obtained Marks</p>
                 <p style="margin:0.3rem 0 0; font-size:1.1rem; font-weight:700; color:#1d9c61;">${allExamsObtained}</p>
               </div>
-              <svg width="80" height="80" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="42" fill="none" stroke="#e8edf0" stroke-width="8"/>
-                <circle cx="50" cy="50" r="42" fill="none" stroke="${overallExamPercent >= 60 ? "#1d9c61" : overallExamPercent >= 33 ? "#f0ad4e" : "#d64b4b"}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - overallExamPercent / 100)}" transform="rotate(-90 50 50)" stroke-linecap="round"/>
-                <text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="16" fill="#0f2b3f">${overallExamPercent}%</text>
-                <text x="50" y="64" text-anchor="middle" font-weight="500" font-size="8" fill="#888">Overall</text>
+               <svg width="80" height="80" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" stroke-width="8"/>
+                <circle cx="50" cy="50" r="42" fill="none" stroke="${overallExamPercent >= 60 ? "#10b981" : overallExamPercent >= 33 ? "#f59e0b" : "#ef4444"}" stroke-width="8" stroke-dasharray="${circ}" stroke-dashoffset="${circ * (1 - overallExamPercent / 100)}" transform="rotate(-90 50 50)" stroke-linecap="round"/>
+                <text x="50" y="48" text-anchor="middle" dominant-baseline="central" font-weight="700" font-size="16" fill="#1e293b">${overallExamPercent}%</text>
+                <text x="50" y="64" text-anchor="middle" font-weight="500" font-size="8" fill="#64748b">Overall</text>
               </svg>
             </div>
             ` : '<p style="color:#999; font-size:0.85rem; text-align:center; padding:1rem 0; margin:0;">No examination records found.</p>'}
@@ -20691,10 +20691,10 @@ ${allContent}
         attHTML += '<div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:1rem;">';
         // Overall circle
         var circR = 34, circC = 2 * Math.PI * circR, circOff = circC - (circC * attendancePct / 100);
-        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#e8edf0" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#1b5f7a" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + circOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#0f2b3f">' + attendancePct + '%</text></svg><p style="margin:0.3rem 0 0; color:#666; font-size:0.8rem;">Overall</p></div>';
+        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#f1f5f9" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#10b981" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + circOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#1e293b">' + attendancePct + '%</text></svg><p style="margin:0.3rem 0 0; color:#64748b; font-size:0.8rem;">Overall</p></div>';
         // This Month circle
         var monthCircOff = circC - (circC * monthPct / 100);
-        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#e8edf0" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#27ae60" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + monthCircOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#0f2b3f">' + monthPct + '%</text></svg><p style="margin:0.3rem 0 0; color:#666; font-size:0.8rem;">' + monthNames[currentMonth] + " " + currentYear + '</p></div>';
+        attHTML += '<div style="text-align:center;"><svg width="80" height="80" viewBox="0 0 80 80"><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#f1f5f9" stroke-width="6"/><circle cx="40" cy="40" r="' + circR + '" fill="none" stroke="#6366f1" stroke-width="6" stroke-dasharray="' + circC + '" stroke-dashoffset="' + monthCircOff + '" stroke-linecap="round" transform="rotate(-90,40,40)"/><text x="40" y="40" text-anchor="middle" dominant-baseline="central" font-size="1rem" font-weight="700" fill="#1e293b">' + monthPct + '%</text></svg><p style="margin:0.3rem 0 0; color:#64748b; font-size:0.8rem;">' + monthNames[currentMonth] + " " + currentYear + '</p></div>';
         attHTML += '</div>';
         // 3 month cards
         attHTML += '<div style="display:grid; grid-template-columns:repeat(3,1fr); gap:0.6rem;">';
