@@ -7974,54 +7974,38 @@ ${allContent}
         return `<option value="${escapeAttr(monthValue)}">${escapeHtml(monthValue)}</option>`;
       }).join("");
       moduleSummary.innerHTML = `
-        <article>
-          <div class="module-header-row">
-            <strong>Fees Report</strong>
-            <button class="secondary-button" id="clearAllFeesDataBtn" style="background:#fff2f2;color:#d64b4b;border-color:#ffd6d6;" type="button">Clear All Fees Data</button>
+        <article style="max-width:100%;overflow-x:hidden;">
+          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px;">
+            <strong style="font-size:0.95rem;">Fees Report</strong>
+            <button class="secondary-button" id="clearAllFeesDataBtn" style="background:#fff2f2;color:#d64b4b;border-color:#ffd6d6;padding:6px 12px;font-size:0.78rem;" type="button">Clear All Fees Data</button>
           </div>
-          <div class="toolbar toolbar--status module-toolbar">
-            <div class="field-group" style="margin:0;">
-              <label for="feesReportMonthFilter" style="font-size:12px;margin-bottom:4px;">Filter by Month</label>
-              <select id="feesReportMonthFilter">
-                <option value="all-time">All Time</option>
-                ${monthOptionsMarkup}
-              </select>
-            </div>
-            <div class="field-group" style="margin:0;">
-              <label for="feesReportDateFilter" style="font-size:12px;margin-bottom:4px;">Filter by Specific Date</label>
-              <input type="date" id="feesReportDateFilter">
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Filter by Month</label><select id="feesReportMonthFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all-time">All Time</option>${monthOptionsMarkup}</select></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Filter by Date</label><input type="date" id="feesReportDateFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
           </div>
           <div id="feesStatsCards" class="stats-grid"></div>
-          <div class="toolbar toolbar--promote module-toolbar">
-            <div id="feesReportSearchContainer" style="position: relative; flex: 1;">
-              <input id="feesReportSearchInput" type="search" placeholder="Search by roll no. / name" style="width: 100%;">
-              <div id="feesReportSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px 0;">
+            <div style="flex:1 1 160px;min-width:0;position:relative;">
+              <input id="feesReportSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <div id="feesReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
-            <select id="feesReportClassFilter">
-              <option value="all">All Classes</option>
-              ${classOptionsMarkup}
-            </select>
-            <select id="feesReportStatusFilter">
-              <option value="all">All</option>
-              <option value="paid">Fee Submitted</option>
-              <option value="unpaid">Fee Due</option>
-            </select>
-            <button class="primary-button" id="printFeesReportBtn" type="button">Print Report</button>
+            <div style="flex:1 1 130px;min-width:0;"><select id="feesReportClassFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
+            <div style="flex:1 1 120px;min-width:0;"><select id="feesReportStatusFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All</option><option value="paid">Fee Submitted</option><option value="unpaid">Fee Due</option></select></div>
+            <div style="flex:0 0 auto;"><button class="primary-button" id="printFeesReportBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Print Report</button></div>
           </div>
-          <div class="table-wrap">
-            <table>
+          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
+            <table style="min-width:650px;width:100%;font-size:0.8rem;border-collapse:collapse;">
               <thead>
                 <tr>
-                  <th>Roll No</th>
-                  <th>Name</th>
-                  <th>Father Name</th>
-                  <th>Class</th>
-                  <th>Fee Month</th>
-                  <th>Status</th>
-                  <th>Total</th>
-                  <th>Deposit</th>
-                  <th>Remaining</th>
+                  <th style="white-space:nowrap;">Roll No</th>
+                  <th style="white-space:nowrap;">Name</th>
+                  <th style="white-space:nowrap;">Father Name</th>
+                  <th style="white-space:nowrap;">Class</th>
+                  <th style="white-space:nowrap;">Fee Month</th>
+                  <th style="white-space:nowrap;">Status</th>
+                  <th style="white-space:nowrap;">Total</th>
+                  <th style="white-space:nowrap;">Deposit</th>
+                  <th style="white-space:nowrap;">Remaining</th>
                 </tr>
               </thead>
               <tbody id="feesReportTableBody"></tbody>
