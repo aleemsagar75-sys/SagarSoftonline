@@ -5191,11 +5191,13 @@ document.addEventListener("DOMContentLoaded", function () {
       settings.feeCollections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
       if (settings.feeCollections.length === 0 && Array.isArray(database.fees) && database.fees.length > 0) {
         settings.feeCollections = database.fees.map(function (f, i) {
+          var _stu = database.students.find(function (s) { return s.id === f.studentId; }) || null;
           return {
             id: f.id || ("COL-SYNC-" + (i + 1)),
             feeId: f.id || "",
             studentId: f.studentId || "",
-            studentName: f.studentName || f.name || "-",
+            studentName: f.studentName || f.name || (_stu ? _stu.name : "") || "-",
+            studentRollNo: f.admissionNo || (_stu ? _stu.admissionNo : "") || "-",
             feeMonth: f.feeMonth || f.month || "-",
             totalAmount: Number(f.totalAmount || f.amount || 0),
             deposit: Number(f.deposit || 0),
@@ -14248,9 +14250,13 @@ ${allContent}
         (settings.feeCollections || []).forEach(function (item) {
           if (!inRange(item.collectedAt || item.date || "")) return;
           var amt = Number(item.deposit || 0);
+          var _stu = (item.studentName && item.studentName !== "-") ? null : (database.students.find(function (s) { return s.id === item.studentId; }) || null);
+          var _fee = !_stu ? null : (database.fees.find(function (f) { return f.id === item.feeId; }) || database.fees.find(function (f) { return f.studentId === item.studentId && (f.feeMonth || f.month) === item.feeMonth; }) || null);
+          var sName = item.studentName || (_stu ? _stu.name : "") || (_fee ? _fee.studentName : "") || item.studentId || "-";
+          var sRoll = item.studentRollNo || (_stu ? _stu.admissionNo : "") || (_fee ? _fee.admissionNo : "") || item.studentId || "-";
           rows.push({
             date: String(item.collectedAt || item.date || "-").substring(0, 10),
-            description: "Fee added for " + (item.studentName || item.studentId || "-") + " (" + (item.studentRollNo || item.studentId || "-") + ")",
+            description: "Fee added for " + sName + " (" + sRoll + ")",
             debit: 0,
             credit: amt
           });
