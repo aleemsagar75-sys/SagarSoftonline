@@ -5656,6 +5656,10 @@ document.addEventListener("DOMContentLoaded", function () {
         addActivity("Institute profile updated", "Institute profile saved from general settings.");
         await saveDatabase("Syncing...");
         renderDashboard();
+        database.generalSettings.instituteProfile = Object.assign(database.generalSettings.instituteProfile || {}, newProfile);
+        database.school.name = newProfile.name;
+        database.school.phone = newProfile.phone;
+        database.school.address = newProfile.address;
         updateTopProfileIdentity();
         renderProfileDropdownMenu();
         message.textContent = "Institute profile updated successfully.";
