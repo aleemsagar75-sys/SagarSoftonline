@@ -5684,22 +5684,20 @@ document.addEventListener("DOMContentLoaded", function () {
       }).join("");
 
       moduleSummary.innerHTML = `
-        <article>
-          <strong>Change Fee Particulars</strong>
-          <div class="field-group">
-            <label for="feeParticularClassSelect">Fee Particulars for*</label>
-            <select id="feeParticularClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;">💰</div>
+            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Manage fee items for each class</p></div>
           </div>
-          <div id="feeParticularRows" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;"></div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveFeeParticularBtn" type="button">Update Particulars</button>
-          </div>
-          <p class="form-message" id="feeParticularMessage"></p>
+          <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Fee Particulars for*</label><select class="gs-field__input" id="feeParticularClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
+          <div id="feeParticularRows" class="gs-row-list" style="margin-top:1rem;"></div>
+          <div class="gs-button-row"><button class="gs-btn-primary" id="saveFeeParticularBtn" type="button">Update Particulars</button></div>
+          <div class="gs-message" id="feeParticularMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
-        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
-          <strong>Preview</strong>
+        <article class="gs-preview" style="margin-top:1rem;">
+          <p class="gs-preview__title">Preview</p>
           <div id="feeParticularPreview"></div>
-        </div>
+        </article>
       `;
 
       moduleGuide.innerHTML = "";
@@ -5720,16 +5718,16 @@ document.addEventListener("DOMContentLoaded", function () {
           const fixed = row.fixed ? "readonly" : "";
           const safeAmount = Math.max(0, parseFloat(row.amount || 0));
           return `
-            <article class="module-line-item" style="border:1px solid #dde4ea;border-radius:8px;padding:8px;">
-              <div class="field-group" style="margin-bottom:4px;">
-                <label style="font-size:11px;">Particular Label*</label>
-                <input class="fee-particular-label" data-index="${index}" type="text" value="${escapeAttr(row.label)}" ${fixed} style="font-size:12px;padding:6px 8px;">
+            <div class="gs-row-item">
+              <div class="gs-field" style="flex:2;">
+                <label class="gs-field__label" style="font-size:0.75rem;">Particular Label*</label>
+                <input class="gs-field__input fee-particular-label" data-index="${index}" type="text" value="${escapeAttr(row.label)}" ${fixed} style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;">
               </div>
-              <div class="field-group">
-                <label style="font-size:11px;">Amount* ${row.fixed ? "[FIXED]" : ""}</label>
-                <input class="fee-particular-amount" data-index="${index}" type="text" placeholder="0" inputmode="numeric" value="${safeAmount}" ${fixed} style="font-size:12px;padding:6px 8px;">
+              <div class="gs-field" style="flex:1;">
+                <label class="gs-field__label" style="font-size:0.75rem;">Amount* ${row.fixed ? "[FIXED]" : ""}</label>
+                <input class="gs-field__input fee-particular-amount" data-index="${index}" type="text" placeholder="0" inputmode="numeric" value="${safeAmount}" ${fixed} style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;">
               </div>
-            </article>
+            </div>
           `;
         }).join("");
         renderPreview();
