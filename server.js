@@ -1635,6 +1635,12 @@ app.post("/api/database/:schoolId", async (req, res) => {
       console.log("POST MERGE DEBUG: incoming=" + (incomingDb.teachers || []).length + " existing=" + existingTeachers + " merged=" + mergedTeachers);
     }
     await saveSchoolDatabaseWithMirrors(schoolId, mergedDb);
+    try {
+      const newName = String((mergedDb.school && mergedDb.school.name) || "").trim();
+      if (newName) {
+        await pool.query("update public.license_accounts set school_name = $1, updated_at = now() where school_id = $2", [newName, schoolId]);
+      }
+    } catch (_e) {}
     console.log("POST /api/database/" + schoolId + " — SAVED OK" + (isReplace ? " (replaced)" : " (merged)"));
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
