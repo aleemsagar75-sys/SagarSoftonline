@@ -425,7 +425,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (/search/i.test(numericIdentity)) {
       return false;
     }
-    return /(phone|mobile|income|amount|salary|deposit|fine|fee|marks|capacity|roll|admission|birth|national|cnic|nic|number)/i.test(numericIdentity);
+    return /(phone|mobile|income|amount|salary|deposit)/i.test(numericIdentity);
   }
 
   function isDecimalNumericField(input) {
@@ -1053,11 +1053,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
   async function saveDatabase(label) {
     if (label) window.SagarSoftDB.showLoading(label);
+    else window.SagarSoftDB.showSyncBadge("syncing");
     try {
       await window.SagarSoftDB.forceSave(database);
       refreshDatabase();
     } catch (_e) {}
-    window.SagarSoftDB.hideLoading();
+    if (label) window.SagarSoftDB.hideLoading();
+    else window.SagarSoftDB.showSyncBadge("synced");
   }
 
   function ensureLicenseSettings() {
