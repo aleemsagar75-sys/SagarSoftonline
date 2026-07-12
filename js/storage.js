@@ -339,7 +339,6 @@
 
   function saveDatabaseImmediate(database, showIndicator) {
     cachedDatabase = normalizeDatabase(database);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
     if (database && database.generalSettings && database.generalSettings.licenseSettings) {
       var ls = database.generalSettings.licenseSettings;
       if (ls.schoolId) { config.schoolId = String(ls.schoolId); persistCredentials(ls.schoolId, ls.websiteApiKey || "", config.authToken || ""); }
@@ -372,7 +371,6 @@
 
   function saveDatabase(database) {
     cachedDatabase = normalizeDatabase(database);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
     if (database && database.generalSettings && database.generalSettings.licenseSettings) {
       var ls = database.generalSettings.licenseSettings;
       if (ls.schoolId) {
@@ -426,7 +424,6 @@
         if (payload && payload.database) {
           var db = normalizeDatabase(payload.database);
           cachedDatabase = db;
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch (_e) {}
           hideLoading();
           window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "server" } }));
           return db;
@@ -443,7 +440,6 @@
 
   async function reloadDatabase() {
     cachedDatabase = null;
-    try { localStorage.removeItem(STORAGE_KEY); } catch (_e) {}
     return await loadDatabaseFromServer();
   }
 
@@ -525,7 +521,6 @@
 
   function clearCache() {
     cachedDatabase = null;
-    try { localStorage.removeItem(STORAGE_KEY); } catch (_e) {}
     config.schoolId = localStorage.getItem(SCHOOL_ID_KEY) || "";
     config.apiKey = localStorage.getItem(API_KEY_KEY) || "";
     config.authToken = localStorage.getItem(TOKEN_KEY) || "";
@@ -589,7 +584,6 @@
 
   async function forceSave(database) {
     cachedDatabase = normalizeDatabase(database);
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
     if (!config.schoolId) {
       try { var sid = localStorage.getItem(SCHOOL_ID_KEY); if (sid) config.schoolId = String(sid); } catch (_e) {}
     }
@@ -647,7 +641,6 @@
 
       toSave._deletedIds = deletedIds;
       cachedDatabase = normalizeDatabase(toSave);
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedDatabase)); } catch (_e) {}
       await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: cachedDatabase }),
