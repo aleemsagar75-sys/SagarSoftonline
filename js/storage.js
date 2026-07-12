@@ -1,5 +1,4 @@
 (function () {
-  var STORAGE_KEY = "ss_db_local";
   var SCHOOL_ID_KEY = "ss_school_id_persistent";
   var API_KEY_KEY = "ss_api_key_persistent";
   var TOKEN_KEY = "ss_auth_token";
@@ -246,6 +245,11 @@
 
   async function flushPendingSync() {
     if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
+    var _session = null;
+    try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
+    var _demoEmails = ["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"];
+    var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
+    if (_isDemo) { _pendingSave = false; return; }
     if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
       _pendingSave = false;
       pendingSyncs++;
@@ -335,38 +339,6 @@
         retrySyncLater(cachedDatabase, 0);
       });
     }, 1500);
-  }
-
-  function saveDatabaseImmediate(database, showIndicator) {
-    cachedDatabase = normalizeDatabase(database);
-    if (database && database.generalSettings && database.generalSettings.licenseSettings) {
-      var ls = database.generalSettings.licenseSettings;
-      if (ls.schoolId) { config.schoolId = String(ls.schoolId); persistCredentials(ls.schoolId, ls.websiteApiKey || "", config.authToken || ""); }
-      if (ls.websiteApiKey) config.apiKey = String(ls.websiteApiKey);
-    }
-    if (config.apiBaseUrl && config.schoolId) {
-      var _session = null;
-      try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
-      var _demoEmails = ["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"];
-      var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
-      if (_isDemo) return;
-      if (showIndicator) showSyncBadge("syncing");
-      pendingSyncs++;
-      apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
-        method: "POST",
-        body: JSON.stringify({ database: cachedDatabase }),
-        timeoutMs: 20000
-      }).then(function () {
-        pendingSyncs = Math.max(0, pendingSyncs - 1);
-        lastSyncFailed = false;
-        if (showIndicator) showSyncBadge("synced");
-      }).catch(function (err) {
-        pendingSyncs = Math.max(0, pendingSyncs - 1);
-        if (showIndicator) showSyncBadge("failed");
-        retrySyncLater(cachedDatabase, 0);
-      });
-    }
-    return cachedDatabase;
   }
 
   function saveDatabase(database) {
@@ -584,6 +556,11 @@
 
   async function forceSave(database) {
     cachedDatabase = normalizeDatabase(database);
+    var _session = null;
+    try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
+    var _demoEmails = ["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"];
+    var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
+    if (_isDemo) return true;
     if (!config.schoolId) {
       try { var sid = localStorage.getItem(SCHOOL_ID_KEY); if (sid) config.schoolId = String(sid); } catch (_e) {}
     }
@@ -657,7 +634,6 @@
   window.SagarSoftDB = {
     getDatabase: getDatabase,
     saveDatabase: saveDatabase,
-    saveDatabaseImmediate: saveDatabaseImmediate,
     flushPendingSync: flushPendingSync,
     updateDatabase: updateDatabase,
     loadDatabaseFromServer: loadDatabaseFromServer,
