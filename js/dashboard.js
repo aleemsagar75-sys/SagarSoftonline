@@ -5531,42 +5531,22 @@ document.addEventListener("DOMContentLoaded", function () {
     if (route === "institute-profile") {
       const profile = settings.instituteProfile;
       moduleSummary.innerHTML = `
-        <article>
-          <strong>Update Profile</strong>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="instituteLogoInput">Institute Logo*</label>
-              <input id="instituteLogoInput" type="file" accept="image/*">
-            </div>
-            <div class="field-group">
-              <label for="instituteNameInput">Name of Institute*</label>
-              <input id="instituteNameInput" type="text" value="${escapeAttr(profile.name)}">
-            </div>
-            <div class="field-group">
-              <label for="instituteSloganInput">Slogan*</label>
-              <input id="instituteSloganInput" type="text" value="${escapeAttr(profile.slogan)}">
-            </div>
-            <div class="field-group">
-              <label for="institutePhoneInput">Phone Number*</label>
-              <input id="institutePhoneInput" type="text" inputmode="numeric" value="${escapeAttr(profile.phone)}">
-            </div>
-            <div class="field-group">
-              <label for="institutePsraInput">PSRA</label>
-              <input id="institutePsraInput" type="text" value="${escapeAttr(profile.psra)}">
-            </div>
-            <div class="field-group">
-              <label for="instituteAddressInput">Address*</label>
-              <input id="instituteAddressInput" type="text" value="${escapeAttr(profile.address)}">
-            </div>
-            <div class="field-group">
-              <label for="instituteCountryInput">Country*</label>
-              <input id="instituteCountryInput" type="text" value="${escapeAttr(profile.country)}">
-            </div>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">🏫</div>
+            <div><p class="gs-form-section__title">Institute Profile</p><p class="gs-form-section__subtitle">Update school information</p></div>
           </div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveInstituteProfileBtn" type="button">Update Profile</button>
+          <div class="gs-form-grid">
+            <div class="gs-field gs-field--full"><label class="gs-field__label">Institute Logo*</label><input class="gs-field__input" id="instituteLogoInput" type="file" accept="image/*" style="padding:0.5rem;"></div>
+            <div class="gs-field"><label class="gs-field__label">Name of Institute*</label><input class="gs-field__input" id="instituteNameInput" type="text" value="${escapeAttr(profile.name)}"></div>
+            <div class="gs-field"><label class="gs-field__label">Slogan*</label><input class="gs-field__input" id="instituteSloganInput" type="text" value="${escapeAttr(profile.slogan)}"></div>
+            <div class="gs-field"><label class="gs-field__label">Phone Number*</label><input class="gs-field__input" id="institutePhoneInput" type="text" inputmode="numeric" value="${escapeAttr(profile.phone)}"></div>
+            <div class="gs-field"><label class="gs-field__label">PSRA</label><input class="gs-field__input" id="institutePsraInput" type="text" value="${escapeAttr(profile.psra)}"></div>
+            <div class="gs-field"><label class="gs-field__label">Address*</label><input class="gs-field__input" id="instituteAddressInput" type="text" value="${escapeAttr(profile.address)}"></div>
+            <div class="gs-field"><label class="gs-field__label">Country*</label><input class="gs-field__input" id="instituteCountryInput" type="text" value="${escapeAttr(profile.country)}"></div>
           </div>
-          <p class="form-message" id="instituteProfileMessage"></p>
+          <div class="gs-button-row"><button class="gs-btn-primary" id="saveInstituteProfileBtn" type="button">Update Profile</button></div>
+          <div class="gs-message" id="instituteProfileMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
       `;
 
@@ -5777,24 +5757,24 @@ document.addEventListener("DOMContentLoaded", function () {
       }).join("");
 
       moduleSummary.innerHTML = `
-        <article>
-          <strong>Fee Structure</strong>
-          <div class="field-group">
-            <label for="feeStructureClassSelect">Select Class</label>
-            <select id="feeStructureClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;">📋</div>
+            <div><p class="gs-form-section__title">Fee Structure</p><p class="gs-form-section__subtitle">Define fee types and amounts per class</p></div>
           </div>
-          <div id="feeStructureRows" class="module-line-list"></div>
-          <div class="form-actions">
-            <button class="secondary-button" id="addFeeStructureFieldBtn" type="button">Add Field</button>
-            <button class="secondary-button" id="removeFeeStructureFieldBtn" type="button">Remove Field</button>
-            <button class="primary-button" id="saveFeeStructureBtn" type="button">Add Fee Structure</button>
+          <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Select Class</label><select class="gs-field__input" id="feeStructureClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
+          <div id="feeStructureRows" class="gs-row-list" style="margin-top:1rem;"></div>
+          <div class="gs-actions" style="margin-top:0.75rem;">
+            <button class="gs-btn-secondary" id="addFeeStructureFieldBtn" type="button">Add Field</button>
+            <button class="gs-btn-secondary" id="removeFeeStructureFieldBtn" type="button">Remove Field</button>
+            <button class="gs-btn-primary" id="saveFeeStructureBtn" type="button">Save Fee Structure</button>
           </div>
-          <p class="form-message" id="feeStructureMessage"></p>
+          <div class="gs-message" id="feeStructureMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
-        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
-          <strong>Preview</strong>
+        <article class="gs-preview" style="margin-top:1rem;">
+          <p class="gs-preview__title">Preview</p>
           <div id="feeStructurePreview"></div>
-        </div>
+        </article>
       `;
 
       moduleGuide.innerHTML = ``;
@@ -5881,35 +5861,27 @@ document.addEventListener("DOMContentLoaded", function () {
       })).join("");
 
       moduleSummary.innerHTML = `
-        <article>
-          <strong>Discount Type</strong>
-          <div class="toolbar toolbar--status module-toolbar">
-            <div id="discountSearchContainer" style="position: relative; flex: 1;">
-              <input id="discountSearchInput" type="search" placeholder="Search by student name or roll no." style="width: 100%;">
-              <div id="discountSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
-            </div>
-            <select id="discountClassFilter">${optionsMarkup}</select>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">🏷</div>
+            <div><p class="gs-form-section__title">Discount Type</p><p class="gs-form-section__subtitle">Apply discounts to selected students</p></div>
           </div>
-          <div class="form-grid">
-            <div class="field-group">
-              <label for="discountTypeInput">Discount Type</label>
-              <input id="discountTypeInput" type="text">
-            </div>
-            <div class="field-group">
-              <label for="discountAmountInput">Discount Amount</label>
-              <input id="discountAmountInput" type="number" min="0">
-            </div>
+          <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
+            <div class="gs-field" style="flex:2;min-width:200px;position:relative;"><label class="gs-field__label">Search Student</label><input class="gs-field__input" id="discountSearchInput" type="search" placeholder="Search by name or roll no."><div id="discountSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
+            <div class="gs-field" style="flex:1;min-width:150px;"><label class="gs-field__label">Filter by Class</label><select class="gs-field__input" id="discountClassFilter">${optionsMarkup}</select></div>
           </div>
-          <div id="discountStudentsList" class="module-check-list"></div>
-          <div class="form-actions">
-            <button class="primary-button" id="applyDiscountBtn" type="button">Apply</button>
+          <div class="gs-form-grid">
+            <div class="gs-field"><label class="gs-field__label">Discount Type</label><input class="gs-field__input" id="discountTypeInput" type="text" placeholder="e.g Sibling, Staff"></div>
+            <div class="gs-field"><label class="gs-field__label">Discount Amount</label><input class="gs-field__input" id="discountAmountInput" type="number" min="0" placeholder="0"></div>
           </div>
-          <p class="form-message" id="discountMessage"></p>
+          <div id="discountStudentsList" style="margin-top:1rem;"></div>
+          <div class="gs-button-row"><button class="gs-btn-primary" id="applyDiscountBtn" type="button">Apply Discount</button></div>
+          <div class="gs-message" id="discountMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
-        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
-          <strong>Applied Discounts</strong>
+        <article class="gs-preview" style="margin-top:1rem;">
+          <p class="gs-preview__title">Applied Discounts</p>
           <div id="discountPreviewList" class="compact-list"></div>
-        </div>
+        </article>
       `;
 
       moduleGuide.innerHTML = ``;
