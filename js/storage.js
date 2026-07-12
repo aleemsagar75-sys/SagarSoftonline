@@ -367,12 +367,13 @@
   if (typeof window !== "undefined") {
     window.addEventListener("beforeunload", function () {
       if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
-        var xhr = new XMLHttpRequest();
-        xhr.open("POST", config.apiBaseUrl + "/api/database/" + encodeURIComponent(config.schoolId), false);
-        xhr.setRequestHeader("Content-Type", "application/json");
-        if (config.apiKey) xhr.setRequestHeader("x-sagarsoft-api-key", config.apiKey);
-        if (config.authToken) xhr.setRequestHeader("Authorization", "Bearer " + config.authToken);
-        try { xhr.send(JSON.stringify({ database: cachedDatabase })); } catch (_e) {}
+        try {
+          var payload = JSON.stringify({ database: cachedDatabase });
+          var url = config.apiBaseUrl + "/api/database/" + encodeURIComponent(config.schoolId);
+          navigator.sendBeacon(url, new Blob([payload], { type: "application/json" }));
+          _pendingSave = false;
+          if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
+        } catch (_e) {}
       }
     });
   }
@@ -456,18 +457,6 @@
   window.addEventListener("online", function () {
     if (config.apiBaseUrl && config.schoolId) {
       loadDatabaseFromServer();
-    }
-  });
-
-  window.addEventListener("beforeunload", function () {
-    if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
-      try {
-        var payload = JSON.stringify({ database: cachedDatabase });
-        var url = config.apiBaseUrl + "/api/database/" + encodeURIComponent(config.schoolId);
-        navigator.sendBeacon(url, new Blob([payload], { type: "application/json" }));
-        _pendingSave = false;
-        if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
-      } catch (_e) {}
     }
   });
 
@@ -567,20 +556,18 @@
     if (!config.apiBaseUrl || !config.schoolId) return false;
     try {
       var deletedIds = cachedDatabase._deletedIds || [];
-      var hasDeletions = deletedIds.length > 0;
       var serverDb = null;
 
-      if (hasDeletions) {
-        try {
-          var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 12000 });
-          if (getResp && getResp.database) serverDb = getResp.database;
-        } catch (_e) {}
-        if (serverDb && serverDb._deletedIds && serverDb._deletedIds.length) {
-          var serverIdSet = {};
-          serverDb._deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
-          deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
-          deletedIds = Object.keys(serverIdSet);
-        }
+      try {
+        var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 12000 });
+        if (getResp && getResp.database) serverDb = getResp.database;
+      } catch (_e) {}
+
+      if (serverDb && serverDb._deletedIds && serverDb._deletedIds.length) {
+        var serverIdSet = {};
+        serverDb._deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
+        deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
+        deletedIds = Object.keys(serverIdSet);
       }
 
       var toSave = cachedDatabase;
