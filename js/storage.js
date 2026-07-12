@@ -657,6 +657,16 @@
         apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 8000 }).then(function (resp) {
           if (resp && resp.database) {
             var refreshed = normalizeDatabase(resp.database);
+            if (refreshed.generalSettings && refreshed.generalSettings.instituteProfile) {
+              var localProfile = (cachedDatabase.generalSettings || {}).instituteProfile || {};
+              var remoteProfile = refreshed.generalSettings.instituteProfile || {};
+              if (localProfile.name && (!remoteProfile.name || remoteProfile.name === "SagarSoft Public School")) {
+                refreshed.generalSettings.instituteProfile = Object.assign({}, remoteProfile, localProfile);
+              }
+            }
+            if (refreshed.school && cachedDatabase.school && cachedDatabase.school.name && cachedDatabase.school.name !== "SagarSoft Public School") {
+              refreshed.school.name = cachedDatabase.school.name;
+            }
             cachedDatabase = refreshed;
             try { localStorage.setItem(STORAGE_KEY, JSON.stringify(refreshed)); } catch (_e) {}
           }
