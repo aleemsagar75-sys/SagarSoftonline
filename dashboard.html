@@ -11,8 +11,8 @@
   <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
   <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
   <title>SagarSoft Management System | Dashboard</title>
-  <link rel="stylesheet" href="./css/base.css">
-  <link rel="stylesheet" href="./css/dashboard.css">
+  <link rel="stylesheet" href="./css/base.css?v=20260711">
+  <link rel="stylesheet" href="./css/dashboard.css?v=20260711">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
@@ -460,7 +460,7 @@
           </div>
 
           <section class="stats-grid" id="statsGrid"></section>
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="dashboard-action-buttons">
             <button class="primary-button" id="downloadMobileAppBtn" type="button"><i class="fas fa-mobile-alt"></i> Download Mobile App</button>
             <button class="primary-button" id="dashboardScanAttendanceBtn" type="button"><i class="fas fa-qrcode"></i> Scan Attendance</button>
           </div>
@@ -509,11 +509,11 @@
             </article>
           </section>
 
-          <section class="dashboard-grid dashboard-grid--two-col" style="margin-bottom:1rem;">
+          <section class="dashboard-grid dashboard-grid--two-col dashboard-two-col-section">
             <article class="panel-card dashboard-mini-card dashboard-notice-board-card">
               <div class="panel-card__header">
-                <div style="display:flex;align-items:center;gap:0.6rem;">
-                  <img src="./assets/notice board.png.png" alt="" style="width:28px;height:28px;object-fit:contain;">
+                <div class="card-header-row">
+                  <img src="./assets/notice board.png.png" alt="" class="card-header-icon">
                   <div>
                     <p class="panel-label">Notice Board</p>
                     <h3>Recent Notices</h3>
@@ -525,8 +525,8 @@
             </article>
             <article class="panel-card dashboard-mini-card dashboard-event-calendar-card">
               <div class="panel-card__header">
-                <div style="display:flex;align-items:center;gap:0.6rem;">
-                  <img src="./assets/event calender.png.png" alt="" style="width:28px;height:28px;object-fit:contain;">
+                <div class="card-header-row">
+                  <img src="./assets/event calender.png.png" alt="" class="card-header-icon">
                   <div>
                     <p class="panel-label">Event Calendar</p>
                     <h3>Upcoming Events</h3>
@@ -1193,11 +1193,11 @@
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
-  <script src="./js/online-config.js"></script>
-  <script src="./js/crypto-utils.js"></script>
-  <script src="./js/storage.js"></script>
-  <script src="./js/auth.js"></script>
-  <script src="./js/dashboard.js?v=20260705"></script>
+  <script src="./js/online-config.js?v=20260711"></script>
+  <script src="./js/crypto-utils.js?v=20260711"></script>
+  <script src="./js/storage.js?v=20260711"></script>
+  <script src="./js/auth.js?v=20260711"></script>
+  <script src="./js/dashboard.js?v=20260711"></script>
   <script>
     var _origFetch = window.fetch;
     window.fetch = function () {
