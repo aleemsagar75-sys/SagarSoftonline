@@ -5620,7 +5620,7 @@ document.addEventListener("DOMContentLoaded", function () {
       });
 
       var _el = document.getElementById("saveInstituteProfileBtn"); if (_el) _el.addEventListener("click", async function () {
-        settings.instituteProfile = {
+        var newProfile = {
           logo: logoData,
           name: nameInput.value.trim(),
           slogan: sloganInput.value.trim(),
@@ -5629,13 +5629,32 @@ document.addEventListener("DOMContentLoaded", function () {
           address: addressInput.value.trim(),
           country: countryInput.value.trim()
         };
-        database.school.name = settings.instituteProfile.name;
-        database.school.phone = settings.instituteProfile.phone;
-        database.school.address = settings.instituteProfile.address;
-        const license = ensureLicenseSettings();
-        license.schoolName = settings.instituteProfile.name || database.school.name || license.schoolName;
+        settings.instituteProfile = newProfile;
+        database.school.name = newProfile.name;
+        database.school.phone = newProfile.phone;
+        database.school.address = newProfile.address;
+        var license = ensureLicenseSettings();
+        license.schoolName = newProfile.name || database.school.name || license.schoolName;
+        message.textContent = "Saving...";
+        message.className = "form-message";
+        try {
+          var _schoolId = (ensureLicenseSettings().schoolId || "").trim();
+          var _token = (ensureLicenseSettings().licenseToken || "").trim();
+          if (_schoolId) {
+            var _resp = await fetch(getApiBaseUrl() + "/api/school/profile/" + encodeURIComponent(_schoolId), {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Authorization": "Bearer " + _token },
+              body: JSON.stringify({ profile: newProfile, school: { name: newProfile.name, phone: newProfile.phone, address: newProfile.address } })
+            });
+            var _data = await _resp.json();
+            if (_data && _data.success && _data.profile) {
+              settings.instituteProfile = _data.profile;
+              database.generalSettings.instituteProfile = _data.profile;
+            }
+          }
+        } catch (_e) { console.error("Profile save error:", _e); }
         addActivity("Institute profile updated", "Institute profile saved from general settings.");
-        await saveDatabase("Updating institute profile...");
+        await saveDatabase("Syncing...");
         renderDashboard();
         updateTopProfileIdentity();
         renderProfileDropdownMenu();
