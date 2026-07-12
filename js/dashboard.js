@@ -4747,7 +4747,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const input = document.getElementById("rulesRegulationsInput");
         const message = document.getElementById("rulesRegulationsMessage");
         database.school.rulesRegulations = input.value.trim();
-        saveDatabase();
+        saveDatabase("Saving rules & regulations...");
         message.textContent = "Rules and regulations saved successfully.";
         message.className = "form-message success";
       });
@@ -5637,8 +5637,7 @@ document.addEventListener("DOMContentLoaded", function () {
         database.school.address = newProfile.address;
         var license = ensureLicenseSettings();
         license.schoolName = newProfile.name || database.school.name || license.schoolName;
-        message.textContent = "Saving...";
-        message.className = "form-message";
+        window.SagarSoftDB.showLoading("Saving institute profile...");
         try {
           var _schoolId = (ensureLicenseSettings().schoolId || "").trim();
           var _token = (ensureLicenseSettings().licenseToken || "").trim();
@@ -5656,12 +5655,19 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         } catch (_e) { console.error("Profile save error:", _e); }
         addActivity("Institute profile updated", "Institute profile saved from general settings.");
-        await saveDatabase("Syncing...");
-        renderDashboard();
         database.generalSettings.instituteProfile = Object.assign(database.generalSettings.instituteProfile || {}, newProfile);
         database.school.name = newProfile.name;
         database.school.phone = newProfile.phone;
         database.school.address = newProfile.address;
+        if (database.generalSettings && database.generalSettings.licenseSettings) {
+          database.generalSettings.licenseSettings.schoolName = newProfile.name || database.school.name || database.generalSettings.licenseSettings.schoolName;
+        }
+        await saveDatabase();
+        window.SagarSoftDB.hideLoading();
+        var _pn = document.getElementById("profileName");
+        if (_pn) _pn.textContent = newProfile.name || "Admin";
+        var _pa = document.getElementById("profileAvatar");
+        if (_pa) _pa.textContent = getInitials(newProfile.name || "Admin");
         updateTopProfileIdentity();
         renderProfileDropdownMenu();
         message.textContent = "Institute profile updated successfully.";
@@ -5862,7 +5868,7 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         }).filter(function (row) { return row.type; });
         addActivity("Fee structure updated", `${cls} fee structure updated.`);
-        saveDatabase();
+        saveDatabase("Saving fee structure...");
         message.textContent = "Fee structure saved successfully.";
         message.className = "form-message success";
       });
@@ -6102,7 +6108,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return bank.id !== bankRecord.id;
         }));
         addActivity("Bank account updated", `${bankRecord.name} bank details saved.`);
-        saveDatabase();
+        saveDatabase("Saving bank account...");
         message.textContent = "Bank account saved successfully.";
         message.className = "form-message success";
       });
@@ -6315,7 +6321,7 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         }).filter(function (row) { return row.grade; });
         addActivity("Marks grading updated", "Marks grading settings updated.");
-        saveDatabase();
+        saveDatabase("Saving marks grading...");
         gradingMessage.textContent = "Marks grading saved successfully.";
         gradingMessage.className = "form-message success";
       });
@@ -6327,7 +6333,7 @@ document.addEventListener("DOMContentLoaded", function () {
           subjectCount: Number(document.getElementById("failSubjectsCountInput").value || 1)
         };
         addActivity("Fail criteria updated", "Fail criteria updated from general settings.");
-        saveDatabase();
+        saveDatabase("Saving fail criteria...");
         const failMessage = document.getElementById("failMessage");
         failMessage.textContent = "Fail criteria updated successfully.";
         failMessage.className = "form-message success";
@@ -6388,7 +6394,7 @@ document.addEventListener("DOMContentLoaded", function () {
         };
         applyTheme(settings.themeLanguage);
         addActivity("Theme settings updated", "Theme and language settings updated.");
-        saveDatabase();
+        saveDatabase("Saving theme settings...");
         const message = document.getElementById("themeMessage");
         message.textContent = "Theme settings updated successfully.";
         message.className = "form-message success";
@@ -9377,7 +9383,7 @@ ${allContent}
         } else {
           settings.timetableWeekdays.push(record);
         }
-        saveDatabase();
+        saveDatabase("Saving weekday...");
         addActivity("Weekday saved", `${record.name} updated in timetable settings.`);
         editingId = "";
         nameInput.value = "";
@@ -9501,7 +9507,7 @@ ${allContent}
         } else {
           settings.timetablePeriods.push(record);
         }
-        saveDatabase();
+        saveDatabase("Saving time period...");
         addActivity("Time period saved", `${record.label} saved in timetable periods.`);
         editingId = "";
         labelInput.value = "";
@@ -9631,7 +9637,7 @@ ${allContent}
         } else {
           settings.classRooms.push(record);
         }
-        saveDatabase();
+        saveDatabase("Saving class room...");
         addActivity("Class room saved", `${record.name} added/updated in class rooms.`);
         editingId = "";
         nameInput.value = "";
