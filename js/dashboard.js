@@ -5764,7 +5764,7 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         });
         addActivity("Fee particulars updated", `${cls} fee particulars updated.`);
-        saveDatabase();
+        saveDatabase("Saving fee particulars...");
         message.textContent = "Fee particulars updated successfully.";
         message.className = "form-message success";
       });
@@ -6009,7 +6009,7 @@ document.addEventListener("DOMContentLoaded", function () {
           createdAt: new Date().toISOString()
         });
         addActivity("Discount applied", `${type} discount applied to ${selectedIds.length} students.`);
-        saveDatabase();
+        saveDatabase("Saving discount...");
         message.textContent = "Discount applied successfully.";
         message.className = "form-message success";
         renderDiscountPreview();
@@ -6196,7 +6196,7 @@ document.addEventListener("DOMContentLoaded", function () {
           database.school.rulesRegulations = editor.textContent.trim();
         }
         addActivity("Rules updated", `${target} rules and regulations updated.`);
-        saveDatabase();
+        saveDatabase("Saving rules & regulations...");
         message.textContent = "Rules and regulations applied successfully.";
         message.className = "form-message success";
       });
@@ -6346,41 +6346,34 @@ document.addEventListener("DOMContentLoaded", function () {
       const allLanguages = ["English", "Urdu", "Arabic", "Hindi", "Spanish", "French", "German", "Portuguese", "Chinese", "Japanese", "Korean", "Turkish", "Russian", "Italian", "Dutch", "Thai", "Indonesian", "Malay", "Bengali", "Punjabi", "Persian", "Vietnamese", "Greek", "Polish", "Swedish", "Danish", "Norwegian", "Finnish", "Czech", "Romanian", "Hungarian", "Ukrainian", "Tagalog"];
       const isRtlLang = ["Urdu", "Arabic", "Persian", "Hebrew"].includes(theme.language);
       moduleSummary.innerHTML = `
-        <article style="background:linear-gradient(135deg,#f8fafc,#eef2ff);border-radius:16px;padding:28px;border:1px solid #e2e8f0;">
-          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-            <div style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;">🎨</div>
-            <div><strong style="font-size:1.15rem;color:#1e293b;">Theme & Language</strong><p style="margin:2px 0 0;font-size:0.85rem;color:#64748b;">Customize appearance and select your preferred language</p></div>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">🎨</div>
+            <div><p class="gs-form-section__title">Theme & Language</p><p class="gs-form-section__subtitle">Customize appearance and select your preferred language</p></div>
           </div>
-          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
-            <div class="field-group" style="background:#fff;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
-              <label for="sidebarBgColorInput" style="font-weight:600;color:#334155;font-size:0.85rem;">Sidebar Background</label>
-              <input id="sidebarBgColorInput" type="color" value="${escapeAttr(theme.sidebarBackground || "#08172f")}" style="width:100%;height:42px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-top:6px;">
-            </div>
-            <div class="field-group" style="background:#fff;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
-              <label for="headerBgColorInput" style="font-weight:600;color:#334155;font-size:0.85rem;">Header Background</label>
-              <input id="headerBgColorInput" type="color" value="${escapeAttr(theme.headerBackground || "#ffffff")}" style="width:100%;height:42px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-top:6px;">
-            </div>
-            <div class="field-group" style="background:#fff;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
-              <label for="activeItemBgColorInput" style="font-weight:600;color:#334155;font-size:0.85rem;">Active Item Highlight</label>
-              <input id="activeItemBgColorInput" type="color" value="${escapeAttr(theme.activeItemBackground || "#1e5eff")}" style="width:100%;height:42px;border:2px solid #e2e8f0;border-radius:8px;cursor:pointer;margin-top:6px;">
-            </div>
-            <div class="field-group" style="background:#fff;padding:16px;border-radius:12px;border:1px solid #e2e8f0;">
-              <label for="languageSettingSelect" style="font-weight:600;color:#334155;font-size:0.85rem;">Select Language</label>
-              <select id="languageSettingSelect" style="width:100%;padding:10px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:0.92rem;margin-top:6px;background:#fff;">
-                ${allLanguages.map(function (lang) {
-                  return `<option value="${lang}" ${theme.language === lang ? "selected" : ""}>${lang}</option>`;
-                }).join("")}
-              </select>
-            </div>
+          <div class="gs-form-grid">
+            <div class="gs-color-field"><label class="gs-field__label">Sidebar Background</label><input class="gs-color-field__input" id="sidebarBgColorInput" type="color" value="${escapeAttr(theme.sidebarBackground || "#08172f")}"></div>
+            <div class="gs-color-field"><label class="gs-field__label">Header Background</label><input class="gs-color-field__input" id="headerBgColorInput" type="color" value="${escapeAttr(theme.headerBackground || "#ffffff")}"></div>
+            <div class="gs-color-field"><label class="gs-field__label">Active Item Highlight</label><input class="gs-color-field__input" id="activeItemBgColorInput" type="color" value="${escapeAttr(theme.activeItemBackground || "#1e5eff")}"></div>
+            <div class="gs-field"><label class="gs-field__label">Select Language</label><select class="gs-field__input" id="languageSettingSelect">
+              ${allLanguages.map(function (lang) {
+                return `<option value="${lang}" ${theme.language === lang ? "selected" : ""}>${lang}</option>`;
+              }).join("")}
+            </select></div>
           </div>
-          <div style="margin-top:20px;text-align:right;">
-            <button class="primary-button" id="saveThemeBtn" type="button" style="padding:12px 32px;font-size:0.95rem;">Save Settings</button>
-          </div>
-          <p class="form-message" id="themeMessage" style="margin-top:12px;"></p>
+          <div class="gs-button-row"><button class="gs-btn-primary" id="saveThemeBtn" type="button">Save Settings</button></div>
+          <div class="gs-message" id="themeMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
       `;
+      moduleGuide.innerHTML = `<article class="gs-form-section"><div class="gs-form-section__header"><div class="gs-form-section__icon" style="background:rgba(27,95,122,0.1);color:var(--primary-color);">ℹ</div><div><p class="gs-form-section__title">Current Settings</p></div></div><div style="display:grid;gap:0.5rem;"><p style="font-size:0.88rem;color:var(--text-muted);"><strong>Language:</strong> ${escapeHtml(theme.language || "English")}</p><p style="font-size:0.88rem;color:var(--text-muted);"><strong>Direction:</strong> ${isRtlLang ? "Right-to-Left (RTL)" : "Left-to-Right (LTR)"}</p></div></article>`;
 
-      moduleGuide.innerHTML = `<article style="background:#f8fafc;border-radius:12px;padding:20px;border:1px solid #e2e8f0;"><strong style="color:#1e293b;">Current Settings</strong><div style="margin-top:12px;display:grid;gap:8px;"><p style="font-size:0.9rem;color:#475569;"><strong>Language:</strong> ${escapeHtml(theme.language || "English")}</p><p style="font-size:0.9rem;color:#475569;"><strong>Direction:</strong> ${isRtlLang ? "Right-to-Left (RTL)" : "Left-to-Right (LTR)"}</p></div></article>`;
+      function setThemeMessage(text, type) {
+        var el = document.getElementById("themeMessage");
+        if (!el) return;
+        el.className = "gs-message gs-message--" + type + " gs-message--visible";
+        el.querySelector(".gs-message__text").textContent = text;
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+      }
 
       document.getElementById("saveThemeBtn").addEventListener("click", function () {
         var selectedLang = document.getElementById("languageSettingSelect").value;
@@ -6395,9 +6388,7 @@ document.addEventListener("DOMContentLoaded", function () {
         applyTheme(settings.themeLanguage);
         addActivity("Theme settings updated", "Theme and language settings updated.");
         saveDatabase("Saving theme settings...");
-        const message = document.getElementById("themeMessage");
-        message.textContent = "Theme settings updated successfully.";
-        message.className = "form-message success";
+        setThemeMessage("Theme settings updated successfully.", "success");
       });
 
       return;
@@ -19539,7 +19530,7 @@ ${allContent}
           settings.accountSettings.symbol = symbol;
           settings.instituteProfile.name = schoolName || settings.instituteProfile.name;
           database.school.name = schoolName || database.school.name;
-          saveDatabase();
+          saveDatabase("Saving account settings...");
           updateTopProfileIdentity();
           renderProfileDropdownMenu();
           applyRouteAccessVisibility();
