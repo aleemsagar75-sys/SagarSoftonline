@@ -1487,10 +1487,6 @@ async function getSchoolDatabase(schoolId) {
       database.generalSettings.licenseSettings.startDate = lic.start_date || "";
       database.generalSettings.licenseSettings.expiryDate = lic.expiry_date || "";
       database.generalSettings.licenseSettings.licenseToken = lic.license_token || "";
-      if (lic.school_name && String(lic.school_name).trim()) {
-        database.school = database.school || {};
-        database.school.name = lic.school_name;
-      }
     }
   } catch (_e) {}
 
