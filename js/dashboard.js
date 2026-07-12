@@ -1095,6 +1095,11 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!database.generalSettings.licenseSettings.schoolName && accountSettings.schoolName) {
       database.generalSettings.licenseSettings.schoolName = String(accountSettings.schoolName || "").trim();
     }
+    if (profile.name && String(profile.name).trim()) {
+      database.generalSettings.licenseSettings.schoolName = String(profile.name).trim();
+      database.school = database.school || {};
+      database.school.name = String(profile.name).trim();
+    }
     return database.generalSettings.licenseSettings;
   }
 
