@@ -5614,7 +5614,7 @@ document.addEventListener("DOMContentLoaded", function () {
         reader.readAsDataURL(file);
       });
 
-      var _el = document.getElementById("saveInstituteProfileBtn"); if (_el) _el.addEventListener("click", function () {
+      var _el = document.getElementById("saveInstituteProfileBtn"); if (_el) _el.addEventListener("click", async function () {
         settings.instituteProfile = {
           logo: logoData,
           name: nameInput.value.trim(),
@@ -5630,7 +5630,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const license = ensureLicenseSettings();
         license.schoolName = settings.instituteProfile.name || database.school.name || license.schoolName;
         addActivity("Institute profile updated", "Institute profile saved from general settings.");
-        saveDatabase();
+        await saveDatabase("Updating institute profile...");
         renderDashboard();
         updateTopProfileIdentity();
         renderProfileDropdownMenu();
