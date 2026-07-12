@@ -1643,6 +1643,38 @@ app.post("/api/database/:schoolId", async (req, res) => {
   }
 });
 
+app.post("/api/school/profile/:schoolId", async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  const profile = req.body && req.body.profile ? req.body.profile : {};
+  const schoolData = req.body && req.body.school ? req.body.school : {};
+  try {
+    const licCheck = await pool.query("select school_id from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    if (!licCheck.rowCount) {
+      return res.status(403).json({ success: false, message: "School not activated." });
+    }
+    if (profile.name && String(profile.name).trim()) {
+      await pool.query("update public.license_accounts set school_name = $1, updated_at = now() where school_id = $2", [String(profile.name).trim(), schoolId]);
+    }
+    const dbResult = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
+    let db = dbResult.rowCount ? (dbResult.rows[0].database || {}) : {};
+    if (typeof db === "string") { try { db = JSON.parse(db); } catch (_e) { db = {}; } }
+    db.generalSettings = db.generalSettings || {};
+    db.generalSettings.instituteProfile = Object.assign(db.generalSettings.instituteProfile || {}, profile);
+    db.school = Object.assign(db.school || {}, schoolData);
+    await pool.query(`
+      insert into public.school_databases (school_id, database, updated_at)
+      values ($1, $2::jsonb, now())
+      on conflict (school_id)
+      do update set database = excluded.database, updated_at = now()
+    `, [schoolId, JSON.stringify(db)]);
+    console.log("POST /api/school/profile/" + schoolId + " — PROFILE SAVED OK");
+    return res.json({ success: true, school_id: schoolId, profile: db.generalSettings.instituteProfile, school: db.school });
+  } catch (error) {
+    console.error("POST /api/school/profile/" + schoolId + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: error.message || "Unable to save profile." });
+  }
+});
+
 app.post("/api/admin/license", requireSuperAdmin, async (req, res) => {
   try {
     const body = req.body || {};
