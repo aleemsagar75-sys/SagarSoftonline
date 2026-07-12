@@ -7977,7 +7977,7 @@ ${allContent}
         return studentIdSet.has(String(feeItem.studentId || "").trim());
       });
       if ((database.fees || []).length !== feesBeforeCleanup) {
-        saveDatabase();
+        saveDatabase("Cleaning up fee records...");
         refreshDatabase();
       }
 
@@ -13158,7 +13158,7 @@ ${allContent}
         }
 
         addActivity("Employee login updated", `${employee.name} login credentials saved.`);
-        saveDatabase();
+        saveDatabase("Saving employee login...");
         renderEmployeeLoginTable();
       });
 
@@ -21619,7 +21619,7 @@ ${allContent}
       addActivity("Student login created", `${student.name} login was created from manage login panel.`);
     }
 
-    saveDatabase();
+    saveDatabase("Saving student login...");
     refreshDatabase();
     renderDashboard();
     setStudentRoute("students-manage-login");
@@ -23098,7 +23098,7 @@ ${allContent}
       addActivity("Student login created", `${student.name} received a new student login.`);
     }
 
-    saveDatabase();
+    saveDatabase("Saving student login...");
     refreshDatabase();
     renderDashboard();
     setStudentRoute("students-manage-login");
@@ -23135,7 +23135,7 @@ ${allContent}
       database.users.push(loginUser);
       addActivity("Parent login created", `${loginUser.name} received a new parent login.`);
     }
-    saveDatabase();
+    saveDatabase("Saving parent login...");
     refreshDatabase();
     renderDashboard();
     setStudentRoute("parents-manage-login");
@@ -23320,8 +23320,8 @@ ${allContent}
             return user.id !== `LOGIN-${student.id}`;
           });
           addActivity("Student deleted", `${student.name} record was removed.`);
-          window.SagarSoftDB.showLoading("Deleting student...");
-          window.SagarSoftDB.forceSave(database).then(function() { window.SagarSoftDB.hideLoading(); saveDatabase(); renderDashboard(); }).catch(function() { window.SagarSoftDB.hideLoading(); });
+          saveDatabase("Deleting student...");
+          renderDashboard();
           setStudentRoute("all-students");
         });
       }
@@ -24055,7 +24055,7 @@ ${allContent}
       database.notifications = (database.notifications || []).map(function (item) {
         return { ...item, read: true };
       });
-      saveDatabase();
+      saveDatabase("Marking notifications read...");
       renderNotificationList();
     });
 
