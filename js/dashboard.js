@@ -9310,19 +9310,24 @@ ${allContent}
 
     if (route === "weekdays") {
       moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong class="module-center-title">Manage Weekdays</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Weekday Name*</label><input id="weekdayNameInput" type="text" placeholder="e.g Monday" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
-            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Short Label*</label><input id="weekdayShortInput" type="text" placeholder="e.g Mon" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
-            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Status</label><select id="weekdayStatusInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">📅</div>
+            <div><p class="gs-form-section__title">Manage Weekdays</p><p class="gs-form-section__subtitle">Configure school week schedule</p></div>
           </div>
-          <div class="form-actions"><button class="primary-button" id="saveWeekdayBtn" type="button">Save Weekday</button></div>
-          <p class="form-message" id="weekdayMessage"></p>
+          <div class="gs-form-grid">
+            <div class="gs-field"><label class="gs-field__label">Weekday Name*</label><input class="gs-field__input" id="weekdayNameInput" type="text" placeholder="e.g Monday"></div>
+            <div class="gs-field"><label class="gs-field__label">Short Label*</label><input class="gs-field__input" id="weekdayShortInput" type="text" placeholder="e.g Mon"></div>
+            <div class="gs-field"><label class="gs-field__label">Status</label><select class="gs-field__input" id="weekdayStatusInput"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+          </div>
+          <div class="gs-button-row"><button class="gs-btn-primary" id="saveWeekdayBtn" type="button">Save Weekday</button></div>
+          <div class="gs-message" id="weekdayMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
-        <article>
-          <strong>All Weekdays</strong>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:400px;width:100%;"><thead><tr><th>Weekday</th><th>Short Label</th><th>Status</th><th>Actions</th></tr></thead><tbody id="weekdayTableBody"></tbody></table></div>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div><p class="gs-form-section__title">All Weekdays</p></div>
+          </div>
+          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>Weekday</th><th>Short Label</th><th>Status</th><th>Actions</th></tr></thead><tbody id="weekdayTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -9352,20 +9357,26 @@ ${allContent}
         }).join("");
       }
 
+      function setWeekdayMessage(text, type) {
+        var el = document.getElementById("weekdayMessage");
+        if (!el) return;
+        el.className = "gs-message gs-message--" + type + " gs-message--visible";
+        el.querySelector(".gs-message__text").textContent = text;
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+      }
+
       document.getElementById("saveWeekdayBtn").addEventListener("click", function () {
         const dayName = nameInput.value.trim();
         const shortLabel = shortInput.value.trim();
         if (!dayName || !shortLabel) {
-          message.textContent = "Please fill weekday name and short label.";
-          message.className = "form-message error";
+          setWeekdayMessage("Please fill weekday name and short label.", "error");
           return;
         }
         const duplicate = (settings.timetableWeekdays || []).find(function (day) {
           return day.name.toLowerCase() === dayName.toLowerCase() && day.id !== editingId;
         });
         if (duplicate) {
-          message.textContent = "This weekday already exists.";
-          message.className = "form-message error";
+          setWeekdayMessage("This weekday already exists.", "error");
           return;
         }
         const record = {
@@ -9389,8 +9400,7 @@ ${allContent}
         nameInput.value = "";
         shortInput.value = "";
         statusInput.value = "active";
-        message.textContent = "Weekday saved successfully.";
-        message.className = "form-message success";
+        setWeekdayMessage("Weekday saved successfully.", "success");
         renderRows();
       });
 
@@ -9416,8 +9426,7 @@ ${allContent}
           return item.weekdayId === weekdayId;
         });
         if (hasUsage) {
-          message.textContent = "This weekday is already used in timetable entries.";
-          message.className = "form-message error";
+          setWeekdayMessage("This weekday is already used in timetable entries.", "error");
           return;
         }
         settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; }); trackDeletion(weekdayId);
@@ -9431,23 +9440,26 @@ ${allContent}
 
     if (route === "time-periods") {
       moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">Manage Time Periods</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Period Name*</label><input id="periodLabelInput" type="text" placeholder="e.g Period 1" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Start Time*</label><input id="periodStartInput" type="time" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">End Time*</label><input id="periodEndInput" type="time" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">⏰</div>
+            <div><p class="gs-form-section__title">Manage Time Periods</p><p class="gs-form-section__subtitle">Set class periods and breaks</p></div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Type*</label><select id="periodTypeInput" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="Teaching">Teaching</option><option value="Break">Break</option></select></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Status</label><select id="periodStatusInput" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+          <div class="gs-form-grid">
+            <div class="gs-field"><label class="gs-field__label">Period Name*</label><input class="gs-field__input" id="periodLabelInput" type="text" placeholder="e.g Period 1"></div>
+            <div class="gs-field"><label class="gs-field__label">Start Time*</label><input class="gs-field__input" id="periodStartInput" type="time"></div>
+            <div class="gs-field"><label class="gs-field__label">End Time*</label><input class="gs-field__input" id="periodEndInput" type="time"></div>
+            <div class="gs-field"><label class="gs-field__label">Type*</label><select class="gs-field__input" id="periodTypeInput"><option value="Teaching">Teaching</option><option value="Break">Break</option></select></div>
+            <div class="gs-field"><label class="gs-field__label">Status</label><select class="gs-field__input" id="periodStatusInput"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
           </div>
-          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="savePeriodBtn" type="button" style="padding:6px 24px;font-size:0.8rem;">Save Period</button></div>
-          <p class="form-message" id="periodMessage"></p>
+          <div class="gs-button-row"><button class="gs-btn-primary" id="savePeriodBtn" type="button">Save Period</button></div>
+          <div class="gs-message" id="periodMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
-        <article style="max-width:100%;overflow-x:hidden;margin-top:8px;">
-          <strong>All Time Periods</strong>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;max-width:100%;"><table style="min-width:460px;width:100%;font-size:0.82rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Period</th><th style="white-space:nowrap;">Start</th><th style="white-space:nowrap;">End</th><th style="white-space:nowrap;">Type</th><th style="white-space:nowrap;">Status</th><th style="white-space:nowrap;">Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div><p class="gs-form-section__title">All Time Periods</p></div>
+          </div>
+          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>Period</th><th>Start</th><th>End</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -9458,8 +9470,15 @@ ${allContent}
       const typeInput = document.getElementById("periodTypeInput");
       const statusInput = document.getElementById("periodStatusInput");
       const tableBody = document.getElementById("periodTableBody");
-      const message = document.getElementById("periodMessage");
       let editingId = "";
+
+      function setPeriodMessage(text, type) {
+        var el = document.getElementById("periodMessage");
+        if (!el) return;
+        el.className = "gs-message gs-message--" + type + " gs-message--visible";
+        el.querySelector(".gs-message__text").textContent = text;
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+      }
 
       function renderRows() {
         tableBody.innerHTML = getTimetablePeriods(true).map(function (period) {
@@ -9469,11 +9488,11 @@ ${allContent}
               <td>${escapeHtml(formatTimeLabel(period.startTime))}</td>
               <td>${escapeHtml(formatTimeLabel(period.endTime))}</td>
               <td>${escapeHtml(period.periodType || "Teaching")}</td>
-              <td><span class="status-pill ${period.active ? "active" : "inactive"}">${period.active ? "Active" : "Inactive"}</span></td>
+              <td><span class="gs-pill gs-pill--${period.active ? "active" : "inactive"}">${period.active ? "Active" : "Inactive"}</span></td>
               <td>
-                <div class="table-actions">
-                  <button class="table-action-btn" type="button" data-period-action="edit" data-id="${period.id}">Edit</button>
-                  <button class="table-action-btn danger" type="button" data-period-action="delete" data-id="${period.id}">Delete</button>
+                <div class="gs-actions">
+                  <button class="gs-btn-secondary" type="button" data-period-action="edit" data-id="${period.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Edit</button>
+                  <button class="gs-btn-danger" type="button" data-period-action="delete" data-id="${period.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Delete</button>
                 </div>
               </td>
             </tr>
@@ -9486,8 +9505,7 @@ ${allContent}
         const start = startInput.value;
         const end = endInput.value;
         if (!label || !start || !end) {
-          message.textContent = "Please fill period name, start and end time.";
-          message.className = "form-message error";
+          setPeriodMessage("Please fill period name, start and end time.", "error");
           return;
         }
         const record = {
@@ -9515,8 +9533,7 @@ ${allContent}
         endInput.value = "";
         typeInput.value = "Teaching";
         statusInput.value = "active";
-        message.textContent = "Time period saved successfully.";
-        message.className = "form-message success";
+        setPeriodMessage("Time period saved successfully.", "success");
         renderRows();
       });
 
@@ -9544,8 +9561,7 @@ ${allContent}
           return item.periodId === periodId;
         });
         if (hasUsage) {
-          message.textContent = "This period is already used in timetable entries.";
-          message.className = "form-message error";
+          setPeriodMessage("This period is already used in timetable entries.", "error");
           return;
         }
         settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; }); trackDeletion(periodId);
@@ -9575,19 +9591,24 @@ ${allContent}
       }
 
       moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong class="module-center-title">Manage Class Rooms</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Room Name*</label><select id="roomNameInput" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></select></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Capacity</label><input id="roomCapacityInput" type="number" min="0" placeholder="30" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
-            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Location</label><input id="roomLocationInput" type="text" placeholder="Main Building" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"></div>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;">🏫</div>
+            <div><p class="gs-form-section__title">Manage Class Rooms</p><p class="gs-form-section__subtitle">Assign rooms to classes</p></div>
           </div>
-          <div class="form-actions"><button class="primary-button" id="saveRoomBtn" type="button">Save Room</button></div>
-          <p class="form-message" id="roomMessage"></p>
+          <div class="gs-form-grid">
+            <div class="gs-field"><label class="gs-field__label">Room Name*</label><select class="gs-field__input" id="roomNameInput"></select></div>
+            <div class="gs-field"><label class="gs-field__label">Capacity</label><input class="gs-field__input" id="roomCapacityInput" type="number" min="0" placeholder="30"></div>
+            <div class="gs-field"><label class="gs-field__label">Location</label><input class="gs-field__input" id="roomLocationInput" type="text" placeholder="Main Building"></div>
+          </div>
+          <div class="gs-button-row"><button class="gs-btn-primary" id="saveRoomBtn" type="button">Save Room</button></div>
+          <div class="gs-message" id="roomMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
-        <article>
-          <strong>All Class Rooms</strong>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:380px;width:100%;"><thead><tr><th>Room Name</th><th>Capacity</th><th>Location</th><th>Actions</th></tr></thead><tbody id="roomTableBody"></tbody></table></div>
+        <article class="gs-form-section">
+          <div class="gs-form-section__header">
+            <div><p class="gs-form-section__title">All Class Rooms</p></div>
+          </div>
+          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>Room Name</th><th>Capacity</th><th>Location</th><th>Actions</th></tr></thead><tbody id="roomTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -9596,9 +9617,16 @@ ${allContent}
       const capacityInput = document.getElementById("roomCapacityInput");
       const locationInput = document.getElementById("roomLocationInput");
       const tableBody = document.getElementById("roomTableBody");
-      const message = document.getElementById("roomMessage");
       let editingId = "";
       populateRoomNameSelect();
+
+      function setRoomMessage(text, type) {
+        var el = document.getElementById("roomMessage");
+        if (!el) return;
+        el.className = "gs-message gs-message--" + type + " gs-message--visible";
+        el.querySelector(".gs-message__text").textContent = text;
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+      }
 
       function renderRows() {
         tableBody.innerHTML = getClassRooms().map(function (room) {
@@ -9608,9 +9636,9 @@ ${allContent}
               <td>${Number(room.capacity || 0)}</td>
               <td>${escapeHtml(room.location || "-")}</td>
               <td>
-                <div class="table-actions">
-                  <button class="table-action-btn" type="button" data-room-action="edit" data-id="${room.id}">Edit</button>
-                  <button class="table-action-btn danger" type="button" data-room-action="delete" data-id="${room.id}">Delete</button>
+                <div class="gs-actions">
+                  <button class="gs-btn-secondary" type="button" data-room-action="edit" data-id="${room.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Edit</button>
+                  <button class="gs-btn-danger" type="button" data-room-action="delete" data-id="${room.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Delete</button>
                 </div>
               </td>
             </tr>
@@ -9621,8 +9649,7 @@ ${allContent}
       document.getElementById("saveRoomBtn").addEventListener("click", function () {
         const roomName = nameInput.value.trim();
         if (!roomName) {
-          message.textContent = "Please select a class.";
-          message.className = "form-message error";
+          setRoomMessage("Please select a class.", "error");
           return;
         }
         const record = {
@@ -9643,8 +9670,7 @@ ${allContent}
         nameInput.value = "";
         capacityInput.value = "";
         locationInput.value = "";
-        message.textContent = "Class room saved successfully.";
-        message.className = "form-message success";
+        setRoomMessage("Class room saved successfully.", "success");
         renderRows();
       });
 
