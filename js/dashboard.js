@@ -5719,7 +5719,7 @@ document.addEventListener("DOMContentLoaded", function () {
       classSelect.addEventListener("change", renderRows);
       rowsWrap.addEventListener("input", renderPreview);
 
-      var _el = document.getElementById("saveFeeParticularBtn"); if (_el) _el.addEventListener("click", function () {
+      var _el = document.getElementById("saveFeeParticularBtn"); if (_el) _el.addEventListener("click", async function () {
         const cls = classSelect.value;
         if (!cls) {
           return;
@@ -5835,7 +5835,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-      var _el = document.getElementById("saveFeeStructureBtn"); if (_el) _el.addEventListener("click", function () {
+      var _el = document.getElementById("saveFeeStructureBtn"); if (_el) _el.addEventListener("click", async function () {
         const cls = classSelect.value;
         settings.feeStructures[cls] = Array.from(rowsWrap.querySelectorAll(".module-line-item")).map(function (row) {
           const amount = Math.max(0, parseFloat(row.querySelector(".fee-structure-amount").value || 0, 10));
