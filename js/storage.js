@@ -698,6 +698,53 @@
     return false;
   }
 
+  async function saveSettingToServer(key, value) {
+    if (!config.apiBaseUrl || !config.schoolId) return false;
+    if (isDemoUser()) return true;
+    try {
+      await apiFetch("/api/school-settings/" + encodeURIComponent(config.schoolId) + "/" + encodeURIComponent(key), {
+        method: "PUT",
+        body: JSON.stringify(value),
+        timeoutMs: 60000
+      });
+      return true;
+    } catch (_e) { return false; }
+  }
+
+  async function saveSettingItemsToServer(key, items) {
+    if (!config.apiBaseUrl || !config.schoolId) return false;
+    if (isDemoUser()) return true;
+    try {
+      await apiFetch("/api/school-settings/" + encodeURIComponent(config.schoolId) + "/" + encodeURIComponent(key), {
+        method: "PUT",
+        body: JSON.stringify(items),
+        timeoutMs: 60000
+      });
+      return true;
+    } catch (_e) { return false; }
+  }
+
+  async function saveProfileToServer(data) {
+    if (!config.apiBaseUrl || !config.schoolId) return false;
+    if (isDemoUser()) return true;
+    try {
+      await apiFetch("/api/school-profile/" + encodeURIComponent(config.schoolId), {
+        method: "PUT",
+        body: JSON.stringify(data),
+        timeoutMs: 60000
+      });
+      return true;
+    } catch (_e) { return false; }
+  }
+
+  async function loadSchoolProfile() {
+    if (!config.apiBaseUrl || !config.schoolId) return null;
+    try {
+      var resp = await apiFetch("/api/school-profile/" + encodeURIComponent(config.schoolId), { timeoutMs: 30000 });
+      return resp || null;
+    } catch (_e) { return null; }
+  }
+
   window.SagarSoftDB = {
     getDatabase: getDatabase,
     saveDatabase: saveDatabase,
@@ -720,6 +767,10 @@
     cancelLoading: cancelLoading,
     showSyncBadge: showSyncBadge,
     forceSave: forceSave,
+    saveSettingToServer: saveSettingToServer,
+    saveSettingItemsToServer: saveSettingItemsToServer,
+    saveProfileToServer: saveProfileToServer,
+    loadSchoolProfile: loadSchoolProfile,
     isCancelled: function () { return _isCancelled; },
     resetCancel: function () { _isCancelled = false; }
   };
