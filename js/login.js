@@ -128,12 +128,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     showLoginOverlay("Connecting to server...");
 
-    try {
-      if (window.SagarSoftDB && window.SagarSoftDB.preloadDatabaseForLogin) {
-        await window.SagarSoftDB.preloadDatabaseForLogin();
-      }
-    } catch (_e) {}
-
     showLoginOverlay("Verifying credentials...");
 
     var result;
@@ -155,9 +149,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     showLoginOverlay("Login successful. Loading dashboard...");
-    window.setTimeout(function () {
-      window.location.href = "./dashboard.html";
-    }, 700);
+    window.location.href = "./dashboard.html";
   });
 
   setRole("admin");
