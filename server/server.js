@@ -759,6 +759,25 @@ async function ensureSchema() {
       primary key (school_id, source_id)
     );
 
+    create table if not exists public.school_settings (
+      school_id text not null,
+      setting_key text not null,
+      setting_value jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, setting_key)
+    );
+
+    create table if not exists public.school_setting_items (
+      school_id text not null,
+      setting_key text not null,
+      item_id text not null,
+      item_data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, setting_key, item_id)
+    );
+
+    create index if not exists idx_school_settings_school_id on public.school_settings (school_id);
+    create index if not exists idx_school_setting_items_school_key on public.school_setting_items (school_id, setting_key);
     create index if not exists idx_notices_school_id on public.notices (school_id);
     create index if not exists idx_events_school_id on public.events (school_id);
     create index if not exists idx_sms_templates_school_id on public.sms_templates (school_id);
@@ -1370,6 +1389,43 @@ async function syncCertificatesTable(client, schoolId, database) {
   }
 }
 
+const GENERAL_SETTINGS_SINGLETON_KEYS = [
+  "instituteProfile","accountSettings","themeLanguage","smsGateway",
+  "rulesAndRegulations","failCriteria","messageTemplates","marksGrading",
+  "feeParticulars","feeStructures","supabaseConfig","offlineSchoolsRegistry","smsOutbox"
+];
+const GENERAL_SETTINGS_ARRAY_KEYS = [
+  "discountPolicies","bankAccounts","certificateTemplates",
+  "questionChapters","questionBank","timetableWeekdays","timetablePeriods",
+  "classRooms","examSchedule","homeworkAssignments"
+];
+
+async function syncSchoolSettingsTables(client, schoolId, database) {
+  const gs = (database && database.generalSettings) || {};
+
+  await client.query("delete from public.school_settings where school_id = $1", [schoolId]);
+  for (const key of GENERAL_SETTINGS_SINGLETON_KEYS) {
+    if (gs[key] !== undefined && gs[key] !== null) {
+      await client.query(
+        "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, $2, $3::jsonb, now())",
+        [schoolId, key, JSON.stringify(gs[key])]
+      );
+    }
+  }
+
+  await client.query("delete from public.school_setting_items where school_id = $1", [schoolId]);
+  for (const key of GENERAL_SETTINGS_ARRAY_KEYS) {
+    const arr = Array.isArray(gs[key]) ? gs[key] : [];
+    for (const item of arr) {
+      const itemId = item && item.id ? String(item.id) : "idx-" + Math.random().toString(36).slice(2, 10);
+      await client.query(
+        "insert into public.school_setting_items (school_id, setting_key, item_id, item_data, updated_at) values ($1, $2, $3, $4::jsonb, now())",
+        [schoolId, key, itemId, JSON.stringify(item || {})]
+      );
+    }
+  }
+}
+
 async function saveSchoolDatabaseWithMirrors(schoolId, database) {
   const client = await pool.connect();
   try {
@@ -1391,6 +1447,7 @@ async function saveSchoolDatabaseWithMirrors(schoolId, database) {
     await syncQuestionPapersTable(client, schoolId, database || {});
     await syncCertificatesTable(client, schoolId, database || {});
     await syncAppRecordsTable(client, schoolId, database || {});
+    await syncSchoolSettingsTables(client, schoolId, database || {});
     await client.query("commit");
   } catch (error) {
     await client.query("rollback");
@@ -1492,6 +1549,30 @@ async function getSchoolDatabase(schoolId) {
   if (classTestMarks.length && !database.generalSettings.classTestMarks) database.generalSettings.classTestMarks = classTestMarks;
   if (questionPapers.length && !database.generalSettings.questionPapers) database.generalSettings.questionPapers = questionPapers;
   if (certificates.length && !database.generalSettings.certificates) database.generalSettings.certificates = certificates;
+
+  try {
+    const settingsRows = await pool.query(
+      "select setting_key, setting_value from public.school_settings where school_id = $1",
+      [schoolId]
+    );
+    for (const row of settingsRows.rows) {
+      if (row.setting_key && row.setting_value !== null && row.setting_value !== undefined) {
+        database.generalSettings[row.setting_key] = row.setting_value;
+      }
+    }
+    const itemKeys = await pool.query(
+      "select distinct setting_key from public.school_setting_items where school_id = $1",
+      [schoolId]
+    );
+    for (const keyRow of itemKeys.rows) {
+      const k = keyRow.setting_key;
+      const items = await pool.query(
+        "select item_data from public.school_setting_items where school_id = $1 and setting_key = $2 order by updated_at asc",
+        [schoolId, k]
+      );
+      database.generalSettings[k] = items.rows.map(r => r.item_data || {});
+    }
+  } catch (_e) {}
 
   try {
     const licResult = await pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, license_token, modules_locked from public.license_accounts where school_id = $1 limit 1", [schoolId]);
@@ -1704,6 +1785,144 @@ app.post("/api/school/profile/:schoolId", requireSchoolAuth, async (req, res) =>
   } catch (error) {
     console.error("POST /api/school/profile/" + schoolId + " — ERROR:", error.message);
     return res.status(500).json({ success: false, message: error.message || "Unable to save profile." });
+  }
+});
+
+app.get("/api/school-profile/:schoolId", async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  try {
+    const licResult = await pool.query(
+      "select school_id, school_name, email, status, plan, start_date, expiry_date, currency, symbol, timezone from public.license_accounts where school_id = $1 limit 1",
+      [schoolId]
+    );
+    if (!licResult.rowCount) {
+      return res.status(404).json({ success: false, message: "School not found." });
+    }
+    const lic = licResult.rows[0];
+    let profile = {};
+    try {
+      const gsResult = await pool.query(
+        "select setting_value from public.school_settings where school_id = $1 and setting_key = 'instituteProfile' limit 1",
+        [schoolId]
+      );
+      if (gsResult.rowCount && gsResult.rows[0].setting_value) {
+        profile = gsResult.rows[0].setting_value;
+      }
+    } catch (_e) {}
+    if (!profile.name && lic.school_name) profile.name = lic.school_name;
+    return res.json({ success: true, school_id: schoolId, profile, license: { school_name: lic.school_name, email: lic.email, status: lic.status, plan: lic.plan, start_date: lic.start_date, expiry_date: lic.expiry_date, currency: lic.currency, symbol: lic.symbol, timezone: lic.timezone } });
+  } catch (error) {
+    console.error("GET /api/school-profile/" + schoolId + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: error.message || "Unable to read profile." });
+  }
+});
+
+app.put("/api/school-profile/:schoolId", requireSchoolAuth, async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  const body = req.body || {};
+  const updates = {};
+  if (body.school_name !== undefined) updates.school_name = String(body.school_name || "").trim();
+  if (body.email !== undefined) updates.email = String(body.email || "").trim().toLowerCase();
+  if (body.password !== undefined) {
+    updates.password = body.password ? await hashPassword(body.password) : "";
+  }
+  if (body.currency !== undefined) updates.currency = String(body.currency || "PKR").trim();
+  if (body.symbol !== undefined) updates.symbol = String(body.symbol || "Rs").trim();
+  if (body.timezone !== undefined) updates.timezone = String(body.timezone || "Asia/Karachi").trim();
+  try {
+    if (Object.keys(updates).length > 0) {
+      const setClauses = Object.keys(updates).map((k, i) => `${k} = $${i + 1}`);
+      setClauses.push("updated_at = now()");
+      const values = Object.values(updates);
+      values.push(schoolId);
+      await pool.query(`update public.license_accounts set ${setClauses.join(", ")} where school_id = $${values.length}`, values);
+    }
+    if (body.instituteProfile) {
+      await pool.query(
+        "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, 'instituteProfile', $2::jsonb, now()) on conflict (school_id, setting_key) do update set setting_value = excluded.setting_value, updated_at = now()",
+        [schoolId, JSON.stringify(body.instituteProfile)]
+      );
+    }
+    const licResult = await pool.query(
+      "select school_id, school_name, email, status, plan, start_date, expiry_date from public.license_accounts where school_id = $1 limit 1",
+      [schoolId]
+    );
+    return res.json({ success: true, school_id: schoolId, license: licResult.rowCount ? licResult.rows[0] : {} });
+  } catch (error) {
+    console.error("PUT /api/school-profile/" + schoolId + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: error.message || "Unable to update profile." });
+  }
+});
+
+app.get("/api/school-settings/:schoolId/:key", requireSchoolAuth, async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  const key = String(req.params.key || "").trim();
+  if (!key) return res.status(400).json({ success: false, message: "Setting key required." });
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  try {
+    if (GENERAL_SETTINGS_ARRAY_KEYS.indexOf(key) >= 0) {
+      const result = await pool.query(
+        "select item_id, item_data from public.school_setting_items where school_id = $1 and setting_key = $2 order by updated_at asc",
+        [schoolId, key]
+      );
+      return res.json({ success: true, key, items: result.rows.map(r => r.item_data || {}) });
+    } else {
+      const result = await pool.query(
+        "select setting_value from public.school_settings where school_id = $1 and setting_key = $2 limit 1",
+        [schoolId, key]
+      );
+      return res.json({ success: true, key, value: result.rowCount ? result.rows[0].setting_value : null });
+    }
+  } catch (error) {
+    console.error("GET /api/school-settings/" + schoolId + "/" + key + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+app.put("/api/school-settings/:schoolId/:key", requireSchoolAuth, async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  const key = String(req.params.key || "").trim();
+  if (!key) return res.status(400).json({ success: false, message: "Setting key required." });
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      if (GENERAL_SETTINGS_ARRAY_KEYS.indexOf(key) >= 0) {
+        const items = Array.isArray(req.body) ? req.body : (req.body.items || []);
+        await client.query("delete from public.school_setting_items where school_id = $1 and setting_key = $2", [schoolId, key]);
+        for (const item of items) {
+          const itemId = item && item.id ? String(item.id) : "item-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+          await client.query(
+            "insert into public.school_setting_items (school_id, setting_key, item_id, item_data, updated_at) values ($1, $2, $3, $4::jsonb, now())",
+            [schoolId, key, itemId, JSON.stringify(item || {})]
+          );
+        }
+      } else {
+        const value = req.body.value !== undefined ? req.body.value : req.body;
+        await client.query(
+          "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, $2, $3::jsonb, now()) on conflict (school_id, setting_key) do update set setting_value = excluded.setting_value, updated_at = now()",
+          [schoolId, key, JSON.stringify(value)]
+        );
+      }
+      await client.query("commit");
+    } catch (e) {
+      await client.query("rollback");
+      throw e;
+    } finally {
+      client.release();
+    }
+    return res.json({ success: true, key });
+  } catch (error) {
+    console.error("PUT /api/school-settings/" + schoolId + "/" + key + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: error.message });
   }
 });
 
