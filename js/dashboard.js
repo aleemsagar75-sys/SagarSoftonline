@@ -1071,9 +1071,27 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       refreshDatabase();
     }
+    _syncSettingsToDedicatedTables();
     if (label) window.SagarSoftDB.hideLoading();
     else window.SagarSoftDB.showSyncBadge(_saved ? "synced" : "failed");
     return _saved;
+  }
+
+  function _syncSettingsToDedicatedTables() {
+    if (!database.generalSettings) return;
+    var gs = database.generalSettings;
+    var singletonKeys = ["instituteProfile","accountSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeParticulars","feeStructures"];
+    singletonKeys.forEach(function (key) {
+      if (gs[key] !== undefined && gs[key] !== null) {
+        window.SagarSoftDB.saveSettingToServer(key, gs[key]).catch(function(){});
+      }
+    });
+    var arrayKeys = ["discountPolicies","bankAccounts","certificateTemplates","questionChapters","questionBank","timetableWeekdays","timetablePeriods","classRooms","examSchedule","homeworkAssignments"];
+    arrayKeys.forEach(function (key) {
+      if (Array.isArray(gs[key]) && gs[key].length > 0) {
+        window.SagarSoftDB.saveSettingItemsToServer(key, gs[key]).catch(function(){});
+      }
+    });
   }
 
   function ensureLicenseSettings() {
@@ -5640,6 +5658,7 @@ document.addEventListener("DOMContentLoaded", function () {
         var license = ensureLicenseSettings();
         license.schoolName = newProfile.name || database.school.name || license.schoolName;
         var _saved = await saveDatabase("Saving institute profile...");
+        await window.SagarSoftDB.saveProfileToServer({ school_name: newProfile.name, instituteProfile: newProfile }).catch(function(){});
         var _pn = document.getElementById("profileName");
         if (_pn) _pn.textContent = newProfile.name || "Admin";
         var _pa = document.getElementById("profileAvatar");
@@ -6389,6 +6408,7 @@ document.addEventListener("DOMContentLoaded", function () {
         applyTheme(settings.themeLanguage);
         addActivity("Theme settings updated", "Theme and language settings updated.");
         var _saved = await saveDatabase("Saving theme settings...");
+        await window.SagarSoftDB.saveSettingToServer("themeLanguage", settings.themeLanguage).catch(function(){});
         if (_saved) {
           setThemeMessage("Theme settings updated successfully.", "success");
         } else {
@@ -23635,6 +23655,27 @@ ${allContent}
 
   updateTopProfileIdentity();
   renderProfileDropdownMenu();
+
+  (async function loadProfileFromSupabase() {
+    try {
+      var resp = await window.SagarSoftDB.loadSchoolProfile();
+      if (resp && resp.success && resp.profile) {
+        if (!database.generalSettings) database.generalSettings = {};
+        database.generalSettings.instituteProfile = Object.assign(database.generalSettings.instituteProfile || {}, resp.profile);
+        if (resp.profile.name) {
+          database.school.name = resp.profile.name;
+        }
+        if (resp.license) {
+          var ls = ensureLicenseSettings();
+          if (resp.license.school_name) ls.schoolName = resp.license.school_name;
+          if (resp.license.status) ls.status = resp.license.status;
+          if (resp.license.plan) ls.subscriptionPlan = resp.license.plan;
+          if (resp.license.expiry_date) ls.expiryDate = resp.license.expiry_date;
+        }
+        updateTopProfileIdentity();
+      }
+    } catch (_e) {}
+  })();
 
   ensureLicenseSettings();
   ensurePortalSyncData();
