@@ -1062,6 +1062,7 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       _saved = await window.SagarSoftDB.forceSave(database);
     } catch (_e) {}
+    _syncSettingsToDedicatedTables();
     if (_saved) {
       try {
         var _fresh = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
@@ -1071,7 +1072,6 @@ document.addEventListener("DOMContentLoaded", function () {
     } else {
       refreshDatabase();
     }
-    _syncSettingsToDedicatedTables();
     if (label) window.SagarSoftDB.hideLoading();
     else window.SagarSoftDB.showSyncBadge(_saved ? "synced" : "failed");
     return _saved;
@@ -1083,13 +1083,15 @@ document.addEventListener("DOMContentLoaded", function () {
     var singletonKeys = ["instituteProfile","accountSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeParticulars","feeStructures"];
     singletonKeys.forEach(function (key) {
       if (gs[key] !== undefined && gs[key] !== null) {
-        window.SagarSoftDB.saveSettingToServer(key, gs[key]).catch(function(){});
+        var val = JSON.parse(JSON.stringify(gs[key]));
+        window.SagarSoftDB.saveSettingToServer(key, val).catch(function(){});
       }
     });
     var arrayKeys = ["discountPolicies","bankAccounts","certificateTemplates","questionChapters","questionBank","timetableWeekdays","timetablePeriods","classRooms","examSchedule","homeworkAssignments"];
     arrayKeys.forEach(function (key) {
       if (Array.isArray(gs[key]) && gs[key].length > 0) {
-        window.SagarSoftDB.saveSettingItemsToServer(key, gs[key]).catch(function(){});
+        var val = JSON.parse(JSON.stringify(gs[key]));
+        window.SagarSoftDB.saveSettingItemsToServer(key, val).catch(function(){});
       }
     });
   }
