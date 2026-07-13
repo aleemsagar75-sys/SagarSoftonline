@@ -197,7 +197,7 @@ if (cors) {
     return next();
   });
 }
-app.use(express.json({ limit: "5mb" }));
+app.use(express.json({ limit: "10mb" }));
 
 app.use(function (_req, res, next) {
   res.setHeader("X-Content-Type-Options", "nosniff");
