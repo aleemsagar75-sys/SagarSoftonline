@@ -1557,7 +1557,11 @@ async function getSchoolDatabase(schoolId) {
     );
     for (const row of settingsRows.rows) {
       if (row.setting_key && row.setting_value !== null && row.setting_value !== undefined) {
-        database.generalSettings[row.setting_key] = row.setting_value;
+        var existing = database.generalSettings[row.setting_key];
+        var isEmpty = !existing || (typeof existing === "object" && !Array.isArray(existing) && Object.keys(existing).length === 0) || (Array.isArray(existing) && existing.length === 0);
+        if (isEmpty) {
+          database.generalSettings[row.setting_key] = row.setting_value;
+        }
       }
     }
     const itemKeys = await pool.query(
