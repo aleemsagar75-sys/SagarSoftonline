@@ -71,7 +71,7 @@
     if (_isCancelled) throw new Error("Request cancelled.");
     var controller = new AbortController();
     _activeFetchControllers.push(controller);
-    var timeoutMs = (options && options.timeoutMs) || 30000;
+    var timeoutMs = (options && options.timeoutMs) || 90000;
     var timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
     try {
       var fetchOpts = {
@@ -310,7 +310,7 @@
         await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
           method: "POST",
           body: JSON.stringify({ database: cachedDatabase }),
-          timeoutMs: 30000
+          timeoutMs: 120000
         });
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
