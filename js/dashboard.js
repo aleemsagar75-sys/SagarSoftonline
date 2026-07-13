@@ -1000,13 +1000,16 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  var _studentsNormalized = false;
   function normalizeStudentsDatasetInMemory() {
+    if (_studentsNormalized) return;
     database.students = getNormalizedStudentsDataset().map(function (student) {
       return {
         ...student,
         status: String(student.status || "").toLowerCase() === "inactive" ? "inactive" : "active"
       };
     });
+    _studentsNormalized = true;
   }
 
   function setClassMessage(message, type) {
@@ -1031,6 +1034,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function refreshDatabase() {
     database = window.SagarSoftDB.getDatabase();
+    _studentsNormalized = false;
     normalizeStudentsDatasetInMemory();
     ensureLicenseSettings();
   }
@@ -5365,7 +5369,10 @@ document.addEventListener("DOMContentLoaded", function () {
       "Arabic":{"Admission Form":"\u0646\u0645\u0637\u0639 \u0627\u0644\u0642\u0628\u0648\u0644","Student Information":"\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0627\u0644\u0637\u0627\u0644\u0628","Admission details":"\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0642\u0628\u0648\u0644","Student Name*":"\u0627\u0633\u0645 \u0627\u0644\u0637\u0627\u0644\u0628*","Picture - Optional":"\u0635\u0648\u0631\u0629 - \u0627\u062e\u062a\u064a\u0627\u0631\u064a","Roll No*":"\u0631\u0642\u0645 \u0627\u0644\u0633\u062c\u0644*","Date of Admission*":"\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0642\u0628\u0648\u0644*","Select Class*":"\u062e\u0637 \u0627\u0644\u0641\u0635\u0644*","Other Information":"\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0623\u062e\u0631\u0649","Student profile":"\u0645\u0644\u0641 \u0627\u0644\u0637\u0627\u0644\u0628","Date Of Birth":"\u062a\u0627\u0631\u064a\u062e \u0627\u0644\u0645\u064a\u0644\u0627\u062f","Gender":"\u0627\u0644\u062c\u0646\u0633","Blood Group":"\u0645\u062c\u0645\u0648\u0639\u0629 \u0627\u0644\u062f\u0645","Father/Guardian Information":"\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0627\u0644\u0623\u0628 \u0627\u0644\u0648\u0644\u064a","Guardian details":"\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0648\u0643\u064a\u0644","Father Name":"\u0633\u0645 \u0627\u0644\u0623\u0628","Education":"\u0627\u0644\u062a\u0639\u0644\u064a\u0645","Father National ID":"\u0647\u0648\u064a\u0629 \u0627\u0644\u0623\u0628 \u0627\u0644\u0623\u0647\u0644\u064a\u0629","Mobile No":"\u0631\u0642\u0645 \u0627\u0644\u0645\u0648\u0628\u0627\u064a\u0644","Occupation":"\u0627\u0644\u0645\u0647\u0646\u0629","Income":"\u0627\u0644\u062f\u062e\u0644","Mother Information":"\u0645\u0639\u0644\u0648\u0645\u0627\u062a \u0627\u0644\u0623\u0645","Mother details":"\u062a\u0641\u0627\u0635\u064a\u0644 \u0627\u0644\u0623\u0645","Mother Name":"\u0633\u0645 \u0627\u0644\u0623\u0645","Mother National ID":"\u0647\u0648\u064a\u0629 \u0627\u0644\u0623\u0645 \u0627\u0644\u0623\u0647\u0644\u064a\u0629","Save Student":"\u062d\u0641\u0638 \u0627\u0644\u0637\u0627\u0644\u0628","Select":"\u0627\u062e\u062a\u0631","Save Settings":"\u062d\u0641\u0638 \u0627\u0644\u0625\u0639\u062f\u0627\u062f\u0627\u062a","SMS Services":"\u062e\u062f\u0645\u0629 \u0627\u0644\u0631\u0633\u0627\u0626\u0644 \u0627\u0644\u0642\u0635\u064a\u0631\u0629","Compose":"\u0643\u062a\u0627\u0628\u0629","Account Settings":"\u0625\u0639\u062f\u0627\u062f\u0627\u062a \u0627\u0644\u062d\u0633\u0627\u0628","Connectivity":"\u0627\u0644\u062a\u0635\u0644\u064a\u062a","Connected":"\u0645\u062a\u0635\u0644","Disconnected":"\u0645\u0641\u0635\u0648\u0644","Register SIM":"\u062a\u0633\u062c\u064a\u0644 \u0627\u0644\u0628\u0637\u0627\u0642\u0629","Send SMS":"\u0625\u0631\u0633\u0627\u0644 \u0631\u0633\u0627\u0626\u0644 \u0642\u0635\u064a\u0631\u0629"},
       "Hindi":{"Admission Form":"\u092a\u094d\u0930\u0935\u0947\u0937\u0923 \u092b\u093c\u093e\u0930\u094d\u092e","Student Information":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940 \u0915\u0940 \u091c\u093e\u0928\u0915\u093e\u0930\u0940","Student Name*":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940 \u0915\u093e \u0928\u093e\u092e*","Roll No*":"\u0930\u094b\u0932 \u0928\u0902*","Date of Admission*":"\u092a\u094d\u0930\u0935\u0947\u0937\u0923 \u0915\u0940 \u0924\u093e\u0930\u0940\u0916*","Select Class*":"\u0915\u0915\u094d\u0937\u093e \u091a\u0941\u0928\u0947\u0902*","Other Information":"\u0905\u0928\u094d\u092f \u091c\u093e\u0928\u0915\u093e\u0930\u0940","Student profile":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940 \u0915\u093e \u092a\u094d\u0930\u094b\u092b\u093c\u093e\u0907\u0932","Date Of Birth":"\u091c\u0928\u094d\u092e \u0924\u093f\u0925\u093f","Gender":"\u0932\u093f\u0902\u0917","Blood Group":"\u0930\u0915\u094d\u0924 \u0938\u092e\u0942\u0939","Father/Guardian Information":"\u092a\u093f\u0924\u093e \u0915\u093e \u0935\u093f\u0935\u0930\u0923\u0924\u093e","Father Name":"\u092a\u093f\u0924\u093e \u0915\u093e \u0928\u093e\u092e","Education":"\u0936\u093f\u0915\u094d\u0937\u093e","Mother Information":"\u092e\u093e\u0901 \u0915\u093e \u0935\u093f\u0935\u0930\u0923\u0924\u093e","Mother Name":"\u092e\u093e\u0901 \u0915\u093e \u0928\u093e\u092e","Save Student":"\u0935\u093f\u0926\u094d\u092f\u093e\u0930\u094d\u0925\u0940 \u0938\u0939\u0947\u091c\u0947\u0902","Select":"\u091a\u0941\u0928\u0947\u0902","Save Settings":"\u0938\u0947\u091f\u093f\u0902\u0917 \u0938\u0939\u0947\u091c\u0947\u0902","Compose":"\u0932\u093f\u0916\u0947\u0902"}
     };
+    var _lastAppliedLanguage = null;
     function applyLanguage(lang) {
+      if (lang === _lastAppliedLanguage) return;
+      _lastAppliedLanguage = lang;
       var dict = Object.assign({}, _TRANS[lang] || {}, _EXTRA_TRANS[lang] || {});
       var isRTL = (lang === "Urdu" || lang === "Arabic" || lang === "Persian");
       document.documentElement.setAttribute("lang", isRTL ? lang.toLowerCase() : "en");
@@ -22873,10 +22880,9 @@ ${allContent}
 
   function startDashboardClock() {
     updateDashboardClock();
-    if (dashboardClockTimer) {
-      clearInterval(dashboardClockTimer);
+    if (!dashboardClockTimer) {
+      dashboardClockTimer = setInterval(updateDashboardClock, 1000);
     }
-    dashboardClockTimer = setInterval(updateDashboardClock, 1000);
   }
 
   function renderDashboardTodayAttendance() {
@@ -23621,7 +23627,6 @@ ${allContent}
 
   window.addEventListener("sagarsoft:database-loaded", function () {
     refreshDatabase();
-    renderDashboard();
     renderNotificationList();
     applySidebarState();
     applyRouteAccessVisibility();
@@ -23690,7 +23695,6 @@ ${allContent}
     }
   })();
 
-  renderDashboard();
   renderNotificationList();
   runSuperAdminExpiryAlerts();
   applySidebarState();
