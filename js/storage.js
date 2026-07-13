@@ -2,6 +2,7 @@
   var SCHOOL_ID_KEY = "ss_school_id_persistent";
   var API_KEY_KEY = "ss_api_key_persistent";
   var TOKEN_KEY = "ss_auth_token";
+  var DEMO_EMAILS = ["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"];
   var cachedDatabase = null;
   var config = { apiBaseUrl: "", schoolId: "", apiKey: "", authToken: "" };
 
@@ -41,17 +42,30 @@
   var pendingSyncs = 0;
   var lastSyncFailed = false;
   var _loadingController = null;
+  var _activeFetchControllers = [];
+  var _isCancelled = false;
+
+  function abortAllRequests() {
+    _isCancelled = true;
+    _activeFetchControllers.forEach(function (c) { try { c.abort(); } catch (_e) {} });
+    _activeFetchControllers = [];
+  }
 
   async function apiFetch(path, options) {
     if (!config.apiBaseUrl) throw new Error("API base URL not configured.");
+    if (_isCancelled) throw new Error("Request cancelled.");
     var controller = new AbortController();
+    _activeFetchControllers.push(controller);
     var timeoutMs = (options && options.timeoutMs) || 30000;
     var timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
     try {
-      var response = await fetch(config.apiBaseUrl + path, Object.assign({
+      var fetchOpts = {
         headers: headers(),
         signal: controller.signal
-      }, options));
+      };
+      if (options && options.method) fetchOpts.method = options.method;
+      if (options && options.body) fetchOpts.body = options.body;
+      var response = await fetch(config.apiBaseUrl + path, fetchOpts);
       clearTimeout(timeoutId);
       var payload = await response.json().catch(function () { return {}; });
       if (!response.ok || !payload.success) throw new Error(payload.message || "API request failed.");
@@ -60,6 +74,9 @@
     } catch (err) {
       clearTimeout(timeoutId);
       throw err;
+    } finally {
+      var idx = _activeFetchControllers.indexOf(controller);
+      if (idx >= 0) _activeFetchControllers.splice(idx, 1);
     }
   }
 
@@ -194,6 +211,7 @@
   var _loadingSlowTimer = null;
 
   function showLoading(text) {
+    _isCancelled = false;
     var overlay = document.getElementById("sagarsoft-loading-overlay");
     var label = document.getElementById("sagarsoft-loading-text");
     var bar = document.getElementById("sagarsoft-loading-bar");
@@ -202,11 +220,12 @@
       overlay.classList.remove("ss-slow");
       overlay.style.display = "flex";
       requestAnimationFrame(function(){ overlay.style.opacity = "1"; });
+      document.body.style.overflow = "hidden";
+      document.body.style.touchAction = "none";
     }
     if (label) { label.textContent = text || ""; }
     if (bar) { bar.style.display = text ? "block" : "none"; }
     if (cancelBtn) { cancelBtn.style.display = text ? "inline-block" : "none"; }
-    _loadingController = new AbortController();
 
     if (_loadingSlowTimer) { clearTimeout(_loadingSlowTimer); _loadingSlowTimer = null; }
     var isSlowConnection = false;
@@ -231,23 +250,40 @@
     if (overlay) {
       overlay.classList.remove("ss-slow");
       overlay.style.opacity = "0";
-      setTimeout(function () { overlay.style.display = "none"; }, 250);
+      setTimeout(function () {
+        overlay.style.display = "none";
+        document.body.style.overflow = "";
+        document.body.style.touchAction = "";
+      }, 250);
     }
   }
 
   function cancelLoading() {
-    if (_loadingController) { _loadingController.abort(); _loadingController = null; }
+    abortAllRequests();
     hideLoading();
   }
 
   var _saveDbTimer = null;
   var _pendingSave = false;
+  var _saveMutex = null;
+  var _reloadInProgress = false;
+
+  function acquireSaveMutex() {
+    if (_saveMutex) return _saveMutex.then(function () { return acquireSaveMutex(); });
+    var resolve;
+    _saveMutex = new Promise(function (r) { resolve = r; });
+    return Promise.resolve(resolve);
+  }
+
+  function releaseSaveMutex() {
+    _saveMutex = null;
+  }
 
   async function flushPendingSync() {
     if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
     var _session = null;
     try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
-    var _demoEmails = ["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"];
+    var _demoEmails = DEMO_EMAILS;
     var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
     if (_isDemo) { _pendingSave = false; return; }
     if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
@@ -305,6 +341,7 @@
     _saveDbTimer = setTimeout(function () {
       _saveDbTimer = null;
       _pendingSave = false;
+      if (_isCancelled) { showSyncBadge("synced"); return; }
       var effectiveSchoolId = config.schoolId;
       if (!effectiveSchoolId) {
         try {
@@ -319,7 +356,7 @@
       }
       var _session = null;
       try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
-      var _demoEmails = ["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"];
+      var _demoEmails = DEMO_EMAILS;
       var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
       if (_isDemo) { showSyncBadge("synced"); return; }
       pendingSyncs++;
@@ -342,6 +379,7 @@
   }
 
   function saveDatabase(database) {
+    if (_isCancelled) return cachedDatabase;
     cachedDatabase = normalizeDatabase(database);
     if (database && database.generalSettings && database.generalSettings.licenseSettings) {
       var ls = database.generalSettings.licenseSettings;
@@ -359,7 +397,7 @@
     }
     if (config.apiBaseUrl && config.schoolId) {
       _pendingSave = true;
-      flushPendingSync().catch(function () {});
+      scheduleServerSync();
     }
     return cachedDatabase;
   }
@@ -386,22 +424,24 @@
 
   async function loadDatabaseFromServer(opts) {
     if (!config.apiBaseUrl || !config.schoolId) return null;
+    if (_isCancelled) return null;
     var showOverlay = opts && opts.showLoading !== false;
     if (showOverlay) showLoading("Loading data from server...");
     var attempts = 0;
     var maxAttempts = 3;
-    while (attempts < maxAttempts) {
+    while (attempts < maxAttempts && !_isCancelled) {
       attempts++;
       try {
         var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 30000 });
         if (payload && payload.database) {
           var db = normalizeDatabase(payload.database);
-          cachedDatabase = db;
+          if (!_isCancelled) cachedDatabase = db;
           hideLoading();
           window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "server" } }));
           return db;
         }
       } catch (_e) {
+        if (_isCancelled) break;
         if (attempts < maxAttempts) {
           await new Promise(function (r) { setTimeout(r, 1500); });
         }
@@ -412,8 +452,10 @@
   }
 
   async function reloadDatabase() {
-    cachedDatabase = null;
-    return await loadDatabaseFromServer();
+    _reloadInProgress = true;
+    var db = await loadDatabaseFromServer();
+    _reloadInProgress = false;
+    return db;
   }
 
   async function flushRemoteSave() {
@@ -505,7 +547,7 @@
     if (!deletedIds || !deletedIds.length) return obj;
     var idSet = {};
     deletedIds.forEach(function (id) { idSet[String(id)] = true; });
-    var arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity","users"];
+    var arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity","users","notifications","certificates","exams","homework","timetable"];
     arrKeys.forEach(function (key) {
       if (Array.isArray(obj[key])) {
         obj[key] = obj[key].filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
@@ -547,13 +589,14 @@
     cachedDatabase = normalizeDatabase(database);
     var _session = null;
     try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
-    var _demoEmails = ["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"];
+    var _demoEmails = DEMO_EMAILS;
     var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
     if (_isDemo) return true;
     if (!config.schoolId) {
       try { var sid = localStorage.getItem(SCHOOL_ID_KEY); if (sid) config.schoolId = String(sid); } catch (_e) {}
     }
     if (!config.apiBaseUrl || !config.schoolId) return false;
+    if (_isCancelled) return false;
     try {
       var deletedIds = cachedDatabase._deletedIds || [];
       var serverDb = null;
@@ -562,6 +605,8 @@
         var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 12000 });
         if (getResp && getResp.database) serverDb = getResp.database;
       } catch (_e) {}
+
+      if (_isCancelled) return false;
 
       if (serverDb && serverDb._deletedIds && serverDb._deletedIds.length) {
         var serverIdSet = {};
@@ -605,6 +650,7 @@
 
       toSave._deletedIds = deletedIds;
       cachedDatabase = normalizeDatabase(toSave);
+      if (_isCancelled) return false;
       await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: cachedDatabase }),
@@ -639,6 +685,8 @@
     hideLoading: hideLoading,
     cancelLoading: cancelLoading,
     showSyncBadge: showSyncBadge,
-    forceSave: forceSave
+    forceSave: forceSave,
+    isCancelled: function () { return _isCancelled; },
+    resetCancel: function () { _isCancelled = false; }
   };
 })();
