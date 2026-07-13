@@ -109,7 +109,7 @@
       apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
         method: "POST",
         body: JSON.stringify({ database: database }),
-        timeoutMs: 30000
+        timeoutMs: 120000
       }).then(function () {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
@@ -376,7 +376,7 @@
       apiFetch("/api/database/" + encodeURIComponent(effectiveSchoolId), {
         method: "POST",
         body: JSON.stringify({ database: cachedDatabase }),
-        timeoutMs: 30000
+        timeoutMs: 120000
       }).then(function () {
         pendingSyncs = Math.max(0, pendingSyncs - 1);
         lastSyncFailed = false;
@@ -446,7 +446,7 @@
     while (attempts < maxAttempts && !_isCancelled) {
       attempts++;
       try {
-        var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 30000 });
+        var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 60000 });
         if (payload && payload.database) {
           var db = normalizeDatabase(payload.database);
           if (!_isCancelled) cachedDatabase = db;
@@ -614,77 +614,88 @@
     }
     if (!config.apiBaseUrl || !config.schoolId) return false;
     if (_isCancelled) return false;
-    try {
-      var deletedIds = cachedDatabase._deletedIds || [];
-      var serverDb = null;
-
+    var _getTimeout = 60000;
+    var _postTimeout = 120000;
+    for (var _attempt = 0; _attempt < 3; _attempt++) {
       try {
-        var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 12000 });
-        if (getResp && getResp.database) serverDb = getResp.database;
-      } catch (_e) {}
+        var deletedIds = cachedDatabase._deletedIds || [];
+        var serverDb = null;
+        try {
+          var getResp = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: _getTimeout });
+          if (getResp && getResp.database) serverDb = getResp.database;
+        } catch (_e) {}
 
-      if (_isCancelled) return false;
+        if (_isCancelled) return false;
 
-      if (serverDb && serverDb._deletedIds && serverDb._deletedIds.length) {
-        var serverIdSet = {};
-        serverDb._deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
-        deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
-        deletedIds = Object.keys(serverIdSet);
-      }
-
-      var toSave = cachedDatabase;
-      if (serverDb) {
-        var merged = JSON.parse(JSON.stringify(serverDb));
-        var arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
-        arrKeys.forEach(function (key) {
-          if (cachedDatabase[key] || merged[key]) {
-            merged[key] = mergeArraysById(cachedDatabase[key], merged[key]);
-          }
-        });
-        if (merged.generalSettings) {
-          var gs = cachedDatabase.generalSettings || {};
-          var gsArrKeys = ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates"];
-          gsArrKeys.forEach(function (key) {
-            if (gs[key] || merged.generalSettings[key]) {
-              merged.generalSettings[key] = mergeArraysById(gs[key], merged.generalSettings[key]);
-            }
-          });
-          var gsObjectKeys = ["instituteProfile","accountSettings","themeLanguage","smsGateway","feeParticulars","feeStructures","discountPolicies","bankAccounts","rulesAndRegulations","messageTemplates","marksGrading","failCriteria","certificateTemplates","questionChapters","questionBank"];
-          gsObjectKeys.forEach(function (key) {
-            if (gs[key] && typeof gs[key] === "object" && !Array.isArray(gs[key])) {
-              merged.generalSettings[key] = Object.assign(merged.generalSettings[key] || {}, gs[key]);
-            } else if (gs[key] !== undefined && gs[key] !== null) {
-              merged.generalSettings[key] = gs[key];
-            }
-          });
-          Object.keys(gs).forEach(function (key) {
-            if (gsArrKeys.indexOf(key) >= 0 || gsObjectKeys.indexOf(key) >= 0) return;
-            if (gs[key] !== undefined && gs[key] !== null) {
-              merged.generalSettings[key] = gs[key];
-            }
-          });
+        if (serverDb && serverDb._deletedIds && serverDb._deletedIds.length) {
+          var serverIdSet = {};
+          serverDb._deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
+          deletedIds.forEach(function (id) { serverIdSet[String(id)] = true; });
+          deletedIds = Object.keys(serverIdSet);
         }
-        if (cachedDatabase.users || merged.users) merged.users = mergeArraysById(cachedDatabase.users, merged.users);
-        if (cachedDatabase.school) merged.school = Object.assign(merged.school || {}, cachedDatabase.school);
-        if (cachedDatabase.settings) merged.settings = Object.assign(merged.settings || {}, cachedDatabase.settings);
-        removeDeletedFromArrays(merged, deletedIds);
-        toSave = merged;
-      }
 
-      toSave._deletedIds = deletedIds;
-      cachedDatabase = normalizeDatabase(toSave);
-      if (_isCancelled) return false;
-      await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
-        method: "POST",
-        body: JSON.stringify({ database: cachedDatabase }),
-        timeoutMs: 30000
-      });
-      showSyncBadge("synced");
-      return true;
-    } catch (err) {
-      showSyncBadge("failed");
-      return false;
+        var toSave = cachedDatabase;
+        if (serverDb) {
+          var merged = JSON.parse(JSON.stringify(serverDb));
+          var arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
+          arrKeys.forEach(function (key) {
+            if (cachedDatabase[key] || merged[key]) {
+              merged[key] = mergeArraysById(cachedDatabase[key], merged[key]);
+            }
+          });
+          if (merged.generalSettings) {
+            var gs = cachedDatabase.generalSettings || {};
+            var gsArrKeys = ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates"];
+            gsArrKeys.forEach(function (key) {
+              if (gs[key] || merged.generalSettings[key]) {
+                merged.generalSettings[key] = mergeArraysById(gs[key], merged.generalSettings[key]);
+              }
+            });
+            var gsObjectKeys = ["instituteProfile","accountSettings","themeLanguage","smsGateway","feeParticulars","feeStructures","discountPolicies","bankAccounts","rulesAndRegulations","messageTemplates","marksGrading","failCriteria","certificateTemplates","questionChapters","questionBank"];
+            gsObjectKeys.forEach(function (key) {
+              if (gs[key] && typeof gs[key] === "object" && !Array.isArray(gs[key])) {
+                merged.generalSettings[key] = Object.assign(merged.generalSettings[key] || {}, gs[key]);
+              } else if (gs[key] !== undefined && gs[key] !== null) {
+                merged.generalSettings[key] = gs[key];
+              }
+            });
+            Object.keys(gs).forEach(function (key) {
+              if (gsArrKeys.indexOf(key) >= 0 || gsObjectKeys.indexOf(key) >= 0) return;
+              if (gs[key] !== undefined && gs[key] !== null) {
+                merged.generalSettings[key] = gs[key];
+              }
+            });
+          }
+          if (cachedDatabase.users || merged.users) merged.users = mergeArraysById(cachedDatabase.users, merged.users);
+          if (cachedDatabase.school) merged.school = Object.assign(merged.school || {}, cachedDatabase.school);
+          if (cachedDatabase.settings) merged.settings = Object.assign(merged.settings || {}, cachedDatabase.settings);
+          removeDeletedFromArrays(merged, deletedIds);
+          toSave = merged;
+        }
+
+        toSave._deletedIds = deletedIds;
+        cachedDatabase = normalizeDatabase(toSave);
+        if (_isCancelled) return false;
+        await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), {
+          method: "POST",
+          body: JSON.stringify({ database: cachedDatabase }),
+          timeoutMs: 120000
+        });
+        showSyncBadge("synced");
+        return true;
+      } catch (err) {
+        if (_attempt < 2) {
+          await new Promise(function (r) { setTimeout(r, Math.min(3000 * (_attempt + 1), 10000)); });
+          _getTimeout = 90000;
+          _postTimeout = 120000;
+          continue;
+        }
+        showSyncBadge("failed");
+        return false;
+      }
     }
+    showSyncBadge("failed");
+    return false;
   }
 
   window.SagarSoftDB = {
