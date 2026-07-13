@@ -2,17 +2,19 @@ require("dotenv").config({ path: __dirname + "/.env" });
 
 const dns = require("dns");
 const crypto = require("crypto");
+const { promisify } = require("util");
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const { Pool } = require("pg");
 
+const pbkdf2Async = promisify(crypto.pbkdf2);
+
 let cors = null;
-try {
-  cors = require("cors");
-} catch (_error) {
-  cors = null;
-}
+try { cors = require("cors"); } catch (_error) { cors = null; }
+
+let compression = null;
+try { compression = require("compression"); } catch (_error) { compression = null; }
 
 const app = express();
 const port = Number(process.env.PORT || 10000);
@@ -29,19 +31,19 @@ function sha256(input) {
   return crypto.createHash("sha256").update(String(input)).digest("hex");
 }
 
-function hashPassword(password) {
+async function hashPassword(password) {
   var salt = crypto.randomBytes(16).toString("hex");
-  var hash = crypto.pbkdf2Sync(String(password), salt, 100000, 64, "sha512").toString("hex");
+  var hash = (await pbkdf2Async(String(password), salt, 100000, 64, "sha512")).toString("hex");
   return salt + ":" + hash;
 }
 
-function verifyPasswordHash(password, stored) {
+async function verifyPasswordHash(password, stored) {
   if (!stored) return false;
   if (!stored.includes(":")) return sha256(String(password)) === stored;
   var parts = stored.split(":");
   var salt = parts[0];
   var hash = parts[1];
-  var verify = crypto.pbkdf2Sync(String(password), salt, 100000, 64, "sha512").toString("hex");
+  var verify = (await pbkdf2Async(String(password), salt, 100000, 64, "sha512")).toString("hex");
   return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(verify, "hex"));
 }
 
@@ -140,7 +142,7 @@ async function _initPool() {
       } catch (_e2) {}
     }
   }
-  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" ? { rejectUnauthorized: true } : { rejectUnauthorized: false } });
+  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" ? { rejectUnauthorized: true } : { rejectUnauthorized: false } });
   return _pool;
 }
 
@@ -197,7 +199,8 @@ if (cors) {
     return next();
   });
 }
-app.use(express.json({ limit: "10mb" }));
+if (compression) { app.use(compression({ threshold: 1024 })); }
+app.use(express.json({ limit: "5mb" }));
 
 app.use(function (_req, res, next) {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -252,6 +255,9 @@ function requireApiKey(req, res, next) {
   return next();
 }
 
+var _authCache = new Map();
+var _authCacheTTL = 60000;
+
 function requireSchoolAuth(req, res, next) {
   var schoolId = normalizeSchoolId(req.params.schoolId);
   var authHeader = String(req.headers["authorization"] || "").trim();
@@ -266,6 +272,14 @@ function requireSchoolAuth(req, res, next) {
   if (superPayload && superPayload.role === "superadmin") {
     req.authSchoolId = schoolId;
     req.authRole = "superadmin";
+    return next();
+  }
+  var _authCacheKey = schoolId + ":" + token;
+  var _authCacheEntry = _authCache.get(_authCacheKey);
+  if (_authCacheEntry && Date.now() < _authCacheEntry.expiresAt) {
+    var row = _authCacheEntry.row;
+    req.authSchoolId = row.school_id;
+    req.authRole = "school";
     return next();
   }
   pool.query("select school_id, license_token, status, modules_locked, expiry_date from public.license_accounts where school_id = $1 limit 1", [schoolId])
@@ -295,6 +309,7 @@ function requireSchoolAuth(req, res, next) {
       }
       req.authSchoolId = row.school_id;
       req.authRole = "school";
+      _authCache.set(_authCacheKey, { row: row, expiresAt: Date.now() + _authCacheTTL });
       return next();
     })
     .catch(function (err) {
@@ -756,6 +771,10 @@ async function ensureSchema() {
     create index if not exists idx_class_test_marks_school_id on public.class_test_marks (school_id);
     create index if not exists idx_question_papers_school_id on public.question_papers (school_id);
     create index if not exists idx_certificates_school_id on public.certificates (school_id);
+    create index if not exists idx_license_accounts_email on public.license_accounts (lower(email));
+    create index if not exists idx_license_notifications_school_id on public.license_notifications (school_id);
+    create index if not exists idx_sms_queue_school_id_status on public.sms_queue (school_id, status);
+    create index if not exists idx_sent_messages_school_id on public.sent_messages (school_id);
   `);
   console.log("Schema ready");
   try {
@@ -1698,7 +1717,7 @@ app.post("/api/admin/license", requireSuperAdmin, async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({ success: false, message: "Email and password are required." });
     }
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = await hashPassword(password);
     await pool.query(`
       insert into public.license_accounts (
         school_id, school_name, email, password, status, plan, start_date, expiry_date,
@@ -1799,7 +1818,7 @@ app.post("/api/activate-school.php", async (req, res) => {
       row = (await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email])).rows[0];
     } else {
       var _r = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
-      if (!_r.rowCount || !verifyPasswordHash(password, _r.rows[0].password)) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+      if (!_r.rowCount || !(await verifyPasswordHash(password, _r.rows[0].password))) return res.status(401).json({ success: false, message: "Invalid school credentials." });
       row = _r.rows[0];
     }
     if (!row) return res.status(401).json({ success: false, message: "Invalid school credentials." });
@@ -1879,7 +1898,7 @@ app.post("/api/mobile/login", async (req, res) => {
       var lic3 = licOnly.rows[0];
       var pwdOk = false;
       if (lic3.password) {
-        if (verifyPasswordHash(password, lic3.password)) pwdOk = true;
+        if (await verifyPasswordHash(password, lic3.password)) pwdOk = true;
       }
       if (!pwdOk && password === lic3.password) pwdOk = true;
       if (pwdOk) {
@@ -1946,7 +1965,7 @@ app.post("/api/mobile/login", async (req, res) => {
       if (matchedUser) {
         var pwdOk2 = false;
         if (matchedUser.password) {
-          if (verifyPasswordHash(password, matchedUser.password)) pwdOk2 = true;
+          if (await verifyPasswordHash(password, matchedUser.password)) pwdOk2 = true;
           if (!pwdOk2 && password === matchedUser.password) pwdOk2 = true;
         }
         if (pwdOk2) {
@@ -2008,7 +2027,7 @@ if (process.env.NODE_ENV !== "production") {
 
       var step5_pwdCheck = null;
       if (licInfo && step4_lic.rows[0].password) {
-        step5_pwdCheck = verifyPasswordHash(password, step4_lic.rows[0].password) ? "valid" : "invalid";
+        step5_pwdCheck = (await verifyPasswordHash(password, step4_lic.rows[0].password)) ? "valid" : "invalid";
       }
 
       return res.json({
@@ -2098,7 +2117,7 @@ app.post("/api/sync-school-data.php", requireSuperAdmin, async (req, res) => {
   const email = String(req.body.email || "").trim().toLowerCase();
   const password = String(req.body.password || "").trim();
   try {
-    const hashedPw = password ? hashPassword(password) : null;
+    const hashedPw = password ? await hashPassword(password) : null;
     await pool.query(`
       insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, updated_at)
       values ($1, $2, nullif($3, ''), nullif($4, ''), $5, $6, $7, $8, $9, now())
@@ -2200,7 +2219,7 @@ app.post("/api/admin/schools", requireSuperAdmin, async function (req, res) {
     var _num = 1;
     if (_lastId) { var _parts = _lastId.split('-'); _num = parseInt(_parts[_parts.length - 1], 10) + 1; }
     var schoolId = "SCH-" + _year + "-" + String(_num).padStart(3, '0');
-    var hashedPassword = hashPassword(password);
+    var hashedPassword = await hashPassword(password);
     var _newToken = "LIC-" + schoolId;
     await _client.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, license_token, api_token, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',$8,$9,now(),now())", [schoolId, schoolName, email, hashedPassword, plan, startDate, expiryDate, _newToken, _newApiToken]);
     await _client.query("commit");
@@ -2258,7 +2277,7 @@ app.post("/api/auth/superadmin", async function (req, res) {
     if (email !== SUPERADMIN_EMAIL) {
       return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
     }
-    if (!verifyPasswordHash(password, SUPERADMIN_PASSWORD_STORED)) {
+    if (!(await verifyPasswordHash(password, SUPERADMIN_PASSWORD_STORED))) {
       return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
     }
     var tokenPayload = {
