@@ -1614,8 +1614,19 @@ function mergeDatabases(incomingDb, existingDb) {
       merged.generalSettings[key] = mergeArraysById(gsIn[key], gsEx[key]);
     }
   });
-  if (gsIn.instituteProfile) merged.generalSettings.instituteProfile = Object.assign(merged.generalSettings.instituteProfile || {}, gsIn.instituteProfile);
-  if (gsIn.accountSettings) merged.generalSettings.accountSettings = Object.assign(merged.generalSettings.accountSettings || {}, gsIn.accountSettings);
+  ["instituteProfile","accountSettings","themeLanguage","smsGateway","feeParticulars","feeStructures","discountPolicies","bankAccounts","rulesAndRegulations","messageTemplates","marksGrading","failCriteria","certificateTemplates","questionChapters","questionBank"].forEach(function (key) {
+    if (gsIn[key] && typeof gsIn[key] === "object" && !Array.isArray(gsIn[key])) {
+      merged.generalSettings[key] = Object.assign(merged.generalSettings[key] || {}, gsIn[key]);
+    } else if (gsIn[key] !== undefined && gsIn[key] !== null) {
+      merged.generalSettings[key] = gsIn[key];
+    }
+  });
+  Object.keys(gsIn).forEach(function (key) {
+    if (["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates","instituteProfile","accountSettings","themeLanguage","smsGateway","feeParticulars","feeStructures","discountPolicies","bankAccounts","rulesAndRegulations","messageTemplates","marksGrading","failCriteria","certificateTemplates","questionChapters","questionBank"].indexOf(key) >= 0) return;
+    if (gsIn[key] !== undefined && gsIn[key] !== null) {
+      merged.generalSettings[key] = gsIn[key];
+    }
+  });
   if (incomingDb.users || merged.users) merged.users = mergeArraysById(incomingDb.users, merged.users);
   if (incomingDb.school) merged.school = Object.assign(merged.school || {}, incomingDb.school);
   if (incomingDb.settings) merged.settings = Object.assign(merged.settings || {}, incomingDb.settings);
