@@ -294,7 +294,7 @@
           }
           if (!isDemoEmail(normalizedEmail)) {
             window.SagarSoftDB.saveDatabase(database);
-            await window.SagarSoftDB.flushPendingSync();
+            window.SagarSoftDB.flushPendingSync().catch(function(){});
           }
 
           var session = {
@@ -456,7 +456,7 @@
             }
           }
         } catch (_e) {}
-        await window.SagarSoftDB.flushPendingSync();
+        window.SagarSoftDB.flushPendingSync().catch(function(){});
         try {
           var freshDb = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
           if (freshDb) window.SagarSoftDB.saveDatabase(freshDb);
@@ -591,7 +591,7 @@
               var serverDb = await window.SagarSoftDB.loadDatabaseFromServer();
               if (serverDb) {
                 window.SagarSoftDB.saveDatabase(serverDb);
-                await window.SagarSoftDB.flushPendingSync();
+                window.SagarSoftDB.flushPendingSync().catch(function(){});
               }
             } catch (e) {}
           }
