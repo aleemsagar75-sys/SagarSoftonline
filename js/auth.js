@@ -457,10 +457,6 @@
           }
         } catch (_e) {}
         window.SagarSoftDB.flushPendingSync().catch(function(){});
-        try {
-          var freshDb = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
-          if (freshDb) window.SagarSoftDB.saveDatabase(freshDb);
-        } catch (_e) {}
         var matchedUser = data.user || null;
         var userName = (matchedUser && matchedUser.name) ? matchedUser.name : (database.school.name || "School Admin");
         var userId = (matchedUser && matchedUser.id) ? matchedUser.id : "USR-ADMIN-001";
@@ -538,10 +534,6 @@
       window.SagarSoftDB.setSchoolId(schoolId);
       if (token) window.SagarSoftDB.setAuthToken(token);
       window.SagarSoftDB.saveDatabase(database);
-      try {
-        var freshDb = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
-        if (freshDb) window.SagarSoftDB.saveDatabase(freshDb);
-      } catch (_e) {}
       var session = { id: "USR-ADMIN-001", name: schoolName, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: token };
       if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
       else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
@@ -603,7 +595,7 @@
           return { success: true, message: "Super admin login successful", user: session };
         }
       }
-      if (normalizedRole === "admin") {
+      if (normalizedRole === "admin" && !DEMO_EMAIL_SET.has(normalizedEmail)) {
         var serverResult = await tryServerAdminLogin(email, password, "admin", rememberMe);
         if (serverResult) return serverResult;
       }
