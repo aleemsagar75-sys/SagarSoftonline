@@ -32,18 +32,33 @@
 
   loadPersistedCredentials();
 
+  var _cachedHeaders = null;
+  var _headersApiKey = "";
+  var _headersAuthToken = "";
   function headers() {
+    if (_cachedHeaders && _headersApiKey === config.apiKey && _headersAuthToken === config.authToken) return _cachedHeaders;
     var h = { "Content-Type": "application/json" };
     if (config.apiKey) h["x-sagarsoft-api-key"] = config.apiKey;
     if (config.authToken) h["Authorization"] = "Bearer " + config.authToken;
+    _cachedHeaders = h; _headersApiKey = config.apiKey; _headersAuthToken = config.authToken;
     return h;
   }
+  function invalidateHeadersCache() { _cachedHeaders = null; }
 
   var pendingSyncs = 0;
   var lastSyncFailed = false;
-  var _loadingController = null;
   var _activeFetchControllers = [];
   var _isCancelled = false;
+  var _cachedIsDemo = null;
+
+  function isDemoUser() {
+    if (_cachedIsDemo !== null) return _cachedIsDemo;
+    var _session = null;
+    try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
+    _cachedIsDemo = _session && DEMO_EMAILS.indexOf(String(_session.email || "").toLowerCase()) !== -1;
+    return _cachedIsDemo;
+  }
+  function resetDemoCache() { _cachedIsDemo = null; }
 
   function abortAllRequests() {
     _isCancelled = true;
@@ -208,23 +223,30 @@
     return structuredClone(defaultDatabase);
   }
 
+  var _loadingOverlay = null;
+  var _loadingLabel = null;
+  var _loadingBar = null;
+  var _loadingCancelBtn = null;
   var _loadingSlowTimer = null;
+  function cacheLoadingElements() {
+    _loadingOverlay = document.getElementById("sagarsoft-loading-overlay");
+    _loadingLabel = document.getElementById("sagarsoft-loading-text");
+    _loadingBar = document.getElementById("sagarsoft-loading-bar");
+    _loadingCancelBtn = document.getElementById("sagarsoft-loading-cancel");
+  }
 
   function showLoading(text) {
     _isCancelled = false;
-    var overlay = document.getElementById("sagarsoft-loading-overlay");
-    var label = document.getElementById("sagarsoft-loading-text");
-    var bar = document.getElementById("sagarsoft-loading-bar");
-    var cancelBtn = document.getElementById("sagarsoft-loading-cancel");
-    if (overlay) {
-      overlay.classList.remove("ss-slow");
-      overlay.style.display = "flex";
-      requestAnimationFrame(function(){ overlay.style.opacity = "1"; });
+    if (!_loadingOverlay) cacheLoadingElements();
+    if (_loadingOverlay) {
+      _loadingOverlay.classList.remove("ss-slow");
+      _loadingOverlay.style.display = "flex";
+      requestAnimationFrame(function(){ _loadingOverlay.style.opacity = "1"; });
       try { document.body.style.overflow = "hidden"; } catch(_e) {}
     }
-    if (label) { label.textContent = text || ""; }
-    if (bar) { bar.style.display = text ? "block" : "none"; }
-    if (cancelBtn) { cancelBtn.style.display = text ? "inline-block" : "none"; }
+    if (_loadingLabel) { _loadingLabel.textContent = text || ""; }
+    if (_loadingBar) { _loadingBar.style.display = text ? "block" : "none"; }
+    if (_loadingCancelBtn) { _loadingCancelBtn.style.display = text ? "inline-block" : "none"; }
 
     if (_loadingSlowTimer) { clearTimeout(_loadingSlowTimer); _loadingSlowTimer = null; }
     var isSlowConnection = false;
@@ -232,25 +254,24 @@
       var et = navigator.connection.effectiveType;
       if (et === "slow-2g" || et === "2g" || et === "3g") isSlowConnection = true;
     }
-    if (isSlowConnection && overlay) {
-      overlay.classList.add("ss-slow");
-    } else if (overlay) {
+    if (isSlowConnection && _loadingOverlay) {
+      _loadingOverlay.classList.add("ss-slow");
+    } else if (_loadingOverlay) {
       _loadingSlowTimer = setTimeout(function() {
-        overlay.classList.add("ss-slow");
+        _loadingOverlay.classList.add("ss-slow");
       }, 8000);
     }
   }
 
   function hideLoading() {
-    var overlay = document.getElementById("sagarsoft-loading-overlay");
-    var cancelBtn = document.getElementById("sagarsoft-loading-cancel");
-    if (cancelBtn) { cancelBtn.style.display = "none"; }
+    if (!_loadingOverlay) cacheLoadingElements();
+    if (_loadingCancelBtn) { _loadingCancelBtn.style.display = "none"; }
     if (_loadingSlowTimer) { clearTimeout(_loadingSlowTimer); _loadingSlowTimer = null; }
-    if (overlay) {
-      overlay.classList.remove("ss-slow");
-      overlay.style.opacity = "0";
+    if (_loadingOverlay) {
+      _loadingOverlay.classList.remove("ss-slow");
+      _loadingOverlay.style.opacity = "0";
       setTimeout(function () {
-        overlay.style.display = "none";
+        if (_loadingOverlay) _loadingOverlay.style.display = "none";
         try { document.body.style.overflow = ""; document.body.style.touchAction = ""; } catch(_e) {}
       }, 250);
     } else {
@@ -281,11 +302,7 @@
 
   async function flushPendingSync() {
     if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
-    var _session = null;
-    try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
-    var _demoEmails = DEMO_EMAILS;
-    var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
-    if (_isDemo) { _pendingSave = false; return; }
+    if (isDemoUser()) { _pendingSave = false; return; }
     if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
       _pendingSave = false;
       pendingSyncs++;
@@ -307,31 +324,32 @@
     }
   }
 
+  var _syncBadgeEl = null;
   var _syncBadgeTimer = null;
   function showSyncBadge(status) {
-    var badge = document.getElementById("sagarsoft-sync-badge");
-    if (!badge) {
-      badge = document.createElement("div");
-      badge.id = "sagarsoft-sync-badge";
-      badge.style.cssText = "position:fixed;bottom:16px;right:16px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;z-index:99999;transition:opacity 0.3s;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.15);";
-      document.body.appendChild(badge);
+    if (!_syncBadgeEl) _syncBadgeEl = document.getElementById("sagarsoft-sync-badge");
+    if (!_syncBadgeEl) {
+      _syncBadgeEl = document.createElement("div");
+      _syncBadgeEl.id = "sagarsoft-sync-badge";
+      _syncBadgeEl.style.cssText = "position:fixed;bottom:16px;right:16px;padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;z-index:99999;transition:opacity 0.3s;pointer-events:none;box-shadow:0 2px 8px rgba(0,0,0,0.15);";
+      document.body.appendChild(_syncBadgeEl);
     }
     if (status === "syncing") {
-      badge.textContent = "Syncing...";
-      badge.style.background = "#e3f2fd";
-      badge.style.color = "#1976d2";
+      _syncBadgeEl.textContent = "Syncing...";
+      _syncBadgeEl.style.background = "#e3f2fd";
+      _syncBadgeEl.style.color = "#1976d2";
     } else if (status === "synced") {
-      badge.textContent = "Synced";
-      badge.style.background = "#e8f5e9";
-      badge.style.color = "#2e7d32";
+      _syncBadgeEl.textContent = "Synced";
+      _syncBadgeEl.style.background = "#e8f5e9";
+      _syncBadgeEl.style.color = "#2e7d32";
     } else if (status === "failed") {
-      badge.textContent = "Sync failed";
-      badge.style.background = "#fce4ec";
-      badge.style.color = "#c62828";
+      _syncBadgeEl.textContent = "Sync failed";
+      _syncBadgeEl.style.background = "#fce4ec";
+      _syncBadgeEl.style.color = "#c62828";
     }
-    badge.style.opacity = "1";
+    _syncBadgeEl.style.opacity = "1";
     if (_syncBadgeTimer) clearTimeout(_syncBadgeTimer);
-    _syncBadgeTimer = setTimeout(function () { badge.style.opacity = "0"; }, 2500);
+    _syncBadgeTimer = setTimeout(function () { _syncBadgeEl.style.opacity = "0"; }, 2500);
   }
 
   function scheduleServerSync() {
@@ -350,15 +368,10 @@
         } catch (_e) {}
       }
       if (!config.apiBaseUrl || !effectiveSchoolId || !cachedDatabase) {
-        console.warn("[SagarSoft Sync] Skipped: apiBaseUrl=" + !!config.apiBaseUrl + " schoolId=" + effectiveSchoolId + " db=" + !!cachedDatabase);
         showSyncBadge("failed");
         return;
       }
-      var _session = null;
-      try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
-      var _demoEmails = DEMO_EMAILS;
-      var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
-      if (_isDemo) { showSyncBadge("synced"); return; }
+      if (isDemoUser()) { showSyncBadge("synced"); return; }
       pendingSyncs++;
       apiFetch("/api/database/" + encodeURIComponent(effectiveSchoolId), {
         method: "POST",
@@ -386,8 +399,9 @@
       if (ls.schoolId) {
         config.schoolId = String(ls.schoolId);
         persistCredentials(ls.schoolId, ls.websiteApiKey || "", config.authToken || "");
+        invalidateHeadersCache();
       }
-      if (ls.websiteApiKey) config.apiKey = String(ls.websiteApiKey);
+      if (ls.websiteApiKey) { config.apiKey = String(ls.websiteApiKey); invalidateHeadersCache(); }
     }
     if (!config.schoolId) {
       try {
@@ -443,7 +457,7 @@
       } catch (_e) {
         if (_isCancelled) break;
         if (attempts < maxAttempts) {
-          await new Promise(function (r) { setTimeout(r, 1500); });
+          await new Promise(function (r) { setTimeout(r, Math.min(1000 * attempts, 3000)); });
         }
       }
     }
@@ -502,7 +516,8 @@
     }
   });
 
-  if (config.apiBaseUrl && config.schoolId) {
+  var _isLoginPage = (typeof window !== "undefined" && window.location && window.location.pathname && window.location.pathname.indexOf("login") >= 0);
+  if (!_isLoginPage && config.apiBaseUrl && config.schoolId) {
     loadDatabaseFromServer({ showLoading: false });
   }
 
@@ -510,6 +525,7 @@
     if (schoolId) {
       config.schoolId = String(schoolId);
       persistCredentials(schoolId, config.apiKey, config.authToken);
+      invalidateHeadersCache();
     }
   }
 
@@ -517,6 +533,7 @@
     if (token) {
       config.authToken = String(token);
       persistCredentials(config.schoolId, config.apiKey, token);
+      invalidateHeadersCache();
     }
   }
 
@@ -529,19 +546,21 @@
     config.schoolId = localStorage.getItem(SCHOOL_ID_KEY) || "";
     config.apiKey = localStorage.getItem(API_KEY_KEY) || "";
     config.authToken = localStorage.getItem(TOKEN_KEY) || "";
+    invalidateHeadersCache();
+    resetDemoCache();
   }
 
   function mergeArraysById(localArr, serverArr) {
     var merged = (serverArr || []).slice();
-    (localArr || []).forEach(function (item) {
-      if (!item || !item.id) return;
-      var idx = merged.findIndex(function (s) { return s && s.id === item.id; });
-      if (idx >= 0) {
-        merged[idx] = item;
-      } else {
-        merged.push(item);
-      }
-    });
+    if (!localArr || !localArr.length) return merged;
+    var serverMap = new Map();
+    merged.forEach(function (item, i) { if (item && item.id) serverMap.set(item.id, i); });
+    for (var i = 0; i < localArr.length; i++) {
+      var item = localArr[i];
+      if (!item || !item.id) continue;
+      var idx = serverMap.get(item.id);
+      if (idx !== undefined) { merged[idx] = item; } else { merged.push(item); }
+    }
     return merged;
   }
 
@@ -589,11 +608,7 @@
 
   async function forceSave(database) {
     cachedDatabase = normalizeDatabase(database);
-    var _session = null;
-    try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
-    var _demoEmails = DEMO_EMAILS;
-    var _isDemo = _session && _demoEmails.indexOf(String(_session.email || "").toLowerCase()) !== -1;
-    if (_isDemo) return true;
+    if (isDemoUser()) return true;
     if (!config.schoolId) {
       try { var sid = localStorage.getItem(SCHOOL_ID_KEY); if (sid) config.schoolId = String(sid); } catch (_e) {}
     }
@@ -628,18 +643,12 @@
         });
         if (merged.generalSettings) {
           var gs = cachedDatabase.generalSettings || {};
-          if (gs.feeInvoices || merged.generalSettings.feeInvoices) merged.generalSettings.feeInvoices = mergeArraysById(gs.feeInvoices, merged.generalSettings.feeInvoices);
-          if (gs.feeCollections || merged.generalSettings.feeCollections) merged.generalSettings.feeCollections = mergeArraysById(gs.feeCollections, merged.generalSettings.feeCollections);
-          if (gs.salaryPayments || merged.generalSettings.salaryPayments) merged.generalSettings.salaryPayments = mergeArraysById(gs.salaryPayments, merged.generalSettings.salaryPayments);
-          if (gs.accountsLedger || merged.generalSettings.accountsLedger) merged.generalSettings.accountsLedger = mergeArraysById(gs.accountsLedger, merged.generalSettings.accountsLedger);
-          if (gs.exams || merged.generalSettings.exams) merged.generalSettings.exams = mergeArraysById(gs.exams, merged.generalSettings.exams);
-          if (gs.examMarks || merged.generalSettings.examMarks) merged.generalSettings.examMarks = mergeArraysById(gs.examMarks, merged.generalSettings.examMarks);
-          if (gs.timetableEntries || merged.generalSettings.timetableEntries) merged.generalSettings.timetableEntries = mergeArraysById(gs.timetableEntries, merged.generalSettings.timetableEntries);
-          if (gs.homework || merged.generalSettings.homework) merged.generalSettings.homework = mergeArraysById(gs.homework, merged.generalSettings.homework);
-          if (gs.classTests || merged.generalSettings.classTests) merged.generalSettings.classTests = mergeArraysById(gs.classTests, merged.generalSettings.classTests);
-          if (gs.classTestMarks || merged.generalSettings.classTestMarks) merged.generalSettings.classTestMarks = mergeArraysById(gs.classTestMarks, merged.generalSettings.classTestMarks);
-          if (gs.questionPapers || merged.generalSettings.questionPapers) merged.generalSettings.questionPapers = mergeArraysById(gs.questionPapers, merged.generalSettings.questionPapers);
-          if (gs.certificates || merged.generalSettings.certificates) merged.generalSettings.certificates = mergeArraysById(gs.certificates, merged.generalSettings.certificates);
+          var gsArrKeys = ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates"];
+          gsArrKeys.forEach(function (key) {
+            if (gs[key] || merged.generalSettings[key]) {
+              merged.generalSettings[key] = mergeArraysById(gs[key], merged.generalSettings[key]);
+            }
+          });
           if (gs.instituteProfile) merged.generalSettings.instituteProfile = Object.assign(merged.generalSettings.instituteProfile || {}, gs.instituteProfile);
           if (gs.accountSettings) merged.generalSettings.accountSettings = Object.assign(merged.generalSettings.accountSettings || {}, gs.accountSettings);
         }
