@@ -649,8 +649,20 @@
               merged.generalSettings[key] = mergeArraysById(gs[key], merged.generalSettings[key]);
             }
           });
-          if (gs.instituteProfile) merged.generalSettings.instituteProfile = Object.assign(merged.generalSettings.instituteProfile || {}, gs.instituteProfile);
-          if (gs.accountSettings) merged.generalSettings.accountSettings = Object.assign(merged.generalSettings.accountSettings || {}, gs.accountSettings);
+          var gsObjectKeys = ["instituteProfile","accountSettings","themeLanguage","smsGateway","feeParticulars","feeStructures","discountPolicies","bankAccounts","rulesAndRegulations","messageTemplates","marksGrading","failCriteria","certificateTemplates","questionChapters","questionBank"];
+          gsObjectKeys.forEach(function (key) {
+            if (gs[key] && typeof gs[key] === "object" && !Array.isArray(gs[key])) {
+              merged.generalSettings[key] = Object.assign(merged.generalSettings[key] || {}, gs[key]);
+            } else if (gs[key] !== undefined && gs[key] !== null) {
+              merged.generalSettings[key] = gs[key];
+            }
+          });
+          Object.keys(gs).forEach(function (key) {
+            if (gsArrKeys.indexOf(key) >= 0 || gsObjectKeys.indexOf(key) >= 0) return;
+            if (gs[key] !== undefined && gs[key] !== null) {
+              merged.generalSettings[key] = gs[key];
+            }
+          });
         }
         if (cachedDatabase.users || merged.users) merged.users = mergeArraysById(cachedDatabase.users, merged.users);
         if (cachedDatabase.school) merged.school = Object.assign(merged.school || {}, cachedDatabase.school);
