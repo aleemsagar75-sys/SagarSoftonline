@@ -220,8 +220,7 @@
       overlay.classList.remove("ss-slow");
       overlay.style.display = "flex";
       requestAnimationFrame(function(){ overlay.style.opacity = "1"; });
-      document.body.style.overflow = "hidden";
-      document.body.style.touchAction = "none";
+      try { document.body.style.overflow = "hidden"; } catch(_e) {}
     }
     if (label) { label.textContent = text || ""; }
     if (bar) { bar.style.display = text ? "block" : "none"; }
@@ -252,9 +251,10 @@
       overlay.style.opacity = "0";
       setTimeout(function () {
         overlay.style.display = "none";
-        document.body.style.overflow = "";
-        document.body.style.touchAction = "";
+        try { document.body.style.overflow = ""; document.body.style.touchAction = ""; } catch(_e) {}
       }, 250);
+    } else {
+      try { document.body.style.overflow = ""; document.body.style.touchAction = ""; } catch(_e) {}
     }
   }
 
@@ -498,11 +498,13 @@
 
   window.addEventListener("online", function () {
     if (config.apiBaseUrl && config.schoolId) {
-      loadDatabaseFromServer();
+      loadDatabaseFromServer({ showLoading: false });
     }
   });
 
-  loadDatabaseFromServer();
+  if (config.apiBaseUrl && config.schoolId) {
+    loadDatabaseFromServer({ showLoading: false });
+  }
 
   function setSchoolId(schoolId) {
     if (schoolId) {
