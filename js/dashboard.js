@@ -1054,12 +1054,22 @@ document.addEventListener("DOMContentLoaded", function () {
   async function saveDatabase(label) {
     if (label) window.SagarSoftDB.showLoading(label);
     else window.SagarSoftDB.showSyncBadge("syncing");
+    var _saved = false;
     try {
-      await window.SagarSoftDB.forceSave(database);
-      refreshDatabase();
+      _saved = await window.SagarSoftDB.forceSave(database);
     } catch (_e) {}
+    if (_saved) {
+      try {
+        var _fresh = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
+        if (_fresh) { database = _fresh; }
+        else { refreshDatabase(); }
+      } catch (_e) { refreshDatabase(); }
+    } else {
+      refreshDatabase();
+    }
     if (label) window.SagarSoftDB.hideLoading();
-    else window.SagarSoftDB.showSyncBadge("synced");
+    else window.SagarSoftDB.showSyncBadge(_saved ? "synced" : "failed");
+    return _saved;
   }
 
   function ensureLicenseSettings() {
@@ -4743,13 +4753,18 @@ document.addEventListener("DOMContentLoaded", function () {
       `;
 
       const saveButton = document.getElementById("saveRulesRegulationsBtn");
-      saveButton.addEventListener("click", function () {
+      saveButton.addEventListener("click", async function () {
         const input = document.getElementById("rulesRegulationsInput");
         const message = document.getElementById("rulesRegulationsMessage");
         database.school.rulesRegulations = input.value.trim();
-        saveDatabase("Saving rules & regulations...");
-        message.textContent = "Rules and regulations saved successfully.";
-        message.className = "form-message success";
+        var _saved = await saveDatabase("Saving rules & regulations...");
+        if (_saved) {
+          message.textContent = "Rules and regulations saved successfully.";
+          message.className = "form-message success";
+        } else {
+          message.textContent = "Save failed. Please check your connection and try again.";
+          message.className = "form-message error";
+        }
       });
       return;
     }
@@ -5617,41 +5632,20 @@ document.addEventListener("DOMContentLoaded", function () {
         database.school.address = newProfile.address;
         var license = ensureLicenseSettings();
         license.schoolName = newProfile.name || database.school.name || license.schoolName;
-        window.SagarSoftDB.showLoading("Saving institute profile...");
-        try {
-          var _schoolId = (ensureLicenseSettings().schoolId || "").trim();
-          var _token = (ensureLicenseSettings().licenseToken || "").trim();
-          if (_schoolId) {
-            var _resp = await fetch(getApiBaseUrl() + "/api/school/profile/" + encodeURIComponent(_schoolId), {
-              method: "POST",
-              headers: { "Content-Type": "application/json", "Authorization": "Bearer " + _token },
-              body: JSON.stringify({ profile: newProfile, school: { name: newProfile.name, phone: newProfile.phone, address: newProfile.address } })
-            });
-            var _data = await _resp.json();
-            if (_data && _data.success && _data.profile) {
-              settings.instituteProfile = _data.profile;
-              database.generalSettings.instituteProfile = _data.profile;
-            }
-          }
-        } catch (_e) { console.error("Profile save error:", _e); }
-        addActivity("Institute profile updated", "Institute profile saved from general settings.");
-        database.generalSettings.instituteProfile = Object.assign(database.generalSettings.instituteProfile || {}, newProfile);
-        database.school.name = newProfile.name;
-        database.school.phone = newProfile.phone;
-        database.school.address = newProfile.address;
-        if (database.generalSettings && database.generalSettings.licenseSettings) {
-          database.generalSettings.licenseSettings.schoolName = newProfile.name || database.school.name || database.generalSettings.licenseSettings.schoolName;
-        }
-        await saveDatabase();
-        window.SagarSoftDB.hideLoading();
+        var _saved = await saveDatabase("Saving institute profile...");
         var _pn = document.getElementById("profileName");
         if (_pn) _pn.textContent = newProfile.name || "Admin";
         var _pa = document.getElementById("profileAvatar");
         if (_pa) _pa.textContent = getInitials(newProfile.name || "Admin");
         updateTopProfileIdentity();
         renderProfileDropdownMenu();
-        message.textContent = "Institute profile updated successfully.";
-        message.className = "form-message success";
+        if (_saved) {
+          message.textContent = "Institute profile updated successfully.";
+          message.className = "form-message success";
+        } else {
+          message.textContent = "Save failed. Please check your connection and try again.";
+          message.className = "form-message error";
+        }
       });
 
       renderProfilePreview();
@@ -5742,9 +5736,14 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         });
         addActivity("Fee particulars updated", `${cls} fee particulars updated.`);
-        saveDatabase("Saving fee particulars...");
-        message.textContent = "Fee particulars updated successfully.";
-        message.className = "form-message success";
+        var _saved = await saveDatabase("Saving fee particulars...");
+        if (_saved) {
+          message.textContent = "Fee particulars updated successfully.";
+          message.className = "form-message success";
+        } else {
+          message.textContent = "Save failed. Please check your connection and try again.";
+          message.className = "form-message error";
+        }
       });
 
       renderRows();
@@ -5846,9 +5845,14 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         }).filter(function (row) { return row.type; });
         addActivity("Fee structure updated", `${cls} fee structure updated.`);
-        saveDatabase("Saving fee structure...");
-        message.textContent = "Fee structure saved successfully.";
-        message.className = "form-message success";
+        var _saved = await saveDatabase("Saving fee structure...");
+        if (_saved) {
+          message.textContent = "Fee structure saved successfully.";
+          message.className = "form-message success";
+        } else {
+          message.textContent = "Save failed. Please check your connection and try again.";
+          message.className = "form-message error";
+        }
       });
 
       renderStructureRows();
@@ -5951,7 +5955,7 @@ document.addEventListener("DOMContentLoaded", function () {
         input.addEventListener("change", renderDiscountStudents);
       });
 
-      var _el = document.getElementById("applyDiscountBtn"); if (_el) _el.addEventListener("click", function () {
+      var _el = document.getElementById("applyDiscountBtn"); if (_el) _el.addEventListener("click", async function () {
         const type = discountTypeInput.value.trim();
         const amount = Number(discountAmountInput.value || 0);
         const selectedIds = Array.from(document.querySelectorAll(".discount-student-check:checked")).map(function (checkbox) {
@@ -5979,9 +5983,14 @@ document.addEventListener("DOMContentLoaded", function () {
           createdAt: new Date().toISOString()
         });
         addActivity("Discount applied", `${type} discount applied to ${selectedIds.length} students.`);
-        saveDatabase("Saving discount...");
-        message.textContent = "Discount applied successfully.";
-        message.className = "form-message success";
+        var _saved = await saveDatabase("Saving discount...");
+        if (_saved) {
+          message.textContent = "Discount applied successfully.";
+          message.className = "form-message success";
+        } else {
+          message.textContent = "Save failed. Please check your connection and try again.";
+          message.className = "form-message error";
+        }
         renderDiscountPreview();
       });
 
@@ -6159,16 +6168,21 @@ document.addEventListener("DOMContentLoaded", function () {
         preview.innerHTML = editor.innerHTML;
       });
 
-      var _el = document.getElementById("saveRulesBtn"); if (_el) _el.addEventListener("click", function () {
+      var _el = document.getElementById("saveRulesBtn"); if (_el) _el.addEventListener("click", async function () {
         const target = applyToSelect.value;
         settings.rulesAndRegulations[target] = editor.innerHTML.trim();
         if (target === "students") {
           database.school.rulesRegulations = editor.textContent.trim();
         }
         addActivity("Rules updated", `${target} rules and regulations updated.`);
-        saveDatabase("Saving rules & regulations...");
-        message.textContent = "Rules and regulations applied successfully.";
-        message.className = "form-message success";
+        var _saved = await saveDatabase("Saving rules & regulations...");
+        if (_saved) {
+          message.textContent = "Rules and regulations applied successfully.";
+          message.className = "form-message success";
+        } else {
+          message.textContent = "Save failed. Please check your connection and try again.";
+          message.className = "form-message error";
+        }
       });
 
       loadRules();
@@ -6280,7 +6294,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-      var _el = document.getElementById("saveGradingBtn"); if (_el) _el.addEventListener("click", function () {
+      var _el = document.getElementById("saveGradingBtn"); if (_el) _el.addEventListener("click", async function () {
         settings.marksGrading = Array.from(gradingRows.querySelectorAll(".module-line-item")).map(function (row) {
           return {
             required: row.querySelector(".grading-required").value === "required",
@@ -6291,22 +6305,32 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         }).filter(function (row) { return row.grade; });
         addActivity("Marks grading updated", "Marks grading settings updated.");
-        saveDatabase("Saving marks grading...");
-        gradingMessage.textContent = "Marks grading saved successfully.";
-        gradingMessage.className = "form-message success";
+        var _saved = await saveDatabase("Saving marks grading...");
+        if (_saved) {
+          gradingMessage.textContent = "Marks grading saved successfully.";
+          gradingMessage.className = "form-message success";
+        } else {
+          gradingMessage.textContent = "Save failed. Please check your connection and try again.";
+          gradingMessage.className = "form-message error";
+        }
       });
 
-      document.getElementById("saveFailCriteriaBtn").addEventListener("click", function () {
+      document.getElementById("saveFailCriteriaBtn").addEventListener("click", async function () {
         settings.failCriteria = {
           overallPercent: Number(document.getElementById("failOverallInput").value || 0),
           subjectPercent: Number(document.getElementById("failSubjectInput").value || 0),
           subjectCount: Number(document.getElementById("failSubjectsCountInput").value || 1)
         };
         addActivity("Fail criteria updated", "Fail criteria updated from general settings.");
-        saveDatabase("Saving fail criteria...");
+        var _saved = await saveDatabase("Saving fail criteria...");
         const failMessage = document.getElementById("failMessage");
-        failMessage.textContent = "Fail criteria updated successfully.";
-        failMessage.className = "form-message success";
+        if (_saved) {
+          failMessage.textContent = "Fail criteria updated successfully.";
+          failMessage.className = "form-message success";
+        } else {
+          failMessage.textContent = "Save failed. Please check your connection and try again.";
+          failMessage.className = "form-message error";
+        }
       });
       return;
     }
@@ -6345,7 +6369,7 @@ document.addEventListener("DOMContentLoaded", function () {
         el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
       }
 
-      document.getElementById("saveThemeBtn").addEventListener("click", function () {
+      document.getElementById("saveThemeBtn").addEventListener("click", async function () {
         var selectedLang = document.getElementById("languageSettingSelect").value;
         var isRtl = ["Urdu", "Arabic", "Persian", "Hebrew"].includes(selectedLang);
         settings.themeLanguage = {
@@ -6357,8 +6381,12 @@ document.addEventListener("DOMContentLoaded", function () {
         };
         applyTheme(settings.themeLanguage);
         addActivity("Theme settings updated", "Theme and language settings updated.");
-        saveDatabase("Saving theme settings...");
-        setThemeMessage("Theme settings updated successfully.", "success");
+        var _saved = await saveDatabase("Saving theme settings...");
+        if (_saved) {
+          setThemeMessage("Theme settings updated successfully.", "success");
+        } else {
+          setThemeMessage("Save failed. Please check your connection and try again.", "error");
+        }
       });
 
       return;
@@ -19500,7 +19528,12 @@ ${allContent}
           settings.accountSettings.symbol = symbol;
           settings.instituteProfile.name = schoolName || settings.instituteProfile.name;
           database.school.name = schoolName || database.school.name;
-          saveDatabase("Saving account settings...");
+          var _saved = await saveDatabase("Saving account settings...");
+          if (!_saved && msgEl) {
+            msgEl.textContent = "Save failed. Please check your connection and try again.";
+            msgEl.className = "form-message error";
+            return;
+          }
           updateTopProfileIdentity();
           renderProfileDropdownMenu();
           applyRouteAccessVisibility();
