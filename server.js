@@ -197,7 +197,7 @@ if (cors) {
     return next();
   });
 }
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: "5mb" }));
 
 app.use(function (_req, res, next) {
   res.setHeader("X-Content-Type-Options", "nosniff");
@@ -1522,8 +1522,11 @@ app.get("/health", async (_req, res) => {
   }
 });
 
-app.get("/api/database/:schoolId", async (req, res) => {
+app.get("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
   try {
     const database = await getSchoolDatabase(schoolId);
     if (!database) {
@@ -1602,11 +1605,12 @@ function mergeDatabases(incomingDb, existingDb) {
   return merged;
 }
 
-app.post("/api/database/:schoolId", async (req, res) => {
+app.post("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
   const incomingDb = req.body && req.body.database ? req.body.database : {};
-  const token = String(req.headers["authorization"] || "").replace(/^Bearer\s+/i, "").trim()
-    || String(req.headers["x-license-token"] || "").trim();
   try {
     const licCheck = await pool.query("select school_id, license_token, status from public.license_accounts where school_id = $1 limit 1", [schoolId]);
     if (!licCheck.rowCount) {
@@ -1649,8 +1653,11 @@ app.post("/api/database/:schoolId", async (req, res) => {
   }
 });
 
-app.post("/api/school/profile/:schoolId", async (req, res) => {
+app.post("/api/school/profile/:schoolId", requireSchoolAuth, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
   const profile = req.body && req.body.profile ? req.body.profile : {};
   const schoolData = req.body && req.body.school ? req.body.school : {};
   try {
@@ -1956,64 +1963,66 @@ app.post("/api/mobile/login", async (req, res) => {
   }
 });
 
-app.post("/api/debug-login", async (req, res) => {
-  try {
-    const email = String(req.body.email || "").trim().toLowerCase();
-    const password = String(req.body.password || "");
-    if (!email) return res.status(400).json({ error: "email required" });
+if (process.env.NODE_ENV !== "production") {
+  app.post("/api/debug-login", async (req, res) => {
+    try {
+      const email = String(req.body.email || "").trim().toLowerCase();
+      const password = String(req.body.password || "");
+      if (!email) return res.status(400).json({ error: "email required" });
 
-    var step1_supabase = await verifySupabaseAuth(email, password);
+      var step1_supabase = await verifySupabaseAuth(email, password);
 
-    var step2_search = await pool.query(`
-      select sd.school_id, sd.database, la.*
-      from public.school_databases sd
-      join public.license_accounts la on la.school_id = sd.school_id
-      where exists (
-        select 1
-        from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
-        where lower(app_user->>'email') = $1
-          and lower(coalesce(app_user->>'active', 'true')) <> 'false'
-      )
-      limit 1
-    `, [email]);
+      var step2_search = await pool.query(`
+        select sd.school_id, sd.database, la.*
+        from public.school_databases sd
+        join public.license_accounts la on la.school_id = sd.school_id
+        where exists (
+          select 1
+          from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
+          where lower(app_user->>'email') = $1
+            and lower(coalesce(app_user->>'active', 'true')) <> 'false'
+        )
+        limit 1
+      `, [email]);
 
-    var step3_found = null;
-    if (step2_search.rowCount) {
-      var foundLicense = step2_search.rows[0];
-      var foundDb = foundLicense.database || {};
-      var matchedUser = Array.isArray(foundDb.users)
-        ? foundDb.users.find(function (u) {
-            return String(u.email || "").trim().toLowerCase() === email && u.active !== false;
-          })
-        : null;
-      step3_found = {
-        school_id: foundLicense.school_id,
-        user_count: (foundDb.users || []).length,
-        matchedUser: matchedUser ? { email: matchedUser.email, role: matchedUser.role, active: matchedUser.active, hasPassword: !!matchedUser.password } : null,
-        all_user_emails: (foundDb.users || []).map(u => u.email),
-        pwdCheck: matchedUser && matchedUser.password ? (password === matchedUser.password ? "plaintext_match" : "no_match") : "no_password"
-      };
+      var step3_found = null;
+      if (step2_search.rowCount) {
+        var foundLicense = step2_search.rows[0];
+        var foundDb = foundLicense.database || {};
+        var matchedUser = Array.isArray(foundDb.users)
+          ? foundDb.users.find(function (u) {
+              return String(u.email || "").trim().toLowerCase() === email && u.active !== false;
+            })
+          : null;
+        step3_found = {
+          school_id: foundLicense.school_id,
+          user_count: (foundDb.users || []).length,
+          matchedUser: matchedUser ? { email: matchedUser.email, role: matchedUser.role, active: matchedUser.active, hasPassword: !!matchedUser.password } : null,
+          all_user_emails: (foundDb.users || []).map(u => u.email),
+          pwdCheck: matchedUser && matchedUser.password ? (password === matchedUser.password ? "plaintext_match" : "no_match") : "no_password"
+        };
+      }
+
+      var step4_lic = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+      var licInfo = step4_lic.rowCount ? { school_id: step4_lic.rows[0].school_id, email: step4_lic.rows[0].email, hasPassword: !!step4_lic.rows[0].password } : null;
+
+      var step5_pwdCheck = null;
+      if (licInfo && step4_lic.rows[0].password) {
+        step5_pwdCheck = verifyPasswordHash(password, step4_lic.rows[0].password) ? "valid" : "invalid";
+      }
+
+      return res.json({
+        supabase: step1_supabase,
+        searchQueryRows: step2_search.rowCount,
+        matchedInDb: step3_found,
+        licenseAccount: licInfo,
+        licensePwdCheck: step5_pwdCheck
+      });
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
     }
-
-    var step4_lic = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
-    var licInfo = step4_lic.rowCount ? { school_id: step4_lic.rows[0].school_id, email: step4_lic.rows[0].email, hasPassword: !!step4_lic.rows[0].password } : null;
-
-    var step5_pwdCheck = null;
-    if (licInfo && step4_lic.rows[0].password) {
-      step5_pwdCheck = verifyPasswordHash(password, step4_lic.rows[0].password) ? "valid" : "invalid";
-    }
-
-    return res.json({
-      supabase: step1_supabase,
-      searchQueryRows: step2_search.rowCount,
-      matchedInDb: step3_found,
-      licenseAccount: licInfo,
-      licensePwdCheck: step5_pwdCheck
-    });
-  } catch (error) {
-    return res.status(500).json({ error: error.message, stack: error.stack });
-  }
-});
+  });
+}
 
 app.post("/api/resolve-school", async (req, res) => {
   try {
@@ -2634,7 +2643,7 @@ function startKeepAlive() {
   }, 14 * 60 * 1000);
 }
 
-app.get("/api/supabase-config", function (req, res) {
+app.get("/api/supabase-config", requireSuperAdmin, function (req, res) {
   var supabaseUrl = process.env.SUPABASE_URL || "";
   var anonKey = process.env.SUPABASE_ANON_KEY || "";
   return res.json({
@@ -2644,7 +2653,7 @@ app.get("/api/supabase-config", function (req, res) {
   });
 });
 
-app.get("/api/sms/device-status", async function (req, res) {
+app.get("/api/sms/device-status", requireSchoolAuth, async function (req, res) {
   try {
     var schoolId = String(req.query.school_id || "").trim();
     if (!schoolId) return res.json({ success: true, device: null });
@@ -2661,7 +2670,7 @@ app.get("/api/sms/device-status", async function (req, res) {
   }
 });
 
-app.post("/api/sms/mark-sent", async function (req, res) {
+app.post("/api/sms/mark-sent", requireSchoolAuth, async function (req, res) {
   try {
     var smsId = req.body.sms_id;
     var deviceId = req.body.device_id || "";
@@ -2686,7 +2695,7 @@ app.post("/api/sms/mark-sent", async function (req, res) {
   }
 });
 
-app.post("/api/sms/mark-failed", async function (req, res) {
+app.post("/api/sms/mark-failed", requireSchoolAuth, async function (req, res) {
   try {
     var smsId = req.body.sms_id;
     var errorMsg = req.body.error || "send-failed";
@@ -2706,7 +2715,7 @@ app.post("/api/sms/mark-failed", async function (req, res) {
   }
 });
 
-app.post("/api/sms/retry-failed", async function (req, res) {
+app.post("/api/sms/retry-failed", requireSchoolAuth, async function (req, res) {
   try {
     var schoolId = req.body.school_id;
     if (!schoolId) return res.status(400).json({ success: false, message: "school_id required" });
@@ -2737,9 +2746,12 @@ app.post("/api/sms/retry-failed", async function (req, res) {
   }
 });
 
-app.post("/api/sms/send", async function (req, res) {
+app.post("/api/sms/send", requireSchoolAuth, async function (req, res) {
   try {
     var schoolId = req.body.school_id;
+    if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+      return res.status(403).json({ success: false, message: "Access denied." });
+    }
     var phone = req.body.recipient_phone;
     var message = req.body.message;
     var source = req.body.source || "Manual SMS";
@@ -2774,7 +2786,7 @@ app.post("/api/sms/send", async function (req, res) {
   }
 });
 
-app.post("/api/setup-sms-tables", async function (req, res) {
+app.post("/api/setup-sms-tables", requireSuperAdmin, async function (req, res) {
   try {
     if (!_pool) {
       return res.status(500).json({ success: false, message: "Database not connected." });
