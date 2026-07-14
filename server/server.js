@@ -142,7 +142,7 @@ async function _initPool() {
       } catch (_e2) {}
     }
   }
-  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" ? { rejectUnauthorized: true } : { rejectUnauthorized: false } });
+  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, statement_timeout: 30000, ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" ? { rejectUnauthorized: true } : { rejectUnauthorized: false } });
   return _pool;
 }
 
@@ -1567,16 +1567,16 @@ async function getSchoolDatabase(schoolId) {
       }
     }
     const itemKeys = await pool.query(
-      "select distinct setting_key from public.school_setting_items where school_id = $1",
+      "select setting_key, item_data from public.school_setting_items where school_id = $1 order by updated_at asc",
       [schoolId]
     );
-    for (const keyRow of itemKeys.rows) {
-      const k = keyRow.setting_key;
-      const items = await pool.query(
-        "select item_data from public.school_setting_items where school_id = $1 and setting_key = $2 order by updated_at asc",
-        [schoolId, k]
-      );
-      database.generalSettings[k] = items.rows.map(r => r.item_data || {});
+    const itemGroups = {};
+    for (const r of itemKeys.rows) {
+      if (!itemGroups[r.setting_key]) itemGroups[r.setting_key] = [];
+      itemGroups[r.setting_key].push(r.item_data || {});
+    }
+    for (const k in itemGroups) {
+      database.generalSettings[k] = itemGroups[k];
     }
   } catch (_e) {}
 
@@ -1685,7 +1685,7 @@ function mergeDatabases(incomingDb, existingDb) {
   var incomingDeleted = (incomingDb._deletedIds || []).map(String);
   var existingDeleted = (existingDb._deletedIds || []).map(String);
   var allDeleted = Array.from(new Set(incomingDeleted.concat(existingDeleted)));
-  const merged = JSON.parse(JSON.stringify(existingDb));
+  const merged = existingDb;
   removeDeletedFromObject(merged, allDeleted);
   const arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
   arrKeys.forEach(function (key) {
