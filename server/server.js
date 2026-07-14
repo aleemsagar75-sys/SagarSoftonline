@@ -303,7 +303,7 @@ function requireSchoolAuth(req, res, next) {
     .then(async function (result) {
       if (!result.rowCount) {
         console.log("[AUTH-MIDDLEWARE] School not found:", schoolId);
-        return res.status(401).json({ success: false, message: "School not found." });
+        return res.status(401).json({ success: false, message: "School not found.", debug: { school_id: schoolId, exists: false } });
       }
       var row = result.rows[0];
       var expectedToken = row.license_token;
@@ -328,8 +328,20 @@ function requireSchoolAuth(req, res, next) {
         }
       }
       if (!tokenValid) {
-        console.log("[AUTH-MIDDLEWARE] Invalid token for school:", schoolId, "| Expected:", expectedToken ? expectedToken.substring(0, 15) + "..." : "NULL", "| Got:", token.substring(0, 15) + "...");
-        return res.status(401).json({ success: false, message: "Invalid school token." });
+        var _debugInfo = {
+          school_id: schoolId,
+          school_exists: true,
+          db_license_token: expectedToken ? expectedToken.substring(0, 8) + "..." : "NULL",
+          db_api_token: altToken ? altToken.substring(0, 8) + "..." : "NULL",
+          received_token_prefix: token ? token.substring(0, 8) + "..." : "EMPTY",
+          received_token_length: token ? token.length : 0,
+          db_license_token_length: expectedToken ? expectedToken.length : 0,
+          status: row.status,
+          modules_locked: row.modules_locked,
+          expiry_date: row.expiry_date
+        };
+        console.log("[AUTH-MIDDLEWARE] Invalid token for school:", schoolId, "| Debug:", JSON.stringify(_debugInfo));
+        return res.status(401).json({ success: false, message: "Invalid school token.", debug: _debugInfo });
       }
       var status = String(row.status || "").toLowerCase();
       if (status !== "active") {
