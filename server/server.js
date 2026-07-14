@@ -280,7 +280,8 @@ function requireSchoolAuth(req, res, next) {
   var bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
   var schoolToken = String(req.headers["x-school-token"] || req.query.school_token || "").trim();
   var licenseToken = String(req.headers["x-license-token"] || req.query.license_token || "").trim();
-  var token = bearerToken || schoolToken || licenseToken;
+  var apiKey = String(req.headers["x-sagarsoft-api-key"] || "").trim();
+  var token = bearerToken || schoolToken || licenseToken || apiKey;
   if (!token) {
     return res.status(401).json({ success: false, message: "School authentication required." });
   }
@@ -298,16 +299,36 @@ function requireSchoolAuth(req, res, next) {
     req.authRole = "school";
     return next();
   }
-  pool.query("select school_id, license_token, status, modules_locked, expiry_date from public.license_accounts where school_id = $1 limit 1", [schoolId])
-    .then(function (result) {
+  pool.query("select school_id, license_token, api_token, status, modules_locked, expiry_date from public.license_accounts where school_id = $1 limit 1", [schoolId])
+    .then(async function (result) {
       if (!result.rowCount) {
         console.log("[AUTH-MIDDLEWARE] School not found:", schoolId);
         return res.status(401).json({ success: false, message: "School not found." });
       }
       var row = result.rows[0];
       var expectedToken = row.license_token;
-      if (!expectedToken || token.length !== expectedToken.length || !crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken))) {
-        console.log("[AUTH-MIDDLEWARE] Invalid token for school:", schoolId, "| Expected len:", expectedToken ? expectedToken.length : "NULL", "| Got len:", token.length);
+      var altToken = row.api_token;
+      var tokenValid = false;
+      if (expectedToken && token.length === expectedToken.length) {
+        try { tokenValid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken)); } catch (_e) {}
+      }
+      if (!tokenValid && altToken && token.length === altToken.length) {
+        try { tokenValid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(altToken)); } catch (_e) {}
+      }
+      if (!tokenValid && !expectedToken && !altToken) {
+        console.log("[AUTH-MIDDLEWARE] Both tokens NULL for school:", schoolId, "| Auto-generating new license_token");
+        var newToken = generateToken();
+        await pool.query("UPDATE public.license_accounts SET license_token = $1, api_token = COALESCE(api_token, $1), updated_at = now() WHERE school_id = $2", [newToken, schoolId]).catch(function () {});
+        row.license_token = newToken;
+        if (token === newToken) {
+          tokenValid = true;
+        } else {
+          console.log("[AUTH-MIDDLEWARE] Generated token, client token doesn't match. Expected:", newToken.substring(0, 15) + "...", "| Got:", token.substring(0, 15) + "...");
+          return res.status(401).json({ success: false, message: "Token regenerated. Please re-login." });
+        }
+      }
+      if (!tokenValid) {
+        console.log("[AUTH-MIDDLEWARE] Invalid token for school:", schoolId, "| Expected:", expectedToken ? expectedToken.substring(0, 15) + "..." : "NULL", "| Got:", token.substring(0, 15) + "...");
         return res.status(401).json({ success: false, message: "Invalid school token." });
       }
       var status = String(row.status || "").toLowerCase();
@@ -2213,7 +2234,7 @@ app.post("/api/mobile/login", async (req, res) => {
         console.log("Modules Locked:", lic2.modules_locked);
         console.log("License Token:", lic2.license_token ? lic2.license_token.substring(0, 20) + "..." : "NULL");
         console.log("================================================================");
-        if (isFutureExpiry2 && String(lic2.status || "").toLowerCase() !== "active") {
+        if (isFutureExpiry2 && (String(lic2.status || "").toLowerCase() !== "active" || lic2.modules_locked)) {
           await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [lic2.school_id]).catch(function() {});
           lic2.status = "active";
           lic2.modules_locked = false;
@@ -2265,7 +2286,7 @@ app.post("/api/mobile/login", async (req, res) => {
         var nowDate3 = new Date().toISOString().slice(0, 10);
         var expiryDate3 = lic3.expiry_date || "";
         var isFutureExpiry3 = expiryDate3 && expiryDate3 > nowDate3;
-        if (isFutureExpiry3 && String(lic3.status || "").toLowerCase() !== "active") {
+        if (isFutureExpiry3 && (String(lic3.status || "").toLowerCase() !== "active" || lic3.modules_locked)) {
           await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [lic3.school_id]).catch(function() {});
           lic3.status = "active";
           lic3.modules_locked = false;
