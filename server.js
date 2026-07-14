@@ -302,6 +302,7 @@ function requireSchoolAuth(req, res, next) {
   pool.query("select school_id, license_token, api_token, status, modules_locked, expiry_date from public.license_accounts where school_id = $1 limit 1", [schoolId])
     .then(function (result) {
       if (!result.rowCount) {
+        console.log("[AUTH-MIDDLEWARE] School not found:", schoolId);
         return res.status(401).json({ success: false, message: "School not found." });
       }
       var row = result.rows[0];
@@ -315,13 +316,16 @@ function requireSchoolAuth(req, res, next) {
         try { tokenValid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(altToken)); } catch (_e) {}
       }
       if (!tokenValid) {
+        console.log("[AUTH-MIDDLEWARE] Invalid token for school:", schoolId, "| Expected token length:", expectedToken ? expectedToken.length : "NULL", "| Received token length:", token.length);
         return res.status(401).json({ success: false, message: "Invalid school token." });
       }
       var status = String(row.status || "").toLowerCase();
       if (status !== "active") {
+        console.log("[AUTH-MIDDLEWARE] School not active:", schoolId, "| Status:", row.status);
         return res.status(403).json({ success: false, message: "School is not active." });
       }
       if (row.modules_locked) {
+        console.log("[AUTH-MIDDLEWARE] School locked:", schoolId, "| Modules locked:", row.modules_locked);
         return res.status(403).json({ success: false, message: "School access is locked." });
       }
       if (row.expiry_date) {
@@ -2218,6 +2222,19 @@ app.post("/api/mobile/login", async (req, res) => {
         var nowDate2 = new Date().toISOString().slice(0, 10);
         var expiryDate2 = lic2.expiry_date || "";
         var isFutureExpiry2 = expiryDate2 && expiryDate2 > nowDate2;
+        console.log("========== LICENSE VALIDATION DEBUG (LOGIN PATH 1 - SupaAuth) ==========");
+        console.log("School ID:", lic2.school_id);
+        console.log("School Name:", lic2.school_name);
+        console.log("Authenticated User:", email);
+        console.log("Activation Status (Raw):", lic2.status);
+        console.log("Subscription Plan:", lic2.plan);
+        console.log("Expiry Date (Raw DB):", lic2.expiry_date);
+        console.log("Expiry Date (Parsed):", expiryDate2 ? new Date(expiryDate2).toISOString() : "NULL");
+        console.log("Current Server Date:", nowDate2);
+        console.log("Is Future Expiry:", isFutureExpiry2);
+        console.log("Modules Locked:", lic2.modules_locked);
+        console.log("License Token:", lic2.license_token ? lic2.license_token.substring(0, 20) + "..." : "NULL");
+        console.log("================================================================");
         if (isFutureExpiry2 && String(lic2.status || "").toLowerCase() !== "active") {
           await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [lic2.school_id]).catch(function() {});
           lic2.status = "active";
@@ -2234,7 +2251,15 @@ app.post("/api/mobile/login", async (req, res) => {
         }
         var db2 = await getSchoolDatabase(lic2.school_id);
         var notes2 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic2.school_id]);
-        return res.json({ success: true, license: toLicensePayload(lic2, notes2.rows), user: { id: "USR-ADMIN-001", name: lic2.school_name || "School Admin", email: email, role: "admin" }, school_id: lic2.school_id, license_token: lic2.license_token || generateToken(), database: db2 || {} });
+        var _loginPayload2 = { success: true, license: toLicensePayload(lic2, notes2.rows), user: { id: "USR-ADMIN-001", name: lic2.school_name || "School Admin", email: email, role: "admin" }, school_id: lic2.school_id, license_token: lic2.license_token || generateToken(), database: db2 || {} };
+        console.log("========== LOGIN RESPONSE (PATH 1) ==========");
+        console.log("License Token in Response:", _loginPayload2.license_token ? _loginPayload2.license_token.substring(0, 20) + "..." : "NULL");
+        console.log("Activation Status:", _loginPayload2.license.activation_status);
+        console.log("Expiry Date:", _loginPayload2.license.expiry_date);
+        console.log("Database Returned:", _loginPayload2.database ? "YES (keys: " + Object.keys(_loginPayload2.database).join(", ") + ")" : "NULL");
+        console.log("DB licenseSettings:", JSON.stringify((_loginPayload2.database.generalSettings || {}).licenseSettings || {}));
+        console.log("================================================");
+        return res.json(_loginPayload2);
       }
     }
 
