@@ -6204,7 +6204,7 @@ document.addEventListener("DOMContentLoaded", function () {
         reader.readAsDataURL(file);
       });
 
-      var _el = document.getElementById("saveBankBtn"); if (_el) _el.addEventListener("click", function () {
+      var _el = document.getElementById("saveBankBtn"); if (_el) _el.addEventListener("click", async function () {
         const bankRecord = {
           id: currentBank.id || `BANK-${generateId()}`,
           logo: logoData,
