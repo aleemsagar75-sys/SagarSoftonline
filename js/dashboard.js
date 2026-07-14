@@ -23559,7 +23559,7 @@ ${allContent}
       }
     }
 
-    saveDatabase(existingIndex >= 0 ? "Updating student..." : "Saving student...", _studentChanges);
+    await saveDatabase(existingIndex >= 0 ? "Updating student..." : "Saving student...", _studentChanges);
     populateStudentForm(null);
     setStudentRoute("all-students");
   }
