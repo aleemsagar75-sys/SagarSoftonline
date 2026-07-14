@@ -441,6 +441,7 @@
     if (_isCancelled) return null;
     var showOverlay = opts && opts.showLoading !== false;
     if (showOverlay) showLoading("Loading data from server...");
+    console.log("[LOAD-DB] schoolId:", config.schoolId, "authToken:", config.authToken ? config.authToken.substring(0, 15) + "..." : "EMPTY", "apiKey:", config.apiKey ? config.apiKey.substring(0, 10) + "..." : "EMPTY");
     var attempts = 0;
     var maxAttempts = 3;
     while (attempts < maxAttempts && !_isCancelled) {
