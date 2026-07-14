@@ -2482,7 +2482,7 @@ document.addEventListener("DOMContentLoaded", function () {
       campaignType: entry.campaignType || "manual",
       createdAt: entry.createdAt || new Date().toLocaleString()
     });
-    saveDatabase();
+    saveDatabase("", [{ table: "school_settings", record: { id: "smsOutbox", source_id: "smsOutbox", data: settings.smsOutbox, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
     return settings.smsOutbox[0];
   }
 
@@ -2521,7 +2521,7 @@ document.addEventListener("DOMContentLoaded", function () {
           var result = await resp.json();
           if (result.success) {
             cfg.tablesCreated = true;
-            saveDatabase();
+            saveDatabase("", [{ table: "school_settings", record: { id: "supabaseConfig", source_id: "supabaseConfig", data: database.generalSettings.supabaseConfig, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
             return { ok: true };
           }
           return { ok: false, reason: "server-setup-failed", error: result.message };
@@ -2541,14 +2541,14 @@ document.addEventListener("DOMContentLoaded", function () {
           var result2 = await resp2.json();
           if (result2.success) {
             cfg.tablesCreated = true;
-            saveDatabase();
+            saveDatabase("", [{ table: "school_settings", record: { id: "supabaseConfig", source_id: "supabaseConfig", data: database.generalSettings.supabaseConfig, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
             return { ok: true };
           }
         } catch (_e) {}
         return { ok: false, reason: "error", error: test.error.message };
       }
       cfg.tablesCreated = true;
-      saveDatabase();
+      saveDatabase("", [{ table: "school_settings", record: { id: "supabaseConfig", source_id: "supabaseConfig", data: database.generalSettings.supabaseConfig, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
       return { ok: true };
     } catch (e) {
       console.error("Table creation error:", e);
@@ -2791,7 +2791,7 @@ document.addEventListener("DOMContentLoaded", function () {
       database.generalSettings.messageTemplates = {};
     }
     database.generalSettings.messageTemplates[key] = input.value;
-    saveDatabase();
+    saveDatabase("", [{ table: "school_settings", record: { id: "messageTemplates", source_id: "messageTemplates", data: database.generalSettings.messageTemplates, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
   }
 
   function buildCommunicationTemplate(type, data) {
@@ -24473,8 +24473,8 @@ ${allContent}
     dashScanBtn.addEventListener("click", function () {
       openQrAttendanceScanner(function (entityType, person, dateValue) {
         var extraData = entityType === "student" ? { className: person.className } : { role: person.role || person.designation || "-" };
-        saveAttendanceRecord(entityType, person.id, dateValue, "Present", extraData);
-        saveDatabase();
+        var _attRec = saveAttendanceRecord(entityType, person.id, dateValue, "Present", extraData);
+        saveDatabase("", _attRec ? [{ table: "attendance", record: _attRec, operation: "create" }] : []);
         refreshAttendanceOverview();
         addActivity("Attendance via QR", person.name + " (" + entityType + ") marked Present for " + dateValue + ".");
         if (typeof renderDashboard === "function") renderDashboard();
