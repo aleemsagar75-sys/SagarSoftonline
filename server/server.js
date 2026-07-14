@@ -588,6 +588,10 @@ async function ensureSchema() {
     create index if not exists idx_salary_payments_school_id on public.salary_payments (school_id);
     create index if not exists idx_accounts_ledger_school_id on public.accounts_ledger (school_id);
     create index if not exists idx_activity_logs_school_id on public.activity_logs (school_id);
+    alter table if exists public.students add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.teachers add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.classes add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.employees add column if not exists updated_at timestamptz not null default now();
     alter table if exists public.license_accounts drop constraint if exists license_accounts_email_key;
     alter table if exists public.license_accounts add column if not exists api_token text;
 
@@ -1526,29 +1530,29 @@ async function getSchoolDatabase(schoolId) {
     readDataRows("account_activity")
   ]);
 
-  if (students.length && !database.students) database.students = students;
-  if (classes.length && !database.classes) database.classes = classes;
-  if (users.length && !database.users) database.users = users;
-  if (subjects.length && !database.subjects) database.subjects = subjects;
-  if (attendance.length && !database.attendance) database.attendance = attendance;
-  if (fees.length && !database.fees) database.fees = fees;
-  if (notices.length && !database.notices) database.notices = notices;
-  if (events.length && !database.events) database.events = events;
-  if (activityLogs.length && !database.activityLogs) database.activityLogs = activityLogs;
-  if (accountActivity.length && !database.accountActivity) database.accountActivity = accountActivity;
-  if (smsTemplates.length && !database.smsTemplates) database.smsTemplates = smsTemplates;
-  if (feeInvoices.length && !database.generalSettings.feeInvoices) database.generalSettings.feeInvoices = feeInvoices;
-  if (feeCollections.length && !database.generalSettings.feeCollections) database.generalSettings.feeCollections = feeCollections;
-  if (salaryPayments.length && !database.generalSettings.salaryPayments) database.generalSettings.salaryPayments = salaryPayments;
-  if (accountsLedger.length && !database.generalSettings.accountsLedger) database.generalSettings.accountsLedger = accountsLedger;
-  if (exams.length && !database.generalSettings.exams) database.generalSettings.exams = exams;
-  if (examMarks.length && !database.generalSettings.examMarks) database.generalSettings.examMarks = examMarks;
-  if (timetable.length && !database.generalSettings.timetableEntries) database.generalSettings.timetableEntries = timetable;
-  if (homework.length && !database.generalSettings.homework) database.generalSettings.homework = homework;
-  if (classTests.length && !database.generalSettings.classTests) database.generalSettings.classTests = classTests;
-  if (classTestMarks.length && !database.generalSettings.classTestMarks) database.generalSettings.classTestMarks = classTestMarks;
-  if (questionPapers.length && !database.generalSettings.questionPapers) database.generalSettings.questionPapers = questionPapers;
-  if (certificates.length && !database.generalSettings.certificates) database.generalSettings.certificates = certificates;
+  if (students.length) database.students = students;
+  if (classes.length) database.classes = classes;
+  if (users.length) database.users = users;
+  if (subjects.length) database.subjects = subjects;
+  if (attendance.length) database.attendance = attendance;
+  if (fees.length) database.fees = fees;
+  if (notices.length) database.notices = notices;
+  if (events.length) database.events = events;
+  if (activityLogs.length) database.activityLogs = activityLogs;
+  if (accountActivity.length) database.accountActivity = accountActivity;
+  if (smsTemplates.length) database.smsTemplates = smsTemplates;
+  if (feeInvoices.length) database.generalSettings.feeInvoices = feeInvoices;
+  if (feeCollections.length) database.generalSettings.feeCollections = feeCollections;
+  if (salaryPayments.length) database.generalSettings.salaryPayments = salaryPayments;
+  if (accountsLedger.length) database.generalSettings.accountsLedger = accountsLedger;
+  if (exams.length) database.generalSettings.exams = exams;
+  if (examMarks.length) database.generalSettings.examMarks = examMarks;
+  if (timetable.length) database.generalSettings.timetableEntries = timetable;
+  if (homework.length) database.generalSettings.homework = homework;
+  if (classTests.length) database.generalSettings.classTests = classTests;
+  if (classTestMarks.length) database.generalSettings.classTestMarks = classTestMarks;
+  if (questionPapers.length) database.generalSettings.questionPapers = questionPapers;
+  if (certificates.length) database.generalSettings.certificates = certificates;
 
   try {
     const settingsRows = await pool.query(
@@ -2660,6 +2664,7 @@ app.delete("/api/admin/notifications", requireSuperAdmin, async function (req, r
 var ALLOWED_TABLES = {
   students: "students",
   classes: "classes",
+  teachers: "teachers",
   subjects: "subjects",
   attendance: "attendance",
   fees: "fees",
@@ -2681,7 +2686,9 @@ var ALLOWED_TABLES = {
   notices: "notices",
   events: "events",
   sms_templates: "sms_templates",
-  account_activity: "account_activity"
+  account_activity: "account_activity",
+  school_settings: "school_settings",
+  school_setting_items: "school_setting_items"
 };
 
 function sanitizeTableName(table) {
@@ -2699,6 +2706,16 @@ app.get("/api/data/:schoolId/:table", requireSchoolAuth, async function (req, re
     return res.status(400).json({ success: false, message: "Invalid table name." });
   }
   try {
+    if (tableName === "school_settings") {
+      var result = await pool.query("select setting_key, setting_value, updated_at from public.school_settings where school_id = $1 order by updated_at desc", [schoolId]);
+      var mapped = result.rows.map(function (r) { return { id: r.setting_key, source_id: r.setting_key, data: r.setting_value, school_id: schoolId, updated_at: r.updated_at }; });
+      return res.json({ success: true, data: mapped });
+    }
+    if (tableName === "school_setting_items") {
+      var result = await pool.query("select setting_key, item_id, item_data, updated_at from public.school_setting_items where school_id = $1 order by updated_at desc", [schoolId]);
+      var mapped = result.rows.map(function (r) { return { id: r.item_id, source_id: r.item_id, data: r.item_data, settingKey: r.setting_key, school_id: schoolId, updated_at: r.updated_at }; });
+      return res.json({ success: true, data: mapped });
+    }
     var result = await pool.query("select * from public." + tableName + " where school_id = $1 order by updated_at desc", [schoolId]);
     return res.json({ success: true, data: result.rows });
   } catch (error) {
@@ -2721,6 +2738,25 @@ app.post("/api/data/:schoolId/:table", requireSchoolAuth, async function (req, r
   }
   record.school_id = schoolId;
   try {
+    if (tableName === "school_settings") {
+      var settingKey = record.id || record.source_id || "";
+      var settingValue = record.data !== undefined ? record.data : record;
+      await pool.query(
+        "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, $2, $3::jsonb, now()) on conflict (school_id, setting_key) do update set setting_value = excluded.setting_value, updated_at = now()",
+        [schoolId, settingKey, JSON.stringify(settingValue)]
+      );
+      return res.json({ success: true, data: { school_id: schoolId, setting_key: settingKey, setting_value: settingValue } });
+    }
+    if (tableName === "school_setting_items") {
+      var sKey = record.settingKey || record.setting_key || "";
+      var itemId = record.id || record.source_id || ("item-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6));
+      var itemData = record.data !== undefined ? record.data : record;
+      await pool.query(
+        "insert into public.school_setting_items (school_id, setting_key, item_id, item_data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, setting_key, item_id) do update set item_data = excluded.item_data, updated_at = now()",
+        [schoolId, sKey, itemId, JSON.stringify(itemData)]
+      );
+      return res.json({ success: true, data: { school_id: schoolId, setting_key: sKey, item_id: itemId, item_data: itemData } });
+    }
     var insertResult = await pool.query(
       "insert into public." + tableName + " (id, school_id, source_id, data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, source_id) do update set data = excluded.data, updated_at = now() returning *",
       [record.id, schoolId, record.id, JSON.stringify(record)]
@@ -2748,6 +2784,37 @@ app.put("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (req
   record.id = recordId;
   record.school_id = schoolId;
   try {
+    if (tableName === "school_settings") {
+      var settingKey = recordId;
+      var settingValue = record.data !== undefined ? record.data : record;
+      var updResult = await pool.query(
+        "update public.school_settings set setting_value = $1::jsonb, updated_at = now() where school_id = $2 and setting_key = $3 returning *",
+        [JSON.stringify(settingValue), schoolId, settingKey]
+      );
+      if (!updResult.rowCount) {
+        await pool.query(
+          "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, $2, $3::jsonb, now())",
+          [schoolId, settingKey, JSON.stringify(settingValue)]
+        );
+      }
+      return res.json({ success: true, data: { school_id: schoolId, setting_key: settingKey, setting_value: settingValue } });
+    }
+    if (tableName === "school_setting_items") {
+      var sKey = record.settingKey || record.setting_key || "";
+      var itemId = recordId;
+      var itemData = record.data !== undefined ? record.data : record;
+      var updItem = await pool.query(
+        "update public.school_setting_items set item_data = $1::jsonb, updated_at = now() where school_id = $2 and setting_key = $3 and item_id = $4 returning *",
+        [JSON.stringify(itemData), schoolId, sKey, itemId]
+      );
+      if (!updItem.rowCount) {
+        await pool.query(
+          "insert into public.school_setting_items (school_id, setting_key, item_id, item_data, updated_at) values ($1, $2, $3, $4::jsonb, now())",
+          [schoolId, sKey, itemId, JSON.stringify(itemData)]
+        );
+      }
+      return res.json({ success: true, data: { school_id: schoolId, setting_key: sKey, item_id: itemId, item_data: itemData } });
+    }
     var updateResult = await pool.query(
       "update public." + tableName + " set data = $1::jsonb, updated_at = now() where school_id = $2 and source_id = $3 returning *",
       [JSON.stringify(record), schoolId, recordId]
@@ -2775,6 +2842,17 @@ app.delete("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (
     return res.status(400).json({ success: false, message: "Record id is required." });
   }
   try {
+    if (tableName === "school_settings") {
+      await pool.query("delete from public.school_settings where school_id = $1 and setting_key = $2", [schoolId, recordId]);
+      return res.json({ success: true, message: "Setting deleted." });
+    }
+    if (tableName === "school_setting_items") {
+      var parts = recordId.split("::");
+      var sKey = parts[0] || "";
+      var itemId = parts[1] || recordId;
+      await pool.query("delete from public.school_setting_items where school_id = $1 and setting_key = $2 and item_id = $3", [schoolId, sKey, itemId]);
+      return res.json({ success: true, message: "Setting item deleted." });
+    }
     await pool.query("delete from public." + tableName + " where school_id = $1 and source_id = $2", [schoolId, recordId]);
     return res.json({ success: true, message: "Record deleted." });
   } catch (error) {
