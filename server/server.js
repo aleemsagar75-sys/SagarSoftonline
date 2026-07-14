@@ -2221,7 +2221,12 @@ app.post("/api/mobile/login", async (req, res) => {
         }
         var db2 = await getSchoolDatabase(lic2.school_id);
         var notes2 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic2.school_id]);
-        var _loginPayload2 = { success: true, license: toLicensePayload(lic2, notes2.rows), user: { id: "USR-ADMIN-001", name: lic2.school_name || "School Admin", email: email, role: "admin" }, school_id: lic2.school_id, license_token: lic2.license_token || generateToken(), database: db2 || {} };
+        var _finalToken = lic2.license_token;
+        if (!_finalToken) {
+          _finalToken = generateToken();
+          await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [_finalToken, lic2.school_id]).catch(function() {});
+        }
+        var _loginPayload2 = { success: true, license: toLicensePayload(lic2, notes2.rows), user: { id: "USR-ADMIN-001", name: lic2.school_name || "School Admin", email: email, role: "admin" }, school_id: lic2.school_id, license_token: _finalToken, database: db2 || {} };
         console.log("========== LOGIN RESPONSE (PATH 1) ==========");
         console.log("License Token in Response:", _loginPayload2.license_token ? _loginPayload2.license_token.substring(0, 20) + "..." : "NULL");
         console.log("Activation Status:", _loginPayload2.license.activation_status);
@@ -2288,7 +2293,12 @@ app.post("/api/mobile/login", async (req, res) => {
           lic3.school_id, actId, loginRole + " login", (lic3.school_name || "School Admin") + " signed in successfully.", loginRole, email,
           JSON.stringify({ id: actId, title: loginRole + " login", role: loginRole, email: email, createdAt: new Date().toISOString() })
         ]).catch(function(e) { console.error("account_activity log error:", e.message); });
-        return res.json({ success: true, license: toLicensePayload(lic3, notes4.rows), user: { id: loginUserId, name: lic3.school_name || "School Admin", email: email, role: loginRole }, school_id: lic3.school_id, license_token: lic3.license_token || generateToken(), database: db3 || {} });
+        var _finalToken3 = lic3.license_token;
+        if (!_finalToken3) {
+          _finalToken3 = generateToken();
+          await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [_finalToken3, lic3.school_id]).catch(function() {});
+        }
+        return res.json({ success: true, license: toLicensePayload(lic3, notes4.rows), user: { id: loginUserId, name: lic3.school_name || "School Admin", email: email, role: loginRole }, school_id: lic3.school_id, license_token: _finalToken3, database: db3 || {} });
       }
     }
 
