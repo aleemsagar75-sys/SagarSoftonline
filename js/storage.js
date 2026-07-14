@@ -724,6 +724,54 @@
     } catch (_e) { return false; }
   }
 
+  async function saveRecord(table, record, operation) {
+    if (!config.apiBaseUrl || !config.schoolId) return false;
+    if (isDemoUser()) return true;
+    var schoolId = encodeURIComponent(config.schoolId);
+    var tbl = encodeURIComponent(table);
+    try {
+      if (operation === "delete") {
+        await apiFetch("/api/data/" + schoolId + "/" + tbl + "/" + encodeURIComponent(record.id), {
+          method: "DELETE",
+          timeoutMs: 30000
+        });
+      } else if (operation === "update") {
+        await apiFetch("/api/data/" + schoolId + "/" + tbl + "/" + encodeURIComponent(record.id), {
+          method: "PUT",
+          body: JSON.stringify({ record: record }),
+          timeoutMs: 30000
+        });
+      } else {
+        await apiFetch("/api/data/" + schoolId + "/" + tbl, {
+          method: "POST",
+          body: JSON.stringify({ record: record }),
+          timeoutMs: 30000
+        });
+      }
+      return true;
+    } catch (_e) { return false; }
+  }
+
+  async function saveRecordsBulk(table, records, operation) {
+    if (!records || !records.length) return true;
+    var results = [];
+    for (var i = 0; i < records.length; i++) {
+      results.push(await saveRecord(table, records[i], operation));
+    }
+    return results.every(function (r) { return r; });
+  }
+
+  async function loadRecords(table) {
+    if (!config.apiBaseUrl || !config.schoolId) return null;
+    try {
+      var resp = await apiFetch("/api/data/" + encodeURIComponent(config.schoolId) + "/" + encodeURIComponent(table), { timeoutMs: 60000 });
+      if (resp && resp.success && Array.isArray(resp.data)) {
+        return resp.data.map(function (row) { return row.data || row; });
+      }
+      return null;
+    } catch (_e) { return null; }
+  }
+
   async function saveProfileToServer(data) {
     if (!config.apiBaseUrl || !config.schoolId) return false;
     if (isDemoUser()) return true;
@@ -777,6 +825,9 @@
     forceSave: forceSave,
     saveSettingToServer: saveSettingToServer,
     saveSettingItemsToServer: saveSettingItemsToServer,
+    saveRecord: saveRecord,
+    saveRecordsBulk: saveRecordsBulk,
+    loadRecords: loadRecords,
     saveProfileToServer: saveProfileToServer,
     loadSchoolProfile: loadSchoolProfile,
     loadSettingItemsFromServer: loadSettingItemsFromServer,
