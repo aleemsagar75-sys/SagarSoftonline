@@ -2063,6 +2063,14 @@ app.post("/api/admin/license", requireSuperAdmin, async (req, res) => {
       return res.status(400).json({ success: false, message: "Email and password are required." });
     }
     const hashedPassword = await hashPassword(password);
+    var _existing = await pool.query("select license_token, expiry_date, plan, start_date, status from public.license_accounts where school_id = $1", [schoolId]);
+    var _ex = _existing.rowCount ? _existing.rows[0] : null;
+    var _newToken = (_ex && _ex.license_token) ? _ex.license_token : String(body.license_token || `LIC-${schoolId}`);
+    var _expiry = body.expiry_date || (_ex && _ex.expiry_date) || null;
+    var _plan = body.plan || (_ex && _ex.plan) || "monthly";
+    var _startDate = body.start_date || (_ex && _ex.start_date) || new Date().toISOString().slice(0, 10);
+    var _status = body.status || (_ex && _ex.status) || "active";
+    var _modulesLocked = body.modules_locked !== undefined ? Boolean(body.modules_locked) : false;
     await pool.query(`
       insert into public.license_accounts (
         school_id, school_name, email, password, status, plan, start_date, expiry_date,
@@ -2074,28 +2082,28 @@ app.post("/api/admin/license", requireSuperAdmin, async (req, res) => {
         school_name = excluded.school_name,
         email = excluded.email,
         password = excluded.password,
-        status = excluded.status,
-        plan = excluded.plan,
-        start_date = excluded.start_date,
-        expiry_date = excluded.expiry_date,
-        license_token = excluded.license_token,
+        status = $5,
+        plan = $6,
+        start_date = $7,
+        expiry_date = $8,
+        license_token = $9,
         internet_required_after_days = excluded.internet_required_after_days,
-        modules_locked = excluded.modules_locked,
+        modules_locked = $11,
         updated_at = now()
     `, [
       schoolId,
       schoolName,
       email,
       hashedPassword,
-      String(body.status || "active").trim().toLowerCase(),
-      String(body.plan || "monthly").trim(),
-      body.start_date || new Date().toISOString().slice(0, 10),
-      body.expiry_date || null,
-      String(body.license_token || `LIC-${schoolId}`),
+      _status,
+      _plan,
+      _startDate,
+      _expiry,
+      _newToken,
       Number(body.internet_required_after_days || 20),
-      Boolean(body.modules_locked)
+      _modulesLocked
     ]);
-    return res.json({ success: true, school_id: schoolId, license_token: String(body.license_token || `LIC-${schoolId}`) });
+    return res.json({ success: true, school_id: schoolId, license_token: _newToken });
   } catch (error) {
     console.error("POST /api/admin/license error:", error.message);
     return res.status(500).json({ success: false, message: error.message });
