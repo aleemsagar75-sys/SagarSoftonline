@@ -19618,7 +19618,7 @@ ${allContent}
             </div>
             <div class="field-group">
               <label for="subscriptionExpiryInput">Expiry Date</label>
-              <input id="subscriptionExpiryInput" type="date" value="${escapeAttr(license.expiryDate || "")}" readonly class="module-input--readonly">
+              <input id="subscriptionExpiryInput" type="date" value="${escapeAttr(license.expiryDate || "")}">
             </div>
           </div>
           <div class="form-actions">
@@ -19997,6 +19997,13 @@ ${allContent}
       function updateExpiryPreview() {
         if (planInput && expiryInput) {
           var plan = planInput.value;
+          if (plan === "custom") {
+            expiryInput.removeAttribute("readonly");
+            expiryInput.classList.remove("module-input--readonly");
+            return;
+          }
+          expiryInput.setAttribute("readonly", "readonly");
+          expiryInput.classList.add("module-input--readonly");
           var customDays = Number(customDaysInput ? customDaysInput.value || 0 : 0);
           var startDate = startInput ? startInput.value || todayISO : todayISO;
           var totalDays = getPlanDays(plan, customDays);
@@ -20034,9 +20041,9 @@ ${allContent}
           if (!emailEl || !emailEl.value.trim()) { if (msgEl) { msgEl.textContent = "Email required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
           if (!passEl || !passEl.value.trim()) { if (msgEl) { msgEl.textContent = "Password required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
           var origBtnText = activateAccountBtn.textContent;
-          activateAccountBtn.textContent = isNew ? "Activating school..." : "Saving...";
+          activateAccountBtn.innerHTML = '<span class="btn-spinner" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px;"></span>' + (isNew ? "Activating school..." : "Saving...");
           if (msgEl) { msgEl.textContent = "Processing, please wait..."; msgEl.className = "form-message info"; }
-          var body = { school_name: nameEl.value.trim(), email: emailEl.value.trim(), password: passEl.value.trim() };
+          var body = { school_name: nameEl.value.trim(), email: emailEl.value.trim(), password: passEl.value.trim(), status: "active" };
           if (!isNew && schoolIdInput && schoolIdInput.value.trim()) body.school_id = schoolIdInput.value.trim();
           if (planEl && planEl.value) body.plan = planEl.value;
           if (startEl && startEl.value) body.start_date = startEl.value;
@@ -20051,7 +20058,23 @@ ${allContent}
             var data = await resp.json().catch(function () { return {}; });
             console.log("[SagarSoft] School save response:", JSON.stringify(data));
             if (data.success) {
-              var successMsg = isNew ? "School activated successfully! ID: " + (data.school_id || "") : "School saved successfully!";
+              var savedSchoolId = data.school_id || editSchoolId || "";
+              if (savedSchoolId) {
+                try {
+                  var verifyResp = await fetch(apiBase + "/api/admin/schools", { method: "GET", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } });
+                  var verifyData = await verifyResp.json().catch(function () { return {}; });
+                  var verifiedSchool = (verifyData.schools || []).find(function (s) { return s.school_id === savedSchoolId; });
+                  if (verifiedSchool && verifiedSchool.expiry_date && expiryEl) {
+                    expiryEl.value = verifiedSchool.expiry_date;
+                  }
+                  if (verifiedSchool && verifiedSchool.status && planEl) {
+                    if (planEl.value !== verifiedSchool.plan) planEl.value = verifiedSchool.plan;
+                  }
+                } catch (_vErr) {
+                  console.warn("[SagarSoft] Read-back verification failed (non-critical):", _vErr);
+                }
+              }
+              var successMsg = isNew ? "School activated successfully! ID: " + (savedSchoolId) : "School saved successfully!";
               if (msgEl) { msgEl.textContent = successMsg; msgEl.className = "form-message success"; }
               openAppMessageBox("Success", successMsg, "success");
               activateAccountBtn.textContent = "Add School";
