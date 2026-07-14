@@ -1062,13 +1062,9 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       _saved = await window.SagarSoftDB.forceSave(database);
     } catch (_e) {}
-    await _syncSettingsToDedicatedTables();
+    _syncSettingsToDedicatedTables();
     if (_saved) {
-      try {
-        var _fresh = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
-        if (_fresh) { database = _fresh; }
-        else { refreshDatabase(); }
-      } catch (_e) { refreshDatabase(); }
+      refreshDatabase();
     } else {
       refreshDatabase();
     }
@@ -1077,7 +1073,7 @@ document.addEventListener("DOMContentLoaded", function () {
     return _saved;
   }
 
-  async function _syncSettingsToDedicatedTables() {
+  function _syncSettingsToDedicatedTables() {
     if (!database.generalSettings) return;
     var gs = database.generalSettings;
     var singletonKeys = ["instituteProfile","accountSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeParticulars","feeStructures"];
@@ -1095,7 +1091,7 @@ document.addEventListener("DOMContentLoaded", function () {
         promises.push(window.SagarSoftDB.saveSettingItemsToServer(key, val).catch(function(){}));
       }
     });
-    await Promise.all(promises);
+    Promise.all(promises).catch(function(){});
   }
 
   function ensureLicenseSettings() {
@@ -7781,7 +7777,7 @@ ${allContent}
         searchInput.value = "";
         depositInput.value = "";
         renderFeeDetails();
-        setTimeout(function () { renderDashboard(); }, 500);
+        renderDashboard();
       });
 
       printReceiptBtn.addEventListener("click", function () {
@@ -23267,6 +23263,7 @@ ${allContent}
   }
 
   function renderDashboard() {
+    if (activeRoute && activeRoute !== "dashboard" && activeRoute !== "home") return;
     refreshDatabase();
     applySavedThemeSettings();
     if (currentUser.role === "parent") {
