@@ -1055,17 +1055,31 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  async function saveDatabase(label) {
+  async function saveDatabase(label, changes) {
     if (label) window.SagarSoftDB.showLoading(label);
     else window.SagarSoftDB.showSyncBadge("syncing");
     var _saved = false;
-    try {
-      _saved = await window.SagarSoftDB.forceSave(database);
-    } catch (_e) {}
-    _syncSettingsToDedicatedTables();
-    if (_saved) {
-      refreshDatabase();
+    if (Array.isArray(changes) && changes.length > 0) {
+      var allOk = true;
+      for (var i = 0; i < changes.length; i++) {
+        var ch = changes[i];
+        var ok = await window.SagarSoftDB.saveRecord(ch.table, ch.record, ch.operation);
+        if (!ok) allOk = false;
+      }
+      _saved = allOk;
+      _syncSettingsToDedicatedTables();
+      if (_saved) {
+        try {
+          var _fresh = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
+          if (_fresh) { database = _fresh; }
+          else { refreshDatabase(); }
+        } catch (_e) { refreshDatabase(); }
+      }
     } else {
+      try {
+        _saved = await window.SagarSoftDB.forceSave(database);
+      } catch (_e) {}
+      _syncSettingsToDedicatedTables();
       refreshDatabase();
     }
     if (label) window.SagarSoftDB.hideLoading();
@@ -3597,6 +3611,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return classItem.id === classId;
     });
 
+    var _changes = [];
     if (existingIndex >= 0) {
       const oldClassName = database.classes[existingIndex].name;
       database.classes[existingIndex] = {
@@ -3615,24 +3630,25 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
+      _changes.push({ table: "classes", record: database.classes[existingIndex], operation: "update" });
       addActivity("Class updated", `${fullName} was updated.`);
       setClassMessage("Class updated successfully.", "success");
       setAllClassesMessage("Class updated successfully.", "success");
     } else {
-      database.classes.unshift({
+      var _newClass = {
         id: generateClassId(),
         name: fullName,
         monthlyTuitionFees: Number(monthlyTuitionFees),
         classTeacher: classTeacher
-      });
+      };
+      database.classes.unshift(_newClass);
+      _changes.push({ table: "classes", record: _newClass, operation: "create" });
       addActivity("Class created", `${fullName} was added with class teacher ${classTeacher}.`);
       setClassMessage("Class created successfully.", "success");
       setAllClassesMessage("Class created successfully.", "success");
     }
 
-    saveDatabase("Saving class...");
-    refreshDatabase();
-    renderDashboard();
+    saveDatabase("Saving class...", _changes);
     renderAllClassesTable();
     populateClassForm(null);
     setStudentRoute("all-classes");
@@ -4163,11 +4179,7 @@ document.addEventListener("DOMContentLoaded", function () {
       return !(user.role === "teacher" && (user.employeeId === employeeId || user.name === employee.name));
     });
     addActivity("Employee deleted", `${employee.name} record was removed.`);
-    window.SagarSoftDB.showLoading("Deleting employee...");
-    try {
-      await window.SagarSoftDB.forceSave(database);
-    } catch (_e) {}
-    window.SagarSoftDB.hideLoading();
+    await saveDatabase("Deleting employee...", [{ table: "teachers", record: employee, operation: "delete" }]);
   }
 
   function ensureEmployeeLogin(employee) {
@@ -7753,7 +7765,10 @@ ${allContent}
         });
         settings.__accountsLedgerUserTouched = true;
         addActivity("Fee collected", `${student.name} fee collected for ${feeMonth}.`);
-        saveDatabase("Saving fee collection...");
+        saveDatabase("Saving fee collection...", [
+          { table: "fees", record: feeRecord, operation: feeIndex >= 0 ? "update" : "create" },
+          { table: "fee_collections", record: collectionRecord, operation: collectionIndex >= 0 ? "update" : "create" }
+        ]);
         refreshDatabase();
 
         latestReceiptData = {
@@ -8576,6 +8591,24 @@ ${allContent}
         trackDeletion(collectionId);
         trackDeletion(feeId);
         
+        var _removedFeeCollection = (settings.feeCollections || []).find(function (collection) {
+          if (collection.id) {
+            return collection.id === collectionId;
+          }
+          return (
+            String(collection.feeId || "") === String(feeId || "") &&
+            String(collection.studentId || "") === studentId &&
+            String(collection.feeMonth || collection.month || "") === feeMonth
+          );
+        });
+        var _removedFee = (database.fees || []).find(function (feeItem) {
+          const sameId = feeId && String(feeItem.id || "") === String(feeId);
+          const sameStudentMonth =
+            String(feeItem.studentId || "") === studentId &&
+            String((feeItem.feeMonth || feeItem.month || "")) === feeMonth;
+          return sameId || sameStudentMonth;
+        });
+        
         settings.feeCollections = (settings.feeCollections || []).filter(function (collection) {
           if (collection.id) {
             return collection.id !== collectionId;
@@ -8603,7 +8636,10 @@ ${allContent}
         });
         
         addActivity("Fee deleted", "A submitted fee record was deleted.");
-        saveDatabase("Deleting fee...");
+        saveDatabase("Deleting fee...", [
+          { table: "fees", record: _removedFee, operation: "delete" },
+          { table: "fee_collections", record: _removedFeeCollection, operation: "delete" }
+        ]);
         refreshDatabase();
         renderDashboard();
         renderRows();
@@ -10413,7 +10449,7 @@ ${allContent}
         };
         saveExamRecord(examRecord);
         addActivity("Exam saved", `${examRecord.name} exam was saved.`);
-        saveDatabase("Saving exam...");
+        saveDatabase("Saving exam...", [{ table: "exams", record: examRecord, operation: editingExamId ? "update" : "create" }]);
         message.textContent = "Exam saved successfully.";
         message.className = "form-message success";
         resetForm();
@@ -11802,12 +11838,18 @@ ${allContent}
 
       document.getElementById("saveStudentsAttendanceBtn").addEventListener("click", function () {
         const rows = getRows();
+        var _attendanceChanges = [];
         rows.forEach(function (student) {
           const statusValue = rowStatusState[student.id] || "Absent";
+          var _existingIdx = (database.attendance || []).findIndex(function (item) {
+            return item.studentId === student.id && item.date === dateInput.value && (!item.entityType || item.entityType === "student");
+          });
           saveAttendanceRecord("student", student.id, dateInput.value, statusValue, { className: student.className });
+          var _attRecord = database.attendance.find(function (a) { return a.studentId === student.id && a.date === dateInput.value && (!a.entityType || a.entityType === "student"); });
+          if (_attRecord) _attendanceChanges.push({ table: "attendance", record: _attRecord, operation: _existingIdx >= 0 ? "update" : "create" });
         });
         addActivity("Students attendance updated", `Attendance updated for ${rows.length} students on ${dateInput.value}.`);
-        saveDatabase("Saving attendance...");
+        saveDatabase("Saving attendance...", _attendanceChanges);
         message.textContent = "Students attendance updated successfully.";
         message.className = "form-message success";
         renderTable();
@@ -12745,7 +12787,7 @@ ${allContent}
 
         saveEmployeeRecord(employeeRecord, editingEmployee ? editingEmployee.id : null);
         addActivity(editingEmployee ? "Employee updated" : "Employee added", `${employeeRecord.name} employee record saved.`);
-        await saveDatabase(editingEmployee ? "Updating employee..." : "Saving employee...");
+        await saveDatabase(editingEmployee ? "Updating employee..." : "Saving employee...", [{ table: "teachers", record: employeeRecord, operation: editingEmployee ? "update" : "create" }]);
         sessionStorage.removeItem("sagarsoft_edit_employee_id");
         renderDashboard();
         message.textContent = "Employee form submitted successfully.";
@@ -13372,7 +13414,7 @@ ${allContent}
         }
 
         addActivity("Employee login updated", `${employee.name} login credentials saved.`);
-        saveDatabase("Saving employee login...");
+        saveDatabase("Saving employee login...", [{ table: "app_users", record: loginUser, operation: existingUserIndex >= 0 ? "update" : "create" }]);
         renderEmployeeLoginTable();
       });
 
@@ -16611,7 +16653,7 @@ ${allContent}
                   row.chapterName = String(nextChapter || "").trim() || row.chapterName || "";
                   row.questionTitle = String(nextTitle || "").trim() || row.questionTitle || "";
                   row.marks = nextMarks;
-                  saveDatabase();
+        saveDatabase();
                   renderChapterSelect();
                   renderPreview();
                   openAppMessageBox("Success", "Question updated successfully.", "success");
@@ -17653,7 +17695,7 @@ ${allContent}
         var notice = { id: "notice-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, content: content, priority: priority, target: target, expiryDate: expiry, pushed: true, createdAt: new Date().toLocaleString() };
         notices.push(notice);
         addActivity("Notice published", "Notice: " + title);
-        saveDatabase();
+        saveDatabase("Publishing notice...", [{ table: "notices", record: notice, operation: "create" }]);
         openAppMessageBox("Success", "Notice published and pushed to dashboard.", "success");
         setRoute("notice-board");
       });
@@ -17663,7 +17705,7 @@ ${allContent}
         if (delBtn) {
           var nid = delBtn.getAttribute("data-delete-notice");
           var idx = notices.findIndex(function (x) { return x.id === nid; });
-          if (idx > -1) { trackDeletion(nid); notices.splice(idx, 1); saveDatabase("Deleting notice..."); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
+          if (idx > -1) { trackDeletion(nid); var _removedNotice = notices.splice(idx, 1)[0]; saveDatabase("Deleting notice...", [{ table: "notices", record: _removedNotice, operation: "delete" }]); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
           return;
         }
         var pushBtn = e.target.closest("[data-push-notice]");
@@ -17948,7 +17990,7 @@ ${allContent}
             e.stopPropagation();
             var eid = btn.getAttribute("data-delete-event");
             var idx = events.findIndex(function (x) { return x.id === eid; });
-            if (idx > -1) { trackDeletion(eid); events.splice(idx, 1); saveDatabase("Deleting event..."); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+            if (idx > -1) { trackDeletion(eid); var _removedEvent = events.splice(idx, 1)[0]; saveDatabase("Deleting event...", [{ table: "events", record: _removedEvent, operation: "delete" }]); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
           });
         });
 
@@ -18005,9 +18047,10 @@ ${allContent}
             var type = document.getElementById("eventType").value;
             var desc = (document.getElementById("eventDesc").value || "").trim();
             if (!title || !date) { openAppMessageBox("Error", "Title and date are required.", "error"); return; }
-            events.push({ id: "evt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, date: date, type: type, description: desc, createdAt: new Date().toLocaleString() });
+            var _newEvent = { id: "evt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, date: date, type: type, description: desc, createdAt: new Date().toLocaleString() };
+            events.push(_newEvent);
             addActivity("Event created", "Event: " + title + " on " + date);
-            saveDatabase();
+            saveDatabase("Creating event...", [{ table: "events", record: _newEvent, operation: "create" }]);
             openAppMessageBox("Success", "Event added successfully.", "success");
             selectedCalendarDate = date;
             renderCalendar();
@@ -18419,7 +18462,7 @@ ${allContent}
           homeworkRecord.smsSent = false;
           settings.homeworkAssignments.unshift(homeworkRecord);
         }
-        saveDatabase();
+        saveDatabase("Saving homework...", [{ table: "homework", record: homeworkRecord, operation: existingHomework ? "update" : "create" }]);
         renderHomeworkHistory();
         const summary = `Homework ${existingHomework ? "updated" : "saved"} successfully for ${targets.length} student${targets.length === 1 ? "" : "s"}.`;
         message.textContent = summary;
@@ -18448,8 +18491,9 @@ ${allContent}
           if (selectedHomeworkPreviewId === homeworkId) {
             selectedHomeworkPreviewId = "";
           }
+          var _removedHomework = settings.homeworkAssignments[index];
           settings.homeworkAssignments.splice(index, 1); trackDeletion(homeworkId);
-        saveDatabase("Saving homework...");
+        saveDatabase("Deleting homework...", [{ table: "homework", record: _removedHomework, operation: "delete" }]);
         renderHomeworkHistory();
           renderHomeworkSelectionPreview();
           message.textContent = "Homework deleted successfully.";
@@ -20118,11 +20162,14 @@ ${allContent}
 
         showStyledDeleteConfirmation(currentUser.name, function() {
           trackDeletion(currentUser.id);
+          var _removedUser = database.users.find(function (user) {
+            return user.id === currentUser.id;
+          });
           database.users = database.users.filter(function (user) {
             return user.id !== currentUser.id;
           });
           addActivity("Account deleted", `${currentUser.name} account deleted.`);
-          saveDatabase("Deleting account...");
+          saveDatabase("Deleting account...", [{ table: "app_users", record: _removedUser, operation: "delete" }]);
           window.SagarSoftAuth.logout();
           location.reload();
         });
@@ -21838,7 +21885,7 @@ ${allContent}
       addActivity("Student login created", `${student.name} login was created from manage login panel.`);
     }
 
-    saveDatabase("Saving student login...");
+    saveDatabase("Saving student login...", [{ table: "app_users", record: loginUser, operation: existingIndex >= 0 ? "update" : "create" }]);
     refreshDatabase();
     renderDashboard();
     setStudentRoute("students-manage-login");
@@ -21923,7 +21970,7 @@ ${allContent}
       addActivity("Parent login created", student.fatherName + " received a new parent login.");
       savedMsg = "Parent login created successfully.";
     }
-    saveDatabase();
+    saveDatabase("Saving parent login...", [{ table: "app_users", record: loginUser, operation: existingIndex >= 0 ? "update" : "create" }]);
     refreshDatabase();
     openAppMessageBox("Success", savedMsg, "success");
     renderDashboard();
@@ -21950,15 +21997,17 @@ ${allContent}
     }
 
     var promoted = 0;
+    var _promotedStudents = [];
     (database.students || []).forEach(function (student) {
       if (selectedIds.includes(student.id)) {
         student.className = targetClass;
+        _promotedStudents.push(student);
         promoted++;
       }
     });
 
     addActivity("Students promoted", `${promoted} student(s) promoted to ${targetClass}.`);
-    saveDatabase();
+    saveDatabase("Promoting students...", _promotedStudents.map(function (s) { return { table: "students", record: s, operation: "update" }; }));
     refreshDatabase();
     promoteStudentsMessage.textContent = `${promoted} student(s) promoted successfully.`;
     promoteStudentsMessage.className = "form-message success";
@@ -23317,7 +23366,7 @@ ${allContent}
       addActivity("Student login created", `${student.name} received a new student login.`);
     }
 
-    saveDatabase("Saving student login...");
+    saveDatabase("Saving student login...", [{ table: "app_users", record: loginUser, operation: existingUserIndex >= 0 ? "update" : "create" }]);
     refreshDatabase();
     renderDashboard();
     setStudentRoute("students-manage-login");
@@ -23354,7 +23403,7 @@ ${allContent}
       database.users.push(loginUser);
       addActivity("Parent login created", `${loginUser.name} received a new parent login.`);
     }
-    saveDatabase("Saving parent login...");
+    saveDatabase("Saving parent login...", [{ table: "app_users", record: loginUser, operation: existingUserIndex >= 0 ? "update" : "create" }]);
     refreshDatabase();
     renderDashboard();
     setStudentRoute("parents-manage-login");
@@ -23425,9 +23474,10 @@ ${allContent}
       return student.id === studentRecord.id;
     });
 
+    var _studentChanges = [{ table: "students", record: studentRecord, operation: existingIndex >= 0 ? "update" : "create" }];
+
     if (existingIndex >= 0) {
       database.students[existingIndex] = studentRecord;
-      // Update associated login record's active status
       const loginIndex = database.users.findIndex(function (user) {
         return user.role === "student" && user.id === `LOGIN-${studentRecord.id}`;
       });
@@ -23442,7 +23492,6 @@ ${allContent}
       setFormMessage("Student added successfully.", "success");
     }
 
-    // Auto-create parent login if fatherPhone or motherPhone is set
     if (studentRecord.fatherPhone || studentRecord.motherPhone) {
       var parentPhone = studentRecord.fatherPhone || studentRecord.motherPhone || "";
       var normalizedPhone = parentPhone.replace(/[\s-]/g, "").toLowerCase();
@@ -23450,7 +23499,7 @@ ${allContent}
         return u.role === "parent" && u.id === "PARENT-" + normalizedPhone;
       });
       if (existingParentIndex < 0) {
-        database.users.push({
+        var _newParent = {
           id: "PARENT-" + normalizedPhone,
           name: studentRecord.fatherName || studentRecord.motherName || studentRecord.name + "'s Parent",
           email: normalizedPhone + "@parent.local",
@@ -23458,12 +23507,13 @@ ${allContent}
           role: "parent",
           phone: parentPhone,
           active: true
-        });
+        };
+        database.users.push(_newParent);
+        _studentChanges.push({ table: "app_users", record: _newParent, operation: "create" });
       }
     }
 
-    saveDatabase(existingIndex >= 0 ? "Updating student..." : "Saving student...");
-    renderDashboard();
+    saveDatabase(existingIndex >= 0 ? "Updating student..." : "Saving student...", _studentChanges);
     populateStudentForm(null);
     setStudentRoute("all-students");
   }
@@ -23521,7 +23571,7 @@ ${allContent}
     if (action === "toggle-student-status") {
       student.status = student.status === "active" ? "inactive" : "active";
       addActivity("Student status changed", `${student.name} is now ${student.status}.`);
-      saveDatabase();
+      saveDatabase("Toggling student status...", [{ table: "students", record: student, operation: "update" }]);
       renderDashboard();
       setStudentRoute("students-active-inactive");
       return;
@@ -23532,6 +23582,9 @@ ${allContent}
       if (student) {
         showStyledDeleteConfirmation(student.name, function() {
           trackDeletion(student.id);
+          var _removedUser = database.users.find(function (user) {
+            return user.id === `LOGIN-${student.id}`;
+          });
           database.students = database.students.filter(function (item) {
             return item.id !== student.id;
           });
@@ -23539,7 +23592,10 @@ ${allContent}
             return user.id !== `LOGIN-${student.id}`;
           });
           addActivity("Student deleted", `${student.name} record was removed.`);
-          saveDatabase("Deleting student...");
+          saveDatabase("Deleting student...", [
+            { table: "students", record: student, operation: "delete" },
+            { table: "app_users", record: _removedUser, operation: "delete" }
+          ]);
           renderDashboard();
           setStudentRoute("all-students");
         });
@@ -23647,6 +23703,9 @@ ${allContent}
       showStyledDeleteConfirmation(classItem.name, function() {
         trackDeletion(classId);
         const deletedClassName = String(classItem.name || "").trim();
+        var _removedSubjects = (database.subjects || []).filter(function (subject) {
+          return String(subject.className || "").trim() === deletedClassName;
+        });
         database.classes = database.classes.filter(function (item) {
           return item.id !== classId;
         });
@@ -23661,7 +23720,9 @@ ${allContent}
           populateAssignSubjectsForm("");
         }
         addActivity("Class deleted", `${classItem.name} was deleted.`);
-        saveDatabase();
+        var _classChanges = [{ table: "classes", record: classItem, operation: "delete" }];
+        _removedSubjects.forEach(function (sub) { _classChanges.push({ table: "subjects", record: sub, operation: "delete" }); });
+        saveDatabase("Deleting class...", _classChanges);
         refreshDatabase();
         renderDashboard();
         setStudentRoute("all-classes");
