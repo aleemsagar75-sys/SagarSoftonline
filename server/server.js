@@ -1559,7 +1559,9 @@ async function getSchoolDatabase(schoolId) {
       if (row.setting_key && row.setting_value !== null && row.setting_value !== undefined) {
         var existing = database.generalSettings[row.setting_key];
         var isEmpty = !existing || (typeof existing === "object" && !Array.isArray(existing) && Object.keys(existing).length === 0) || (Array.isArray(existing) && existing.length === 0);
-        if (isEmpty) {
+        if (row.setting_key === "instituteProfile" && typeof row.setting_value === "object" && !Array.isArray(row.setting_value) && typeof existing === "object" && !Array.isArray(existing)) {
+          database.generalSettings[row.setting_key] = Object.assign({}, existing, row.setting_value);
+        } else if (isEmpty) {
           database.generalSettings[row.setting_key] = row.setting_value;
         }
       }
