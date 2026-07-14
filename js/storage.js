@@ -636,7 +636,7 @@
 
         var toSave = cachedDatabase;
         if (serverDb) {
-          var merged = JSON.parse(JSON.stringify(serverDb));
+          var merged = serverDb;
           var arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
           arrKeys.forEach(function (key) {
             if (cachedDatabase[key] || merged[key]) {
