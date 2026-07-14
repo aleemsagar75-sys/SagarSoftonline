@@ -745,6 +745,14 @@
     } catch (_e) { return null; }
   }
 
+  async function loadSettingItemsFromServer(key) {
+    if (!config.apiBaseUrl || !config.schoolId) return null;
+    try {
+      var resp = await apiFetch("/api/school-settings/" + encodeURIComponent(config.schoolId) + "/" + encodeURIComponent(key), { timeoutMs: 30000 });
+      return resp || null;
+    } catch (_e) { return null; }
+  }
+
   window.SagarSoftDB = {
     getDatabase: getDatabase,
     saveDatabase: saveDatabase,
@@ -771,6 +779,7 @@
     saveSettingItemsToServer: saveSettingItemsToServer,
     saveProfileToServer: saveProfileToServer,
     loadSchoolProfile: loadSchoolProfile,
+    loadSettingItemsFromServer: loadSettingItemsFromServer,
     isCancelled: function () { return _isCancelled; },
     resetCancel: function () { _isCancelled = false; }
   };
