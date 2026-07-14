@@ -1655,6 +1655,16 @@ async function getSchoolDatabase(schoolId) {
     }
   } catch (_e) {}
 
+  var _ls = database.generalSettings.licenseSettings || {};
+  if (!_ls.activated && _ls.expiryDate) {
+    var _exp = new Date(_ls.expiryDate);
+    var _now = new Date();
+    if (!isNaN(_exp.getTime()) && _exp > _now) {
+      _ls.activated = true;
+      if (!_ls.status || _ls.status === "inactive") _ls.status = "active";
+    }
+  }
+
   return database;
 }
 
