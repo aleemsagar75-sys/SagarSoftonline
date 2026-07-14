@@ -1530,17 +1530,72 @@ async function getSchoolDatabase(schoolId) {
     readDataRows("account_activity")
   ]);
 
+  // Migration: if dedicated table is empty but JSONB blob has data, migrate to dedicated table
+  var migrateEntities = [
+    { key: "students", table: "students" },
+    { key: "classes", table: "classes" },
+    { key: "teachers", table: "teachers" },
+    { key: "employees", table: "employees" },
+    { key: "subjects", table: "subjects" },
+    { key: "attendance", table: "attendance" },
+    { key: "fees", table: "fees" },
+    { key: "notices", table: "notices" },
+    { key: "events", table: "events" },
+    { key: "activityLogs", table: "activity_logs" },
+    { key: "smsTemplates", table: "sms_templates" },
+    { key: "accountActivity", table: "account_activity" }
+  ];
+  var dedicatedResults = { students: students, classes: classes, subjects: subjects, attendance: attendance, fees: fees, notices: notices, events: events, activityLogs: activityLogs, smsTemplates: smsTemplates, accountActivity: accountActivity };
+  for (var mi = 0; mi < migrateEntities.length; mi++) {
+    var ent = migrateEntities[mi];
+    var blobArr = database[ent.key] || [];
+    var dedArr = dedicatedResults[ent.key] || [];
+    if (!dedArr.length && blobArr.length) {
+      for (var bi = 0; bi < blobArr.length; bi++) {
+        var bItem = blobArr[bi];
+        if (bItem && bItem.id) {
+          try {
+            await pool.query(
+              "insert into public." + ent.table + " (id, school_id, source_id, data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, source_id) do nothing",
+              [bItem.id, schoolId, bItem.id, JSON.stringify(bItem)]
+            );
+          } catch (_e) {}
+        }
+      }
+      var migrated = await readDataRows(ent.table);
+      if (migrated.length) dedicatedResults[ent.key] = migrated;
+    }
+  }
+  students = dedicatedResults.students;
+  classes = dedicatedResults.classes;
+  subjects = dedicatedResults.subjects;
+  attendance = dedicatedResults.attendance;
+  fees = dedicatedResults.fees;
+  notices = dedicatedResults.notices;
+  events = dedicatedResults.events;
+  activityLogs = dedicatedResults.activityLogs;
+  smsTemplates = dedicatedResults.smsTemplates;
+  accountActivity = dedicatedResults.accountActivity;
+
+  // Migration: also migrate users from JSONB blob to app_users table
+  var usersDed = dedicatedResults.users || users;
+  if (!usersDed.length && database.users && database.users.length) {
+    for (var ui = 0; ui < database.users.length; ui++) {
+      var uItem = database.users[ui];
+      if (uItem && uItem.id) {
+        try {
+          await pool.query(
+            "insert into public.app_users (id, school_id, source_id, data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, source_id) do nothing",
+            [uItem.id, schoolId, uItem.id, JSON.stringify(uItem)]
+          );
+        } catch (_e) {}
+      }
+    }
+    var migratedUsers = await readDataRows("app_users");
+    if (migratedUsers.length) users = migratedUsers;
+  }
+
   if (students.length) database.students = students;
-  if (classes.length) database.classes = classes;
-  if (users.length) database.users = users;
-  if (subjects.length) database.subjects = subjects;
-  if (attendance.length) database.attendance = attendance;
-  if (fees.length) database.fees = fees;
-  if (notices.length) database.notices = notices;
-  if (events.length) database.events = events;
-  if (activityLogs.length) database.activityLogs = activityLogs;
-  if (accountActivity.length) database.accountActivity = accountActivity;
-  if (smsTemplates.length) database.smsTemplates = smsTemplates;
   if (feeInvoices.length) database.generalSettings.feeInvoices = feeInvoices;
   if (feeCollections.length) database.generalSettings.feeCollections = feeCollections;
   if (salaryPayments.length) database.generalSettings.salaryPayments = salaryPayments;
@@ -2843,19 +2898,23 @@ app.delete("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (
   }
   try {
     if (tableName === "school_settings") {
-      await pool.query("delete from public.school_settings where school_id = $1 and setting_key = $2", [schoolId, recordId]);
+      var delResult = await pool.query("delete from public.school_settings where school_id = $1 and setting_key = $2", [schoolId, recordId]);
+      console.log("[DELETE] table=school_settings school_id=" + schoolId + " key=" + recordId + " Rows Affected: " + delResult.rowCount);
       return res.json({ success: true, message: "Setting deleted." });
     }
     if (tableName === "school_setting_items") {
       var parts = recordId.split("::");
       var sKey = parts[0] || "";
       var itemId = parts[1] || recordId;
-      await pool.query("delete from public.school_setting_items where school_id = $1 and setting_key = $2 and item_id = $3", [schoolId, sKey, itemId]);
+      var delResult = await pool.query("delete from public.school_setting_items where school_id = $1 and setting_key = $2 and item_id = $3", [schoolId, sKey, itemId]);
+      console.log("[DELETE] table=school_setting_items school_id=" + schoolId + " key=" + sKey + " item=" + itemId + " Rows Affected: " + delResult.rowCount);
       return res.json({ success: true, message: "Setting item deleted." });
     }
-    await pool.query("delete from public." + tableName + " where school_id = $1 and source_id = $2", [schoolId, recordId]);
-    return res.json({ success: true, message: "Record deleted." });
+    var delResult = await pool.query("delete from public." + tableName + " where school_id = $1 and source_id = $2", [schoolId, recordId]);
+    console.log("[DELETE] table=" + tableName + " school_id=" + schoolId + " source_id=" + recordId + " Rows Affected: " + delResult.rowCount);
+    return res.json({ success: true, message: "Record deleted.", rowsAffected: delResult.rowCount });
   } catch (error) {
+    console.error("[DELETE] FAILED table=" + tableName + " school_id=" + schoolId + " source_id=" + recordId + " error=" + error.message);
     return res.status(500).json({ success: false, message: error.message });
   }
 });
