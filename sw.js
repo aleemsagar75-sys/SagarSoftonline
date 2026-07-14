@@ -1,16 +1,16 @@
-var CACHE = "sagarsoft-v59";
+var CACHE = "sagarsoft-v60";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
   "./dashboard.html",
-  "./css/base.css?v=20260713",
-  "./css/dashboard.css?v=20260713",
-  "./js/online-config.js?v=20260713",
-  "./js/crypto-utils.js?v=20260713",
-  "./js/storage.js?v=20260713",
-  "./js/auth.js?v=20260713",
-  "./js/login.js?v=20260713",
-  "./js/dashboard.js?v=20260713",
+  "./css/base.css?v=20260715",
+  "./css/dashboard.css?v=20260715",
+  "./js/online-config.js?v=20260715",
+  "./js/crypto-utils.js?v=20260715",
+  "./js/storage.js?v=20260715",
+  "./js/auth.js?v=20260715",
+  "./js/login.js?v=20260715",
+  "./js/dashboard.js?v=20260715",
   "./assets/SagarSoft.logo.png",
   "./manifest.json"
 ];
@@ -72,7 +72,7 @@ self.addEventListener("fetch", function (event) {
   }
 
   event.respondWith(
-    fetch(event.request).then(function (response) {
+    fetch(event.request, { cache: "no-store" }).then(function (response) {
       if (response && response.status === 200) {
         var clone = response.clone();
         caches.open(CACHE).then(function (cache) { cache.put(event.request, clone); });
