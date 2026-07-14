@@ -1521,7 +1521,7 @@ document.addEventListener("DOMContentLoaded", function () {
       // License check succeeded; keep the app usable even if optional sync fails.
     }
 
-    saveDatabase();
+    saveDatabase("", [{ table: "school_settings", record: { id: "licenseInfo", source_id: "licenseInfo", data: database.settings.licenseInfo, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
     applyRouteAccessVisibility();
     renderNotificationList();
     return { success: true, message: "Online license verified successfully.", payload: payload };
@@ -2025,7 +2025,9 @@ document.addEventListener("DOMContentLoaded", function () {
           database.settings.backupHistory = database.settings.backupHistory || [];
           database.settings.backupHistory.push({ createdAt: new Date().toISOString(), sizeBytes: data.size_bytes || 0 });
           if (database.settings.backupHistory.length > 50) database.settings.backupHistory = database.settings.backupHistory.slice(-50);
-          saveDatabase();
+          saveDatabase("Saving backup history...", [
+            { table: "school_settings", record: { id: "backupHistory", source_id: "backupHistory", data: database.settings.backupHistory, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+          ]);
           return true;
         }
         if (attempts >= maxAttempts) return false;
@@ -3823,7 +3825,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
 
     addActivity("Subjects assigned", `${rows.length} subjects assigned to ${selectedClass}.`);
-    saveDatabase();
+    saveDatabase("", database.subjects.filter(function(s) { return s.className === selectedClass; }).map(function(s) { return { table: "subjects", record: s, operation: "create" }; }));
     refreshDatabase();
     renderDashboard();
     setAssignSubjectsMessage("Subjects assigned successfully.", "success");
@@ -4628,7 +4630,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const currentMonth = getCurrentMonthYearISO();
     const settings = (database && database.generalSettings) ? database.generalSettings : {};
     if (purgeUntouchedLegacyFinanceData(settings)) {
-      saveDatabase();
+      saveDatabase("", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
     }
     const feeCollections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
     const salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
@@ -4791,7 +4793,9 @@ document.addEventListener("DOMContentLoaded", function () {
         const input = document.getElementById("rulesRegulationsInput");
         const message = document.getElementById("rulesRegulationsMessage");
         database.school.rulesRegulations = input.value.trim();
-        var _saved = await saveDatabase("Saving rules & regulations...");
+        var _saved = await saveDatabase("Saving rules & regulations...", [
+          { table: "school_settings", record: { id: "rulesAndRegulations", source_id: "rulesAndRegulations", data: { rules: database.school.rulesRegulations }, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
         if (_saved) {
           message.textContent = "Rules and regulations saved successfully.";
           message.className = "form-message success";
@@ -5669,7 +5673,10 @@ document.addEventListener("DOMContentLoaded", function () {
         database.school.address = newProfile.address;
         var license = ensureLicenseSettings();
         license.schoolName = newProfile.name || database.school.name || license.schoolName;
-        var _saved = await saveDatabase("Saving institute profile...");
+        var _saved = await saveDatabase("Saving institute profile...", [
+          { table: "school_settings", record: { id: "instituteProfile", source_id: "instituteProfile", data: settings.instituteProfile, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
+          { table: "school_settings", record: { id: "accountSettings", source_id: "accountSettings", data: settings.accountSettings, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
         await window.SagarSoftDB.saveProfileToServer({ school_name: newProfile.name, instituteProfile: newProfile }).catch(function(){});
         var _pn = document.getElementById("profileName");
         if (_pn) _pn.textContent = newProfile.name || "Admin";
@@ -5774,7 +5781,9 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         });
         addActivity("Fee particulars updated", `${cls} fee particulars updated.`);
-        var _saved = await saveDatabase("Saving fee particulars...");
+        var _saved = await saveDatabase("Saving fee particulars...", [
+          { table: "school_settings", record: { id: "feeParticulars", source_id: "feeParticulars", data: settings.feeParticulars, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
         if (_saved) {
           message.textContent = "Fee particulars updated successfully.";
           message.className = "form-message success";
@@ -5895,7 +5904,10 @@ document.addEventListener("DOMContentLoaded", function () {
             if (!confirm("Delete fee structure for " + cls + "?")) return;
             delete settings.feeStructures[cls];
             if (settings.feeParticulars) delete settings.feeParticulars[cls];
-            await saveDatabase("Deleting fee structure...");
+            await saveDatabase("Deleting fee structure...", [
+              { table: "school_settings", record: { id: "feeStructures", source_id: "feeStructures", data: settings.feeStructures, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
+              { table: "school_settings", record: { id: "feeParticulars", source_id: "feeParticulars", data: settings.feeParticulars, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+            ]);
             renderStructureRows();
           });
         });
@@ -5936,7 +5948,10 @@ document.addEventListener("DOMContentLoaded", function () {
           return !_mapped.some(function (m) { return m.label.toUpperCase() === ef.label.toUpperCase(); });
         }));
         addActivity("Fee structure updated", `${cls} fee structure updated.`);
-        var _saved = await saveDatabase("Saving fee structure...");
+        var _saved = await saveDatabase("Saving fee structure...", [
+          { table: "school_settings", record: { id: "feeStructures", source_id: "feeStructures", data: settings.feeStructures, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
+          { table: "school_settings", record: { id: "feeParticulars", source_id: "feeParticulars", data: settings.feeParticulars, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
         if (_saved) {
           message.textContent = "Fee structure saved successfully.";
           message.className = "form-message success";
@@ -6074,7 +6089,10 @@ document.addEventListener("DOMContentLoaded", function () {
               });
             }
             settings.discountPolicies.splice(idx, 1);
-            await saveDatabase("Deleting discount...");
+            await saveDatabase("Deleting discount...", [
+              { table: "school_settings", record: { id: "discountPolicies", source_id: "discountPolicies", data: settings.discountPolicies, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
+              ...database.students.filter(function (s) { return policy.studentIds && policy.studentIds.includes(s.id); }).map(function (s) { return { table: "students", record: s, operation: "update" }; })
+            ]);
             renderDiscountPreview();
           });
         });
@@ -6113,7 +6131,10 @@ document.addEventListener("DOMContentLoaded", function () {
           createdAt: new Date().toISOString()
         });
         addActivity("Discount applied", `${type} discount applied to ${selectedIds.length} students.`);
-        var _saved = await saveDatabase("Saving discount...");
+        var _saved = await saveDatabase("Saving discount...", [
+          { table: "school_settings", record: { id: "discountPolicies", source_id: "discountPolicies", data: settings.discountPolicies, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
+          ...database.students.filter(function (s) { return selectedIds.includes(s.id); }).map(function (s) { return { table: "students", record: s, operation: "update" }; })
+        ]);
         if (_saved) {
           message.textContent = "Discount applied successfully.";
           message.className = "form-message success";
@@ -6225,7 +6246,9 @@ document.addEventListener("DOMContentLoaded", function () {
           return bank.id !== bankRecord.id;
         }));
         addActivity("Bank account updated", `${bankRecord.name} bank details saved.`);
-        var _saved = await saveDatabase("Saving bank account...");
+        var _saved = await saveDatabase("Saving bank account...", [
+          { table: "school_settings", record: { id: "bankAccounts", source_id: "bankAccounts", data: settings.bankAccounts, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
         if (_saved) {
           message.textContent = "Bank account saved successfully.";
           message.className = "form-message success";
@@ -6272,7 +6295,9 @@ document.addEventListener("DOMContentLoaded", function () {
             var idx = parseInt(btn.getAttribute("data-idx"));
             if (!confirm("Delete this bank account?")) return;
             settings.bankAccounts.splice(idx, 1);
-            await saveDatabase("Deleting bank account...");
+            await saveDatabase("Deleting bank account...", [
+              { table: "school_settings", record: { id: "bankAccounts", source_id: "bankAccounts", data: settings.bankAccounts, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+            ]);
             renderBankList();
           });
         });
@@ -6362,7 +6387,9 @@ document.addEventListener("DOMContentLoaded", function () {
           database.school.rulesRegulations = editor.textContent.trim();
         }
         addActivity("Rules updated", `${target} rules and regulations updated.`);
-        var _saved = await saveDatabase("Saving rules & regulations...");
+        var _saved = await saveDatabase("Saving rules & regulations...", [
+          { table: "school_settings", record: { id: "rulesAndRegulations", source_id: "rulesAndRegulations", data: settings.rulesAndRegulations, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
         if (_saved) {
           message.textContent = "Rules and regulations applied successfully.";
           message.className = "form-message success";
@@ -6492,7 +6519,9 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         }).filter(function (row) { return row.grade; });
         addActivity("Marks grading updated", "Marks grading settings updated.");
-        var _saved = await saveDatabase("Saving marks grading...");
+        var _saved = await saveDatabase("Saving marks grading...", [
+          { table: "school_settings", record: { id: "marksGrading", source_id: "marksGrading", data: settings.marksGrading, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
         if (_saved) {
           gradingMessage.textContent = "Marks grading saved successfully.";
           gradingMessage.className = "form-message success";
@@ -6509,7 +6538,9 @@ document.addEventListener("DOMContentLoaded", function () {
           subjectCount: Number(document.getElementById("failSubjectsCountInput").value || 1)
         };
         addActivity("Fail criteria updated", "Fail criteria updated from general settings.");
-        var _saved = await saveDatabase("Saving fail criteria...");
+        var _saved = await saveDatabase("Saving fail criteria...", [
+          { table: "school_settings", record: { id: "failCriteria", source_id: "failCriteria", data: settings.failCriteria, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
         const failMessage = document.getElementById("failMessage");
         if (_saved) {
           failMessage.textContent = "Fail criteria updated successfully.";
@@ -6568,7 +6599,9 @@ document.addEventListener("DOMContentLoaded", function () {
         };
         applyTheme(settings.themeLanguage);
         addActivity("Theme settings updated", "Theme and language settings updated.");
-        var _saved = await saveDatabase("Saving theme settings...");
+        var _saved = await saveDatabase("Saving theme settings...", [
+          { table: "school_settings", record: { id: "themeLanguage", source_id: "themeLanguage", data: settings.themeLanguage, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
         await window.SagarSoftDB.saveSettingToServer("themeLanguage", settings.themeLanguage).catch(function(){});
         if (_saved) {
           setThemeMessage("Theme settings updated successfully.", "success");
@@ -7004,7 +7037,9 @@ document.addEventListener("DOMContentLoaded", function () {
           var _pgBlock = moduleGuide.closest(".panel-card");
           if (_pgBlock) _pgBlock.style.display = "block";
           setTimeout(function () {
-            saveDatabase();
+            var _fIdx = database.fees.findIndex(function(f) { return f.studentId === student.id && (f.feeMonth || f.month) === invoiceData.feeMonth; });
+            var _fRec = _fIdx >= 0 ? database.fees[_fIdx] : createFeeRecordFromInvoice(student, invoiceData, "");
+            saveDatabase(null, [{ table: "fees", record: _fRec, operation: _fIdx >= 0 ? "update" : "create" }]);
           }, 0);
         } catch (error) {
           message.textContent = "Unable to generate invoice. Please try again.";
@@ -7121,7 +7156,11 @@ document.addEventListener("DOMContentLoaded", function () {
           printInvoiceBtn.style.display = "";
           printThermalBtn.style.display = "";
           setTimeout(function () {
-            saveDatabase();
+            var _classChanges = invoicesData.map(function(item) {
+              var _fi = database.fees.findIndex(function(f) { return f.studentId === item.student.id && (f.feeMonth || f.month) === item.invoiceData.feeMonth; });
+              return { table: "fees", record: _fi >= 0 ? database.fees[_fi] : createFeeRecordFromInvoice(item.student, item.invoiceData, ""), operation: _fi >= 0 ? "update" : "create" };
+            });
+            saveDatabase(null, _classChanges);
           }, 0);
         } catch (error) {
           message.textContent = "Unable to generate classwise invoices. Please try again.";
@@ -8111,7 +8150,7 @@ ${allContent}
           paymentDate: new Date().toISOString().slice(0, 10)
         });
         addActivity("Defaulter submitted", `${student.name} fee submitted for ${feeMonth}.`);
-        saveDatabase();
+        saveDatabase(null, [{ table: "fees", record: database.fees[0], operation: "create" }]);
         renderDefaulters();
       });
 
@@ -8179,7 +8218,7 @@ ${allContent}
           if (settings.smsGateway) {
             settings.smsGateway.lastHeartbeat = new Date().toLocaleString();
           }
-          saveDatabase();
+          saveDatabase(null, [{ table: "school_settings", record: { id: "smsGateway", source_id: "smsGateway", data: settings.smsGateway, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         }
         addActivity("Fee reminder sent", `${channels.join(" & ")} reminder processed for ${defaulters.length} defaulters (${getSelectedMonthYear()}).`);
         alert(`SMS reminders processed. Success: ${smsSuccess}, Failed: ${smsFail}${missingPhone ? `, Missing Phone: ${missingPhone}` : ""}.`);
@@ -8202,11 +8241,14 @@ ${allContent}
         return String(student.id || "").trim();
       }).filter(Boolean));
       const feesBeforeCleanup = (database.fees || []).length;
+      const _orphanFees = (database.fees || []).filter(function (feeItem) {
+        return !studentIdSet.has(String(feeItem.studentId || "").trim());
+      });
       database.fees = (database.fees || []).filter(function (feeItem) {
         return studentIdSet.has(String(feeItem.studentId || "").trim());
       });
       if ((database.fees || []).length !== feesBeforeCleanup) {
-        saveDatabase("Cleaning up fee records...");
+        saveDatabase("Cleaning up fee records...", _orphanFees.map(function(r) { return { table: "fees", record: r, operation: "delete" }; }));
         refreshDatabase();
       }
 
@@ -8379,11 +8421,12 @@ ${allContent}
           "error"
         );
         if (confirmed) {
+          const _clearedFees = database.fees || [];
           database.fees = [];
           if (settings.feeCollections) {
             settings.feeCollections = [];
           }
-          saveDatabase();
+          saveDatabase(null, _clearedFees.map(function(r) { return { table: "fees", record: r, operation: "delete" }; }).concat([{ table: "school_settings", record: { id: "feeCollections", source_id: "feeCollections", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]));
           addActivity("Database Cleanup", "All fee records were manually cleared.");
           refreshDatabase();
           openAppMessageBox("Success", "All fee records have been cleared.", "success");
@@ -9003,7 +9046,7 @@ ${allContent}
         settings.salaryPayments.unshift(paymentRecord);
         settings.__salaryPaymentsUserTouched = true;
         addActivity("Salary paid", `${paymentRecord.employeeName} salary paid for ${paymentRecord.salaryMonth}.`);
-        saveDatabase();
+        saveDatabase(null, [{ table: "school_settings", record: { id: "salaryPayments", source_id: "salaryPayments", data: settings.salaryPayments, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         latestSalarySlipRecord = paymentRecord;
         renderPaidSlipPreview(paymentRecord);
         printBtn.disabled = false;
@@ -9417,7 +9460,7 @@ ${allContent}
               createdAt: new Date().toISOString()
             });
           }
-          saveDatabase("Deleting salary record...");
+          saveDatabase("Deleting salary record...", [{ table: "school_settings", record: { id: "salaryPayments", source_id: "salaryPayments", data: settings.salaryPayments, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }, { table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           renderReport();
         });
       });
@@ -9605,7 +9648,7 @@ ${allContent}
         } else {
           settings.timetableWeekdays.push(record);
         }
-        saveDatabase("Saving weekday...");
+        saveDatabase("Saving weekday...", [{ table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         addActivity("Weekday saved", `${record.name} updated in timetable settings.`);
         editingId = "";
         nameInput.value = "";
@@ -9641,7 +9684,7 @@ ${allContent}
           return;
         }
         settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; }); trackDeletion(weekdayId);
-        saveDatabase("Deleting weekday...");
+        saveDatabase("Deleting weekday...", [{ table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderRows();
       });
 
@@ -9736,7 +9779,7 @@ ${allContent}
         } else {
           settings.timetablePeriods.push(record);
         }
-        saveDatabase("Saving time period...");
+        saveDatabase("Saving time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         addActivity("Time period saved", `${record.label} saved in timetable periods.`);
         editingId = "";
         labelInput.value = "";
@@ -9776,7 +9819,7 @@ ${allContent}
           return;
         }
         settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; }); trackDeletion(periodId);
-        saveDatabase("Deleting time period...");
+        saveDatabase("Deleting time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderRows();
       });
 
@@ -9875,7 +9918,7 @@ ${allContent}
         } else {
           settings.classRooms.push(record);
         }
-        saveDatabase("Saving class room...");
+        saveDatabase("Saving class room...", [{ table: "school_settings", record: { id: "classRooms", source_id: "classRooms", data: settings.classRooms, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         addActivity("Class room saved", `${record.name} added/updated in class rooms.`);
         editingId = "";
         nameInput.value = "";
@@ -9912,7 +9955,7 @@ ${allContent}
           return;
         }
         settings.classRooms = (settings.classRooms || []).filter(function (item) { return item.id !== roomId; }); trackDeletion(roomId);
-        saveDatabase("Deleting classroom...");
+        saveDatabase("Deleting classroom...", [{ table: "school_settings", record: { id: "classRooms", source_id: "classRooms", data: settings.classRooms, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderRows();
       });
 
@@ -10042,7 +10085,7 @@ ${allContent}
             updatedAt: new Date().toISOString()
           });
         });
-        saveDatabase("Saving timetable...");
+        saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         addActivity("Timetable updated", `Timetable updated for ${selectedClass}.`);
         message.textContent = "Timetable saved successfully.";
         message.className = "form-message success";
@@ -10449,7 +10492,7 @@ ${allContent}
         };
         saveExamRecord(examRecord);
         addActivity("Exam saved", `${examRecord.name} exam was saved.`);
-        saveDatabase("Saving exam...", [{ table: "exams", record: examRecord, operation: editingExamId ? "update" : "create" }]);
+        saveDatabase("Saving exam...", [{ table: "school_settings", record: { id: "exams", source_id: "exams", data: settings.exams, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         message.textContent = "Exam saved successfully.";
         message.className = "form-message success";
         resetForm();
@@ -10481,7 +10524,7 @@ ${allContent}
             settings.examMarks = (settings.examMarks || []).filter(function (item) { return item.examId !== examId; });
             settings.examSchedule = (settings.examSchedule || []).filter(function (item) { return item.examId !== examId; });
             addActivity("Exam deleted", `${examItem.name} exam was deleted.`);
-            saveDatabase("Deleting exam...");
+            saveDatabase("Deleting exam...", [{ table: "school_settings", record: { id: "exams", source_id: "exams", data: settings.exams, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }, { table: "school_settings", record: { id: "examMarks", source_id: "examMarks", data: settings.examMarks, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }, { table: "school_settings", record: { id: "examSchedule", source_id: "examSchedule", data: settings.examSchedule, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
             renderExamsTable();
           });
         }
@@ -10499,7 +10542,7 @@ ${allContent}
         }
         examItem.status = statusInput.checked ? "active" : "inactive";
         saveExamRecord(examItem);
-        saveDatabase();
+        saveDatabase(null, [{ table: "school_settings", record: { id: "exams", source_id: "exams", data: settings.exams, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderExamsTable();
       });
 
@@ -10610,7 +10653,7 @@ ${allContent}
           upsertExamMark(markRecord);
         });
         addActivity("Exam marks updated", `Marks updated for ${className} in selected exam.`);
-        saveDatabase();
+        saveDatabase(null, [{ table: "school_settings", record: { id: "examMarks", source_id: "examMarks", data: settings.examMarks, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         message.textContent = "Exam marks updated successfully.";
         message.className = "form-message success";
         renderMarksTable();
@@ -11457,7 +11500,7 @@ ${allContent}
           startTime: startTimeInput.value,
           endTime: endTimeInput.value
         });
-        saveDatabase();
+        saveDatabase(null, [{ table: "school_settings", record: { id: "examSchedule", source_id: "examSchedule", data: settings.examSchedule, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         addActivity("Exam schedule saved", `Schedule saved for ${classSelect.value} - ${subjectSelect.value}.`);
         message.textContent = "Exam schedule saved successfully.";
         message.className = "form-message success";
@@ -11474,7 +11517,7 @@ ${allContent}
         settings.examSchedule = (settings.examSchedule || []).filter(function (item) {
           return item.id !== scheduleId;
         });
-        saveDatabase();
+        saveDatabase(null, [{ table: "school_settings", record: { id: "examSchedule", source_id: "examSchedule", data: settings.examSchedule, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderScheduleTable();
       });
 
@@ -12005,7 +12048,7 @@ ${allContent}
           saveAttendanceRecord("employee", employee.id, dateInput.value, statusValue, { role: employee.role || employee.designation || "-" });
         });
         addActivity("Employees attendance updated", `Attendance updated for ${rows.length} employees on ${dateInput.value}.`);
-        saveDatabase();
+        saveDatabase("", rows.map(function(employee) { return { table: "attendance", record: { employeeId: employee.id, date: dateInput.value, status: rowStatusState[employee.id] || "Absent", type: "employee" }, operation: "create" }; }));
         message.textContent = "Employees attendance updated successfully.";
         message.className = "form-message success";
         renderTable();
@@ -13773,7 +13816,7 @@ ${allContent}
 
     function getAccountsReportRows(periodValue, monthValue) {
       if (purgeUntouchedLegacyFinanceData(settings)) {
-        saveDatabase();
+        saveDatabase("", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
       }
       const range = periodValue === "monthly" ? getMonthRange(monthValue) : null;
       const inRange = function (dateValue) {
@@ -14656,7 +14699,7 @@ ${allContent}
         showStyledDeleteConfirmation("all account ledger history", function () {
           var settings = database.generalSettings || {};
           settings.accountsLedger = [];
-          saveDatabase();
+          saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           refreshDatabase();
           renderStatement();
         });
@@ -14793,7 +14836,7 @@ ${allContent}
 
     if (route === "chart-of-account" || route === "add-income" || route === "add-expense" || route === "account-statement") {
       if (purgeUntouchedLegacyFinanceData(settings)) {
-        saveDatabase();
+        saveDatabase("", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
       }
       const currencySymbol = (settings.accountSettings && settings.accountSettings.symbol) ? settings.accountSettings.symbol : "Rs";
 
@@ -14908,7 +14951,7 @@ ${allContent}
               trackDeletion(id);
               settings.accountsLedger = (settings.accountsLedger || []).filter(function (item) { return String(item.id) !== String(id); });
               settings.__accountsLedgerUserTouched = true;
-              saveDatabase("Deleting entry...");
+              saveDatabase("Deleting entry...", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               refreshDatabase();
                renderDynamicModuleWorkspace(route, title);
                (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
@@ -15004,7 +15047,7 @@ ${allContent}
               updatedSettings.accountsLedger = (updatedSettings.accountsLedger || []).filter(function (item) { return String(item.id) !== String(id); });
               updatedSettings.__accountsLedgerUserTouched = true;
               addActivity("Account entry deleted", `Ledger entry deleted: ${id}`);
-              saveDatabase("Deleting entry...");
+              saveDatabase("Deleting entry...", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: updatedSettings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               refreshDatabase();
                renderDynamicModuleWorkspace(route, title);
                (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
@@ -15037,7 +15080,7 @@ ${allContent}
               currentSettings.__accountsLedgerUserTouched = true;
               sessionStorage.removeItem("sagarsoft_edit_ledger_id");
               addActivity("Account entry updated", `${isIncome ? "Income" : "Expense"} entry updated: ${category}`);
-              saveDatabase();
+              saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: currentSettings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               refreshDatabase();
               openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} updated successfully.`, "success");
               renderDynamicModuleWorkspace(route, title);
@@ -15057,7 +15100,7 @@ ${allContent}
           });
           currentSettings.__accountsLedgerUserTouched = true;
           addActivity("Account entry created", `${isIncome ? "Income" : "Expense"} entry created: ${category}`);
-          saveDatabase();
+          saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: currentSettings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           refreshDatabase();
           openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} saved successfully.`, "success");
           renderDynamicModuleWorkspace(route, title);
@@ -15514,7 +15557,7 @@ ${allContent}
             correctAnswer: correctAnswer,
             answerLines: answerLines
           });
-          saveDatabase();
+          saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           renderChapterRows();
           message.textContent = "Question saved successfully.";
           message.className = "form-message success";
@@ -15540,7 +15583,7 @@ ${allContent}
           settings.questionChapters = (settings.questionChapters || []).filter(function (row) {
             return String(row.id) !== String(rowId);
           });
-              saveDatabase();
+              saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               renderChapterRows();
               renderExistingChapterSelect();
               openAppMessageBox("Success", "Question deleted successfully.", "success");
@@ -16210,7 +16253,7 @@ ${allContent}
                 libs[type] = current.concat(valid).filter(function (item, idx, arr) {
                   return arr.findIndex(function (x) { return x.src === item.src; }) === idx;
                 });
-                saveDatabase();
+                saveDatabase("", [{ table: "school_settings", record: { id: "customLibraries", source_id: "customLibraries", data: database.generalSettings.customLibraries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
                 openAppMessageBox("Success", `${valid.length} ${type} imported successfully.`, "success");
               });
             };
@@ -16512,7 +16555,7 @@ ${allContent}
                     row.chapterName = cleanName;
                   }
                 });
-                saveDatabase();
+                saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
                 renderChapterSelect();
                 loadedRows = [];
                 renderPreview();
@@ -16530,7 +16573,7 @@ ${allContent}
               });
               loadedRows = loadedRows.filter(function (row) { return String(row.chapterName || "") !== chapterName; });
               filterPool = filterPool.filter(function (row) { return String(row.chapterName || "") !== chapterName; });
-              saveDatabase();
+              saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               renderChapterSelect();
               renderPreview();
               openAppMessageBox("Success", "Chapter deleted successfully.", "success");
@@ -16653,8 +16696,8 @@ ${allContent}
                   row.chapterName = String(nextChapter || "").trim() || row.chapterName || "";
                   row.questionTitle = String(nextTitle || "").trim() || row.questionTitle || "";
                   row.marks = nextMarks;
-        saveDatabase();
-                  renderChapterSelect();
+        saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        renderChapterSelect();
                   renderPreview();
                   openAppMessageBox("Success", "Question updated successfully.", "success");
                 });
@@ -16679,7 +16722,7 @@ ${allContent}
               });
               loadedRows = loadedRows.filter(function (item) { return String(item.id) !== String(rowId); });
               filterPool = filterPool.filter(function (item) { return String(item.id) !== String(rowId); });
-              saveDatabase();
+              saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               renderChapterSelect();
               renderPreview();
               openAppMessageBox("Success", "Question deleted successfully.", "success");
@@ -16733,7 +16776,7 @@ ${allContent}
             instructions: "Attempt all questions.",
             questions: loadedRows.map(function (row) { return { ...row }; })
           });
-          saveDatabase();
+          saveDatabase("", [{ table: "school_settings", record: { id: "questionPapers", source_id: "questionPapers", data: settings.questionPapers, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           message.textContent = "Paper saved successfully.";
           message.className = "form-message success";
           openAppMessageBox("Success", "Paper saved successfully.", "success");
@@ -17109,7 +17152,7 @@ ${allContent}
               settings.classTestMarks.push(payload);
             }
           });
-          saveDatabase();
+          saveDatabase("", [{ table: "school_settings", record: { id: "classTestMarks", source_id: "classTestMarks", data: settings.classTestMarks, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           message.textContent = "Class test marks saved successfully.";
           message.className = "form-message success";
           openAppMessageBox("Success", "Class test marks saved successfully.", "success");
@@ -17223,7 +17266,7 @@ ${allContent}
         }
         if (deleteButton) {
           settings.classTestMarks = (settings.classTestMarks || []).filter(function (item) { return String(item.id) !== String(recordId); }); trackDeletion(recordId);
-          saveDatabase("Deleting test record...");
+          saveDatabase("Deleting test record...", [{ table: "school_settings", record: { id: "classTestMarks", source_id: "classTestMarks", data: settings.classTestMarks, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           renderTestResults();
           return;
         }
@@ -17386,7 +17429,7 @@ ${allContent}
             return;
           }
           settings.certificateTemplates.unshift({ id: `CRT-TPL-${generateId()}`, name: name, body: bodyText });
-          saveDatabase();
+          saveDatabase("", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: settings.certificateTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           message.textContent = "Certificate template saved successfully.";
           message.className = "form-message success";
           renderTemplates();
@@ -17399,7 +17442,7 @@ ${allContent}
           const id = button.getAttribute("data-delete-certificate-template");
           trackDeletion(id);
           settings.certificateTemplates = (settings.certificateTemplates || []).filter(function (item) { return String(item.id) !== String(id); });
-          saveDatabase("Deleting template...");
+          saveDatabase("Deleting template...", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: settings.certificateTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           renderTemplates();
         });
         renderTemplates();
@@ -17714,7 +17757,7 @@ ${allContent}
           var noticeP = notices.find(function (x) { return x.id === nidP; });
           if (noticeP) {
             noticeP.pushed = !noticeP.pushed;
-            saveDatabase();
+            saveDatabase("", [{ table: "notices", record: noticeP, operation: "update" }]);
             openAppMessageBox("Success", noticeP.pushed ? "Notice pushed to dashboard." : "Notice removed from dashboard.", "success");
             setRoute("notice-board");
           }
@@ -17873,7 +17916,7 @@ ${allContent}
           holidaysChanged = true;
         }
       });
-      if (holidaysChanged) saveDatabase();
+      if (holidaysChanged) saveDatabase("", events.filter(function(ev) { return ev.isNational === true; }).map(function(ev) { return { table: "events", record: ev, operation: "create" }; }));
 
       var calendarDate = new Date();
       var selectedCalendarDate = null;
@@ -18638,7 +18681,7 @@ ${allContent}
             homework.smsSent = true;
           }
         }
-        saveDatabase();
+        saveDatabase("", [{ table: "school_settings", record: { id: "homeworkAssignments", source_id: "homeworkAssignments", data: settings.homeworkAssignments, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderHomeworkHistory();
         renderHomeworkSelectionPreview();
         message.textContent = `SMS sent. Success: ${totalSuccess}, Failed: ${totalFailed}.`;
@@ -18968,7 +19011,7 @@ ${allContent}
         settings.smsOutbox = (settings.smsOutbox || []).filter(function (entry) {
           return !String(entry.source || "").toLowerCase().includes("whatsapp");
         });
-        saveDatabase();
+        saveDatabase("", [{ table: "school_settings", record: { id: "smsOutbox", source_id: "smsOutbox", data: settings.smsOutbox, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderHistory();
         statusMessage.textContent = "WhatsApp history cleared.";
         statusMessage.className = "form-message success";
@@ -19105,7 +19148,7 @@ ${allContent}
               var setupResult = await setupResp.json();
               if (setupResult.success) {
                 cfg.tablesCreated = true;
-                saveDatabase();
+                saveDatabase("", [{ table: "school_settings", record: { id: "supabaseConfig", source_id: "supabaseConfig", data: database.generalSettings.supabaseConfig, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
 
               }
             } catch (_e) {}
@@ -19122,7 +19165,7 @@ ${allContent}
             database.generalSettings.supabaseConfig.url = data.url;
             database.generalSettings.supabaseConfig.anonKey = data.anonKey;
             database.generalSettings.supabaseConfig.tablesCreated = false;
-            saveDatabase();
+            saveDatabase("", [{ table: "school_settings", record: { id: "supabaseConfig", source_id: "supabaseConfig", data: database.generalSettings.supabaseConfig, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
             _supabase = null;
             var setupResp2 = await fetch(getApiBaseUrl() + "/api/setup-sms-tables", {
               method: "POST",
@@ -19131,7 +19174,7 @@ ${allContent}
             var setupResult2 = await setupResp2.json();
             if (setupResult2.success) {
               database.generalSettings.supabaseConfig.tablesCreated = true;
-              saveDatabase();
+              saveDatabase("", [{ table: "school_settings", record: { id: "supabaseConfig", source_id: "supabaseConfig", data: database.generalSettings.supabaseConfig, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
             }
           }
         } catch (_e) {}
@@ -19412,7 +19455,7 @@ ${allContent}
           }
           cfg.tablesCreated = true;
           settings.supabaseConfig.tablesCreated = true;
-          saveDatabase();
+          saveDatabase("", [{ table: "school_settings", record: { id: "supabaseConfig", source_id: "supabaseConfig", data: settings.supabaseConfig, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         }
         var recipientPhone = normalizePhoneNumber(recipientNumberInput.value);
         var messageText = messageInput.value.trim();
@@ -19442,7 +19485,7 @@ ${allContent}
       });
       clearSmsHistoryBtn.addEventListener("click", function () {
         settings.smsOutbox = [];
-        saveDatabase();
+        saveDatabase("", [{ table: "school_settings", record: { id: "smsOutbox", source_id: "smsOutbox", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderOutbox();
         setSendMessage("SMS history cleared.", "success");
       });
@@ -19758,7 +19801,10 @@ ${allContent}
           settings.accountSettings.symbol = symbol;
           settings.instituteProfile.name = schoolName || settings.instituteProfile.name;
           database.school.name = schoolName || database.school.name;
-          var _saved = await saveDatabase("Saving account settings...");
+          var _saved = await saveDatabase("Saving account settings...", [
+            { table: "school_settings", record: { id: "accountSettings", source_id: "accountSettings", data: settings.accountSettings, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
+            { table: "school_settings", record: { id: "instituteProfile", source_id: "instituteProfile", data: settings.instituteProfile, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+          ]);
           if (!_saved && msgEl) {
             msgEl.textContent = "Save failed. Please check your connection and try again.";
             msgEl.className = "form-message error";
@@ -19835,7 +19881,7 @@ ${allContent}
                 } else {
                   registry.unshift(row);
                 }
-                saveDatabase();
+                saveDatabase("", [{ table: "school_settings", record: { id: "offlineSchoolsRegistry", source_id: "offlineSchoolsRegistry", data: registry, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
                 const meta = getSubscriptionStatusMeta(row.expiryDate);
                 if (meta.tone === "error") {
                   openAppMessageBox("Error", `${row.schoolName || row.schoolId}: subscription expired.`, "error");
@@ -19880,7 +19926,7 @@ ${allContent}
                 row.status = "active";
                 row.activated = true;
                 row.importedAt = new Date().toISOString();
-                saveDatabase();
+                saveDatabase("", [{ table: "school_settings", record: { id: "offlineSchoolsRegistry", source_id: "offlineSchoolsRegistry", data: registry, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
                 openAppMessageBox("Success", "Expiry updated.", "success");
                 setRoute("account-settings");
               });
@@ -19896,7 +19942,7 @@ ${allContent}
               row.status = "inactive";
               row.activated = false;
               row.importedAt = new Date().toISOString();
-              saveDatabase();
+              saveDatabase("", [{ table: "school_settings", record: { id: "offlineSchoolsRegistry", source_id: "offlineSchoolsRegistry", data: registry, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               openAppMessageBox("Warning", "School marked inactive.", "warning");
               setRoute("account-settings");
             }
@@ -24303,7 +24349,7 @@ ${allContent}
 
   sidebarCollapseBtn.addEventListener("click", function () {
     database.settings.sidebarCollapsed = !database.settings.sidebarCollapsed;
-    saveDatabase();
+    saveDatabase("", [{ table: "school_settings", record: { id: "uiPreferences", source_id: "uiPreferences", data: { sidebarCollapsed: database.settings.sidebarCollapsed }, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
     applySidebarState();
   });
 
@@ -24361,7 +24407,7 @@ ${allContent}
       database.notifications = (database.notifications || []).map(function (item) {
         return { ...item, read: true };
       });
-      saveDatabase("Marking notifications read...");
+      saveDatabase("Marking notifications read...", [{ table: "school_settings", record: { id: "notifications", source_id: "notifications", data: database.notifications, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
       renderNotificationList();
     });
 
@@ -24370,7 +24416,7 @@ ${allContent}
       clearNotifLocalBtn.addEventListener("click", async function () {
         if (!(await brandedConfirm("Clear all notifications?"))) return;
         database.notifications = [];
-        saveDatabase();
+        saveDatabase("", [{ table: "school_settings", record: { id: "notifications", source_id: "notifications", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderNotificationList();
       });
     }
