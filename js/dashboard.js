@@ -12,6 +12,9 @@ window.handleEmployeeViewClick = function(employeeId) {
   }
 
   var database = window.SagarSoftDB.getDatabase();
+  var _initLicense = (database.generalSettings && database.generalSettings.licenseSettings) || {};
+  console.log("[DASHBOARD-INIT] Database loaded. licenseSettings:", JSON.stringify(_initLicense));
+  console.log("[DASHBOARD-INIT] SchoolId from config:", window.SagarSoftDB.getConfig ? window.SagarSoftDB.getConfig().schoolId : "N/A");
   var employee = (database.teachers||[]).find(function(e){return e.id===employeeId;});
   if (!employee) return;
   var modalContent = document.getElementById("employeeModalContent");
@@ -1247,6 +1250,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function getLicenseLockState() {
     const license = ensureLicenseSettings();
+    var _dbgUser = currentUser ? { id: currentUser.id, email: currentUser.email, role: currentUser.role, hasServerToken: !!currentUser.serverToken, serverTokenPreview: currentUser.serverToken ? String(currentUser.serverToken).substring(0, 15) + "..." : "NONE" } : "NULL";
+    var _dbgLicense = { activated: license.activated, status: license.status, expiryDate: license.expiryDate, schoolId: license.schoolId, subscriptionPlan: license.subscriptionPlan };
+    var _dbgToday = new Date().toISOString();
+    var _dbgExpiry = license.expiryDate ? new Date(license.expiryDate).toISOString() : "NULL";
+    var _dbgExpiryFuture = license.expiryDate ? (new Date(license.expiryDate) > new Date()) : false;
     if (superAdminBypass) {
       return { locked: false, reason: "" };
     }
@@ -1254,6 +1262,13 @@ document.addEventListener("DOMContentLoaded", function () {
       return { locked: false, reason: "" };
     }
     if (currentUser && currentUser.serverToken) {
+      console.log("[LICENSE] UNLOCKED via serverToken check");
+      return { locked: false, reason: "" };
+    }
+    var _dbCfg = (window.SagarSoftDB && window.SagarSoftDB.getConfig) ? window.SagarSoftDB.getConfig() : {};
+    if (currentUser && _dbCfg && _dbCfg.authToken) {
+      console.log("[LICENSE] UNLOCKED via SagarSoftDB.authToken fallback");
+      currentUser.serverToken = _dbCfg.authToken;
       return { locked: false, reason: "" };
     }
     const accountSettings = (database.generalSettings && database.generalSettings.accountSettings) || {};
@@ -1268,10 +1283,17 @@ document.addEventListener("DOMContentLoaded", function () {
       if (String(license.status || "").toLowerCase() !== "active") {
         license.status = "active";
       }
+      console.log("[LICENSE] UNLOCKED via valid future expiry");
       return { locked: false, reason: "" };
     }
     var isActivated = license.activated === true || String(license.status || "").toLowerCase() === "active";
     if (!isActivated) {
+      console.log("[LICENSE] LOCKED — Account activation required");
+      console.log("[LICENSE] User:", JSON.stringify(_dbgUser));
+      console.log("[LICENSE] License:", JSON.stringify(_dbgLicense));
+      console.log("[LICENSE] Today:", _dbgToday, "| Expiry:", _dbgExpiry, "| Future?:", _dbgExpiryFuture);
+      console.log("[LICENSE] Raw expiry string:", expiryRaw);
+      console.log("[LICENSE] SagarSoftDB config:", JSON.stringify({ schoolId: _dbCfg.schoolId || "NONE", hasAuthToken: !!_dbCfg.authToken }));
       return { locked: true, reason: "Account activation is required. Please contact Super Admin." };
     }
     if (String(license.status || "").toLowerCase() === "inactive") {
@@ -20040,8 +20062,20 @@ ${allContent}
           if (!nameEl || !nameEl.value.trim()) { if (msgEl) { msgEl.textContent = "School name required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
           if (!emailEl || !emailEl.value.trim()) { if (msgEl) { msgEl.textContent = "Email required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
           if (!passEl || !passEl.value.trim()) { if (msgEl) { msgEl.textContent = "Password required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
-          var origBtnText = activateAccountBtn.textContent;
-          activateAccountBtn.innerHTML = '<span class="btn-spinner" style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:6px;"></span>' + (isNew ? "Activating school..." : "Saving...");
+          var _overlay = document.getElementById("sagarsoft-loading-overlay");
+          var _overlayText = document.getElementById("sagarsoft-loading-text");
+          var _overlayBar = document.getElementById("sagarsoft-loading-bar");
+          var _overlayCancel = document.getElementById("sagarsoft-loading-cancel");
+          function _showOverlay(msg) {
+            if (_overlay) { _overlay.style.display = "flex"; requestAnimationFrame(function(){ _overlay.style.opacity = "1"; }); }
+            if (_overlayText) { _overlayText.textContent = msg; }
+            if (_overlayBar) { _overlayBar.style.display = "none"; }
+            if (_overlayCancel) { _overlayCancel.style.display = "none"; }
+          }
+          function _hideOverlay() {
+            if (_overlay) { _overlay.style.opacity = "0"; setTimeout(function(){ if (_overlay) _overlay.style.display = "none"; }, 300); }
+          }
+          _showOverlay(isNew ? "Saving School Activation..." : "Updating Subscription...");
           if (msgEl) { msgEl.textContent = "Processing, please wait..."; msgEl.className = "form-message info"; }
           var body = { school_name: nameEl.value.trim(), email: emailEl.value.trim(), password: passEl.value.trim(), status: "active" };
           if (!isNew && schoolIdInput && schoolIdInput.value.trim()) body.school_id = schoolIdInput.value.trim();
@@ -20060,6 +20094,7 @@ ${allContent}
             if (data.success) {
               var savedSchoolId = data.school_id || editSchoolId || "";
               if (savedSchoolId) {
+                if (_overlayText) { _overlayText.textContent = "Verifying saved data..."; }
                 try {
                   var verifyResp = await fetch(apiBase + "/api/admin/schools", { method: "GET", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } });
                   var verifyData = await verifyResp.json().catch(function () { return {}; });
@@ -20076,6 +20111,7 @@ ${allContent}
               }
               var successMsg = isNew ? "School activated successfully! ID: " + (savedSchoolId) : "School saved successfully!";
               if (msgEl) { msgEl.textContent = successMsg; msgEl.className = "form-message success"; }
+              _hideOverlay();
               openAppMessageBox("Success", successMsg, "success");
               activateAccountBtn.textContent = "Add School";
               activateAccountBtn.removeAttribute("data-edit-school-id");
@@ -20085,6 +20121,7 @@ ${allContent}
             } else {
               var errMsg = data.message || "Save failed. Check console for details.";
               if (msgEl) { msgEl.textContent = errMsg; msgEl.className = "form-message error"; }
+              _hideOverlay();
               openAppMessageBox("Error", errMsg, "error");
             }
           } catch (_e) {
@@ -20093,8 +20130,10 @@ ${allContent}
             var diagMsg = "Save failed: " + errDetail + " | URL: " + apiBase + " | apiBase defined: " + (typeof apiBase !== "undefined");
             console.error("[SagarSoft] DIAG:", diagMsg);
             if (msgEl) { msgEl.textContent = diagMsg; msgEl.className = "form-message error"; }
+            _hideOverlay();
             openAppMessageBox("Error", diagMsg, "error");
           } finally {
+            _hideOverlay();
             if (activateAccountBtn) { activateAccountBtn.disabled = false; activateAccountBtn.textContent = isNew ? "Add School" : "Update School"; }
           }
         });
@@ -24028,6 +24067,7 @@ ${allContent}
     if (!schoolId && license && license.schoolId) {
       schoolId = String(license.schoolId).trim();
     }
+    console.log("[LOAD-SERVER] Init: schoolId=", schoolId, "wasActivated=", wasActivated, "hasAuthToken=", !!authToken);
     if (schoolId && window.SagarSoftDB && window.SagarSoftDB.setSchoolId) {
       window.SagarSoftDB.setSchoolId(schoolId);
       try {
@@ -24035,6 +24075,8 @@ ${allContent}
         if (serverDb) {
           database = serverDb;
           ensureLicenseSettings();
+          var _lsBefore = database.generalSettings.licenseSettings || {};
+          console.log("[LOAD-SERVER] Server data loaded. licenseSettings before fix:", JSON.stringify(_lsBefore));
           if (wasActivated || (currentUser && currentUser.serverToken)) {
             database.generalSettings.licenseSettings.activated = true;
             database.generalSettings.licenseSettings.status = "active";
@@ -24047,11 +24089,18 @@ ${allContent}
               if (!_lsAfter.status || _lsAfter.status === "inactive") _lsAfter.status = "active";
             }
           }
+          console.log("[LOAD-SERVER] licenseSettings after fix:", JSON.stringify(database.generalSettings.licenseSettings));
           database.generalSettings.licenseSettings.schoolId = schoolId;
           normalizeStudentsDatasetInMemory();
           applyRouteAccessVisibility();
+        } else {
+          console.log("[LOAD-SERVER] Server returned null database");
         }
-      } catch (_e) {}
+      } catch (_e) {
+        console.error("[LOAD-SERVER] Error loading from server:", _e.message);
+      }
+    } else {
+      console.log("[LOAD-SERVER] No schoolId found, skipping server load");
     }
   })();
 
@@ -24061,6 +24110,7 @@ ${allContent}
   applyRouteAccessVisibility();
   populateStudentForm(null);
   const initialLockState = getLicenseLockState();
+  console.log("[INITIAL-LOCK] State:", JSON.stringify(initialLockState), "currentUser:", currentUser ? { email: currentUser.email, role: currentUser.role, hasServerToken: !!currentUser.serverToken } : "NULL");
   if (initialLockState.locked && !superAdminBypass) {
     var _hasSchoolId = false;
     if (window.SagarSoftDB && window.SagarSoftDB.getConfig) {
