@@ -1062,7 +1062,7 @@ document.addEventListener("DOMContentLoaded", function () {
     try {
       _saved = await window.SagarSoftDB.forceSave(database);
     } catch (_e) {}
-    _syncSettingsToDedicatedTables();
+    await _syncSettingsToDedicatedTables();
     if (_saved) {
       try {
         var _fresh = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
@@ -1077,23 +1077,25 @@ document.addEventListener("DOMContentLoaded", function () {
     return _saved;
   }
 
-  function _syncSettingsToDedicatedTables() {
+  async function _syncSettingsToDedicatedTables() {
     if (!database.generalSettings) return;
     var gs = database.generalSettings;
     var singletonKeys = ["instituteProfile","accountSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeParticulars","feeStructures"];
+    var promises = [];
     singletonKeys.forEach(function (key) {
       if (gs[key] !== undefined && gs[key] !== null) {
         var val = JSON.parse(JSON.stringify(gs[key]));
-        window.SagarSoftDB.saveSettingToServer(key, val).catch(function(){});
+        promises.push(window.SagarSoftDB.saveSettingToServer(key, val).catch(function(){}));
       }
     });
     var arrayKeys = ["discountPolicies","bankAccounts","certificateTemplates","questionChapters","questionBank","timetableWeekdays","timetablePeriods","classRooms","examSchedule","homeworkAssignments"];
     arrayKeys.forEach(function (key) {
       if (Array.isArray(gs[key]) && gs[key].length > 0) {
         var val = JSON.parse(JSON.stringify(gs[key]));
-        window.SagarSoftDB.saveSettingItemsToServer(key, val).catch(function(){});
+        promises.push(window.SagarSoftDB.saveSettingItemsToServer(key, val).catch(function(){}));
       }
     });
+    await Promise.all(promises);
   }
 
   function ensureLicenseSettings() {
@@ -5802,6 +5804,10 @@ document.addEventListener("DOMContentLoaded", function () {
           <p class="gs-preview__title">Preview</p>
           <div id="feeStructurePreview"></div>
         </article>
+        <article class="gs-preview" style="margin-top:1rem;">
+          <p class="gs-preview__title">Saved Structures</p>
+          <div id="feeStructureSavedList" class="compact-list"></div>
+        </article>
       `;
 
       moduleGuide.innerHTML = ``;
@@ -5839,6 +5845,7 @@ document.addEventListener("DOMContentLoaded", function () {
           rowsWrap.appendChild(makeRow(row.type, row.amount));
         });
         renderStructurePreview();
+        renderStructureList();
       }
 
       function renderStructurePreview() {
@@ -5846,6 +5853,44 @@ document.addEventListener("DOMContentLoaded", function () {
           return sum + Math.max(0, parseFloat(input.value || 0));
         }, 0);
         preview.innerHTML = `<p><strong>Class:</strong> ${escapeHtml(classSelect.value || "-")}</p><p><strong>Total:</strong> ${total}</p>`;
+      }
+
+      function renderStructureList() {
+        var listEl = document.getElementById("feeStructureSavedList");
+        if (!listEl) return;
+        var allClasses = Object.keys(settings.feeStructures || {});
+        if (!allClasses.length) { listEl.innerHTML = "<p>No fee structures saved yet.</p>"; return; }
+        listEl.innerHTML = allClasses.map(function (cls) {
+          var rows = settings.feeStructures[cls] || [];
+          var total = rows.reduce(function (s, r) { return s + Number(r.amount || 0); }, 0);
+          var created = rows[0] && rows[0].createdAt ? new Date(rows[0].createdAt).toLocaleDateString() : "-";
+          var items = rows.map(function (r) { return escapeHtml(r.type) + ": " + Number(r.amount || 0); }).join(", ");
+          return '<article style="padding:10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:8px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:start;">' +
+            '<div><strong>' + escapeHtml(cls) + '</strong><p style="font-size:0.82rem;color:#666;margin:2px 0;">' + items + '</p>' +
+            '<p style="font-size:0.78rem;color:#999;">Total: ' + total + ' | Created: ' + created + '</p></div>' +
+            '<div style="display:flex;gap:6px;">' +
+            '<button class="gs-btn-secondary edit-fee-structure-btn" data-class="' + escapeAttr(cls) + '" style="padding:4px 10px;font-size:0.78rem;">Edit</button>' +
+            '<button class="gs-btn-secondary delete-fee-structure-btn" data-class="' + escapeAttr(cls) + '" style="padding:4px 10px;font-size:0.78rem;color:#dc2626;">Delete</button>' +
+            '</div></div></article>';
+        }).join("");
+        listEl.querySelectorAll(".edit-fee-structure-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var cls = btn.getAttribute("data-class");
+            classSelect.value = cls;
+            renderStructureRows();
+          });
+        });
+        listEl.querySelectorAll(".delete-fee-structure-btn").forEach(function (btn) {
+          btn.addEventListener("click", async function () {
+            var cls = btn.getAttribute("data-class");
+            if (!confirm("Delete fee structure for " + cls + "?")) return;
+            delete settings.feeStructures[cls];
+            if (settings.feeParticulars) delete settings.feeParticulars[cls];
+            await saveDatabase("Deleting fee structure...");
+            renderStructureRows();
+          });
+        });
       }
 
       classSelect.addEventListener("change", renderStructureRows);
@@ -5865,13 +5910,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
       var _el = document.getElementById("saveFeeStructureBtn"); if (_el) _el.addEventListener("click", async function () {
         const cls = classSelect.value;
-        settings.feeStructures[cls] = Array.from(rowsWrap.querySelectorAll(".module-line-item")).map(function (row) {
+        var _rows = Array.from(rowsWrap.querySelectorAll(".module-line-item")).map(function (row) {
           const amount = Math.max(0, parseFloat(row.querySelector(".fee-structure-amount").value || 0, 10));
           return {
             type: row.querySelector(".fee-structure-type").value.trim(),
             amount: amount
           };
         }).filter(function (row) { return row.type; });
+        settings.feeStructures[cls] = _rows;
+        if (!settings.feeParticulars) settings.feeParticulars = {};
+        var _existing = settings.feeParticulars[cls] || [];
+        var _existingFixed = _existing.filter(function (p) { return p.fixed; });
+        var _mapped = _rows.map(function (r) {
+          return { label: r.type, amount: r.amount, fixed: false };
+        });
+        settings.feeParticulars[cls] = _mapped.concat(_existingFixed.filter(function (ef) {
+          return !_mapped.some(function (m) { return m.label.toUpperCase() === ef.label.toUpperCase(); });
+        }));
         addActivity("Fee structure updated", `${cls} fee structure updated.`);
         var _saved = await saveDatabase("Saving fee structure...");
         if (_saved) {
@@ -5881,6 +5936,7 @@ document.addEventListener("DOMContentLoaded", function () {
           message.textContent = "Save failed. Please check your connection and try again.";
           message.className = "form-message error";
         }
+        renderStructureList();
       });
 
       renderStructureRows();
@@ -5962,20 +6018,58 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       function renderDiscountPreview() {
-        previewList.innerHTML = settings.discountPolicies.slice(0, 8).map(function (policy) {
+        previewList.innerHTML = settings.discountPolicies.map(function (policy, idx) {
+          var created = policy.createdAt ? new Date(policy.createdAt).toLocaleDateString() + " " + new Date(policy.createdAt).toLocaleTimeString() : "-";
+          var studentNames = (policy.studentIds || []).map(function (sid) {
+            var s = database.students.find(function (st) { return st.id === sid; });
+            return s ? s.name : "";
+          }).filter(Boolean).join(", ");
           return `
-            <article>
-              <div>
-                <strong>${escapeHtml(policy.type)}</strong>
-                <span>${escapeHtml(policy.className || "Selected Students")}</span>
-              </div>
-              <div>
-                <strong>${Number(policy.amount || 0)}</strong>
-                <span>${new Date(policy.createdAt).toLocaleDateString()}</span>
+            <article style="padding:10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:8px;">
+              <div style="display:flex;justify-content:space-between;align-items:start;">
+                <div>
+                  <strong>${escapeHtml(policy.type)}</strong> — <strong>${Number(policy.amount || 0)}</strong>
+                  <p style="font-size:0.82rem;color:#666;margin:2px 0;">Class: ${escapeHtml(policy.className || "All")}</p>
+                  ${studentNames ? '<p style="font-size:0.78rem;color:#888;margin:2px 0;">Students: ' + escapeHtml(studentNames) + '</p>' : ""}
+                  <p style="font-size:0.75rem;color:#aaa;margin:2px 0;">Created: ${created}</p>
+                </div>
+                <div style="display:flex;gap:6px;">
+                  <button class="gs-btn-secondary edit-discount-btn" data-idx="${idx}" style="padding:4px 10px;font-size:0.78rem;">Edit</button>
+                  <button class="gs-btn-secondary delete-discount-btn" data-idx="${idx}" style="padding:4px 10px;font-size:0.78rem;color:#dc2626;">Delete</button>
+                </div>
               </div>
             </article>
           `;
         }).join("") || "<p>No discount applied yet.</p>";
+        previewList.querySelectorAll(".edit-discount-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var idx = parseInt(btn.getAttribute("data-idx"));
+            var policy = settings.discountPolicies[idx];
+            if (!policy) return;
+            discountTypeInput.value = policy.type || "";
+            discountAmountInput.value = policy.amount || 0;
+            if (policy.className) classFilter.value = policy.className;
+            renderDiscountStudents();
+          });
+        });
+        previewList.querySelectorAll(".delete-discount-btn").forEach(function (btn) {
+          btn.addEventListener("click", async function () {
+            var idx = parseInt(btn.getAttribute("data-idx"));
+            var policy = settings.discountPolicies[idx];
+            if (!policy || !confirm("Delete this discount?")) return;
+            if (policy.studentIds) {
+              database.students.forEach(function (student) {
+                if (policy.studentIds.includes(student.id)) {
+                  student.discountType = "";
+                  student.discountAmount = 0;
+                }
+              });
+            }
+            settings.discountPolicies.splice(idx, 1);
+            await saveDatabase("Deleting discount...");
+            renderDiscountPreview();
+          });
+        });
       }
 
       [searchInput, classFilter].forEach(function (input) {
@@ -6028,6 +6122,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (route === "accounts-for-fees-invoice") {
+      (async function loadBankAccountsFromSupabase() {
+        try {
+          var resp = await window.SagarSoftDB.loadSettingItemsFromServer("bankAccounts");
+          if (resp && resp.success && Array.isArray(resp.items) && resp.items.length) {
+            settings.bankAccounts = resp.items;
+          }
+        } catch (_e) {}
+      })();
       const currentBank = settings.bankAccounts[0] || { logo: "", name: "", address: "", accountNo: "", instructions: "" };
       moduleSummary.innerHTML = `
         <article>
@@ -6061,7 +6163,7 @@ document.addEventListener("DOMContentLoaded", function () {
         </article>
       `;
 
-      moduleGuide.innerHTML = `<article><strong>Preview</strong><div id="bankPreview" class="module-preview-card"></div></article>`;
+      moduleGuide.innerHTML = `<article><strong>Saved Bank Accounts</strong><div id="bankListWrap" class="compact-list"></div></article><article style="margin-top:8px;"><strong>Preview</strong><div id="bankPreview" class="module-preview-card"></div></article>`;
 
       const logoInput = document.getElementById("bankLogoInput");
       const nameInput = document.getElementById("bankNameInput");
@@ -6115,12 +6217,61 @@ document.addEventListener("DOMContentLoaded", function () {
           return bank.id !== bankRecord.id;
         }));
         addActivity("Bank account updated", `${bankRecord.name} bank details saved.`);
-        saveDatabase("Saving bank account...");
-        message.textContent = "Bank account saved successfully.";
-        message.className = "form-message success";
+        var _saved = await saveDatabase("Saving bank account...");
+        if (_saved) {
+          message.textContent = "Bank account saved successfully.";
+          message.className = "form-message success";
+        } else {
+          message.textContent = "Save failed. Please check your connection and try again.";
+          message.className = "form-message error";
+        }
+        renderBankList();
       });
 
+      function renderBankList() {
+        var wrap = document.getElementById("bankListWrap");
+        if (!wrap) return;
+        if (!settings.bankAccounts || !settings.bankAccounts.length) { wrap.innerHTML = "<p>No bank accounts saved.</p>"; return; }
+        wrap.innerHTML = settings.bankAccounts.map(function (bank, idx) {
+          return '<article style="padding:10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:8px;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:start;">' +
+            '<div>' +
+            (bank.logo ? '<img src="' + bank.logo + '" alt="Bank" style="width:32px;height:32px;border-radius:4px;object-fit:cover;margin-bottom:4px;">' : "") +
+            '<strong>' + escapeHtml(bank.name || "-") + '</strong>' +
+            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">Acc#: ' + escapeHtml(bank.accountNo || "-") + ' | ' + escapeHtml(bank.address || "") + '</p>' +
+            '<p style="font-size:0.78rem;color:#888;margin:2px 0;">Instructions: ' + escapeHtml(bank.instructions || "-") + '</p>' +
+            '</div>' +
+            '<div style="display:flex;gap:6px;">' +
+            '<button class="gs-btn-secondary edit-bank-btn" data-idx="' + idx + '" style="padding:4px 10px;font-size:0.78rem;">Edit</button>' +
+            '<button class="gs-btn-secondary delete-bank-btn" data-idx="' + idx + '" style="padding:4px 10px;font-size:0.78rem;color:#dc2626;">Delete</button>' +
+            '</div></div></article>';
+        }).join("");
+        wrap.querySelectorAll(".edit-bank-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var idx = parseInt(btn.getAttribute("data-idx"));
+            var bank = settings.bankAccounts[idx];
+            if (!bank) return;
+            nameInput.value = bank.name || "";
+            addressInput.value = bank.address || "";
+            accountNoInput.value = bank.accountNo || "";
+            instructionsInput.value = bank.instructions || "";
+            logoData = bank.logo || "";
+            renderBankPreview();
+          });
+        });
+        wrap.querySelectorAll(".delete-bank-btn").forEach(function (btn) {
+          btn.addEventListener("click", async function () {
+            var idx = parseInt(btn.getAttribute("data-idx"));
+            if (!confirm("Delete this bank account?")) return;
+            settings.bankAccounts.splice(idx, 1);
+            await saveDatabase("Deleting bank account...");
+            renderBankList();
+          });
+        });
+      }
+
       renderBankPreview();
+      renderBankList();
       return;
     }
 
@@ -6694,6 +6845,11 @@ document.addEventListener("DOMContentLoaded", function () {
           var subtotal = items.reduce(function (sum, item) { return sum + item.amount; }, 0);
           var discountAmount = Math.round(subtotal * discountPercent / 100);
           items.push({ label: "DISCOUNT IN FEE " + discountPercent + "%", amount: -discountAmount });
+        }
+        var flatDiscount = Math.max(0, parseFloat(student.discountAmount || 0));
+        if (flatDiscount > 0) {
+          var flatType = student.discountType || "Discount";
+          items.push({ label: flatType.toUpperCase(), amount: -flatDiscount });
         }
         return items;
       }
@@ -7363,6 +7519,11 @@ ${allContent}
           var subtotal = items.reduce(function (sum, item) { return sum + item.amount; }, 0);
           var discountAmount = Math.round(subtotal * discountPercent / 100);
           items.push({ label: "DISCOUNT IN FEE " + discountPercent + "%", amount: -discountAmount });
+        }
+        var flatDiscount = Math.max(0, parseFloat(student.discountAmount || 0));
+        if (flatDiscount > 0) {
+          var flatType = student.discountType || "Discount";
+          items.push({ label: flatType.toUpperCase(), amount: -flatDiscount });
         }
         return items;
       }
@@ -23653,17 +23814,23 @@ ${allContent}
     applySidebarState();
     applyRouteAccessVisibility();
     setRoute(activeRoute || "dashboard");
+    updateTopProfileIdentity();
+    _loadProfileFromSupabase();
   });
 
   updateTopProfileIdentity();
   renderProfileDropdownMenu();
 
-  (async function loadProfileFromSupabase() {
+  var _profileLoadDone = false;
+  async function _loadProfileFromSupabase() {
+    if (_profileLoadDone) return;
+    _profileLoadDone = true;
     try {
       var resp = await window.SagarSoftDB.loadSchoolProfile();
       if (resp && resp.success && resp.profile) {
         if (!database.generalSettings) database.generalSettings = {};
-        database.generalSettings.instituteProfile = Object.assign(database.generalSettings.instituteProfile || {}, resp.profile);
+        var merged = Object.assign({}, database.generalSettings.instituteProfile || {}, resp.profile);
+        database.generalSettings.instituteProfile = merged;
         if (resp.profile.name) {
           database.school.name = resp.profile.name;
         }
@@ -23677,7 +23844,8 @@ ${allContent}
         updateTopProfileIdentity();
       }
     } catch (_e) {}
-  })();
+  }
+  setTimeout(function () { _loadProfileFromSupabase(); }, 0);
 
   ensureLicenseSettings();
   ensurePortalSyncData();
