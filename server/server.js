@@ -51,6 +51,22 @@ function generateToken() {
   return "sft-" + crypto.randomBytes(24).toString("hex");
 }
 
+function calculateExpiryDate(plan, startDate, customDays) {
+  var start = startDate ? new Date(startDate) : new Date();
+  if (isNaN(start.getTime())) start = new Date();
+  var days = 30;
+  var p = String(plan || "").toLowerCase().trim();
+  if (p === "monthly") days = 30;
+  else if (p === "3-months" || p === "3months") days = 90;
+  else if (p === "5-months" || p === "5months") days = 150;
+  else if (p === "1-year" || p === "1year") days = 365;
+  else if (p === "custom") days = Number(customDays || 30) || 30;
+  else days = 30;
+  var expiry = new Date(start);
+  expiry.setDate(expiry.getDate() + days);
+  return expiry.toISOString().slice(0, 10);
+}
+
 function signToken(payload) {
   var data = Buffer.from(JSON.stringify(payload)).toString("base64url");
   var sig = crypto.createHmac("sha256", SESSION_SECRET_KEY).update(data).digest("base64url");
@@ -1772,6 +1788,7 @@ function mergeDatabases(incomingDb, existingDb) {
   });
   if (gsIn.instituteProfile) merged.generalSettings.instituteProfile = Object.assign(merged.generalSettings.instituteProfile || {}, gsIn.instituteProfile);
   if (gsIn.accountSettings) merged.generalSettings.accountSettings = Object.assign(merged.generalSettings.accountSettings || {}, gsIn.accountSettings);
+  if (gsIn.licenseSettings) merged.generalSettings.licenseSettings = Object.assign(merged.generalSettings.licenseSettings || {}, gsIn.licenseSettings);
   if (incomingDb.users || merged.users) merged.users = mergeArraysById(incomingDb.users, merged.users);
   if (incomingDb.school) merged.school = Object.assign(merged.school || {}, incomingDb.school);
   if (incomingDb.settings) merged.settings = Object.assign(merged.settings || {}, incomingDb.settings);
@@ -2168,6 +2185,17 @@ app.post("/api/mobile/login", async (req, res) => {
       `, [email]);
       if (licRow.rowCount) {
         var lic2 = licRow.rows[0];
+        var nowDate2 = new Date().toISOString().slice(0, 10);
+        var expiryDate2 = lic2.expiry_date || "";
+        var isFutureExpiry2 = expiryDate2 && expiryDate2 > nowDate2;
+        if (isFutureExpiry2 && String(lic2.status || "").toLowerCase() !== "active") {
+          await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [lic2.school_id]).catch(function() {});
+          lic2.status = "active";
+          lic2.modules_locked = false;
+        }
+        if (!isFutureExpiry2 && expiryDate2 && expiryDate2 <= nowDate2) {
+          return res.status(403).json({ success: false, message: "Account license has expired. Please contact Super Admin to renew." });
+        }
         if (String(lic2.status || "").toLowerCase() !== "active") {
           return res.status(403).json({ success: false, message: "Account not activated. Please contact Super Admin to activate your school." });
         }
@@ -2196,6 +2224,17 @@ app.post("/api/mobile/login", async (req, res) => {
       }
       if (!pwdOk && password === lic3.password) pwdOk = true;
       if (pwdOk) {
+        var nowDate3 = new Date().toISOString().slice(0, 10);
+        var expiryDate3 = lic3.expiry_date || "";
+        var isFutureExpiry3 = expiryDate3 && expiryDate3 > nowDate3;
+        if (isFutureExpiry3 && String(lic3.status || "").toLowerCase() !== "active") {
+          await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [lic3.school_id]).catch(function() {});
+          lic3.status = "active";
+          lic3.modules_locked = false;
+        }
+        if (!isFutureExpiry3 && expiryDate3 && expiryDate3 <= nowDate3) {
+          return res.status(403).json({ success: false, message: "Account license has expired. Please contact Super Admin to renew." });
+        }
         if (String(lic3.status || "").toLowerCase() !== "active") {
           return res.status(403).json({ success: false, message: "Account not activated. Please contact Super Admin to activate your school." });
         }
@@ -2496,8 +2535,11 @@ app.post("/api/admin/schools", requireSuperAdmin, async function (req, res) {
   var email = String(req.body.email || "").trim().toLowerCase();
   var password = String(req.body.password || "").trim();
   var plan = String(req.body.plan || "premium").trim();
-  var startDate = req.body.start_date || null;
+  var startDate = req.body.start_date || new Date().toISOString().slice(0, 10);
   var expiryDate = req.body.expiry_date || null;
+  if (!expiryDate) {
+    expiryDate = calculateExpiryDate(plan, startDate, req.body.custom_days);
+  }
   if (!schoolName) return res.status(400).json({ success: false, message: "School name is required." });
   if (!email) return res.status(400).json({ success: false, message: "Email is required." });
   if (!password) return res.status(400).json({ success: false, message: "Password is required." });
@@ -2608,7 +2650,14 @@ app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, 
     if (body.status !== undefined) { sets.push("status = $" + idx); vals.push(String(body.status).trim().toLowerCase()); idx++; }
     if (body.plan !== undefined) { sets.push("plan = $" + idx); vals.push(String(body.plan).trim()); idx++; }
     if (body.start_date !== undefined) { sets.push("start_date = $" + idx); vals.push(body.start_date || null); idx++; }
-    if (body.expiry_date !== undefined) { sets.push("expiry_date = $" + idx); vals.push(body.expiry_date || null); idx++; }
+    if (body.expiry_date !== undefined) {
+      var _expVal = body.expiry_date || null;
+      if (!_expVal && body.plan) {
+        var _sd = body.start_date || new Date().toISOString().slice(0, 10);
+        _expVal = calculateExpiryDate(body.plan, _sd, body.custom_days);
+      }
+      sets.push("expiry_date = $" + idx); vals.push(_expVal); idx++;
+    }
     if (body.modules_locked !== undefined) { sets.push("modules_locked = $" + idx); vals.push(Boolean(body.modules_locked)); idx++; }
     if (body.timezone !== undefined) { sets.push("timezone = $" + idx); vals.push(String(body.timezone)); idx++; }
     if (body.currency !== undefined) { sets.push("currency = $" + idx); vals.push(String(body.currency)); idx++; }
@@ -2617,6 +2666,14 @@ app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, 
     sets.push("updated_at = now()");
     vals.push(schoolId);
     await pool.query("update public.license_accounts set " + sets.join(", ") + " where school_id = $" + idx, vals);
+    var _finalRow = await pool.query("SELECT status, expiry_date, modules_locked FROM public.license_accounts WHERE school_id = $1", [schoolId]);
+    if (_finalRow.rowCount) {
+      var _fr = _finalRow.rows[0];
+      var _nowStr = new Date().toISOString().slice(0, 10);
+      if (_fr.expiry_date && _fr.expiry_date > _nowStr && (_fr.status !== "active" || _fr.modules_locked)) {
+        await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [schoolId]);
+      }
+    }
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
