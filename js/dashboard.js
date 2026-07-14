@@ -1256,6 +1256,20 @@ document.addEventListener("DOMContentLoaded", function () {
     if (currentUser && currentUser.serverToken) {
       return { locked: false, reason: "" };
     }
+    const accountSettings = (database.generalSettings && database.generalSettings.accountSettings) || {};
+    const expiryRaw = String(license.expiryDate || accountSettings.expiry || "").trim();
+    const today = new Date();
+    const expiry = parseFlexibleDate(expiryRaw);
+    const hasValidFutureExpiry = expiry && !Number.isNaN(expiry.getTime()) && expiry > today;
+    if (hasValidFutureExpiry) {
+      if (!license.activated) {
+        license.activated = true;
+      }
+      if (String(license.status || "").toLowerCase() !== "active") {
+        license.status = "active";
+      }
+      return { locked: false, reason: "" };
+    }
     var isActivated = license.activated === true || String(license.status || "").toLowerCase() === "active";
     if (!isActivated) {
       return { locked: true, reason: "Account activation is required. Please contact Super Admin." };
@@ -1263,10 +1277,6 @@ document.addEventListener("DOMContentLoaded", function () {
     if (String(license.status || "").toLowerCase() === "inactive") {
       return { locked: true, reason: "School account is inactive. Please contact Super Admin." };
     }
-    const accountSettings = (database.generalSettings && database.generalSettings.accountSettings) || {};
-    const expiryRaw = String(license.expiryDate || accountSettings.expiry || "").trim();
-    const today = new Date();
-    const expiry = parseFlexibleDate(expiryRaw);
     if (expiry && !Number.isNaN(expiry.getTime()) && today > expiry) {
       return { locked: true, reason: "Subscription has expired. Please renew from Super Admin panel." };
     }
@@ -24006,6 +24016,14 @@ ${allContent}
             database.generalSettings.licenseSettings.activated = true;
             database.generalSettings.licenseSettings.status = "active";
           }
+          var _lsAfter = database.generalSettings.licenseSettings || {};
+          if (!_lsAfter.activated && _lsAfter.expiryDate) {
+            var _expAfter = new Date(_lsAfter.expiryDate);
+            if (!isNaN(_expAfter.getTime()) && _expAfter > new Date()) {
+              _lsAfter.activated = true;
+              if (!_lsAfter.status || _lsAfter.status === "inactive") _lsAfter.status = "active";
+            }
+          }
           database.generalSettings.licenseSettings.schoolId = schoolId;
           normalizeStudentsDatasetInMemory();
           applyRouteAccessVisibility();
@@ -24021,9 +24039,18 @@ ${allContent}
   populateStudentForm(null);
   const initialLockState = getLicenseLockState();
   if (initialLockState.locked && !superAdminBypass) {
-    setRoute("account-settings");
-    renderProfileDropdownMenu();
-    openAppMessageBox("Error", initialLockState.reason, "error");
+    var _hasSchoolId = false;
+    if (window.SagarSoftDB && window.SagarSoftDB.getConfig) {
+      var _cfg = window.SagarSoftDB.getConfig();
+      if (_cfg && _cfg.schoolId) _hasSchoolId = true;
+    }
+    if (_hasSchoolId) {
+      setRoute("dashboard");
+    } else {
+      setRoute("account-settings");
+      renderProfileDropdownMenu();
+      openAppMessageBox("Error", initialLockState.reason, "error");
+    }
   } else {
     setRoute("dashboard");
     setTimeout(function() { applySavedThemeSettings(); }, 50);
