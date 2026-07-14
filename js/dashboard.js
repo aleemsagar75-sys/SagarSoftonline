@@ -1090,7 +1090,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function _syncSettingsToDedicatedTables() {
     if (!database.generalSettings) return;
     var gs = database.generalSettings;
-    var singletonKeys = ["instituteProfile","accountSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeParticulars","feeStructures"];
+    var singletonKeys = ["instituteProfile","accountSettings","licenseSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeParticulars","feeStructures"];
     var promises = [];
     singletonKeys.forEach(function (key) {
       if (gs[key] !== undefined && gs[key] !== null) {
@@ -1137,6 +1137,9 @@ document.addEventListener("DOMContentLoaded", function () {
       lastServerResponse: ""
     };
     database.generalSettings.licenseSettings = { ...defaultLicense, ...license };
+    if (database.generalSettings.licenseSettings.status === "active" && !database.generalSettings.licenseSettings.activated) {
+      database.generalSettings.licenseSettings.activated = true;
+    }
     if (!database.generalSettings.licenseSettings.expiryDate && accountSettings.expiry) {
       database.generalSettings.licenseSettings.expiryDate = formatDateInput(accountSettings.expiry);
     }
@@ -1253,7 +1256,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (currentUser && currentUser.serverToken) {
       return { locked: false, reason: "" };
     }
-    if (!license.activated) {
+    var isActivated = license.activated === true || String(license.status || "").toLowerCase() === "active";
+    if (!isActivated) {
       return { locked: true, reason: "Account activation is required. Please contact Super Admin." };
     }
     if (String(license.status || "").toLowerCase() === "inactive") {
