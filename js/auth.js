@@ -441,15 +441,6 @@
         body: JSON.stringify({ identifier: email, email: email, password: password, role: role || "admin" })
       });
       var data = await resp.json().catch(function () { return {}; });
-      console.log("========== CLIENT LOGIN DEBUG ==========");
-      console.log("Response Status:", resp.status);
-      console.log("resp.ok:", resp.ok);
-      console.log("data.success:", data.success);
-      console.log("data.school_id:", data.school_id);
-      console.log("data.database:", data.database ? "Present (keys: " + Object.keys(data.database).join(", ") + ")" : "MISSING");
-      console.log("data.license:", data.license ? JSON.stringify(data.license) : "MISSING");
-      console.log("data.license_token:", data.license_token ? data.license_token.substring(0, 20) + "..." : "MISSING");
-      console.log("==========================================");
       if (resp.ok && data.success && data.school_id && data.database) {
         var database = data.database;
         database.generalSettings = database.generalSettings || {};
@@ -483,12 +474,6 @@
         var userName = (matchedUser && matchedUser.name) ? matchedUser.name : (database.school.name || "School Admin");
         var userId = (matchedUser && matchedUser.id) ? matchedUser.id : "USR-ADMIN-001";
         var session = { id: userId, name: userName, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: data.license_token || "" };
-        console.log("========== SESSION SAVE DEBUG ==========");
-        console.log("Session serverToken:", session.serverToken ? session.serverToken.substring(0, 20) + "..." : "EMPTY/MISSING");
-        console.log("Session role:", session.role);
-        console.log("Session email:", session.email);
-        console.log("licenseSettings saved to DB:", JSON.stringify(database.generalSettings.licenseSettings));
-        console.log("========================================");
         if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
         else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
         window.__sagarSoftSession = session;
