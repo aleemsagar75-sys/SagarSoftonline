@@ -24054,6 +24054,7 @@ ${allContent}
     if (icon) { icon.className = saved === "dark" ? "fas fa-sun" : "fas fa-moon"; }
   })();
 
+  var _serverLoadAuthFailed = false;
   (async function loadFromServerAfterInit() {
     var license = database.generalSettings && database.generalSettings.licenseSettings;
     var wasActivated = license && license.activated;
@@ -24098,6 +24099,11 @@ ${allContent}
         }
       } catch (_e) {
         console.error("[LOAD-SERVER] Error loading from server:", _e.message);
+        var _statusCode = _e.statusCode || 0;
+        if (_statusCode === 401 || _statusCode === 403 || (_e.message && (_e.message.indexOf("401") > -1 || _e.message.indexOf("Invalid school token") > -1 || _e.message.indexOf("School authentication required") > -1))) {
+          _serverLoadAuthFailed = true;
+          console.error("[LOAD-SERVER] AUTH FAILED (HTTP " + _statusCode + ") — token rejected by server. Session serverToken:", currentUser && currentUser.serverToken ? currentUser.serverToken.substring(0, 15) + "..." : "NONE");
+        }
       }
     } else {
       console.log("[LOAD-SERVER] No schoolId found, skipping server load");
@@ -24109,6 +24115,7 @@ ${allContent}
   applySidebarState();
   applyRouteAccessVisibility();
   populateStudentForm(null);
+  var _initialAuthFailed = false;
   const initialLockState = getLicenseLockState();
   console.log("[INITIAL-LOCK] State:", JSON.stringify(initialLockState), "currentUser:", currentUser ? { email: currentUser.email, role: currentUser.role, hasServerToken: !!currentUser.serverToken } : "NULL");
   if (initialLockState.locked && !superAdminBypass) {
@@ -24122,7 +24129,12 @@ ${allContent}
     } else {
       setRoute("account-settings");
       renderProfileDropdownMenu();
-      openAppMessageBox("Error", initialLockState.reason, "error");
+      var _displayReason = initialLockState.reason;
+      if (currentUser && currentUser.serverToken && _displayReason.indexOf("activation") > -1) {
+        _displayReason = "Session expired or token invalid. Please login again.";
+        _initialAuthFailed = true;
+      }
+      openAppMessageBox("Error", _displayReason, "error");
     }
   } else {
     setRoute("dashboard");
