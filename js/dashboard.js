@@ -24068,7 +24068,6 @@ ${allContent}
     if (!schoolId && license && license.schoolId) {
       schoolId = String(license.schoolId).trim();
     }
-    console.log("[LOAD-SERVER] Init: schoolId=", schoolId, "wasActivated=", wasActivated, "hasAuthToken=", !!authToken);
     if (schoolId && window.SagarSoftDB && window.SagarSoftDB.setSchoolId) {
       window.SagarSoftDB.setSchoolId(schoolId);
       try {
@@ -24077,7 +24076,6 @@ ${allContent}
           database = serverDb;
           ensureLicenseSettings();
           var _lsBefore = database.generalSettings.licenseSettings || {};
-          console.log("[LOAD-SERVER] Server data loaded. licenseSettings before fix:", JSON.stringify(_lsBefore));
           if (wasActivated || (currentUser && currentUser.serverToken)) {
             database.generalSettings.licenseSettings.activated = true;
             database.generalSettings.licenseSettings.status = "active";
@@ -24090,12 +24088,10 @@ ${allContent}
               if (!_lsAfter.status || _lsAfter.status === "inactive") _lsAfter.status = "active";
             }
           }
-          console.log("[LOAD-SERVER] licenseSettings after fix:", JSON.stringify(database.generalSettings.licenseSettings));
           database.generalSettings.licenseSettings.schoolId = schoolId;
           normalizeStudentsDatasetInMemory();
           applyRouteAccessVisibility();
-        } else {
-          console.log("[LOAD-SERVER] Server returned null database");
+          if (typeof renderDashboard === "function") renderDashboard();
         }
       } catch (_e) {
         console.error("[LOAD-SERVER] Error loading from server:", _e.message);
@@ -24105,8 +24101,6 @@ ${allContent}
           console.error("[LOAD-SERVER] AUTH FAILED (HTTP " + _statusCode + ") — token rejected by server. Session serverToken:", currentUser && currentUser.serverToken ? currentUser.serverToken.substring(0, 15) + "..." : "NONE");
         }
       }
-    } else {
-      console.log("[LOAD-SERVER] No schoolId found, skipping server load");
     }
   })();
 
@@ -24117,7 +24111,6 @@ ${allContent}
   populateStudentForm(null);
   var _initialAuthFailed = false;
   const initialLockState = getLicenseLockState();
-  console.log("[INITIAL-LOCK] State:", JSON.stringify(initialLockState), "currentUser:", currentUser ? { email: currentUser.email, role: currentUser.role, hasServerToken: !!currentUser.serverToken } : "NULL");
   if (initialLockState.locked && !superAdminBypass) {
     var _hasSchoolId = false;
     if (window.SagarSoftDB && window.SagarSoftDB.getConfig) {
