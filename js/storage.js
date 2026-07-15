@@ -454,12 +454,16 @@
       attempts++;
       try {
         var payload = await apiFetch("/api/database/" + encodeURIComponent(config.schoolId), { timeoutMs: 60000 });
+        console.log("[LOAD-DB] Server response success:", !!(payload && payload.success), "hasDatabase:", !!(payload && payload.database));
         if (payload && payload.database) {
           var db = normalizeDatabase(payload.database);
+          console.log("[LOAD-DB] Normalized DB students:", (db.students || []).length, "classes:", (db.classes || []).length, "fees:", (db.fees || []).length, "users:", (db.users || []).length, "teachers:", (db.teachers || []).length);
           if (!_isCancelled) cachedDatabase = db;
           hideLoading();
           window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "server" } }));
           return db;
+        } else {
+          console.log("[LOAD-DB] Server returned null/empty database. payload:", JSON.stringify(payload).substring(0, 500));
         }
       } catch (_e) {
         if (_isCancelled) break;
