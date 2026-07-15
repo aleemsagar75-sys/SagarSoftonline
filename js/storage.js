@@ -83,7 +83,13 @@
       var response = await fetch(config.apiBaseUrl + path, fetchOpts);
       clearTimeout(timeoutId);
       var payload = await response.json().catch(function () { return {}; });
-      if (!response.ok || !payload.success) throw new Error(payload.message || "API request failed.");
+      if (!response.ok || !payload.success) {
+        var errMsg = payload.message || "API request failed.";
+        var err = new Error(errMsg);
+        err.statusCode = response.status;
+        err.serverMessage = errMsg;
+        throw err;
+      }
       lastSyncFailed = false;
       return payload;
     } catch (err) {
