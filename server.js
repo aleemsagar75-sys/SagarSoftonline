@@ -1487,7 +1487,6 @@ async function saveSchoolDatabaseWithMirrors(schoolId, database) {
   const dbEmployees = Array.isArray(database.teachers) ? database.teachers.length : 0;
   const dbClasses = Array.isArray(database.classes) ? database.classes.length : 0;
   const dbFees = Array.isArray(database.fees) ? database.fees.length : 0;
-  console.log("[SAVE-MIRRORS] schoolId:", schoolId, "students:", dbStudents, "employees:", dbEmployees, "classes:", dbClasses, "fees:", dbFees, "total size:", JSON.stringify(database).length, "bytes");
   try {
     await client.query("begin");
     await client.query(`
@@ -1496,7 +1495,6 @@ async function saveSchoolDatabaseWithMirrors(schoolId, database) {
       on conflict (school_id)
       do update set database = excluded.database, updated_at = now()
     `, [schoolId, JSON.stringify(database || {})]);
-    console.log("[SAVE-MIRRORS] school_databases row saved/updated");
     await syncEmployeeMirrorTables(client, schoolId, database || {});
     await syncStudentMirrorTable(client, schoolId, database || {});
     await syncClassMirrorTable(client, schoolId, database || {});
@@ -1522,15 +1520,6 @@ async function getSchoolDatabase(schoolId) {
   const result = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
   const database = result.rowCount ? (result.rows[0].database || {}) : {};
   database.generalSettings = database.generalSettings || {};
-
-  console.log("===== DATABASE LOAD DEBUG =====");
-  console.log("School ID:", schoolId);
-  console.log("school_databases row exists:", result.rowCount > 0);
-  console.log("JSONB blob keys:", result.rowCount ? Object.keys(database).join(", ") : "NO ROW");
-  console.log("JSONB students count:", Array.isArray(database.students) ? database.students.length : 0);
-  console.log("JSONB employees count:", Array.isArray(database.teachers) ? database.teachers.length : 0);
-  console.log("JSONB classes count:", Array.isArray(database.classes) ? database.classes.length : 0);
-  console.log("JSONB fees count:", Array.isArray(database.fees) ? database.fees.length : 0);
 
   const readDataRows = async function (tableName) {
     try {
@@ -1596,17 +1585,6 @@ async function getSchoolDatabase(schoolId) {
     readDataRows("account_activity")
   ]);
 
-  console.log("Dedicated table counts:");
-  console.log("  students:", students.length);
-  console.log("  classes:", classes.length);
-  console.log("  users:", users.length);
-  console.log("  subjects:", subjects.length);
-  console.log("  attendance:", attendance.length);
-  console.log("  fees:", fees.length);
-  console.log("  employees:", employees.length);
-  console.log("  feeInvoices:", feeInvoices.length);
-  console.log("  activityLogs:", activityLogs.length);
-
   // Migration: if dedicated table is empty but JSONB blob has data, migrate to dedicated table
   var migrateEntities = [
     { key: "students", table: "students" },
@@ -1622,7 +1600,7 @@ async function getSchoolDatabase(schoolId) {
     { key: "smsTemplates", table: "sms_templates" },
     { key: "accountActivity", table: "account_activity" }
   ];
-  var dedicatedResults = { students: students, classes: classes, subjects: subjects, attendance: attendance, fees: fees, notices: notices, events: events, activityLogs: activityLogs, smsTemplates: smsTemplates, accountActivity: accountActivity };
+  var dedicatedResults = { students: students, classes: classes, subjects: subjects, attendance: attendance, fees: fees, notices: notices, events: events, activityLogs: activityLogs, smsTemplates: smsTemplates, accountActivity: accountActivity, employees: employees };
   for (var mi = 0; mi < migrateEntities.length; mi++) {
     var ent = migrateEntities[mi];
     var blobArr = database[ent.key] || [];
@@ -1653,6 +1631,7 @@ async function getSchoolDatabase(schoolId) {
   activityLogs = dedicatedResults.activityLogs;
   smsTemplates = dedicatedResults.smsTemplates;
   accountActivity = dedicatedResults.accountActivity;
+  employees = dedicatedResults.employees;
 
   // Migration: also migrate users from JSONB blob to app_users table
   var usersDed = dedicatedResults.users || users;
@@ -1683,6 +1662,8 @@ async function getSchoolDatabase(schoolId) {
   if (activityLogs.length) database.activityLogs = activityLogs;
   if (accountActivity.length) database.accountActivity = accountActivity;
   if (smsTemplates.length) database.smsTemplates = smsTemplates;
+  if (employees.length) database.employees = employees;
+  if (employees.length && (!database.teachers || !database.teachers.length)) database.teachers = employees;
   if (feeInvoices.length) database.generalSettings.feeInvoices = feeInvoices;
   if (feeCollections.length) database.generalSettings.feeCollections = feeCollections;
   if (salaryPayments.length) database.generalSettings.salaryPayments = salaryPayments;
@@ -1752,14 +1733,6 @@ async function getSchoolDatabase(schoolId) {
     }
   }
 
-  console.log("Final database students:", Array.isArray(database.students) ? database.students.length : "missing");
-  console.log("Final database classes:", Array.isArray(database.classes) ? database.classes.length : "missing");
-  console.log("Final database fees:", Array.isArray(database.fees) ? database.fees.length : "missing");
-  console.log("Final database employees:", Array.isArray(database.teachers) ? database.teachers.length : "missing");
-  console.log("Final database users:", Array.isArray(database.users) ? database.users.length : "missing");
-  console.log("Final database size:", JSON.stringify(database).length, "bytes");
-  console.log("===================================");
-
   return database;
 }
 
@@ -1794,18 +1767,14 @@ app.get("/health", async (_req, res) => {
 
 app.get("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
-  console.log("[GET-DB] Request for schoolId:", schoolId, "authSchoolId:", req.authSchoolId, "role:", req.authRole, "received_token_len:", (req.query.token || req.headers["x-license-token"] || "").length);
   if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
-    console.log("[GET-DB] ACCESS DENIED: authSchoolId", req.authSchoolId, "!=", schoolId);
     return res.status(403).json({ success: false, message: "Access denied." });
   }
   try {
     const database = await getSchoolDatabase(schoolId);
     if (!database) {
-      console.log("[GET-DB] getSchoolDatabase returned null for", schoolId);
       return res.json({ success: true, school_id: schoolId, database: null });
     }
-    console.log("[GET-DB] Returning database for", schoolId, "size:", JSON.stringify(database).length, "bytes");
     return res.json({ success: true, school_id: schoolId, database: database });
   } catch (error) {
     console.error("GET /api/database/" + schoolId + " — ERROR:", error.message);
@@ -1910,7 +1879,6 @@ app.post("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
     }
     const existingResult = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
     let existingDb = existingResult.rowCount ? (existingResult.rows[0].database || {}) : {};
-    console.log("[POST-DB] schoolId:", schoolId, "existing_row:", existingResult.rowCount > 0, "existing size:", JSON.stringify(existingDb).length, "incoming size:", JSON.stringify(incomingDb).length);
     if (typeof existingDb === "string") { try { existingDb = JSON.parse(existingDb); } catch (_e) { existingDb = {}; } }
     const isReplace = Boolean(incomingDb._replace);
     delete incomingDb._replace;
@@ -1919,10 +1887,7 @@ app.post("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
       mergedDb = incomingDb;
       console.log("POST /api/database/" + schoolId + " — REPLACE MODE (skipping merge)");
     } else {
-      const existingTeachers = (existingDb.teachers || []).length;
       mergedDb = mergeDatabases(incomingDb, existingDb);
-      const mergedTeachers = (mergedDb.teachers || []).length;
-      console.log("POST MERGE DEBUG: incoming=" + (incomingDb.teachers || []).length + " existing=" + existingTeachers + " merged=" + mergedTeachers);
     }
     await saveSchoolDatabaseWithMirrors(schoolId, mergedDb);
     try {
@@ -2290,19 +2255,6 @@ app.post("/api/mobile/login", async (req, res) => {
         var nowDate2 = new Date().toISOString().slice(0, 10);
         var expiryDate2 = lic2.expiry_date || "";
         var isFutureExpiry2 = expiryDate2 && expiryDate2 > nowDate2;
-        console.log("========== LICENSE VALIDATION DEBUG (LOGIN PATH 1 - SupaAuth) ==========");
-        console.log("School ID:", lic2.school_id);
-        console.log("School Name:", lic2.school_name);
-        console.log("Authenticated User:", email);
-        console.log("Activation Status (Raw):", lic2.status);
-        console.log("Subscription Plan:", lic2.plan);
-        console.log("Expiry Date (Raw DB):", lic2.expiry_date);
-        console.log("Expiry Date (Parsed):", expiryDate2 ? new Date(expiryDate2).toISOString() : "NULL");
-        console.log("Current Server Date:", nowDate2);
-        console.log("Is Future Expiry:", isFutureExpiry2);
-        console.log("Modules Locked:", lic2.modules_locked);
-        console.log("License Token:", lic2.license_token ? lic2.license_token.substring(0, 20) + "..." : "NULL");
-        console.log("================================================================");
         if (isFutureExpiry2 && (String(lic2.status || "").toLowerCase() !== "active" || lic2.modules_locked)) {
           await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [lic2.school_id]).catch(function() {});
           lic2.status = "active";
@@ -2325,13 +2277,6 @@ app.post("/api/mobile/login", async (req, res) => {
           await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [_finalToken, lic2.school_id]).catch(function() {});
         }
         var _loginPayload2 = { success: true, license: toLicensePayload(lic2, notes2.rows), user: { id: "USR-ADMIN-001", name: lic2.school_name || "School Admin", email: email, role: "admin" }, school_id: lic2.school_id, license_token: _finalToken, database: db2 || {} };
-        console.log("========== LOGIN RESPONSE (PATH 1) ==========");
-        console.log("License Token in Response:", _loginPayload2.license_token ? _loginPayload2.license_token.substring(0, 20) + "..." : "NULL");
-        console.log("Activation Status:", _loginPayload2.license.activation_status);
-        console.log("Expiry Date:", _loginPayload2.license.expiry_date);
-        console.log("Database Returned:", _loginPayload2.database ? "YES (keys: " + Object.keys(_loginPayload2.database).join(", ") + ")" : "NULL");
-        console.log("DB licenseSettings:", JSON.stringify((_loginPayload2.database.generalSettings || {}).licenseSettings || {}));
-        console.log("================================================");
         return res.json(_loginPayload2);
       }
     }
@@ -2396,8 +2341,6 @@ app.post("/api/mobile/login", async (req, res) => {
           _finalToken3 = generateToken();
           await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [_finalToken3, lic3.school_id]).catch(function() {});
         }
-        console.log("[LOGIN-PATH3] School:", lic3.school_id, "db3 students:", Array.isArray(db3.students) ? db3.students.length : 0, "db3 employees:", Array.isArray(db3.teachers) ? db3.teachers.length : 0, "db3 classes:", Array.isArray(db3.classes) ? db3.classes.length : 0, "db3 fees:", Array.isArray(db3.fees) ? db3.fees.length : 0);
-        console.log("[LOGIN-PATH3] db3 size:", JSON.stringify(db3).length, "bytes, users count:", db3.users.length);
         return res.json({ success: true, license: toLicensePayload(lic3, notes4.rows), user: { id: loginUserId, name: lic3.school_name || "School Admin", email: email, role: loginRole }, school_id: lic3.school_id, license_token: _finalToken3, database: db3 || {} });
       }
     }
