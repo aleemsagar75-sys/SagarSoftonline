@@ -193,6 +193,10 @@
     }
 
     applyPortalLicense(database, payload, email, password);
+    var portalLicenseToken = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.licenseToken) || "";
+    var portalSchoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || "";
+    if (portalSchoolId) window.SagarSoftDB.setSchoolId(portalSchoolId);
+    if (portalLicenseToken) window.SagarSoftDB.setAuthToken(portalLicenseToken);
     const adminRecord = {
       id: "USR-ADMIN-001",
       name: payload.school_name || "School Admin",
@@ -228,7 +232,8 @@
       email: adminRecord.email,
       role: adminRecord.role,
       rememberMe: true,
-      loginAt: new Date().toISOString()
+      loginAt: new Date().toISOString(),
+      serverToken: portalLicenseToken || ""
     };
     saveSession(session);
 
