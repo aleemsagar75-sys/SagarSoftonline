@@ -309,23 +309,20 @@ function requireSchoolAuth(req, res, next) {
       var expectedToken = row.license_token;
       var altToken = row.api_token;
       var tokenValid = false;
+      console.log("[AUTH-MIDDLEWARE] School:", schoolId, "| received_token_len:", token.length, "| db_license_token_len:", expectedToken ? expectedToken.length : 0, "| db_api_token_len:", altToken ? altToken.length : 0, "| status:", row.status, "| modules_locked:", row.modules_locked, "| expiry:", row.expiry_date);
       if (expectedToken && token.length === expectedToken.length) {
         try { tokenValid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken)); } catch (_e) {}
+        console.log("[AUTH-MIDDLEWARE] license_token match:", tokenValid);
       }
       if (!tokenValid && altToken && token.length === altToken.length) {
         try { tokenValid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(altToken)); } catch (_e) {}
+        console.log("[AUTH-MIDDLEWARE] api_token match:", tokenValid);
       }
       if (!tokenValid && !expectedToken && !altToken) {
-        console.log("[AUTH-MIDDLEWARE] Both tokens NULL for school:", schoolId, "| Auto-generating new license_token");
-        var newToken = generateToken();
-        await pool.query("UPDATE public.license_accounts SET license_token = $1, api_token = COALESCE(api_token, $1), updated_at = now() WHERE school_id = $2", [newToken, schoolId]).catch(function () {});
-        row.license_token = newToken;
-        if (token === newToken) {
-          tokenValid = true;
-        } else {
-          console.log("[AUTH-MIDDLEWARE] Generated token, client token doesn't match. Expected:", newToken.substring(0, 15) + "...", "| Got:", token.substring(0, 15) + "...");
-          return res.status(401).json({ success: false, message: "Token regenerated. Please re-login." });
-        }
+        console.log("[AUTH-MIDDLEWARE] Both tokens NULL for school:", schoolId, "| Storing client token as license_token");
+        await pool.query("UPDATE public.license_accounts SET license_token = $1, api_token = COALESCE(api_token, $1), updated_at = now() WHERE school_id = $2", [token, schoolId]).catch(function () {});
+        row.license_token = token;
+        tokenValid = true;
       }
       if (!tokenValid) {
         var _debugInfo = {
@@ -2378,8 +2375,13 @@ app.post("/api/mobile/login", async (req, res) => {
           if (!pwdOk2 && password === matchedUser.password) pwdOk2 = true;
         }
         if (pwdOk2) {
+          var _path3Token2 = foundLicense.license_token;
+          if (!_path3Token2) {
+            _path3Token2 = generateToken();
+            await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [_path3Token2, foundLicense.school_id]).catch(function () {});
+          }
           var notes3 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [foundLicense.school_id]);
-          return res.json({ success: true, license: toLicensePayload(foundLicense, notes3.rows), user: { id: matchedUser.id || "USR-ADMIN-001", name: matchedUser.name || foundLicense.school_name || "School Admin", email: email, role: matchedUser.role || "admin" }, school_id: foundLicense.school_id, license_token: foundLicense.license_token || generateToken(), database: foundDb || {} });
+          return res.json({ success: true, license: toLicensePayload(foundLicense, notes3.rows), user: { id: matchedUser.id || "USR-ADMIN-001", name: matchedUser.name || foundLicense.school_name || "School Admin", email: email, role: matchedUser.role || "admin" }, school_id: foundLicense.school_id, license_token: _path3Token2, database: foundDb || {} });
         }
       }
     }
