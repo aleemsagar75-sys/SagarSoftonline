@@ -1554,6 +1554,7 @@ async function getSchoolDatabase(schoolId) {
     questionPapers,
     certificates,
     employees,
+    teachers,
     notices,
     events,
     smsTemplates,
@@ -1579,6 +1580,7 @@ async function getSchoolDatabase(schoolId) {
     readDataRows("question_papers"),
     readDataRows("certificates"),
     readDataRows("employees"),
+    readDataRows("teachers"),
     readDataRows("notices"),
     readDataRows("events"),
     readDataRows("sms_templates"),
@@ -1600,7 +1602,7 @@ async function getSchoolDatabase(schoolId) {
     { key: "smsTemplates", table: "sms_templates" },
     { key: "accountActivity", table: "account_activity" }
   ];
-  var dedicatedResults = { students: students, classes: classes, subjects: subjects, attendance: attendance, fees: fees, notices: notices, events: events, activityLogs: activityLogs, smsTemplates: smsTemplates, accountActivity: accountActivity, employees: employees };
+  var dedicatedResults = { students: students, classes: classes, subjects: subjects, attendance: attendance, fees: fees, teachers: teachers, notices: notices, events: events, activityLogs: activityLogs, smsTemplates: smsTemplates, accountActivity: accountActivity, employees: employees };
   for (var mi = 0; mi < migrateEntities.length; mi++) {
     var ent = migrateEntities[mi];
     var blobArr = database[ent.key] || [];
@@ -1632,6 +1634,7 @@ async function getSchoolDatabase(schoolId) {
   smsTemplates = dedicatedResults.smsTemplates;
   accountActivity = dedicatedResults.accountActivity;
   employees = dedicatedResults.employees;
+  teachers = dedicatedResults.teachers;
 
   // Migration: also migrate users from JSONB blob to app_users table
   var usersDed = dedicatedResults.users || users;
@@ -1651,31 +1654,37 @@ async function getSchoolDatabase(schoolId) {
     if (migratedUsers.length) users = migratedUsers;
   }
 
-  if (students.length) database.students = students;
-  if (classes.length) database.classes = classes;
-  if (users.length) database.users = users;
-  if (subjects.length) database.subjects = subjects;
-  if (attendance.length) database.attendance = attendance;
-  if (fees.length) database.fees = fees;
-  if (notices.length) database.notices = notices;
-  if (events.length) database.events = events;
-  if (activityLogs.length) database.activityLogs = activityLogs;
-  if (accountActivity.length) database.accountActivity = accountActivity;
-  if (smsTemplates.length) database.smsTemplates = smsTemplates;
-  if (employees.length) database.employees = employees;
-  if (employees.length && (!database.teachers || !database.teachers.length)) database.teachers = employees;
-  if (feeInvoices.length) database.generalSettings.feeInvoices = feeInvoices;
-  if (feeCollections.length) database.generalSettings.feeCollections = feeCollections;
-  if (salaryPayments.length) database.generalSettings.salaryPayments = salaryPayments;
-  if (accountsLedger.length) database.generalSettings.accountsLedger = accountsLedger;
-  if (exams.length) database.generalSettings.exams = exams;
-  if (examMarks.length) database.generalSettings.examMarks = examMarks;
-  if (timetable.length) database.generalSettings.timetableEntries = timetable;
-  if (homework.length) database.generalSettings.homework = homework;
-  if (classTests.length) database.generalSettings.classTests = classTests;
-  if (classTestMarks.length) database.generalSettings.classTestMarks = classTestMarks;
-  if (questionPapers.length) database.generalSettings.questionPapers = questionPapers;
-  if (certificates.length) database.generalSettings.certificates = certificates;
+  database.students = students;
+  database.classes = classes;
+  database.users = users;
+  database.subjects = subjects;
+  database.attendance = attendance;
+  database.fees = fees;
+  database.notices = notices;
+  database.events = events;
+  database.activityLogs = activityLogs;
+  database.accountActivity = accountActivity;
+  database.smsTemplates = smsTemplates;
+  database.employees = employees;
+  if (teachers.length) {
+    database.teachers = teachers;
+  } else if (employees.length) {
+    database.teachers = employees;
+  } else {
+    database.teachers = database.teachers || [];
+  }
+  database.generalSettings.feeInvoices = feeInvoices;
+  database.generalSettings.feeCollections = feeCollections;
+  database.generalSettings.salaryPayments = salaryPayments;
+  database.generalSettings.accountsLedger = accountsLedger;
+  database.generalSettings.exams = exams;
+  database.generalSettings.examMarks = examMarks;
+  database.generalSettings.timetableEntries = timetable;
+  database.generalSettings.homework = homework;
+  database.generalSettings.classTests = classTests;
+  database.generalSettings.classTestMarks = classTestMarks;
+  database.generalSettings.questionPapers = questionPapers;
+  database.generalSettings.certificates = certificates;
 
   try {
     const settingsRows = await pool.query(
@@ -3062,6 +3071,26 @@ app.delete("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (
     }
     var delResult = await pool.query("delete from public." + tableName + " where school_id = $1 and source_id = $2", [schoolId, recordId]);
     console.log("[DELETE] table=" + tableName + " school_id=" + schoolId + " source_id=" + recordId + " Rows Affected: " + delResult.rowCount);
+    try {
+      var _blobRes = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
+      if (_blobRes.rowCount) {
+        var _blobDb = _blobRes.rows[0].database || {};
+        if (typeof _blobDb === "string") { try { _blobDb = JSON.parse(_blobDb); } catch (_e2) { _blobDb = {}; } }
+        if (!_blobDb._deletedIds) _blobDb._deletedIds = [];
+        if (_blobDb._deletedIds.indexOf(recordId) === -1) _blobDb._deletedIds.push(recordId);
+        if (_blobDb[tableName] && Array.isArray(_blobDb[tableName])) {
+          _blobDb[tableName] = _blobDb[tableName].filter(function(item) { return item && item.id !== recordId; });
+        }
+        if (_blobDb.generalSettings) {
+          ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates"].forEach(function(key) {
+            if (Array.isArray(_blobDb.generalSettings[key])) {
+              _blobDb.generalSettings[key] = _blobDb.generalSettings[key].filter(function(item) { return item && item.id !== recordId; });
+            }
+          });
+        }
+        await pool.query("update public.school_databases set database = $1::jsonb, updated_at = now() where school_id = $2", [JSON.stringify(_blobDb), schoolId]);
+      }
+    } catch (_blobErr) {}
     return res.json({ success: true, message: "Record deleted.", rowsAffected: delResult.rowCount });
   } catch (error) {
     console.error("[DELETE] FAILED table=" + tableName + " school_id=" + schoolId + " source_id=" + recordId + " error=" + error.message);
