@@ -1528,7 +1528,7 @@ async function getSchoolDatabase(schoolId) {
     }
   };
 
-  const [
+  let [
     students,
     classes,
     users,
