@@ -1073,8 +1073,17 @@ document.addEventListener("DOMContentLoaded", function () {
       _syncSettingsToDedicatedTables();
       if (_saved) {
         try {
+          var _oldDeletedIds = (database && database._deletedIds) ? database._deletedIds.slice() : [];
           var _fresh = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
-          if (_fresh) { database = _fresh; }
+          if (_fresh) {
+            if (_oldDeletedIds.length) {
+              if (!_fresh._deletedIds) _fresh._deletedIds = [];
+              _oldDeletedIds.forEach(function(id) {
+                if (_fresh._deletedIds.indexOf(id) === -1) _fresh._deletedIds.push(id);
+              });
+            }
+            database = _fresh;
+          }
           else { refreshDatabase(); }
         } catch (_e) { refreshDatabase(); }
       }
@@ -4212,12 +4221,17 @@ document.addEventListener("DOMContentLoaded", function () {
     database.teachers = database.teachers.filter(function (item) {
       return item.id !== employeeId;
     });
-    database.employees = database.teachers.slice();
+    database.employees = (database.employees || []).filter(function (item) {
+      return item.id !== employeeId;
+    });
     database.users = database.users.filter(function (user) {
       return !(user.role === "teacher" && (user.employeeId === employeeId || user.name === employee.name));
     });
     addActivity("Employee deleted", `${employee.name} record was removed.`);
-    await saveDatabase("Deleting employee...", [{ table: "teachers", record: employee, operation: "delete" }]);
+    await saveDatabase("Deleting employee...", [
+      { table: "teachers", record: employee, operation: "delete" },
+      { table: "employees", record: employee, operation: "delete" }
+    ]);
   }
 
   function ensureEmployeeLogin(employee) {
