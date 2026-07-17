@@ -247,8 +247,9 @@
     if (_loadingOverlay) {
       _loadingOverlay.classList.remove("ss-slow");
       _loadingOverlay.style.display = "flex";
+      _loadingOverlay.style.touchAction = "none";
       requestAnimationFrame(function(){ _loadingOverlay.style.opacity = "1"; });
-      try { document.body.style.overflow = "hidden"; } catch(_e) {}
+      try { document.body.style.overflow = "hidden"; document.body.style.touchAction = "none"; } catch(_e) {}
     }
     if (_loadingLabel) { _loadingLabel.textContent = text || ""; }
     if (_loadingBar) { _loadingBar.style.display = text ? "block" : "none"; }
@@ -286,8 +287,10 @@
   }
 
   function cancelLoading() {
+    _isCancelled = true;
     abortAllRequests();
     hideLoading();
+    _isCancelled = false;
   }
 
   var _saveDbTimer = null;
