@@ -1792,73 +1792,6 @@ app.get("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
   }
 });
 
-function mergeArraysById(localArr, serverArr) {
-  const merged = (serverArr || []).slice();
-  (localArr || []).forEach(function (item) {
-    if (!item || !item.id) return;
-    const idx = merged.findIndex(function (s) { return s && s.id === item.id; });
-    if (idx >= 0) {
-      merged[idx] = item;
-    } else {
-      merged.push(item);
-    }
-  });
-  return merged;
-}
-
-function removeDeletedFromObject(obj, deletedIds) {
-  if (!deletedIds || !deletedIds.length || !obj) return;
-  const idSet = {};
-  deletedIds.forEach(function (id) { idSet[String(id)] = true; });
-  const arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity","users"];
-  arrKeys.forEach(function (key) {
-    if (Array.isArray(obj[key])) {
-      obj[key] = obj[key].filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
-    }
-  });
-  if (obj.generalSettings) {
-    ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates","timetableWeekdays","timetablePeriods","classRooms","examSchedule","questionChapters","homeworkAssignments","certificateTemplates"].forEach(function (key) {
-      if (Array.isArray(obj.generalSettings[key])) {
-        obj.generalSettings[key] = obj.generalSettings[key].filter(function (item) { return !item || !item.id || !idSet[String(item.id)]; });
-      }
-    });
-  }
-}
-
-function mergeDatabases(incomingDb, existingDb) {
-  if (!existingDb || typeof existingDb !== "object" || Object.keys(existingDb).length === 0) {
-    return incomingDb;
-  }
-  var incomingDeleted = (incomingDb._deletedIds || []).map(String);
-  var existingDeleted = (existingDb._deletedIds || []).map(String);
-  var allDeleted = Array.from(new Set(incomingDeleted.concat(existingDeleted)));
-  const merged = existingDb;
-  removeDeletedFromObject(merged, allDeleted);
-  const arrKeys = ["employees","teachers","students","classes","subjects","attendance","fees","notices","events","activityLogs","smsTemplates","accountActivity"];
-  arrKeys.forEach(function (key) {
-    if (incomingDb[key] || merged[key]) {
-      merged[key] = mergeArraysById(incomingDb[key], merged[key]);
-    }
-  });
-  const gsIn = (incomingDb.generalSettings || {});
-  const gsEx = (merged.generalSettings || {});
-  merged.generalSettings = Object.assign({}, gsEx);
-  ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates"].forEach(function (key) {
-    if (gsIn[key] || gsEx[key]) {
-      merged.generalSettings[key] = mergeArraysById(gsIn[key], gsEx[key]);
-    }
-  });
-  if (gsIn.instituteProfile) merged.generalSettings.instituteProfile = Object.assign(merged.generalSettings.instituteProfile || {}, gsIn.instituteProfile);
-  if (gsIn.accountSettings) merged.generalSettings.accountSettings = Object.assign(merged.generalSettings.accountSettings || {}, gsIn.accountSettings);
-  if (gsIn.licenseSettings) merged.generalSettings.licenseSettings = Object.assign(merged.generalSettings.licenseSettings || {}, gsIn.licenseSettings);
-  if (incomingDb.users || merged.users) merged.users = mergeArraysById(incomingDb.users, merged.users);
-  if (incomingDb.school) merged.school = Object.assign(merged.school || {}, incomingDb.school);
-  if (incomingDb.settings) merged.settings = Object.assign(merged.settings || {}, incomingDb.settings);
-  removeDeletedFromObject(merged, allDeleted);
-  merged._deletedIds = allDeleted;
-  return merged;
-}
-
 app.post("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
@@ -1877,29 +1810,15 @@ app.post("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
         return res.status(403).json({ success: false, message: "School account is " + status + ". Please contact Super Admin." });
       }
     }
-    const existingResult = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
-    let existingDb = existingResult.rowCount ? (existingResult.rows[0].database || {}) : {};
-    if (typeof existingDb === "string") { try { existingDb = JSON.parse(existingDb); } catch (_e) { existingDb = {}; } }
-    const isReplace = Boolean(incomingDb._replace);
     delete incomingDb._replace;
-    let mergedDb;
-    if (isReplace) {
-      mergedDb = incomingDb;
-      console.log("POST /api/database/" + schoolId + " — REPLACE MODE (skipping merge)");
-    } else {
-      const existingTeachers = (existingDb.teachers || []).length;
-      mergedDb = mergeDatabases(incomingDb, existingDb);
-      const mergedTeachers = (mergedDb.teachers || []).length;
-      console.log("POST MERGE DEBUG: incoming=" + (incomingDb.teachers || []).length + " existing=" + existingTeachers + " merged=" + mergedTeachers);
-    }
-    await saveSchoolDatabaseWithMirrors(schoolId, mergedDb);
+    await saveSchoolDatabaseWithMirrors(schoolId, incomingDb);
     try {
-      const newName = String((mergedDb.school && mergedDb.school.name) || "").trim();
+      const newName = String((incomingDb.school && incomingDb.school.name) || "").trim();
       if (newName) {
         await pool.query("update public.license_accounts set school_name = $1, updated_at = now() where school_id = $2", [newName, schoolId]);
       }
     } catch (_e) {}
-    console.log("POST /api/database/" + schoolId + " — SAVED OK" + (isReplace ? " (replaced)" : " (merged)"));
+    console.log("POST /api/database/" + schoolId + " — SAVED OK");
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
     console.error("POST /api/database/" + schoolId + " — ERROR:", error.message);
