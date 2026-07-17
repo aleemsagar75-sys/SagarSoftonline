@@ -6,8 +6,8 @@
   const DEMO_SNAPSHOT_KEY = "sagarsoft_demo_snapshot";
   const DEMO_EMAIL_SET = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"]);
 
-  const SA_EMAIL = "aleemsagar@gmail.com";
-  const SA_STORED = "8ad8b9ea7b1bd6403a80e42e6dc2d55a1647af2bcc0db0a8cd67bb7e1e60dc54:a5e0813f25285755199ac67d58d25f37ca60b1e0551c1656edf368e6ac323aae1d6d894bb8eba85e8cc8d302ff7f32c9169f44c93af34b13a99d280a1353a5da";
+  const SA_EMAIL = "";
+  const SA_STORED = "";
 
   function verifySuperAdminPassword(password) {
     var parts = SA_STORED.split(":");
@@ -490,45 +490,28 @@
       var apiBase = getApiBaseUrl();
       var localDb = window.SagarSoftDB ? window.SagarSoftDB.getDatabase() : {};
       var schoolName = (localDb.school && localDb.school.name) || "School Admin";
-      var saResp = await fetch(apiBase + "/api/auth/superadmin", {
+      var regResp = await fetch(apiBase + "/api/school/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: "aleemsagar@gmail.com", password: "Google112233" })
+        body: JSON.stringify({ email: email, password: password, school_name: schoolName })
       });
-      var saData = await saResp.json().catch(function () { return {}; });
-      if (!saData.success || !saData.token) return null;
-      var saToken = saData.token;
-      var resolveResp = await fetch(apiBase + "/api/resolve-school", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email })
-      });
-      var resolveData = await resolveResp.json().catch(function () { return {}; });
-      var schoolId;
-      if (resolveData.success && resolveData.school_id) {
-        schoolId = resolveData.school_id;
-        var licResp = await fetch(apiBase + "/api/admin/license", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + saToken },
-          body: JSON.stringify({ school_id: schoolId, school_name: schoolName, email: email, password: password })
-        });
-        var licData = await licResp.json().catch(function () { return {}; });
-        if (!licData.success) return null;
-      } else {
-        return null;
+      var regData = await regResp.json().catch(function () { return {}; });
+      if (!regData.success || !regData.school_id || !regData.license_token) return null;
+      var schoolId = regData.school_id;
+      var token = regData.license_token;
+      var database = regData.database || null;
+      if (!database) {
+        try {
+          var dbResp = await fetch(apiBase + "/api/database/" + encodeURIComponent(schoolId), {
+            method: "GET",
+            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token }
+          });
+          var dbPayload = await dbResp.json().catch(function () { return {}; });
+          if (dbResp.ok && dbPayload.success && dbPayload.database) {
+            database = dbPayload.database;
+          }
+        } catch (_e) {}
       }
-      var token = licData.license_token || "";
-      var database = null;
-      try {
-        var dbResp = await fetch(apiBase + "/api/database/" + encodeURIComponent(schoolId), {
-          method: "GET",
-          headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token }
-        });
-        var dbPayload = await dbResp.json().catch(function () { return {}; });
-        if (dbResp.ok && dbPayload.success && dbPayload.database) {
-          database = dbPayload.database;
-        }
-      } catch (_e) {}
       if (!database) {
         return null;
       }
