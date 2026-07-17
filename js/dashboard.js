@@ -1088,9 +1088,7 @@ document.addEventListener("DOMContentLoaded", function () {
         } catch (_e) { refreshDatabase(); }
       }
     } else {
-      try {
-        _saved = await window.SagarSoftDB.forceSave(database);
-      } catch (_e) {}
+      console.error("[SagarSoft] saveDatabase() called without changes array — pass explicit changes. Falling back to settings sync only.");
       _syncSettingsToDedicatedTables();
       refreshDatabase();
     }
@@ -1573,12 +1571,14 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function addActivity(title, description) {
-    database.activityLogs.unshift({
+    var logEntry = {
       id: `ACT-${generateId()}`,
       title: title,
       description: description,
       createdAt: new Date().toISOString()
-    });
+    };
+    database.activityLogs.unshift(logEntry);
+    window.SagarSoftDB.saveRecord("activity_logs", logEntry, "create").catch(function() {});
   }
 
   function getInitials(name) {
@@ -1887,7 +1887,7 @@ document.addEventListener("DOMContentLoaded", function () {
       database.classes = data.classes;
     }
     addActivity("Offline update imported", `Update package applied (${data.versionTag || "latest"}).`);
-    saveDatabase();
+    window.SagarSoftDB.saveDatabase(database);
     refreshDatabase();
     applySavedThemeSettings();
     applyRouteAccessVisibility();
