@@ -1,6 +1,6 @@
 {
-  "version": "3.2.0",
+  "version": "4.0.0",
   "releaseDate": "2026-07-17",
   "updateUrl": "https://sagarsoftonline.onrender.com/app/dashboard.html",
-  "releaseNotes": "Phase 1 security hardening. Pool max 50. Batched queries. Error message sanitization. Auth bypass fixes."
+  "releaseNotes": "Phase 2 performance optimization. CRUD saves now instant (no full DB reload). Server queries reduced 25→1 via CTE. Settings/license reads parallelized. Local cache updates without server round-trip."
 }
