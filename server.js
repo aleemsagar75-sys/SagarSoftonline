@@ -158,7 +158,7 @@ async function _initPool() {
       } catch (_e2) {}
     }
   }
-  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, statement_timeout: 30000, ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" ? { rejectUnauthorized: true } : { rejectUnauthorized: false } });
+  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, max: 50, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, statement_timeout: 30000, ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" ? { rejectUnauthorized: true } : { rejectUnauthorized: false } });
   return _pool;
 }
 
@@ -302,51 +302,30 @@ function requireSchoolAuth(req, res, next) {
   pool.query("select school_id, license_token, api_token, status, modules_locked, expiry_date from public.license_accounts where school_id = $1 limit 1", [schoolId])
     .then(async function (result) {
       if (!result.rowCount) {
-        console.log("[AUTH-MIDDLEWARE] School not found:", schoolId);
-        return res.status(401).json({ success: false, message: "School not found.", debug: { school_id: schoolId, exists: false } });
+        return res.status(401).json({ success: false, message: "School not found." });
       }
       var row = result.rows[0];
       var expectedToken = row.license_token;
       var altToken = row.api_token;
       var tokenValid = false;
-      console.log("[AUTH-MIDDLEWARE] School:", schoolId, "| received_token_len:", token.length, "| db_license_token_len:", expectedToken ? expectedToken.length : 0, "| db_api_token_len:", altToken ? altToken.length : 0, "| status:", row.status, "| modules_locked:", row.modules_locked, "| expiry:", row.expiry_date);
       if (expectedToken && token.length === expectedToken.length) {
         try { tokenValid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken)); } catch (_e) {}
-        console.log("[AUTH-MIDDLEWARE] license_token match:", tokenValid);
       }
       if (!tokenValid && altToken && token.length === altToken.length) {
         try { tokenValid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(altToken)); } catch (_e) {}
-        console.log("[AUTH-MIDDLEWARE] api_token match:", tokenValid);
       }
       if (!tokenValid && !expectedToken && !altToken) {
-        console.log("[AUTH-MIDDLEWARE] Both tokens NULL for school:", schoolId, "| Storing client token as license_token");
-        await pool.query("UPDATE public.license_accounts SET license_token = $1, api_token = COALESCE(api_token, $1), updated_at = now() WHERE school_id = $2", [token, schoolId]).catch(function () {});
-        row.license_token = token;
-        tokenValid = true;
+        return res.status(401).json({ success: false, message: "No authentication token configured for this school. Please contact Super Admin." });
       }
       if (!tokenValid) {
-        var _debugInfo = {
-          school_id: schoolId,
-          school_exists: true,
-          db_license_token: expectedToken ? expectedToken.substring(0, 8) + "..." : "NULL",
-          db_api_token: altToken ? altToken.substring(0, 8) + "..." : "NULL",
-          received_token_prefix: token ? token.substring(0, 8) + "..." : "EMPTY",
-          received_token_length: token ? token.length : 0,
-          db_license_token_length: expectedToken ? expectedToken.length : 0,
-          status: row.status,
-          modules_locked: row.modules_locked,
-          expiry_date: row.expiry_date
-        };
-        console.log("[AUTH-MIDDLEWARE] Invalid token for school:", schoolId, "| Debug:", JSON.stringify(_debugInfo));
-        return res.status(401).json({ success: false, message: "Invalid school token.", debug: _debugInfo });
+        console.log("[AUTH-MIDDLEWARE] Invalid token for school:", schoolId);
+        return res.status(401).json({ success: false, message: "Invalid school token." });
       }
       var status = String(row.status || "").toLowerCase();
       if (status !== "active") {
-        console.log("[AUTH-MIDDLEWARE] School not active:", schoolId, "| Status:", row.status);
         return res.status(403).json({ success: false, message: "School is not active." });
       }
       if (row.modules_locked) {
-        console.log("[AUTH-MIDDLEWARE] School locked:", schoolId, "| Modules locked:", row.modules_locked);
         return res.status(403).json({ success: false, message: "School access is locked." });
       }
       if (row.expiry_date) {
@@ -1561,33 +1540,16 @@ async function getSchoolDatabase(schoolId) {
     events,
     smsTemplates,
     accountActivity
-  ] = await Promise.all([
-    readDataRows("students"),
-    readDataRows("classes"),
-    readDataRows("app_users"),
-    readDataRows("subjects"),
-    readDataRows("attendance"),
-    readDataRows("fees"),
-    readDataRows("fee_invoices"),
-    readDataRows("fee_collections"),
-    readDataRows("salary_payments"),
-    readDataRows("accounts_ledger"),
-    readDataRows("activity_logs"),
-    readDataRows("exams"),
-    readDataRows("exam_marks"),
-    readDataRows("timetable"),
-    readDataRows("homework"),
-    readDataRows("class_tests"),
-    readDataRows("class_test_marks"),
-    readDataRows("question_papers"),
-    readDataRows("certificates"),
-    readDataRows("employees"),
-    readDataRows("teachers"),
-    readDataRows("notices"),
-    readDataRows("events"),
-    readDataRows("sms_templates"),
-    readDataRows("account_activity")
-  ]);
+  ] = await (async function () {
+    var tables = ["students","classes","app_users","subjects","attendance","fees","fee_invoices","fee_collections","salary_payments","accounts_ledger","activity_logs","exams","exam_marks","timetable","homework","class_tests","class_test_marks","question_papers","certificates","employees","teachers","notices","events","sms_templates","account_activity"];
+    var results = [];
+    for (var i = 0; i < tables.length; i += 5) {
+      var batch = tables.slice(i, i + 5);
+      var batchResults = await Promise.all(batch.map(function(t) { return readDataRows(t); }));
+      results = results.concat(batchResults);
+    }
+    return results;
+  })();
 
   // Migration: if dedicated table is empty but JSONB blob has data, migrate to dedicated table
   var migrateEntities = [
@@ -1793,7 +1755,7 @@ app.get("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
     return res.json({ success: true, school_id: schoolId, database: database });
   } catch (error) {
     console.error("GET /api/database/" + schoolId + " — ERROR:", error.message);
-    return res.status(500).json({ success: false, message: error.message || "Unable to load database." });
+    return res.status(500).json({ success: false, message: "Unable to load database." });
   }
 });
 
@@ -1827,7 +1789,7 @@ app.post("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
     console.error("POST /api/database/" + schoolId + " — ERROR:", error.message);
-    return res.status(500).json({ success: false, message: error.message || "Unable to save online database." });
+    return res.status(500).json({ success: false, message: "Unable to save online database." });
   }
 });
 
@@ -1862,11 +1824,11 @@ app.post("/api/school/profile/:schoolId", requireSchoolAuth, async (req, res) =>
     return res.json({ success: true, school_id: schoolId, profile: db.generalSettings.instituteProfile, school: db.school });
   } catch (error) {
     console.error("POST /api/school/profile/" + schoolId + " — ERROR:", error.message);
-    return res.status(500).json({ success: false, message: error.message || "Unable to save profile." });
+    return res.status(500).json({ success: false, message: "Unable to save profile." });
   }
 });
 
-app.get("/api/school-profile/:schoolId", async (req, res) => {
+app.get("/api/school-profile/:schoolId", requireSchoolAuth, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
   try {
     const licResult = await pool.query(
@@ -1891,7 +1853,7 @@ app.get("/api/school-profile/:schoolId", async (req, res) => {
     return res.json({ success: true, school_id: schoolId, profile, license: { school_name: lic.school_name, email: lic.email, status: lic.status, plan: lic.plan, start_date: lic.start_date, expiry_date: lic.expiry_date, currency: lic.currency, symbol: lic.symbol, timezone: lic.timezone } });
   } catch (error) {
     console.error("GET /api/school-profile/" + schoolId + " — ERROR:", error.message);
-    return res.status(500).json({ success: false, message: error.message || "Unable to read profile." });
+    return res.status(500).json({ success: false, message: "Unable to read profile." });
   }
 });
 
@@ -1931,7 +1893,7 @@ app.put("/api/school-profile/:schoolId", requireSchoolAuth, async (req, res) => 
     return res.json({ success: true, school_id: schoolId, license: licResult.rowCount ? licResult.rows[0] : {} });
   } catch (error) {
     console.error("PUT /api/school-profile/" + schoolId + " — ERROR:", error.message);
-    return res.status(500).json({ success: false, message: error.message || "Unable to update profile." });
+    return res.status(500).json({ success: false, message: "Unable to update profile." });
   }
 });
 
@@ -1958,7 +1920,7 @@ app.get("/api/school-settings/:schoolId/:key", requireSchoolAuth, async (req, re
     }
   } catch (error) {
     console.error("GET /api/school-settings/" + schoolId + "/" + key + " — ERROR:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2000,7 +1962,7 @@ app.put("/api/school-settings/:schoolId/:key", requireSchoolAuth, async (req, re
     return res.json({ success: true, key });
   } catch (error) {
     console.error("PUT /api/school-settings/" + schoolId + "/" + key + " — ERROR:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2058,7 +2020,7 @@ app.post("/api/admin/license", requireSuperAdmin, async (req, res) => {
     return res.json({ success: true, school_id: schoolId, license_token: _newToken });
   } catch (error) {
     console.error("POST /api/admin/license error:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2222,7 +2184,6 @@ app.post("/api/mobile/login", async (req, res) => {
       if (lic3.password) {
         if (await verifyPasswordHash(password, lic3.password)) pwdOk = true;
       }
-      if (!pwdOk && password === lic3.password) pwdOk = true;
       if (pwdOk) {
         var nowDate3 = new Date().toISOString().slice(0, 10);
         var expiryDate3 = lic3.expiry_date || "";
@@ -2251,7 +2212,8 @@ app.post("/api/mobile/login", async (req, res) => {
         var existingAdmin = db3.users.find(function(u) { return String(u.email || "").toLowerCase() === email && u.role === "admin"; });
         if (!existingAdmin) {
           var newUserId = "USR-ADMIN-" + Date.now();
-          db3.users.push({ id: newUserId, name: lic3.school_name || "School Admin", email: email, password: password, role: "admin", active: true, phone: "" });
+          var hashedPw = await hashPassword(password).catch(function() { return password; });
+          db3.users.push({ id: newUserId, name: lic3.school_name || "School Admin", email: email, password: hashedPw, role: "admin", active: true, phone: "" });
           await saveSchoolDatabaseWithMirrors(lic3.school_id, db3).catch(function(e) { console.error("Auto-add admin user error:", e.message); });
         }
         var notes4 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic3.school_id]);
@@ -2304,7 +2266,6 @@ app.post("/api/mobile/login", async (req, res) => {
         var pwdOk2 = false;
         if (matchedUser.password) {
           if (await verifyPasswordHash(password, matchedUser.password)) pwdOk2 = true;
-          if (!pwdOk2 && password === matchedUser.password) pwdOk2 = true;
         }
         if (pwdOk2) {
           var _path3Token = foundLicense.license_token;
@@ -2396,7 +2357,39 @@ app.post("/api/resolve-school", async (req, res) => {
     }
     return res.json({ success: true, school_id: result.rows[0].school_id });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/school/register", async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    const schoolName = String(req.body.school_name || "School Admin").trim();
+    if (!email || !password) return res.status(400).json({ success: false, message: "Email and password required." });
+    const existingCheck = await pool.query("select school_id from public.license_accounts where lower(email) = $1 limit 1", [email]);
+    if (existingCheck.rowCount) {
+      const existingSchoolId = existingCheck.rows[0].school_id;
+      const existingLic = await pool.query("select school_id, license_token, status, modules_locked, expiry_date from public.license_accounts where school_id = $1 limit 1", [existingSchoolId]);
+      if (existingLic.rowCount) {
+        const lic = existingLic.rows[0];
+        const licToken = lic.license_token || generateToken();
+        if (!lic.license_token) {
+          await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [licToken, existingSchoolId]).catch(function() {});
+        }
+        const db = await getSchoolDatabase(existingSchoolId);
+        return res.json({ success: true, school_id: existingSchoolId, license_token: licToken, database: db || {} });
+      }
+    }
+    const schoolId = "SCH-" + Date.now();
+    const licToken = generateToken();
+    const hashedPw = await hashPassword(password);
+    await pool.query(`insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, updated_at) values ($1, $2, $3, $4, 'active', 'monthly', $5, $6, $7, now()) on conflict (school_id) do update set school_name = excluded.school_name, email = excluded.email, password = excluded.password, status = excluded.status, license_token = excluded.license_token, updated_at = now()`, [schoolId, schoolName, email, hashedPw, new Date().toISOString().slice(0, 10), new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), licToken]);
+    const db = await getSchoolDatabase(schoolId);
+    return res.json({ success: true, school_id: schoolId, license_token: licToken, database: db || {} });
+  } catch (error) {
+    console.error("POST /api/school/register error:", error.message);
+    return res.status(500).json({ success: false, message: "Registration failed. Please try again." });
   }
 });
 
@@ -2427,7 +2420,7 @@ app.post("/api/mobile/database/:schoolId", async (req, res) => {
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
     console.error("POST /api/mobile/database/:schoolId error:", error.message);
-    return res.status(500).json({ success: false, message: error.message || "Unable to save mobile database." });
+    return res.status(500).json({ success: false, message: "Unable to save mobile database." });
   }
 });
 
@@ -2445,7 +2438,9 @@ app.post("/api/check-license.php", async (req, res) => {
     }
     const row = result.rows[0];
     const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
-    return res.json(toLicensePayload(row, notes.rows));
+    var payload = toLicensePayload(row, notes.rows);
+    delete payload.password;
+    return res.json(payload);
   } catch (error) {
     console.error("POST /api/check-license.php error:", error.message);
     return res.status(500).json({ success: false, message: "License check failed." });
@@ -2490,7 +2485,7 @@ app.post("/api/sync-school-data.php", requireSuperAdmin, async (req, res) => {
     return res.json({ success: true, license: toLicensePayload(result.rows[0], []) });
   } catch (error) {
     console.error("POST /api/sync-school-data.php error:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2501,7 +2496,7 @@ app.get("/api/admin/schools", requireSuperAdmin, async function (req, res) {
     var rows = await pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at from public.license_accounts order by updated_at desc");
     return res.json({ success: true, schools: rows.rows });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2536,7 +2531,7 @@ app.post("/api/admin/schools/resequence", requireSuperAdmin, async function (req
     return res.json({ success: true, schools: _result.rows, updated: _updates.length });
   } catch (error) {
     console.error("POST /api/admin/schools/resequence error:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2604,7 +2599,7 @@ app.post("/api/admin/schools", requireSuperAdmin, async function (req, res) {
     try { await _client.query("rollback"); } catch (_e3) {}
     try { _client.release(); } catch (_e4) {}
     console.error("POST /api/admin/schools error:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2686,7 +2681,7 @@ app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, 
     }
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2738,7 +2733,7 @@ app.delete("/api/admin/schools/:schoolId", requireSuperAdmin, async function (re
     try { await _client.query("rollback"); } catch (_e) {}
     try { _client.release(); } catch (_e) {}
     console.error("DELETE /api/admin/schools error:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2754,7 +2749,7 @@ app.post("/api/admin/schools/:schoolId/reset-tokens", requireSuperAdmin, async f
     await pool.query("update public.license_accounts set license_token = $1, updated_at = now() where school_id = $2", [newToken, schoolId]);
     return res.json({ success: true, message: "Tokens reset.", token: newToken });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2771,7 +2766,7 @@ app.post("/api/admin/notifications", requireSuperAdmin, async function (req, res
     }
     return res.json({ success: true, message: "Notification sent." });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2780,7 +2775,7 @@ app.get("/api/admin/notifications", requireSuperAdmin, async function (req, res)
     var result = await pool.query("select n.id, n.school_id, n.title, n.message, n.created_at, coalesce(a.school_name,'') as school_name from public.license_notifications n left join public.license_accounts a on n.school_id = a.school_id order by n.created_at desc limit 100");
     return res.json({ success: true, notifications: result.rows });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2789,7 +2784,7 @@ app.delete("/api/admin/notifications", requireSuperAdmin, async function (req, r
     await pool.query("delete from public.license_notifications");
     return res.json({ success: true, message: "Notification history cleared." });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2851,7 +2846,7 @@ app.get("/api/data/:schoolId/:table", requireSchoolAuth, async function (req, re
     var result = await pool.query("select * from public." + tableName + " where school_id = $1 order by updated_at desc", [schoolId]);
     return res.json({ success: true, data: result.rows });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2895,7 +2890,7 @@ app.post("/api/data/:schoolId/:table", requireSchoolAuth, async function (req, r
     );
     return res.json({ success: true, data: insertResult.rows[0] || record });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -2956,7 +2951,7 @@ app.put("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (req
     }
     return res.json({ success: true, data: updateResult.rows[0] });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -3012,7 +3007,7 @@ app.delete("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (
     return res.json({ success: true, message: "Record deleted.", rowsAffected: delResult.rowCount });
   } catch (error) {
     console.error("[DELETE] FAILED table=" + tableName + " school_id=" + schoolId + " source_id=" + recordId + " error=" + error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -3034,7 +3029,7 @@ app.post("/api/backup", requireApiKey, async function (req, res) {
     await pool.query("insert into public.school_backups (school_id, database, size_bytes, created_at) values ($1, $2::jsonb, $3, now())", [schoolId, jsonStr, sizeBytes]);
     return res.json({ success: true, message: "Backup saved.", size_bytes: sizeBytes });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -3421,7 +3416,7 @@ app.post("/api/setup-sms-tables", requireSuperAdmin, async function (req, res) {
     return res.json({ success: true, message: "SMS tables created successfully." });
   } catch (error) {
     console.error("POST /api/setup-sms-tables error:", error.message);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
 
@@ -3440,3 +3435,9 @@ function gracefulShutdown(signal) {
 }
 process.on("SIGTERM", function () { gracefulShutdown("SIGTERM"); });
 process.on("SIGINT", function () { gracefulShutdown("SIGINT"); });
+process.on("unhandledRejection", function (reason, promise) {
+  console.error("Unhandled Rejection:", reason && reason.message ? reason.message : reason);
+});
+process.on("uncaughtException", function (err) {
+  console.error("Uncaught Exception:", err.message);
+});
