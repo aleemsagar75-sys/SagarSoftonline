@@ -93,10 +93,16 @@ function verifyToken(token) {
 const loginRateLimit = {};
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
 const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_MAX_KEYS = 1000;
 function checkRateLimit(key) {
   var now = Date.now();
   if (!loginRateLimit[key] || now - loginRateLimit[key].start > RATE_LIMIT_WINDOW_MS) {
     loginRateLimit[key] = { start: now, count: 1 };
+    if (Object.keys(loginRateLimit).length > RATE_LIMIT_MAX_KEYS) {
+      Object.keys(loginRateLimit).forEach(function (k) {
+        if (now - loginRateLimit[k].start > RATE_LIMIT_WINDOW_MS) delete loginRateLimit[k];
+      });
+    }
     return true;
   }
   loginRateLimit[key].count++;
@@ -273,6 +279,7 @@ function requireApiKey(req, res, next) {
 
 var _authCache = new Map();
 var _authCacheTTL = 60000;
+var _authCacheMaxSize = 500;
 
 function requireSchoolAuth(req, res, next) {
   var schoolId = normalizeSchoolId(req.params.schoolId);
@@ -318,7 +325,6 @@ function requireSchoolAuth(req, res, next) {
         return res.status(401).json({ success: false, message: "No authentication token configured for this school. Please contact Super Admin." });
       }
       if (!tokenValid) {
-        console.log("[AUTH-MIDDLEWARE] Invalid token for school:", schoolId);
         return res.status(401).json({ success: false, message: "Invalid school token." });
       }
       var status = String(row.status || "").toLowerCase();
@@ -339,6 +345,10 @@ function requireSchoolAuth(req, res, next) {
       req.authSchoolId = row.school_id;
       req.authRole = "school";
       _authCache.set(_authCacheKey, { row: row, expiresAt: Date.now() + _authCacheTTL });
+      if (_authCache.size > _authCacheMaxSize) {
+        var _oldestKey = _authCache.keys().next().value;
+        if (_oldestKey) _authCache.delete(_oldestKey);
+      }
       return next();
     })
     .catch(function (err) {
@@ -2332,7 +2342,7 @@ if (process.env.NODE_ENV !== "production") {
         licensePwdCheck: step5_pwdCheck
       });
     } catch (error) {
-      return res.status(500).json({ error: error.message });
+      return res.status(500).json({ success: false, message: "An internal error occurred." });
     }
   });
 }
