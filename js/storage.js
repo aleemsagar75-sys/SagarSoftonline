@@ -662,9 +662,17 @@
     } catch (_e) { return null; }
   }
 
+  function updateCachedDatabase(db) {
+    if (!db || typeof db !== "object") return;
+    cachedDatabase = normalizeDatabase(db);
+  }
+
+  function getSchoolId() { return config.schoolId; }
+
   window.SagarSoftDB = {
     getDatabase: getDatabase,
     saveDatabase: saveDatabase,
+    updateCachedDatabase: updateCachedDatabase,
     flushPendingSync: flushPendingSync,
     updateDatabase: updateDatabase,
     loadDatabaseFromServer: loadDatabaseFromServer,
@@ -674,6 +682,7 @@
     setSchoolId: setSchoolId,
     setAuthToken: setAuthToken,
     getConfig: getConfig,
+    getSchoolId: getSchoolId,
     defaultDatabase: defaultDatabase,
     isSyncPending: isSyncPending,
     isSyncFailed: isSyncFailed,
