@@ -1514,8 +1514,9 @@ async function saveSchoolDatabaseWithMirrors(schoolId, database) {
 
 async function getSchoolDatabase(schoolId) {
   const result = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
-  const database = result.rowCount ? (result.rows[0].database || {}) : {};
-  database.generalSettings = database.generalSettings || {};
+  const blob = result.rowCount ? (result.rows[0].database || {}) : {};
+  const database = {};
+  database.generalSettings = {};
 
   const readDataRows = async function (tableName) {
     try {
@@ -1601,7 +1602,7 @@ async function getSchoolDatabase(schoolId) {
   var dedicatedResults = { students: students, classes: classes, subjects: subjects, attendance: attendance, fees: fees, teachers: teachers, notices: notices, events: events, activityLogs: activityLogs, smsTemplates: smsTemplates, accountActivity: accountActivity, employees: employees };
   for (var mi = 0; mi < migrateEntities.length; mi++) {
     var ent = migrateEntities[mi];
-    var blobArr = database[ent.key] || [];
+    var blobArr = blob[ent.key] || [];
     var dedArr = dedicatedResults[ent.key] || [];
     if (!dedArr.length && blobArr.length) {
       for (var bi = 0; bi < blobArr.length; bi++) {
@@ -1634,9 +1635,9 @@ async function getSchoolDatabase(schoolId) {
 
   // Migration: also migrate users from JSONB blob to app_users table
   var usersDed = dedicatedResults.users || users;
-  if (!usersDed.length && database.users && database.users.length) {
-    for (var ui = 0; ui < database.users.length; ui++) {
-      var uItem = database.users[ui];
+  if (!usersDed.length && blob.users && blob.users.length) {
+    for (var ui = 0; ui < blob.users.length; ui++) {
+      var uItem = blob.users[ui];
       if (uItem && uItem.id) {
         try {
           await pool.query(
@@ -1667,7 +1668,7 @@ async function getSchoolDatabase(schoolId) {
   } else if (employees.length) {
     database.teachers = employees;
   } else {
-    database.teachers = database.teachers || [];
+    database.teachers = [];
   }
   database.generalSettings.feeInvoices = feeInvoices;
   database.generalSettings.feeCollections = feeCollections;
@@ -1727,6 +1728,10 @@ async function getSchoolDatabase(schoolId) {
       database.generalSettings.licenseSettings.licenseToken = lic.license_token || "";
     }
   } catch (_e) {}
+
+  database.school = blob.school || {};
+  database.settings = blob.settings || {};
+  database._deletedIds = blob._deletedIds || [];
 
   var _ls = database.generalSettings.licenseSettings || {};
   if (!_ls.activated && _ls.expiryDate) {
