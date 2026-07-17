@@ -1,3 +1,5 @@
+// ARCHITECTURE: This file (server/server.js) is the DEPLOYMENT copy used by Render.
+// The CANONICAL source is root server.js — edit that file, then push both to stay in sync.
 require("dotenv").config({ path: __dirname + "/.env" });
 
 const dns = require("dns");
@@ -1188,9 +1190,6 @@ function rowId(row, prefix, index) {
   return String((row && row.id) || `${prefix}-${index + 1}`);
 }
 
-function scopedRowIdValue(schoolId, sourceId) {
-  return `${schoolId}:${sourceId}`;
-}
 
 function rowData(row) {
   return JSON.stringify(row && typeof row === "object" ? row : {});
@@ -2059,15 +2058,6 @@ async function createSupabaseUser(email, password) {
   }
 }
 
-async function ensureSupabaseUser(email, password) {
-  var existing = await verifySupabaseAuth(email, password);
-  if (existing === true) return true;
-  if (existing === false) {
-    var created = await createSupabaseUser(email, password);
-    if (created === true) return true;
-  }
-  return null;
-}
 
 app.post("/api/activate-school.php", async (req, res) => {
   try {
@@ -2594,7 +2584,7 @@ app.post("/api/admin/schools", requireSuperAdmin, async function (req, res) {
       } catch (_supabaseError) { console.error("Supabase Auth error:", _supabaseError.message); }
     }
 
-    return res.json({ success: true, school_id: schoolId, version: "v2.2-auth-fix" });
+    return res.json({ success: true, school_id: schoolId, version: "4.2.0" });
   } catch (error) {
     try { await _client.query("rollback"); } catch (_e3) {}
     try { _client.release(); } catch (_e4) {}
