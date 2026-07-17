@@ -1,6 +1,6 @@
 {
-  "version": "2.1.0",
-  "releaseDate": "2026-06-23",
+  "version": "3.2.0",
+  "releaseDate": "2026-07-17",
   "updateUrl": "https://sagarsoftonline.onrender.com/app/dashboard.html",
-  "releaseNotes": "All modules responsive. 22 security fixes. Password hashing. XSS protection. Random license tokens. Rate limiting."
+  "releaseNotes": "Phase 1 security hardening. Pool max 50. Batched queries. Error message sanitization. Auth bypass fixes."
 }
