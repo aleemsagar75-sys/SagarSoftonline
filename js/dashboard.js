@@ -2,14 +2,10 @@
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
-  function _eH(v) { return String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-  function _eA(v) { return String(v == null ? "" : v).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
-  function _gI(n) { return (n||"?").split(" ").map(function(w){return (w[0]||"").toUpperCase();}).join("").slice(0,2)||"?"; }
-  function _mL(mv) {
-    var v=String(mv||"").trim();
-    if(/^\d{4}-\d{2}$/.test(v)){var p=v.split("-"),y=Number(p[0]),m=Number(p[1]),mn=["January","February","March","April","May","June","July","August","September","October","November","December"];if(m>=1&&m<=12)return mn[m-1]+", "+y;}
-    return v||"N/A";
-  }
+  var _eH = SU.escapeHtml;
+  var _eA = SU.escapeAttr;
+  var _gI = SU.getInitials;
+  var _mL = SU.monthLabel;
 
   var database = window.SagarSoftDB.getDatabase();
   var employee = (database.teachers||[]).find(function(e){return e.id===employeeId;});
@@ -313,7 +309,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function $(id) { return document.getElementById(id); }
   function setDisabled(id, val) { var el = $(id); if (el) el.disabled = val; }
-  function generateId() { return Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 9); }
+  var generateId = SU.generateId;
 
   var brandOverlay = document.createElement("div");
   brandOverlay.id = "brandModalOverlay";
@@ -1207,88 +1203,13 @@ document.addEventListener("DOMContentLoaded", function () {
     return database.generalSettings.licenseSettings;
   }
 
-  function getPlanDays(plan, customDays) {
-    if (plan === "monthly") { return 30; }
-    if (plan === "3-months" || plan === "3months") { return 90; }
-    if (plan === "5-months" || plan === "5months") { return 150; }
-    if (plan === "1-year" || plan === "1year") { return 365; }
-    const parsedDays = Number(customDays || 0);
-    return parsedDays > 0 ? parsedDays : 30;
-  }
-
-  function formatDateInput(value) {
-    const date = value ? new Date(value) : new Date();
-    return Number.isNaN(date.getTime()) ? new Date().toISOString().slice(0, 10) : date.toISOString().slice(0, 10);
-  }
-
-  function parseFlexibleDate(value) {
-    const raw = String(value || "").trim();
-    if (!raw) {
-      return null;
-    }
-    const dateFromNative = new Date(raw);
-    if (!Number.isNaN(dateFromNative.getTime())) {
-      return dateFromNative;
-    }
-    const ddmmyyyy = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-    if (ddmmyyyy) {
-      const day = Number(ddmmyyyy[1]);
-      const month = Number(ddmmyyyy[2]) - 1;
-      const year = Number(ddmmyyyy[3]);
-      const parsed = new Date(year, month, day, 23, 59, 59, 999);
-      if (!Number.isNaN(parsed.getTime())) {
-        return parsed;
-      }
-    }
-    return null;
-  }
-
-  function addDaysISO(startDate, days) {
-    const date = new Date(startDate);
-    if (Number.isNaN(date.getTime())) {
-      return "";
-    }
-    date.setDate(date.getDate() + Math.max(1, Number(days || 0)));
-    return date.toISOString().slice(0, 10);
-  }
-
-  function toBase64Unicode(input) {
-    try {
-      const bytes = new TextEncoder().encode(String(input || ""));
-      let binary = "";
-      const chunkSize = 0x8000;
-      for (let index = 0; index < bytes.length; index += chunkSize) {
-        const chunk = bytes.subarray(index, index + chunkSize);
-        binary += String.fromCharCode.apply(null, Array.from(chunk));
-      }
-      return btoa(binary);
-    } catch (error) {
-      return "";
-    }
-  }
-
-  function fromBase64Unicode(input) {
-    try {
-      const binary = atob(String(input || ""));
-      const bytes = new Uint8Array(binary.length);
-      for (let index = 0; index < binary.length; index += 1) {
-        bytes[index] = binary.charCodeAt(index);
-      }
-      return new TextDecoder().decode(bytes);
-    } catch (error) {
-      return "";
-    }
-  }
-
-  function simpleHash(input) {
-    const text = String(input || "");
-    let hash = 0;
-    for (let index = 0; index < text.length; index += 1) {
-      hash = ((hash << 5) - hash) + text.charCodeAt(index);
-      hash |= 0;
-    }
-    return String(Math.abs(hash));
-  }
+  var getPlanDays = SU.getPlanDays;
+  var formatDateInput = SU.formatDateInput;
+  var parseFlexibleDate = SU.parseFlexibleDate;
+  var addDaysISO = SU.addDaysISO;
+  var toBase64Unicode = SU.toBase64Unicode;
+  var fromBase64Unicode = SU.fromBase64Unicode;
+  var simpleHash = SU.simpleHash;
 
   function isRouteAllowedByRole(route) {
     const allowList = roleRouteAllowMap[currentUser.role] || ["dashboard"];
@@ -1647,16 +1568,8 @@ document.addEventListener("DOMContentLoaded", function () {
     return value ? value.charAt(0).toUpperCase() + value.slice(1) : "User";
   }
 
-  function escapeHtml(value) {
-    return String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-  }
-
-  function escapeAttr(value) {
-    return escapeHtml(value).replace(/"/g, "&quot;");
-  }
+  var escapeHtml = SU.escapeHtml;
+  var escapeAttr = SU.escapeAttr;
 
   function renderStudentSearchResult(student) {
     return `
@@ -1947,35 +1860,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return database.generalSettings.offlineSchoolsRegistry;
   }
 
-  function upsertSchoolRegistryFromLicense(licenseSnapshot) {
-    const license = licenseSnapshot || ensureLicenseSettings();
-    const schoolId = String(license.schoolId || "").trim();
-    if (!schoolId) {
-      return;
-    }
-    const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-    const registry = ensureOfflineSchoolsRegistry();
-    const row = {
-      schoolId: schoolId,
-      schoolName: String(license.schoolName || profile.name || database.school.name || "").trim(),
-      logo: String(profile.logo || ""),
-      activated: Boolean(license.activated),
-      status: String(license.status || (license.activated ? "active" : "inactive")),
-      plan: String(license.subscriptionPlan || "monthly"),
-      startDate: String(license.startDate || ""),
-      expiryDate: String(license.expiryDate || ""),
-      totalStudents: Array.isArray(database.students) ? database.students.length : 0,
-      importedAt: new Date().toISOString()
-    };
-    const existingIndex = registry.findIndex(function (item) {
-      return String(item.schoolId || "").trim().toLowerCase() === schoolId.toLowerCase();
-    });
-    if (existingIndex >= 0) {
-      registry[existingIndex] = { ...registry[existingIndex], ...row };
-    } else {
-      registry.unshift(row);
-    }
-  }
 
   function getSubscriptionStatusMeta(expiryDate) {
     const raw = String(expiryDate || "").trim();
@@ -3112,12 +2996,6 @@ document.addEventListener("DOMContentLoaded", function () {
       .replace(/\son\w+='[^']*'/gi, "");
   }
 
-  function showPaperSizeDialog() {
-    return new Promise(function (resolve) {
-      const result = confirm("A4 size print kren?\n\nOK = A4\nCancel = Thermal");
-      resolve(result ? "a4" : "thermal");
-    });
-  }
 
   async function openPrintReport(config, popupWindow, paperSize) {
     const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
@@ -23002,17 +22880,6 @@ ${allContent}
 
   let dashboardClockTimer = null;
 
-  function buildDashboardCircleChart(percent, label, colorA, colorB) {
-    const safe = Math.max(0, Math.min(100, Number(percent || 0)));
-    const safeLabel = String(label || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
-    return `
-      <div class="report-circle" style="--fill:${safe};--color-a:${colorA};--color-b:${colorB};"><span>${safe}%</span></div>
-      <p class="report-chart-label">${safeLabel}</p>
-    `;
-  }
 
   function buildDashboardBars(rows, maxValue) {
     var total = rows.reduce(function (sum, r) { return sum + Number(r.value || 0); }, 0);
