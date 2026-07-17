@@ -642,6 +642,7 @@ async function ensureSchema() {
     alter table if exists public.teachers add column if not exists updated_at timestamptz not null default now();
     alter table if exists public.classes add column if not exists updated_at timestamptz not null default now();
     alter table if exists public.employees add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.activity_logs add column if not exists id text;
     alter table if exists public.license_accounts drop constraint if exists license_accounts_email_key;
     alter table if exists public.license_accounts add column if not exists api_token text;
 
