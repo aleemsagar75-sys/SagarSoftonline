@@ -1514,42 +1514,39 @@ async function getSchoolDatabase(schoolId) {
     }
   };
 
-  let [
-    students,
-    classes,
-    users,
-    subjects,
-    attendance,
-    fees,
-    feeInvoices,
-    feeCollections,
-    salaryPayments,
-    accountsLedger,
-    activityLogs,
-    exams,
-    examMarks,
-    timetable,
-    homework,
-    classTests,
-    classTestMarks,
-    questionPapers,
-    certificates,
-    employees,
-    teachers,
-    notices,
-    events,
-    smsTemplates,
-    accountActivity
-  ] = await (async function () {
-    var tables = ["students","classes","app_users","subjects","attendance","fees","fee_invoices","fee_collections","salary_payments","accounts_ledger","activity_logs","exams","exam_marks","timetable","homework","class_tests","class_test_marks","question_papers","certificates","employees","teachers","notices","events","sms_templates","account_activity"];
-    var results = [];
+  const readDataRowsSync = function (rows) {
+    return rows.map((row) => row || {}).filter((row) => row && typeof row === "object");
+  };
+
+  var tables = ["students","classes","app_users","subjects","attendance","fees","fee_invoices","fee_collections","salary_payments","accounts_ledger","activity_logs","exams","exam_marks","timetable","homework","class_tests","class_test_marks","question_papers","certificates","employees","teachers","notices","events","sms_templates","account_activity"];
+  var cteParts = [];
+  var selectParts = [];
+  tables.forEach(function(t, i) {
+    cteParts.push(`t${i} AS (SELECT jsonb_agg(row_to_json(d.*)) as arr FROM (SELECT data FROM public.${t} WHERE school_id = $1 AND data IS NOT NULL ORDER BY updated_at DESC) d)`);
+    selectParts.push(`(SELECT COALESCE(arr, '[]'::jsonb) FROM t${i}) as col${i}`);
+  });
+  var cteSql = "WITH " + cteParts.join(", ") + " SELECT " + selectParts.join(", ");
+
+  let allResults;
+  try {
+    const combined = await pool.query(cteSql, [schoolId]);
+    allResults = combined.rows[0] ? tables.map((_, i) => readDataRowsSync(combined.rows[0]["col" + i] || [])) : tables.map(() => []);
+  } catch (_e) {
+    allResults = [];
     for (var i = 0; i < tables.length; i += 5) {
       var batch = tables.slice(i, i + 5);
       var batchResults = await Promise.all(batch.map(function(t) { return readDataRows(t); }));
-      results = results.concat(batchResults);
+      allResults = allResults.concat(batchResults);
     }
-    return results;
-  })();
+  }
+
+  let [
+    students, classes, users, subjects, attendance, fees,
+    feeInvoices, feeCollections, salaryPayments, accountsLedger,
+    activityLogs, exams, examMarks, timetable, homework,
+    classTests, classTestMarks, questionPapers, certificates,
+    employees, teachers, notices, events, smsTemplates, accountActivity
+  ] = allResults;
 
   // Migration: if dedicated table is empty but JSONB blob has data, migrate to dedicated table
   var migrateEntities = [
@@ -1651,10 +1648,11 @@ async function getSchoolDatabase(schoolId) {
   database.generalSettings.certificates = certificates;
 
   try {
-    const settingsRows = await pool.query(
-      "select setting_key, setting_value from public.school_settings where school_id = $1",
-      [schoolId]
-    );
+    const [settingsRows, itemKeys, licResult] = await Promise.all([
+      pool.query("select setting_key, setting_value from public.school_settings where school_id = $1", [schoolId]),
+      pool.query("select setting_key, item_data from public.school_setting_items where school_id = $1 order by updated_at asc", [schoolId]),
+      pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, license_token, modules_locked from public.license_accounts where school_id = $1 limit 1", [schoolId])
+    ]);
     for (const row of settingsRows.rows) {
       if (row.setting_key && row.setting_value !== null && row.setting_value !== undefined) {
         var existing = database.generalSettings[row.setting_key];
@@ -1666,10 +1664,6 @@ async function getSchoolDatabase(schoolId) {
         }
       }
     }
-    const itemKeys = await pool.query(
-      "select setting_key, item_data from public.school_setting_items where school_id = $1 order by updated_at asc",
-      [schoolId]
-    );
     const itemGroups = {};
     for (const r of itemKeys.rows) {
       if (!itemGroups[r.setting_key]) itemGroups[r.setting_key] = [];
@@ -1678,10 +1672,6 @@ async function getSchoolDatabase(schoolId) {
     for (const k in itemGroups) {
       database.generalSettings[k] = itemGroups[k];
     }
-  } catch (_e) {}
-
-  try {
-    const licResult = await pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, license_token, modules_locked from public.license_accounts where school_id = $1 limit 1", [schoolId]);
     if (licResult.rowCount) {
       const lic = licResult.rows[0];
       database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
