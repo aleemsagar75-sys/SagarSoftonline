@@ -12,9 +12,6 @@ window.handleEmployeeViewClick = function(employeeId) {
   }
 
   var database = window.SagarSoftDB.getDatabase();
-  var _initLicense = (database.generalSettings && database.generalSettings.licenseSettings) || {};
-  console.log("[DASHBOARD-INIT] Database loaded. licenseSettings:", JSON.stringify(_initLicense));
-  console.log("[DASHBOARD-INIT] SchoolId from config:", window.SagarSoftDB.getConfig ? window.SagarSoftDB.getConfig().schoolId : "N/A");
   var employee = (database.teachers||[]).find(function(e){return e.id===employeeId;});
   if (!employee) return;
   var modalContent = document.getElementById("employeeModalContent");
@@ -1070,31 +1067,77 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!ok) allOk = false;
       }
       _saved = allOk;
-      _syncSettingsToDedicatedTables();
       if (_saved) {
-        try {
-          var _oldDeletedIds = (database && database._deletedIds) ? database._deletedIds.slice() : [];
-          var _fresh = await window.SagarSoftDB.loadDatabaseFromServer({ showLoading: false });
-          if (_fresh) {
-            if (_oldDeletedIds.length) {
-              if (!_fresh._deletedIds) _fresh._deletedIds = [];
-              _oldDeletedIds.forEach(function(id) {
-                if (_fresh._deletedIds.indexOf(id) === -1) _fresh._deletedIds.push(id);
-              });
-            }
-            database = _fresh;
-          }
-          else { refreshDatabase(); }
-        } catch (_e) { refreshDatabase(); }
+        _applyChangesToCache(changes);
+      } else {
+        try { refreshDatabase(); } catch (_e) {}
       }
     } else {
-      console.error("[SagarSoft] saveDatabase() called without changes array — pass explicit changes. Falling back to settings sync only.");
       _syncSettingsToDedicatedTables();
-      refreshDatabase();
+      try { refreshDatabase(); } catch (_e) {}
     }
     if (label) window.SagarSoftDB.hideLoading();
     else window.SagarSoftDB.showSyncBadge(_saved ? "synced" : "failed");
     return _saved;
+  }
+
+  function _applyChangesToCache(changes) {
+    if (!Array.isArray(changes)) return;
+    changes.forEach(function (ch) {
+      if (!ch || !ch.record) return;
+      if (ch.table === "school_settings") {
+        var key = ch.record.id || ch.record.source_id || "";
+        var value = ch.record.data !== undefined ? ch.record.data : ch.record;
+        database.generalSettings = database.generalSettings || {};
+        database.generalSettings[key] = value;
+      } else if (ch.table === "school_setting_items") {
+        var sKey = ch.record.settingKey || ch.record.setting_key || "";
+        var value = ch.record.data !== undefined ? ch.record.data : ch.record;
+        database.generalSettings = database.generalSettings || {};
+        var arr = database.generalSettings[sKey];
+        if (!Array.isArray(arr)) { database.generalSettings[sKey] = []; arr = database.generalSettings[sKey]; }
+        var idx = arr.findIndex(function (item) { return item && item.id === ch.record.id; });
+        if (ch.operation === "delete") {
+          if (idx >= 0) arr.splice(idx, 1);
+        } else {
+          if (idx >= 0) arr[idx] = value;
+          else arr.push(value);
+        }
+      } else {
+        var tableName = ch.table;
+        var arr = database[tableName];
+        if (!Array.isArray(arr)) { database[tableName] = []; arr = database[tableName]; }
+        var recId = ch.record.id || ch.record.source_id;
+        var idx = -1;
+        if (recId) {
+          for (var k = 0; k < arr.length; k++) {
+            if ((arr[k].id && arr[k].id === recId) || (arr[k].source_id && arr[k].source_id === recId)) { idx = k; break; }
+          }
+        }
+        if (ch.operation === "delete") {
+          if (idx >= 0) arr.splice(idx, 1);
+          if (!database._deletedIds) database._deletedIds = [];
+          if (recId && database._deletedIds.indexOf(recId) === -1) database._deletedIds.push(recId);
+        } else if (ch.operation === "update") {
+          if (idx >= 0) arr[idx] = ch.record;
+          else arr.push(ch.record);
+        } else {
+          if (idx >= 0) arr[idx] = ch.record;
+          else arr.push(ch.record);
+        }
+      }
+    });
+    if (database.teachers && database.employees) {
+      if (database.teachers.length > 0 && database.employees.length !== database.teachers.length) {
+        database.employees = database.teachers.slice();
+      } else if (database.employees.length > 0 && database.teachers.length !== database.employees.length) {
+        database.teachers = database.employees.slice();
+      }
+    }
+    _studentsNormalized = false;
+    try { normalizeStudentsDatasetInMemory(); } catch (_e) {}
+    try { ensureLicenseSettings(); } catch (_e) {}
+    try { window.SagarSoftDB.updateCachedDatabase(database); } catch (_e) {}
   }
 
   function _syncSettingsToDedicatedTables() {
