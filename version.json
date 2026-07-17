@@ -1,6 +1,6 @@
 {
-  "version": "4.1.0",
+  "version": "4.2.0",
   "releaseDate": "2026-07-17",
   "updateUrl": "https://sagarsoftonline.onrender.com/app/dashboard.html",
-  "releaseNotes": "Phase 3 production hardening. Auth middleware log removed. Rate limit memory bounded. Auth cache memory bounded. Debug endpoint error leak fixed."
+  "releaseNotes": "Phase 4 enterprise architecture. Utility functions extracted to utils.js. Canonical server source marked. Service worker cache v63. Code deduplication."
 }
