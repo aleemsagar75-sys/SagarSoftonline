@@ -1782,7 +1782,6 @@ document.addEventListener("DOMContentLoaded", function () {
     ensureLicenseSettings();
     ensurePortalSyncData();
     normalizeStudentsDatasetInMemory();
-    saveDatabase();
     return { ok: true, message: "Backup restored successfully. The app will reload now." };
   }
 
@@ -5328,7 +5327,7 @@ document.addEventListener("DOMContentLoaded", function () {
       settings.homeworkAssignments = Array.isArray(settings.homeworkAssignments) ? settings.homeworkAssignments : [];
       settings.messageTemplates = settings.messageTemplates && typeof settings.messageTemplates === "object" ? settings.messageTemplates : {};
       if (purgeUntouchedLegacyFinanceData(settings)) {
-        window.SagarSoftDB.saveDatabase(database);
+        saveDatabase("Saving settings...", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger }, operation: "update" }]);
       }
       settings.questionChapters = Array.isArray(settings.questionChapters) ? settings.questionChapters : [];
       settings.questionBank = Array.isArray(settings.questionBank) ? settings.questionBank : [];
@@ -5336,7 +5335,10 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!settings.__questionPaperOldTitlesClearedV1) {
         settings.questionPapers = [];
         settings.__questionPaperOldTitlesClearedV1 = true;
-        window.SagarSoftDB.saveDatabase(database);
+        saveDatabase("Migrating question papers...", [
+          { table: "school_settings", record: { id: "questionPapers", source_id: "questionPapers", data: settings.questionPapers }, operation: "update" },
+          { table: "school_settings", record: { id: "__questionPaperOldTitlesClearedV1", source_id: "__questionPaperOldTitlesClearedV1", data: true }, operation: "update" }
+        ]);
       }
       settings.classTestMarks = Array.isArray(settings.classTestMarks) ? settings.classTestMarks : [];
       settings.certificateTemplates = Array.isArray(settings.certificateTemplates) ? settings.certificateTemplates : [];
@@ -5374,7 +5376,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
       if (certificateTemplateChanged) {
-        window.SagarSoftDB.saveDatabase(database);
+        saveDatabase("Updating certificate templates...", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: settings.certificateTemplates }, operation: "update" }]);
       }
       
       settings.smsGateway = settings.smsGateway || {
