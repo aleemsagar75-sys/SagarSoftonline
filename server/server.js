@@ -192,12 +192,15 @@ var pool = new Proxy({}, {
   }
 });
 
-var allowedOrigins = [
+var defaultOrigins = [
   "https://sagarsoftonline.onrender.com",
   "https://sagarsoftadmin.onrender.com",
   "http://localhost:10000",
   "http://localhost:3000"
 ];
+var allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map(function (o) { return o.trim(); })
+  : defaultOrigins;
 
 function isOriginAllowed(origin) {
   if (!origin) return true;
