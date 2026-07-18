@@ -24,10 +24,10 @@ const port = Number(process.env.PORT || 10000);
 const apiKey = String(process.env.SAGARSOFT_API_KEY || "").trim();
 const defaultSchoolId = String(process.env.DEFAULT_SCHOOL_ID || "SCH-2026-001").trim();
 
-const SUPERADMIN_EMAIL = "aleemsagar@gmail.com";
-const SUPERADMIN_PASSWORD_STORED = "8ad8b9ea7b1bd6403a80e42e6dc2d55a1647af2bcc0db0a8cd67bb7e1e60dc54:a5e0813f25285755199ac67d58d25f37ca60b1e0551c1656edf368e6ac323aae1d6d894bb8eba85e8cc8d302ff7f32c9169f44c93af34b13a99d280a1353a5da";
+const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL || "").trim();
+const SUPERADMIN_PASSWORD_STORED = String(process.env.SUPERADMIN_PASSWORD_HASH || "").trim();
 const SUPERADMIN_SESSION_SECRET = String(process.env.SUPERADMIN_SESSION_SECRET || crypto.randomBytes(32).toString("hex")).trim();
-const SESSION_SECRET_KEY = SUPERADMIN_SESSION_SECRET || crypto.randomBytes(32).toString("hex");
+const SESSION_SECRET_KEY = SUPERADMIN_SESSION_SECRET;
 const SUPERADMIN_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 function sha256(input) {
@@ -133,7 +133,16 @@ function requireSuperAdmin(req, res, next) {
 }
 
 if (!process.env.SUPABASE_DB_URL) {
-  throw new Error("SUPABASE_DB_URL is required.");
+  console.error("FATAL: SUPABASE_DB_URL is required. Set it in your .env file or Render environment.");
+  process.exit(1);
+}
+if (!SUPERADMIN_EMAIL) {
+  console.error("FATAL: SUPERADMIN_EMAIL is required. Set it in your .env file or Render environment.");
+  process.exit(1);
+}
+if (!SUPERADMIN_PASSWORD_STORED) {
+  console.error("FATAL: SUPERADMIN_PASSWORD_HASH is required. Set it in your .env file or Render environment.");
+  process.exit(1);
 }
 
 function parseDbUrl(url) {
@@ -184,12 +193,15 @@ var pool = new Proxy({}, {
   }
 });
 
-var allowedOrigins = [
+var defaultOrigins = [
   "https://sagarsoftonline.onrender.com",
   "https://sagarsoftadmin.onrender.com",
   "http://localhost:10000",
   "http://localhost:3000"
 ];
+var allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map(function (o) { return o.trim(); })
+  : defaultOrigins;
 
 function isOriginAllowed(origin) {
   if (!origin) return true;
