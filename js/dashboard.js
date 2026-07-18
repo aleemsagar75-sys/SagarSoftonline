@@ -5276,28 +5276,31 @@ document.addEventListener("DOMContentLoaded", function () {
           body: "BIRTH CERTIFICATE\n\nThis is to certify that {{student_name}}, son/daughter of {{father_name}}, is a student of this institution.\n\nAs per the school admission record, his/her date of birth is {{dob}}.\n\nHe/She was admitted to the school on {{admission_date}}.\n\nThis certificate is issued on the request of the student/guardian for official purposes.\n\nDate Issue: {{issue_date}}"
         }
       ];
-      let certificateTemplateChanged = false;
-      defaultCertificateTemplates.forEach(function (template) {
-        const existingIndex = settings.certificateTemplates.findIndex(function (item) {
-          return String(item.id) === String(template.id) || String(item.name || "").toLowerCase() === String(template.name || "").toLowerCase();
+      if (!settings.__certificateTemplatesMigratedV1) {
+        let certificateTemplateChanged = false;
+        defaultCertificateTemplates.forEach(function (template) {
+          const existingIndex = settings.certificateTemplates.findIndex(function (item) {
+            return String(item.id) === String(template.id) || String(item.name || "").toLowerCase() === String(template.name || "").toLowerCase();
+          });
+          if (existingIndex >= 0 && String(settings.certificateTemplates[existingIndex].id || "").indexOf("CRT-TPL-") === 0) {
+            settings.certificateTemplates[existingIndex] = {
+              ...settings.certificateTemplates[existingIndex],
+              id: template.id,
+              name: template.name,
+              body: template.body
+            };
+            certificateTemplateChanged = true;
+            return;
+          }
+          if (existingIndex < 0) {
+            settings.certificateTemplates.push(template);
+            certificateTemplateChanged = true;
+          }
         });
-        if (existingIndex >= 0 && String(settings.certificateTemplates[existingIndex].id || "").indexOf("CRT-TPL-") === 0) {
-          settings.certificateTemplates[existingIndex] = {
-            ...settings.certificateTemplates[existingIndex],
-            id: template.id,
-            name: template.name,
-            body: template.body
-          };
-          certificateTemplateChanged = true;
-          return;
+        settings.__certificateTemplatesMigratedV1 = true;
+        if (certificateTemplateChanged) {
+          saveDatabase(null, [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: settings.certificateTemplates }, operation: "update" }]);
         }
-        if (existingIndex < 0) {
-          settings.certificateTemplates.push(template);
-          certificateTemplateChanged = true;
-        }
-      });
-      if (certificateTemplateChanged) {
-        saveDatabase("Updating certificate templates...", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: settings.certificateTemplates }, operation: "update" }]);
       }
       
       settings.smsGateway = settings.smsGateway || {
@@ -20232,8 +20235,6 @@ ${allContent}
           window.SagarSoftAuth.logout();
           location.reload();
         });
-        window.SagarSoftAuth.logout();
-        window.location.href = "./login.html";
       });
 
       if (isSuperAdmin) {
