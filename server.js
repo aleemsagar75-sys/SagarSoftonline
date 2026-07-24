@@ -1745,13 +1745,53 @@ function isLicenseUsable(row) {
   return status === "active" && !row.modules_locked && (!expiry || expiry >= today);
 }
 
+var _serverStartTime = Date.now();
+var _requestMetrics = { total: 0, errors: 0, byEndpoint: {} };
+
 app.get("/health", async (_req, res) => {
+  var dbOk = true;
+  var dbError = null;
   try {
     await pool.query("select 1");
-    res.json({ success: true, message: "SagarSoft online API is running." });
-  } catch (error) {
-    res.status(503).json({ success: false, message: "Database unavailable." });
+  } catch (err) {
+    dbOk = false;
+    dbError = err.message;
   }
+  var mem = process.memoryUsage();
+  var uptimeSec = Math.floor((Date.now() - _serverStartTime) / 1000);
+  var health = {
+    success: dbOk,
+    status: dbOk ? "healthy" : "degraded",
+    version: "5.0.0",
+    uptime: uptimeSec + "s",
+    database: dbOk ? "connected" : "unavailable",
+    dbError: dbError || undefined,
+    pool: {
+      total: pool.totalCount,
+      idle: pool.idleCount,
+      waiting: pool.waitingCount
+    },
+    memory: {
+      rss: Math.floor(mem.rss / 1048576) + "MB",
+      heapUsed: Math.floor(mem.heapUsed / 1048576) + "MB",
+      heapTotal: Math.floor(mem.heapTotal / 1048576) + "MB"
+    },
+    requests: {
+      total: _requestMetrics.total,
+      errors: _requestMetrics.errors
+    }
+  };
+  res.status(dbOk ? 200 : 503).json(health);
+});
+
+app.use(function (_req, _res, next) {
+  _requestMetrics.total++;
+  var end = _res.json;
+  _res.json = function (body) {
+    if (_res.statusCode >= 400) _requestMetrics.errors++;
+    return end.call(this, body);
+  };
+  next();
 });
 
 app.get("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
@@ -2597,7 +2637,7 @@ app.post("/api/admin/schools", requireSuperAdmin, async function (req, res) {
       } catch (_supabaseError) { console.error("Supabase Auth error:", _supabaseError.message); }
     }
 
-    return res.json({ success: true, school_id: schoolId, version: "4.2.0" });
+    return res.json({ success: true, school_id: schoolId, version: "5.0.0" });
   } catch (error) {
     try { await _client.query("rollback"); } catch (_e3) {}
     try { _client.release(); } catch (_e4) {}
@@ -3049,9 +3089,81 @@ app.post("/api/backup", requireApiKey, async function (req, res) {
     var jsonStr = JSON.stringify(database);
     var sizeBytes = Buffer.byteLength(jsonStr, "utf8");
     await pool.query("insert into public.school_backups (school_id, database, size_bytes, created_at) values ($1, $2::jsonb, $3, now())", [schoolId, jsonStr, sizeBytes]);
-    return res.json({ success: true, message: "Backup saved.", size_bytes: sizeBytes });
+    var countResult = await pool.query("select count(*) from public.school_backups where school_id = $1", [schoolId]);
+    var totalBackups = parseInt(countResult.rows[0].count, 10);
+    if (totalBackups > 20) {
+      await pool.query("delete from public.school_backups where school_id = $1 and id not in (select id from public.school_backups where school_id = $1 order by created_at desc limit 20)", [schoolId]);
+    }
+    return res.json({ success: true, message: "Backup saved.", size_bytes: sizeBytes, backup_count: totalBackups });
   } catch (error) {
     return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.get("/api/backup/:schoolId", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  try {
+    var limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
+    var result = await pool.query(
+      "select id, school_id, size_bytes, created_at from public.school_backups where school_id = $1 order by created_at desc limit $2",
+      [schoolId, limit]
+    );
+    return res.json({ success: true, backups: result.rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred." });
+  }
+});
+
+app.get("/api/backup/:schoolId/:backupId", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  try {
+    var result = await pool.query(
+      "select id, school_id, database, size_bytes, created_at from public.school_backups where school_id = $1 and id = $2",
+      [schoolId, req.params.backupId]
+    );
+    if (!result.rowCount) {
+      return res.status(404).json({ success: false, message: "Backup not found." });
+    }
+    return res.json({ success: true, backup: result.rows[0] });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred." });
+  }
+});
+
+app.get("/api/search/:schoolId/:table", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  var tableName = sanitizeTableName(req.params.table);
+  if (!tableName) return res.status(400).json({ success: false, message: "Invalid table." });
+  if (tableName === "school_settings" || tableName === "school_setting_items" || tableName === "activity_logs" || tableName === "account_activity") {
+    return res.status(400).json({ success: false, message: "Search not supported for this table." });
+  }
+  var q = String(req.query.q || "").trim();
+  if (!q) return res.json({ success: true, results: [], total: 0 });
+  var limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+  var offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+  try {
+    var searchPattern = "%" + q.toLowerCase() + "%";
+    var countResult = await pool.query(
+      "select count(*) from public." + tableName + " where school_id = $1 and lower(data::text) like $2",
+      [schoolId, searchPattern]
+    );
+    var total = parseInt(countResult.rows[0].count, 10);
+    var result = await pool.query(
+      "select source_id, data, updated_at from public." + tableName + " where school_id = $1 and lower(data::text) like $2 order by updated_at desc limit $3 offset $4",
+      [schoolId, searchPattern, limit, offset]
+    );
+    return res.json({ success: true, results: result.rows, total: total, limit: limit, offset: offset });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred." });
   }
 });
 
