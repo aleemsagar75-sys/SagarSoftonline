@@ -2945,6 +2945,25 @@ app.put("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (req
       }
       return res.json({ success: true, data: { school_id: schoolId, setting_key: sKey, item_id: itemId, item_data: itemData } });
     }
+    var clientUpdatedAt = record.updated_at || req.headers["x-client-updated-at"];
+    if (clientUpdatedAt && tableName !== "school_settings" && tableName !== "school_setting_items") {
+      var existingRow = await pool.query(
+        "select updated_at from public." + tableName + " where school_id = $1 and source_id = $2",
+        [schoolId, recordId]
+      );
+      if (existingRow.rowCount > 0 && existingRow.rows[0].updated_at) {
+        var serverTime = new Date(existingRow.rows[0].updated_at).getTime();
+        var clientTime = new Date(clientUpdatedAt).getTime();
+        if (serverTime > clientTime + 1000) {
+          return res.status(409).json({
+            success: false,
+            message: "Conflict: this record was modified by another device.",
+            code: "CONFLICT",
+            serverRecord: existingRow.rows[0]
+          });
+        }
+      }
+    }
     var updateResult = await pool.query(
       "update public." + tableName + " set data = $1::jsonb, updated_at = now() where school_id = $2 and source_id = $3 returning *",
       [JSON.stringify(record), schoolId, recordId]
@@ -2952,7 +2971,7 @@ app.put("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (req
     if (!updateResult.rowCount) {
       return res.status(404).json({ success: false, message: "Record not found." });
     }
-    return res.json({ success: true, data: updateResult.rows[0] });
+    return res.json({ success: true, data: updateResult.rows[0], updated_at: new Date().toISOString() });
   } catch (error) {
     return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
