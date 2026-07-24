@@ -1052,10 +1052,22 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   async function saveDatabase(label, changes) {
-    if (label) window.SagarSoftDB.showLoading(label);
-    else window.SagarSoftDB.showSyncBadge("syncing");
+    var _ent = window.SagarSoftEnterprise;
+    var _isOffline = _ent && !_ent.isOnline();
+    if (_isOffline && Array.isArray(changes) && changes.length > 0) {
+      for (var q = 0; q < changes.length; q++) {
+        try {
+          await _ent.enqueueOperation({ type: "record", table: changes[q].table, record: changes[q].record, operation: changes[q].operation, schoolId: window.SagarSoftDB.getSchoolId() });
+        } catch (_e) {}
+      }
+      _applyChangesToCache(changes);
+      window.SagarSoftDB.showSyncBadge("offline-queued");
+      return true;
+    }
+    if (label) window.SagarSoftDB.showSyncBadge("syncing");
     var _saved = false;
     if (Array.isArray(changes) && changes.length > 0) {
+      _applyChangesToCache(changes);
       var allOk = true;
       for (var i = 0; i < changes.length; i++) {
         var ch = changes[i];
@@ -1063,9 +1075,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!ok) allOk = false;
       }
       _saved = allOk;
-      if (_saved) {
-        _applyChangesToCache(changes);
-      } else {
+      if (!_saved) {
         try { refreshDatabase(); } catch (_e) {}
       }
     } else {
@@ -1073,7 +1083,7 @@ document.addEventListener("DOMContentLoaded", function () {
       try { refreshDatabase(); } catch (_e) {}
     }
     if (label) window.SagarSoftDB.hideLoading();
-    else window.SagarSoftDB.showSyncBadge(_saved ? "synced" : "failed");
+    window.SagarSoftDB.showSyncBadge(_saved ? "synced" : "failed");
     return _saved;
   }
 
