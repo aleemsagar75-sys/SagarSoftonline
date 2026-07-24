@@ -66,39 +66,71 @@
     _activeFetchControllers = [];
   }
 
+  var _pendingRequests = {};
+
   async function apiFetch(path, options) {
     if (!config.apiBaseUrl) throw new Error("API base URL not configured.");
     if (_isCancelled) throw new Error("Request cancelled.");
-    var controller = new AbortController();
-    _activeFetchControllers.push(controller);
-    var timeoutMs = (options && options.timeoutMs) || 90000;
-    var timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
-    try {
-      var fetchOpts = {
-        headers: headers(),
-        signal: controller.signal
-      };
-      if (options && options.method) fetchOpts.method = options.method;
-      if (options && options.body) fetchOpts.body = options.body;
-      var response = await fetch(config.apiBaseUrl + path, fetchOpts);
-      clearTimeout(timeoutId);
-      var payload = await response.json().catch(function () { return {}; });
-      if (!response.ok || !payload.success) {
-        var errMsg = payload.message || "API request failed.";
-        var err = new Error(errMsg);
-        err.statusCode = response.status;
-        err.serverMessage = errMsg;
-        throw err;
-      }
-      lastSyncFailed = false;
-      return payload;
-    } catch (err) {
-      clearTimeout(timeoutId);
-      throw err;
-    } finally {
-      var idx = _activeFetchControllers.indexOf(controller);
-      if (idx >= 0) _activeFetchControllers.splice(idx, 1);
+
+    var method = (options && options.method) || "GET";
+    var bodyStr = options && options.body ? options.body : "";
+    var dedupeKey = method + ":" + path + ":" + bodyStr;
+    if (method !== "GET" && _pendingRequests[dedupeKey]) {
+      return _pendingRequests[dedupeKey];
     }
+
+    var maxRetries = (options && options.retries != null) ? options.retries : (method === "GET" ? 2 : 1);
+    var attempt = 0;
+    var lastErr = null;
+
+    while (attempt <= maxRetries) {
+      var controller = new AbortController();
+      _activeFetchControllers.push(controller);
+      var timeoutMs = (options && options.timeoutMs) || 90000;
+      var timeoutId = setTimeout(function () { controller.abort(); }, timeoutMs);
+      try {
+        var fetchOpts = {
+          headers: headers(),
+          signal: controller.signal
+        };
+        if (options && options.method) fetchOpts.method = options.method;
+        if (options && options.body) fetchOpts.body = options.body;
+        var response = await fetch(config.apiBaseUrl + path, fetchOpts);
+        clearTimeout(timeoutId);
+        var payload = await response.json().catch(function () { return {}; });
+        if (!response.ok || !payload.success) {
+          var errMsg = payload.message || "API request failed.";
+          var err = new Error(errMsg);
+          err.statusCode = response.status;
+          err.serverMessage = errMsg;
+          if (response.status >= 500 && attempt < maxRetries) {
+            lastErr = err;
+            attempt++;
+            await new Promise(function (r) { setTimeout(r, Math.min(1000 * Math.pow(2, attempt - 1), 8000)); });
+            continue;
+          }
+          throw err;
+        }
+        lastSyncFailed = false;
+        if (method !== "GET") delete _pendingRequests[dedupeKey];
+        return payload;
+      } catch (err) {
+        clearTimeout(timeoutId);
+        var isNetwork = err.name === "AbortError" || err.message === "Failed to fetch" || err.message === "NetworkError";
+        if (isNetwork && attempt < maxRetries) {
+          lastErr = err;
+          attempt++;
+          await new Promise(function (r) { setTimeout(r, Math.min(1000 * Math.pow(2, attempt - 1), 8000)); });
+          continue;
+        }
+        if (method !== "GET") delete _pendingRequests[dedupeKey];
+        throw err;
+      } finally {
+        var idx = _activeFetchControllers.indexOf(controller);
+        if (idx >= 0) _activeFetchControllers.splice(idx, 1);
+      }
+    }
+    if (lastErr) throw lastErr;
   }
 
   function retrySyncLater(database, attempt) {
