@@ -1,6 +1,6 @@
 {
-  "version": "5.1.0",
-  "releaseDate": "2026-07-25",
+  "version": "5.2.0",
+  "releaseDate": "2026-07-26",
   "updateUrl": "https://sagarsoftonline.onrender.com/app/dashboard.html",
-  "releaseNotes": "Employee ID auto-increment fixed, Dashboard 'Teachers' card renamed to 'Employees', Sidebar Dashboard link sticky at top with independent scroll, UI polish."
+  "releaseNotes": "Premium glassmorphism loading modal, button loading states, Institute Profile instant update, Parents icon fix, animation polish, LoadingManager."
 }
