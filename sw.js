@@ -14,6 +14,7 @@ const PRECACHE_URLS = [
   "./js/login.js?v=20260726",
   "./js/dashboard.js?v=20260726",
   "./assets/SagarSoft.logo.png",
+  "./assets/parents.png",
   "./manifest.json"
 ];
 
