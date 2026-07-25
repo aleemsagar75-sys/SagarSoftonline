@@ -4154,13 +4154,20 @@ document.addEventListener("DOMContentLoaded", function () {
     database.employees = (database.employees || []).filter(function (item) {
       return item.id !== employeeId;
     });
+    var deletedUser = null;
     database.users = database.users.filter(function (user) {
-      return !(user.role === "teacher" && (user.employeeId === employeeId || user.name === employee.name));
+      var match = user.role === "teacher" && (user.employeeId === employeeId || user.name === employee.name);
+      if (match && !deletedUser) deletedUser = user;
+      return !match;
     });
     addActivity("Employee deleted", `${employee.name} record was removed.`);
-    await saveDatabase("Deleting employee...", [
+    var changes = [
       { table: "employees", record: employee, operation: "delete" }
-    ]);
+    ];
+    if (deletedUser) {
+      changes.push({ table: "app_users", record: deletedUser, operation: "delete" });
+    }
+    await saveDatabase("Deleting employee...", changes);
   }
 
   function ensureEmployeeLogin(employee) {
