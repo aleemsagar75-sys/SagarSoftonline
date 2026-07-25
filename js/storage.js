@@ -511,7 +511,7 @@
     if (!config.apiBaseUrl || !config.schoolId) return null;
     if (_isCancelled) return null;
     var showOverlay = opts && opts.showLoading !== false;
-    if (showOverlay) showLoading("Loading data from server...");
+    if (showOverlay) LoadingManager.show("Loading data from server...");
     var attempts = 0;
     var maxAttempts = 3;
     while (attempts < maxAttempts && !_isCancelled) {
@@ -521,7 +521,7 @@
         if (payload && payload.database) {
           var db = normalizeDatabase(payload.database);
           if (!_isCancelled) cachedDatabase = db;
-          hideLoading();
+          LoadingManager.hide();
           window.dispatchEvent(new CustomEvent("sagarsoft:database-loaded", { detail: { source: "server" } }));
           return db;
         }
@@ -532,7 +532,7 @@
         }
       }
     }
-    hideLoading();
+    LoadingManager.hide();
     return null;
   }
 
