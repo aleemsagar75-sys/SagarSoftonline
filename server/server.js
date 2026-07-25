@@ -1750,7 +1750,7 @@ app.get("/health", async (_req, res) => {
   var health = {
     success: dbOk,
     status: dbOk ? "healthy" : "degraded",
-    version: "5.0.0",
+    version: "5.1.0",
     uptime: uptimeSec + "s",
     database: dbOk ? "connected" : "unavailable",
     dbError: dbError || undefined,
@@ -3560,7 +3560,7 @@ app.get("/api/monitor", requireSchoolAuth, async function (req, res) {
   res.json({
     success: true,
     monitor: {
-      version: "5.0.0",
+      version: "5.1.0",
       uptime: days + "d " + hours + "h " + (uptimeSec % 3600) + "s",
       uptimeSeconds: uptimeSec,
       database: {
