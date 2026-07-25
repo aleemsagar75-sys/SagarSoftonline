@@ -263,12 +263,14 @@
 
   var _loadingOverlay = null;
   var _loadingLabel = null;
+  var _loadingSubtext = null;
   var _loadingBar = null;
   var _loadingCancelBtn = null;
   var _loadingSlowTimer = null;
   function cacheLoadingElements() {
     _loadingOverlay = document.getElementById("sagarsoft-loading-overlay");
     _loadingLabel = document.getElementById("sagarsoft-loading-text");
+    _loadingSubtext = document.getElementById("sagarsoft-loading-subtext");
     _loadingBar = document.getElementById("sagarsoft-loading-bar");
     _loadingCancelBtn = document.getElementById("sagarsoft-loading-cancel");
   }
@@ -283,9 +285,10 @@
       requestAnimationFrame(function(){ _loadingOverlay.style.opacity = "1"; });
       try { document.body.style.overflow = "hidden"; document.body.style.touchAction = "none"; } catch(_e) {}
     }
-    if (_loadingLabel) { _loadingLabel.textContent = text || ""; }
+    if (_loadingLabel) { _loadingLabel.textContent = text || "Loading..."; }
+    if (_loadingSubtext) { _loadingSubtext.textContent = "Please wait"; }
     if (_loadingBar) { _loadingBar.style.display = text ? "block" : "none"; }
-    if (_loadingCancelBtn) { _loadingCancelBtn.style.display = text ? "inline-block" : "none"; }
+    if (_loadingCancelBtn) { _loadingCancelBtn.style.display = "none"; }
 
     if (_loadingSlowTimer) { clearTimeout(_loadingSlowTimer); _loadingSlowTimer = null; }
     var isSlowConnection = false;
@@ -294,12 +297,22 @@
       if (et === "slow-2g" || et === "2g" || et === "3g") isSlowConnection = true;
     }
     if (isSlowConnection && _loadingOverlay) {
-      _loadingOverlay.classList.add("ss-slow");
+      var _nw = _loadingOverlay.querySelector(".ss-network-warning");
+      if (_nw) _nw.style.display = "block";
     } else if (_loadingOverlay) {
       _loadingSlowTimer = setTimeout(function() {
-        _loadingOverlay.classList.add("ss-slow");
+        var _nw = _loadingOverlay.querySelector(".ss-network-warning");
+        if (_nw) _nw.style.display = "block";
       }, 8000);
     }
+  }
+
+  function updateLoadingText(text) {
+    if (_loadingLabel) { _loadingLabel.textContent = text || "Loading..."; }
+  }
+
+  function updateLoadingSubtext(text) {
+    if (_loadingSubtext) { _loadingSubtext.textContent = text || ""; }
   }
 
   function hideLoading() {
@@ -308,15 +321,32 @@
     if (_loadingSlowTimer) { clearTimeout(_loadingSlowTimer); _loadingSlowTimer = null; }
     if (_loadingOverlay) {
       _loadingOverlay.classList.remove("ss-slow");
+      var _nw = _loadingOverlay.querySelector(".ss-network-warning");
+      if (_nw) _nw.style.display = "none";
       _loadingOverlay.style.opacity = "0";
       setTimeout(function () {
         if (_loadingOverlay) _loadingOverlay.style.display = "none";
         try { document.body.style.overflow = ""; document.body.style.touchAction = ""; } catch(_e) {}
-      }, 250);
+      }, 350);
     } else {
       try { document.body.style.overflow = ""; document.body.style.touchAction = ""; } catch(_e) {}
     }
   }
+
+  var LoadingManager = {
+    show: function(title) {
+      showLoading(title || "Loading...");
+    },
+    update: function(text) {
+      updateLoadingText(text);
+    },
+    updateSubtext: function(text) {
+      updateLoadingSubtext(text);
+    },
+    hide: function() {
+      hideLoading();
+    }
+  };
 
   function cancelLoading() {
     _isCancelled = true;
@@ -723,6 +753,8 @@
     showLoading: showLoading,
     hideLoading: hideLoading,
     cancelLoading: cancelLoading,
+    updateLoadingText: updateLoadingText,
+    LoadingManager: LoadingManager,
     showSyncBadge: showSyncBadge,
     saveSettingToServer: saveSettingToServer,
     saveSettingItemsToServer: saveSettingItemsToServer,
