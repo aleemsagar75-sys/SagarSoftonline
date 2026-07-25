@@ -2211,11 +2211,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (backupNowBtn) {
       backupNowBtn.addEventListener("click", async function () {
-        backupNowBtn.textContent = "Backing up... (may take ~1 min if server is sleeping)";
-        backupNowBtn.disabled = true;
+        _setButtonLoading(backupNowBtn, true);
+        window.SagarSoftDB.LoadingManager.show("Backing up data...");
+        window.SagarSoftDB.LoadingManager.updateSubtext("May take ~1 min if server is sleeping");
         var ok = await backupToSupabase();
-        backupNowBtn.textContent = ok ? "Backup Done" : "Backup Failed";
-        backupNowBtn.disabled = false;
+        window.SagarSoftDB.LoadingManager.update(ok ? "Backup complete" : "Backup failed");
+        window.SagarSoftDB.LoadingManager.updateSubtext(ok ? "Done" : "Try again in 1 minute");
+        setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
+        _setButtonLoading(backupNowBtn, false);
         if (ok) {
           openAppMessageBox("Backup Complete", "Your data has been backed up to Supabase. Any device can now access this data.", "success");
           renderProfileDropdownMenu();
@@ -7139,6 +7142,8 @@ document.addEventListener("DOMContentLoaded", function () {
         generateStudentInvoiceBtn.disabled = true;
         printInvoiceBtn.disabled = true;
         printThermalBtn.disabled = true;
+        window.SagarSoftDB.LoadingManager.show("Generating invoices...");
+        window.SagarSoftDB.LoadingManager.updateSubtext(students.length + " students");
         message.textContent = `Generating ${students.length} invoices...`;
         message.className = "form-message";
         await new Promise(function (resolve) { setTimeout(resolve, 0); });
@@ -7219,9 +7224,11 @@ document.addEventListener("DOMContentLoaded", function () {
             saveDatabase(null, _classChanges);
           }, 0);
         } catch (error) {
+          window.SagarSoftDB.LoadingManager.hide();
           message.textContent = "Unable to generate classwise invoices. Please try again.";
           message.className = "form-message error";
         } finally {
+          window.SagarSoftDB.LoadingManager.hide();
           generateClasswiseInvoiceBtn.disabled = false;
           generateStudentInvoiceBtn.disabled = false;
         }
@@ -8228,6 +8235,8 @@ ${allContent}
           alert("No defaulter found for selected month.");
           return;
         }
+        window.SagarSoftDB.LoadingManager.show("Sending fee reminders...");
+        window.SagarSoftDB.LoadingManager.updateSubtext("0/" + defaulters.length + " sent");
         const reminderText = getSavedMessageTemplate("defaultersSms", "Fee reminder for {month}. Total amount: {amount}. Kindly submit pending fee.");
         let smsSuccess = 0;
         let smsFail = 0;
@@ -8236,6 +8245,7 @@ ${allContent}
           var _cfg = getSupabaseConfig();
           var _queueOk = _cfg && _cfg.url && _cfg.anonKey && _cfg.tablesCreated && window.supabase ? true : false;
           if (!_queueOk && !(settings.smsGateway && settings.smsGateway.connected)) {
+            window.SagarSoftDB.LoadingManager.hide();
             alert("SMS gateway is not connected. Please connect from SMS Services or configure Cloud Queue.");
             return;
           }
@@ -8243,6 +8253,9 @@ ${allContent}
             const student = defaulters[index];
             const normalizedStudent = normalizeStudentForPrint(student);
             const phone = normalizeSmsPhone(normalizedStudent.phone || normalizedStudent.fatherPhone || student.studentPhone || "");
+            if (index % 5 === 0 || index === defaulters.length - 1) {
+              window.SagarSoftDB.LoadingManager.update("Sending fee reminders... (" + (index + 1) + "/" + defaulters.length + ")");
+            }
             if (!phone) {
               missingPhone += 1;
               smsFail += 1;
@@ -8276,6 +8289,9 @@ ${allContent}
           }
           saveDatabase(null, [{ table: "school_settings", record: { id: "smsGateway", source_id: "smsGateway", data: settings.smsGateway, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         }
+        window.SagarSoftDB.LoadingManager.update("Reminders sent: " + smsSuccess + " OK, " + smsFail + " failed");
+        window.SagarSoftDB.LoadingManager.updateSubtext("Done");
+        setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
         addActivity("Fee reminder sent", `${channels.join(" & ")} reminder processed for ${defaulters.length} defaulters (${getSelectedMonthYear()}).`);
         alert(`SMS reminders processed. Success: ${smsSuccess}, Failed: ${smsFail}${missingPhone ? `, Missing Phone: ${missingPhone}` : ""}.`);
       }
@@ -8477,6 +8493,8 @@ ${allContent}
           "error"
         );
         if (confirmed) {
+          window.SagarSoftDB.LoadingManager.show("Clearing all fee records...");
+          window.SagarSoftDB.LoadingManager.updateSubtext("This may take a moment");
           const _clearedFees = database.fees || [];
           database.fees = [];
           if (settings.feeCollections) {
@@ -8485,6 +8503,8 @@ ${allContent}
           saveDatabase(null, _clearedFees.map(function(r) { return { table: "fees", record: r, operation: "delete" }; }).concat([{ table: "school_settings", record: { id: "feeCollections", source_id: "feeCollections", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]));
           addActivity("Database Cleanup", "All fee records were manually cleared.");
           refreshDatabase();
+          window.SagarSoftDB.LoadingManager.update("All fee records cleared");
+          setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
           openAppMessageBox("Success", "All fee records have been cleared.", "success");
           router("fees-report"); // Reload module
         }
@@ -11277,13 +11297,16 @@ ${allContent}
           let success = 0;
           let failed = 0;
           let noPhone = 0;
-          sendResultMessageBtn.disabled = true;
+          _setButtonLoading(sendResultMessageBtn, true);
+          window.SagarSoftDB.LoadingManager.show("Sending result messages...");
+          window.SagarSoftDB.LoadingManager.updateSubtext("0/" + latestClasswiseDmcData.length + " sent");
           for (let index = 0; index < latestClasswiseDmcData.length; index += 1) {
             const dmcData = latestClasswiseDmcData[index];
             const normalizedStudent = normalizeStudentForPrint(dmcData.student || {});
             const recipientPhone = normalizeSmsPhone(normalizedStudent.phone || normalizedStudent.fatherPhone || "");
-            message.textContent = `Sending result messages... ${index + 1}/${latestClasswiseDmcData.length}`;
-            message.className = "form-message info";
+            if (index % 5 === 0 || index === latestClasswiseDmcData.length - 1) {
+              window.SagarSoftDB.LoadingManager.update("Sending result messages... (" + (index + 1) + "/" + latestClasswiseDmcData.length + ")");
+            }
             if (!recipientPhone) {
               noPhone += 1;
               failed += 1;
@@ -11315,7 +11338,10 @@ ${allContent}
               failed += 1;
             }
           }
-          sendResultMessageBtn.disabled = false;
+          window.SagarSoftDB.LoadingManager.update("Sent: " + success + " OK, " + failed + " failed");
+          window.SagarSoftDB.LoadingManager.updateSubtext("Done");
+          setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
+          _setButtonLoading(sendResultMessageBtn, false);
           const detail = `Classwise result SMS processed. Success: ${success}, Failed: ${failed}${noPhone ? `, Missing Phone: ${noPhone}` : ""}.`;
           message.textContent = detail;
           message.className = `form-message ${failed ? "warning" : "success"}`;
@@ -12112,13 +12138,14 @@ ${allContent}
       });
 
       document.getElementById("sendEmployeeAbsenteesBtn").addEventListener("click", async function () {
-        openAppMessageBox("Message", "Processing employee absentees...", "");
+        window.SagarSoftDB.LoadingManager.show("Sending employee absentees SMS...");
         try {
           const rows = getRows();
           const absentees = rows.filter(function (employee) {
             return normalizeAttendanceStatus(rowStatusState[employee.id] || employee.currentStatus || "Present") === "Absent";
           });
           if (!absentees.length) {
+            window.SagarSoftDB.LoadingManager.hide();
             const detail = "No absent employees found for selected date.";
             message.textContent = detail;
             message.className = "form-message warning";
@@ -12128,6 +12155,7 @@ ${allContent}
           var _ecfg = getSupabaseConfig();
           var _eqOk = _ecfg && _ecfg.url && _ecfg.anonKey && _ecfg.tablesCreated && window.supabase ? true : false;
           if (!_eqOk && !(database.generalSettings && database.generalSettings.smsGateway && database.generalSettings.smsGateway.connected)) {
+            window.SagarSoftDB.LoadingManager.hide();
             const detail = "SMS gateway is not connected. Please connect from SMS Services first or configure Cloud Queue.";
             message.textContent = detail;
             message.className = "form-message error";
@@ -12137,8 +12165,12 @@ ${allContent}
           let success = 0;
           let failed = 0;
           let noPhone = 0;
+          window.SagarSoftDB.LoadingManager.updateSubtext("0/" + absentees.length + " sent");
           for (let index = 0; index < absentees.length; index += 1) {
             const employee = absentees[index];
+            if (index % 5 === 0 || index === absentees.length - 1) {
+              window.SagarSoftDB.LoadingManager.update("Sending employee absentees SMS... (" + (index + 1) + "/" + absentees.length + ")");
+            }
             const recipientPhone = normalizeSmsPhone(employee.phone || employee.mobileNo || employee.mobile || "");
             if (!recipientPhone) {
               noPhone += 1;
@@ -12167,11 +12199,15 @@ ${allContent}
               failed += 1;
             }
           }
+          window.SagarSoftDB.LoadingManager.update("Sent: " + success + " OK, " + failed + " failed");
+          window.SagarSoftDB.LoadingManager.updateSubtext("Done");
+          setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
           const detail = `SMS alert processed. Success: ${success}, Failed: ${failed}${noPhone ? `, Missing Phone: ${noPhone}` : ""}.`;
           message.textContent = detail;
           message.className = `form-message ${failed ? "warning" : "success"}`;
           openAppMessageBox(failed ? "Warning" : "Success", detail, failed ? "warning" : "success");
         } catch (error) {
+          window.SagarSoftDB.LoadingManager.hide();
           const detail = `Employees attendance send failed: ${error && error.message ? error.message : "Unknown error"}`;
           message.textContent = detail;
           message.className = "form-message error";
@@ -17364,11 +17400,16 @@ ${allContent}
           alert("No test result records to send.");
           return;
         }
+        window.SagarSoftDB.LoadingManager.show("Sending class test results...");
+        window.SagarSoftDB.LoadingManager.updateSubtext("0/" + rows.length + " sent");
         const template = getSavedMessageTemplate("classTestResultMessage", getClassTestTemplateFallback());
         let success = 0;
         let failed = 0;
         for (let index = 0; index < rows.length; index += 1) {
           const row = rows[index];
+          if (index % 5 === 0 || index === rows.length - 1) {
+            window.SagarSoftDB.LoadingManager.update("Sending class test results... (" + (index + 1) + "/" + rows.length + ")");
+          }
           const student = row.student || {};
           const result = await sendSmsSmart({
             recipientName: student.name || "-",
@@ -17397,6 +17438,9 @@ ${allContent}
             failed += 1;
           }
         }
+        window.SagarSoftDB.LoadingManager.update("Sent: " + success + " OK, " + failed + " failed");
+        window.SagarSoftDB.LoadingManager.updateSubtext("Done");
+        setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
         alert(`Class test SMS processed. Success: ${success}, Failed: ${failed}.`);
       });
 
@@ -18705,8 +18749,13 @@ ${allContent}
         const template = getSavedMessageTemplate("homeworkWhatsapp", "Dear {prefix} {name} (Roll No: {roll}),\nHomework: {subject} - {title}\nDue Date: {dueDate}\nDetails: {details}\nRegards,\n{school}");
         let totalSuccess = 0;
         let totalFailed = 0;
+        window.SagarSoftDB.LoadingManager.show("Sending homework SMS...");
+        window.SagarSoftDB.LoadingManager.updateSubtext("Processing assignments...");
         for (let i = 0; i < unsent.length; i += 1) {
           const homework = unsent[i];
+          if (i % 3 === 0 || i === unsent.length - 1) {
+            window.SagarSoftDB.LoadingManager.update("Sending homework SMS... (" + (i + 1) + "/" + unsent.length + ")");
+          }
           const targets = homework._targets || getHomeworkRecordTargets(homework);
           if (!targets.length) { continue; }
           for (let j = 0; j < targets.length; j += 1) {
@@ -18740,6 +18789,9 @@ ${allContent}
         saveDatabase("", [{ table: "school_settings", record: { id: "homeworkAssignments", source_id: "homeworkAssignments", data: settings.homeworkAssignments, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         renderHomeworkHistory();
         renderHomeworkSelectionPreview();
+        window.SagarSoftDB.LoadingManager.update("Sent: " + totalSuccess + " OK, " + totalFailed + " failed");
+        window.SagarSoftDB.LoadingManager.updateSubtext("Done");
+        setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
         message.textContent = `SMS sent. Success: ${totalSuccess}, Failed: ${totalFailed}.`;
         message.className = "form-message " + (totalFailed ? "warning" : "success");
       });
@@ -19519,6 +19571,8 @@ ${allContent}
           setSendMessage("Recipient number and message are required.", "error");
           return;
         }
+        window.SagarSoftDB.LoadingManager.show("Sending SMS...");
+        window.SagarSoftDB.LoadingManager.updateSubtext("Queuing via agent");
         setSendMessage("Queuing SMS via SagarSoft SMS Agent...", "");
         var result = await sendSmsViaQueue({
           recipientName: selectedRecipient ? selectedRecipient.name : "Manual Recipient",
@@ -19529,9 +19583,13 @@ ${allContent}
           campaignType: "manual"
         });
         if (result.success) {
+          window.SagarSoftDB.LoadingManager.update("SMS queued successfully");
+          window.SagarSoftDB.LoadingManager.updateSubtext("Agent will send shortly");
+          setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
           setSendMessage("SMS queued. Agent will send shortly.", "success");
           addActivity("SMS queued", `SMS queued for ${recipientPhone}.`);
         } else {
+          window.SagarSoftDB.LoadingManager.hide();
           setSendMessage("Could not queue: " + (result.reason || result.error || "unknown"), "error");
         }
       });
@@ -20068,7 +20126,7 @@ ${allContent}
       if (activateAccountBtn) {
         activateAccountBtn.addEventListener("click", async function () {
           if (activateAccountBtn.disabled) return;
-          activateAccountBtn.disabled = true;
+          _setButtonLoading(activateAccountBtn, true);
           var editSchoolId = activateAccountBtn.getAttribute("data-edit-school-id");
           var schoolIdInput = document.getElementById("schoolIdInput");
           var nameEl = document.getElementById("schoolNameInput");
@@ -20079,23 +20137,11 @@ ${allContent}
           var expiryEl = document.getElementById("subscriptionExpiryInput");
           var msgEl = document.getElementById("manageSchoolsMessage") || document.getElementById("licenseMessage");
           var isNew = !editSchoolId || editSchoolId === "__NEW__";
-          if (!nameEl || !nameEl.value.trim()) { if (msgEl) { msgEl.textContent = "School name required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
-          if (!emailEl || !emailEl.value.trim()) { if (msgEl) { msgEl.textContent = "Email required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
-          if (!passEl || !passEl.value.trim()) { if (msgEl) { msgEl.textContent = "Password required."; msgEl.className = "form-message error"; } activateAccountBtn.disabled = false; return; }
-          var _overlay = document.getElementById("sagarsoft-loading-overlay");
-          var _overlayText = document.getElementById("sagarsoft-loading-text");
-          var _overlayBar = document.getElementById("sagarsoft-loading-bar");
-          var _overlayCancel = document.getElementById("sagarsoft-loading-cancel");
-          function _showOverlay(msg) {
-            if (_overlay) { _overlay.style.display = "flex"; requestAnimationFrame(function(){ _overlay.style.opacity = "1"; }); }
-            if (_overlayText) { _overlayText.textContent = msg; }
-            if (_overlayBar) { _overlayBar.style.display = "none"; }
-            if (_overlayCancel) { _overlayCancel.style.display = "none"; }
-          }
-          function _hideOverlay() {
-            if (_overlay) { _overlay.style.opacity = "0"; setTimeout(function(){ if (_overlay) _overlay.style.display = "none"; }, 300); }
-          }
-          _showOverlay(isNew ? "Saving School Activation..." : "Updating Subscription...");
+          if (!nameEl || !nameEl.value.trim()) { if (msgEl) { msgEl.textContent = "School name required."; msgEl.className = "form-message error"; } _setButtonLoading(activateAccountBtn, false); return; }
+          if (!emailEl || !emailEl.value.trim()) { if (msgEl) { msgEl.textContent = "Email required."; msgEl.className = "form-message error"; } _setButtonLoading(activateAccountBtn, false); return; }
+          if (!passEl || !passEl.value.trim()) { if (msgEl) { msgEl.textContent = "Password required."; msgEl.className = "form-message error"; } _setButtonLoading(activateAccountBtn, false); return; }
+          window.SagarSoftDB.LoadingManager.show(isNew ? "Saving school activation..." : "Updating subscription...");
+          window.SagarSoftDB.LoadingManager.updateSubtext("Please wait");
           if (msgEl) { msgEl.textContent = "Processing, please wait..."; msgEl.className = "form-message info"; }
           var body = { school_name: nameEl.value.trim(), email: emailEl.value.trim(), password: passEl.value.trim(), status: "active" };
           if (!isNew && schoolIdInput && schoolIdInput.value.trim()) body.school_id = schoolIdInput.value.trim();
@@ -20131,7 +20177,7 @@ ${allContent}
               }
               var successMsg = isNew ? "School activated successfully! ID: " + (savedSchoolId) : "School saved successfully!";
               if (msgEl) { msgEl.textContent = successMsg; msgEl.className = "form-message success"; }
-              _hideOverlay();
+              window.SagarSoftDB.LoadingManager.hide(); _setButtonLoading(activateAccountBtn, false);
               openAppMessageBox("Success", successMsg, "success");
               activateAccountBtn.textContent = "Add School";
               activateAccountBtn.removeAttribute("data-edit-school-id");
@@ -20141,7 +20187,7 @@ ${allContent}
             } else {
               var errMsg = data.message || "Save failed. Check console for details.";
               if (msgEl) { msgEl.textContent = errMsg; msgEl.className = "form-message error"; }
-              _hideOverlay();
+              window.SagarSoftDB.LoadingManager.hide(); _setButtonLoading(activateAccountBtn, false);
               openAppMessageBox("Error", errMsg, "error");
             }
           } catch (_e) {
@@ -20150,10 +20196,10 @@ ${allContent}
             var diagMsg = "Save failed: " + errDetail + " | URL: " + apiBase + " | apiBase defined: " + (typeof apiBase !== "undefined");
             console.error("[SagarSoft] DIAG:", diagMsg);
             if (msgEl) { msgEl.textContent = diagMsg; msgEl.className = "form-message error"; }
-            _hideOverlay();
+            window.SagarSoftDB.LoadingManager.hide(); _setButtonLoading(activateAccountBtn, false);
             openAppMessageBox("Error", diagMsg, "error");
           } finally {
-            _hideOverlay();
+            window.SagarSoftDB.LoadingManager.hide(); _setButtonLoading(activateAccountBtn, false);
             if (activateAccountBtn) { activateAccountBtn.disabled = false; activateAccountBtn.textContent = isNew ? "Add School" : "Update School"; }
           }
         });
@@ -20379,24 +20425,28 @@ ${allContent}
         if (reseqBtn) {
           reseqBtn.addEventListener("click", async function () {
             if (!(await brandedConfirm("Re-sequence all school IDs? This will fix any duplicates."))) return;
-            reseqBtn.disabled = true;
-            reseqBtn.textContent = "Fixing...";
+            _setButtonLoading(reseqBtn, true);
+            window.SagarSoftDB.LoadingManager.show("Re-sequencing school IDs...");
+            window.SagarSoftDB.LoadingManager.updateSubtext("Please wait");
             try {
               var resp = await fetch(apiBase + "/api/admin/schools/resequence", { method: "POST", headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } });
               var data = await resp.json().catch(function () { return {}; });
               var msgEl = document.getElementById("manageSchoolsMessage");
               if (data.success) {
+                window.SagarSoftDB.LoadingManager.update("Fixed " + data.resequenced + " duplicate IDs");
+                setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
                 if (msgEl) { msgEl.textContent = "Fixed " + data.resequenced + " duplicate IDs."; msgEl.className = "form-message success"; }
                 loadSchools();
               } else {
+                window.SagarSoftDB.LoadingManager.hide();
                 if (msgEl) { msgEl.textContent = data.message || "Re-sequence failed."; msgEl.className = "form-message error"; }
               }
             } catch (_e) {
+              window.SagarSoftDB.LoadingManager.hide();
               var msgEl2 = document.getElementById("manageSchoolsMessage");
               if (msgEl2) { msgEl2.textContent = "Re-sequence failed."; msgEl2.className = "form-message error"; }
             } finally {
-              reseqBtn.disabled = false;
-              reseqBtn.textContent = "Fix Duplicate IDs";
+              _setButtonLoading(reseqBtn, false);
             }
           });
         }
@@ -20520,6 +20570,9 @@ ${allContent}
               if (statusEl) { statusEl.textContent = "Message is required."; statusEl.className = "form-message error"; }
               return;
             }
+            _setButtonLoading(sendNotifBtn, true);
+            window.SagarSoftDB.LoadingManager.show("Sending notification...");
+            window.SagarSoftDB.LoadingManager.updateSubtext("Please wait");
             try {
               var resp = await fetch(apiBase + "/api/admin/notifications", {
                 method: "POST",
@@ -20532,15 +20585,20 @@ ${allContent}
               });
               var data = await resp.json().catch(function () { return {}; });
               if (data.success) {
+                window.SagarSoftDB.LoadingManager.update("Notification sent");
+                setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
                 if (statusEl) { statusEl.textContent = "Notification sent successfully."; statusEl.className = "form-message success"; }
                 if (message) message.value = "";
                 loadNotifHistory();
               } else {
+                window.SagarSoftDB.LoadingManager.hide();
                 if (statusEl) { statusEl.textContent = data.message || "Failed to send."; statusEl.className = "form-message error"; }
               }
             } catch (_e) {
+              window.SagarSoftDB.LoadingManager.hide();
               if (statusEl) { statusEl.textContent = "Failed to send notification."; statusEl.className = "form-message error"; }
             }
+            _setButtonLoading(sendNotifBtn, false);
           });
         }
 
