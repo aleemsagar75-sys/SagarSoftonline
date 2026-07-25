@@ -113,17 +113,20 @@ document.addEventListener("DOMContentLoaded", function () {
       submitButton.disabled = true;
     }
 
-    var overlay = document.getElementById("sagarsoft-loading-overlay");
-    var overlayText = document.getElementById("sagarsoft-loading-text");
-    var cancelBtn = document.getElementById("sagarsoft-loading-cancel");
+    var _LM = window.SagarSoftDB && window.SagarSoftDB.LoadingManager;
     function showLoginOverlay(msg) {
-      if (overlay) { overlay.style.display = "flex"; requestAnimationFrame(function(){ overlay.style.opacity = "1"; }); }
-      if (overlayText) { overlayText.textContent = msg; }
-      if (cancelBtn) { cancelBtn.style.display = "inline-block"; }
+      if (_LM) { _LM.show(msg); } else {
+        var ov = document.getElementById("sagarsoft-loading-overlay");
+        var ot = document.getElementById("sagarsoft-loading-text");
+        if (ov) { ov.style.display = "flex"; requestAnimationFrame(function(){ ov.style.opacity = "1"; }); }
+        if (ot) { ot.textContent = msg; }
+      }
     }
     function hideLoginOverlay() {
-      if (cancelBtn) { cancelBtn.style.display = "none"; }
-      if (overlay) { overlay.style.opacity = "0"; setTimeout(function(){ overlay.style.display = "none"; }, 250); }
+      if (_LM) { _LM.hide(); } else {
+        var ov = document.getElementById("sagarsoft-loading-overlay");
+        if (ov) { ov.style.opacity = "0"; setTimeout(function(){ ov.style.display = "none"; }, 250); }
+      }
     }
 
     showLoginOverlay("Connecting to server...");
