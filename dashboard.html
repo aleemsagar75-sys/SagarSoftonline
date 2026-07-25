@@ -11,33 +11,31 @@
   <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
   <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
   <title>SagarSoft Management System | Dashboard</title>
-  <link rel="stylesheet" href="./css/base.css?v=20260725">
-  <link rel="stylesheet" href="./css/dashboard.css?v=20260725">
+  <link rel="stylesheet" href="./css/base.css?v=20260726">
+  <link rel="stylesheet" href="./css/dashboard.css?v=20260726">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
-  <div id="sagarsoft-loading-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(8,23,47,0.92);backdrop-filter:blur(12px);justify-content:center;align-items:center;flex-direction:column;opacity:0;transition:opacity 0.3s ease;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">
-    <div class="ss-loader-pulse"></div>
-    <div class="ss-loader-ring">
-      <div></div><div></div><div></div><div></div>
+  <div id="sagarsoft-loading-overlay" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;background:rgba(8,23,47,0.6);backdrop-filter:blur(16px) saturate(1.2);-webkit-backdrop-filter:blur(16px) saturate(1.2);justify-content:center;align-items:center;opacity:0;transition:opacity 0.35s cubic-bezier(0.4,0,0.2,1);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;">
+    <div class="ss-modal-glass">
+      <div class="ss-modal-spinner">
+        <div class="ss-spinner-ring"></div>
+        <div class="ss-spinner-ring ss-spinner-ring--2"></div>
+        <div class="ss-spinner-ring ss-spinner-ring--3"></div>
+        <div class="ss-spinner-dot"></div>
+      </div>
+      <p id="sagarsoft-loading-text" class="ss-modal-title">Saving...</p>
+      <p id="sagarsoft-loading-subtext" class="ss-modal-subtitle">Please wait</p>
+      <div class="ss-modal-progress">
+        <div id="sagarsoft-loading-bar" class="ss-modal-progress-bar" style="display:none;">
+          <div id="sagarsoft-loading-bar-inner" class="ss-modal-progress-fill"></div>
+        </div>
+      </div>
+      <div class="ss-network-warning" style="display:none;margin-top:12px;padding:6px 14px;border-radius:8px;background:rgba(251,191,36,0.15);border:1px solid rgba(251,191,36,0.3);color:#fbbf24;font-size:11px;font-weight:600;text-align:center;">
+        <i class="fas fa-wifi" style="margin-right:4px;"></i> Slow connection detected
+      </div>
+      <button id="sagarsoft-loading-cancel" onclick="window.SagarSoftDB && window.SagarSoftDB.cancelLoading && window.SagarSoftDB.cancelLoading()" style="display:none;margin-top:12px;padding:6px 18px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6);font-size:11px;cursor:pointer;font-weight:500;transition:all 0.2s;">Cancel</button>
     </div>
-    <p id="sagarsoft-loading-text" style="color:rgba(255,255,255,0.92);font-size:15px;margin-top:18px;font-weight:600;letter-spacing:0.3px;max-width:280px;text-align:center;line-height:1.4;"></p>
-    <div class="ss-loader-dots"><span></span><span></span><span></span></div>
-    <div id="sagarsoft-loading-bar" style="width:200px;height:3px;background:rgba(255,255,255,0.1);border-radius:3px;margin-top:14px;overflow:hidden;display:none;">
-      <div id="sagarsoft-loading-bar-inner" style="height:100%;width:30%;background:linear-gradient(90deg,#3b82f6,#60a5fa,#22d3ee);border-radius:3px;animation:ssLoadBar 1.2s ease-in-out infinite;"></div>
-    </div>
-    <div class="ss-network-warning"><i class="fas fa-wifi"></i> Your internet connection seems slow. Please wait...</div>
-    <button id="sagarsoft-loading-cancel" onclick="window.SagarSoftDB && window.SagarSoftDB.cancelLoading && window.SagarSoftDB.cancelLoading()" style="display:none;margin-top:14px;padding:6px 20px;border:1px solid rgba(255,255,255,0.25);border-radius:8px;background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);font-size:12px;cursor:pointer;font-weight:500;letter-spacing:0.3px;">Cancel</button>
-    <style>
-      @keyframes spin{to{transform:rotate(360deg)}}
-      @keyframes ssLoadBar{0%{width:10%;margin-left:0}50%{width:45%}100%{width:10%;margin-left:90%}}
-      .ss-loader-ring{display:inline-block;position:relative;width:52px;height:52px;margin-top:-8px}
-      .ss-loader-ring div{box-sizing:border-box;display:block;position:absolute;width:42px;height:42px;margin:5px;border:2.5px solid transparent;border-radius:50%;animation:ssLoaderRing 1.2s cubic-bezier(0.5,0,0.5,1) infinite;border-top-color:rgba(96,165,250,0.9)}
-      .ss-loader-ring div:nth-child(1){animation-delay:-0.45s}
-      .ss-loader-ring div:nth-child(2){animation-delay:-0.3s;border-top-color:rgba(34,211,238,0.7)}
-      .ss-loader-ring div:nth-child(3){animation-delay:-0.15s;border-top-color:rgba(139,92,246,0.6)}
-      @keyframes ssLoaderRing{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-    </style>
   </div>
   <div class="app-shell" id="appShell">
     <aside class="sidebar" id="sidebar">
@@ -1193,13 +1191,13 @@
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous" defer></script>
-  <script src="./js/online-config.js?v=20260725" defer></script>
-  <script src="./js/crypto-utils.js?v=20260725" defer></script>
-  <script src="./js/utils.js?v=20260725" defer></script>
-  <script src="./js/storage.js?v=20260725" defer></script>
-  <script src="./js/enterprise.js?v=20260725" defer></script>
-  <script src="./js/auth.js?v=20260725" defer></script>
-  <script src="./js/dashboard.js?v=20260725" defer></script>
+  <script src="./js/online-config.js?v=20260726" defer></script>
+  <script src="./js/crypto-utils.js?v=20260726" defer></script>
+  <script src="./js/utils.js?v=20260726" defer></script>
+  <script src="./js/storage.js?v=20260726" defer></script>
+  <script src="./js/enterprise.js?v=20260726" defer></script>
+  <script src="./js/auth.js?v=20260726" defer></script>
+  <script src="./js/dashboard.js?v=20260726" defer></script>
   <script>
     var _origFetch = window.fetch;
     window.fetch = function () {
