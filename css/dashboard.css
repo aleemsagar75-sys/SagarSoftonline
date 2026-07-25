@@ -121,6 +121,15 @@ body {
   padding-right: 0.2rem;
 }
 
+.sidebar__body > .menu > .menu-link[data-route="dashboard"] {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: linear-gradient(180deg, rgba(7, 19, 39, 0.98), rgba(10, 29, 57, 0.98));
+  border-radius: 10px;
+  margin-bottom: 0.25rem;
+}
+
 .sidebar__header {
   grid-template-columns: auto 1fr auto;
   align-items: center;
@@ -6263,6 +6272,9 @@ body[data-theme="dark"] .secondary-button {
 body[data-theme="dark"] .sidebar {
   background: linear-gradient(180deg, #010409, #0d1117);
   border-right-color: rgba(255, 255, 255, 0.04);
+}
+body[data-theme="dark"] .sidebar__body > .menu > .menu-link[data-route="dashboard"] {
+  background: linear-gradient(180deg, #010409, #0d1117);
 }
 
 /* Message box dark */
