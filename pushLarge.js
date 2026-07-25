@@ -64,10 +64,11 @@ async function run() {
   var commit = await gitRequest("GET", "/repos/" + REPO + "/git/commits/" + currentCommitSha);
   var baseTreeSha = commit.tree.sha;
 
-  // Step 3: Create blob
+  // Step 3: Create blob (base64 encoding for large files)
+  var encoded = Buffer.from(content, "utf8").toString("base64");
   var blob = await gitRequest("POST", "/repos/" + REPO + "/git/blobs", {
-    content: content,
-    encoding: "utf-8"
+    content: encoded,
+    encoding: "base64"
   });
   if (!blob.sha) { console.log("Blob failed:", JSON.stringify(blob).substring(0, 500)); return; }
   console.log("Blob created:", blob.sha.substring(0, 7));
