@@ -1051,6 +1051,38 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
+  var _activeButtonStates = [];
+  function _setButtonLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) {
+      btn._originalText = btn.innerHTML;
+      btn._originalDisabled = btn.disabled;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="ss-btn-spinner"></span> ' + (btn._originalText || "Saving...");
+      btn.classList.add("ss-btn-loading");
+    } else {
+      btn.disabled = btn._originalDisabled || false;
+      btn.innerHTML = btn._originalText || btn.innerHTML;
+      btn.classList.remove("ss-btn-loading");
+    }
+  }
+  function _findTriggerButton(label) {
+    if (!label) return null;
+    var lowerLabel = label.toLowerCase();
+    var candidates = document.querySelectorAll("button:not([disabled])");
+    for (var i = 0; i < candidates.length; i++) {
+      var btn = candidates[i];
+      var txt = (btn.textContent || "").toLowerCase();
+      if (txt.includes("save") || txt.includes("update") || txt.includes("delete") ||
+          txt.includes("submit") || txt.includes("apply") || txt.includes("add") ||
+          txt.includes("backup") || txt.includes("restore") || txt.includes("import") ||
+          txt.includes("export")) {
+        return btn;
+      }
+    }
+    return null;
+  }
+
   async function saveDatabase(label, changes) {
     var _ent = window.SagarSoftEnterprise;
     var _isOffline = _ent && !_ent.isOnline();
@@ -1064,13 +1096,21 @@ document.addEventListener("DOMContentLoaded", function () {
       window.SagarSoftDB.showSyncBadge("offline-queued");
       return true;
     }
-    if (label) window.SagarSoftDB.showSyncBadge("syncing");
+    var _triggerBtn = _findTriggerButton(label);
+    if (label) {
+      _setButtonLoading(_triggerBtn, true);
+      window.SagarSoftDB.LoadingManager.show(label);
+      window.SagarSoftDB.LoadingManager.updateSubtext("Please wait");
+    }
     var _saved = false;
     if (Array.isArray(changes) && changes.length > 0) {
       _applyChangesToCache(changes);
       var allOk = true;
       for (var i = 0; i < changes.length; i++) {
         var ch = changes[i];
+        if (label && changes.length > 1) {
+          window.SagarSoftDB.LoadingManager.update(label.replace(/\.\.\.$/, "") + " (" + (i + 1) + "/" + changes.length + ")...");
+        }
         var ok = await window.SagarSoftDB.saveRecord(ch.table, ch.record, ch.operation);
         if (!ok) allOk = false;
       }
@@ -1082,7 +1122,12 @@ document.addEventListener("DOMContentLoaded", function () {
       _syncSettingsToDedicatedTables();
       try { refreshDatabase(); } catch (_e) {}
     }
-    if (label) window.SagarSoftDB.hideLoading();
+    if (label) {
+      window.SagarSoftDB.LoadingManager.update(_saved ? "Saved successfully" : "Save failed");
+      window.SagarSoftDB.LoadingManager.updateSubtext(_saved ? "Done" : "Please try again");
+      setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
+      _setButtonLoading(_triggerBtn, false);
+    }
     window.SagarSoftDB.showSyncBadge(_saved ? "synced" : "failed");
     return _saved;
   }
@@ -4275,7 +4320,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const cards = [
       {
-        icon: '<img src="./assets/students.png" class="menu-icon__img" style="filter:none;">',
+        icon: '<img src="./assets/students.png" class="menu-icon__img" alt="Students">',
         tone: "students",
         route: "all-students",
         label: "Students",
@@ -4283,7 +4328,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: `${totalStudents} active records`
       },
       {
-        icon: '<img src="./assets/employees.png" class="menu-icon__img" style="filter:none;">',
+        icon: '<img src="./assets/employees.png" class="menu-icon__img" alt="Employees">',
         tone: "teachers",
         route: "all-employees",
         label: "Employees",
@@ -4291,7 +4336,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: `${linkedSubjectsCount} subjects assigned`
       },
       {
-        icon: '<img src="./assets/classes.png" class="menu-icon__img" style="filter:none;">',
+        icon: '<img src="./assets/classes.png" class="menu-icon__img" alt="Classes">',
         tone: "classes",
         route: "all-classes",
         label: "Classes",
@@ -4299,7 +4344,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: `${database.classes.length} academic groups`
       },
       {
-        icon: '<img src="./assets/fees.png" class="menu-icon__img" style="filter:none;">',
+        icon: '<img src="./assets/fees.png" class="menu-icon__img" alt="Fees">',
         tone: "fees",
         route: "generate-fees-invoice",
         label: "Fees",
@@ -4307,7 +4352,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: "Paid students / enrolled"
       },
       {
-        icon: '<img src="./assets/attendance.png" class="menu-icon__img" style="filter:none;">',
+        icon: '<img src="./assets/attendance.png" class="menu-icon__img" alt="Attendance">',
         tone: "attendance",
         route: "students-attendance",
         label: "Attendance",
@@ -4315,7 +4360,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: "Today's attendance"
       },
       {
-        icon: '<img src="./assets/parents.png" class="menu-icon__img" style="filter:none;">',
+        icon: '<img src="./assets/parents.png" class="menu-icon__img" alt="Parents">',
         tone: "parents",
         route: "parents-info-report",
         label: "Parents",
@@ -4330,7 +4375,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: "Associated with students"
       },
       {
-        icon: '<img src="./assets/subjects.png" class="menu-icon__img" style="filter:none;">',
+        icon: '<img src="./assets/subjects.png" class="menu-icon__img" alt="Subjects">',
         tone: "subjects",
         route: "classes-with-subjects",
         label: "Subjects",
@@ -4338,7 +4383,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: "Linked subjects configured"
       },
       {
-        icon: '<img src="./assets/dashboard.png" class="menu-icon__img" style="filter:none;">',
+        icon: '<img src="./assets/dashboard.png" class="menu-icon__img" alt="Activity">',
         tone: "activity",
         route: "students-info-report",
         label: "Activity",
@@ -5684,12 +5729,17 @@ document.addEventListener("DOMContentLoaded", function () {
           { table: "school_settings", record: { id: "accountSettings", source_id: "accountSettings", data: settings.accountSettings, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
         ]);
         await window.SagarSoftDB.saveProfileToServer({ school_name: newProfile.name, instituteProfile: newProfile }).catch(function(){});
+        try { window.SagarSoftDB.saveDatabase(database); } catch (_e) {}
         var _pn = document.getElementById("profileName");
         if (_pn) _pn.textContent = newProfile.name || "Admin";
         var _pa = document.getElementById("profileAvatar");
         if (_pa) _pa.textContent = getInitials(newProfile.name || "Admin");
         updateTopProfileIdentity();
         renderProfileDropdownMenu();
+        if (typeof logoData !== "undefined") {
+          var _logoEl = document.getElementById("instituteLogoPreview");
+          if (_logoEl && logoData) { _logoEl.src = logoData; _logoEl.style.display = "block"; }
+        }
         if (_saved) {
           message.textContent = "Institute profile updated successfully.";
           message.className = "form-message success";
