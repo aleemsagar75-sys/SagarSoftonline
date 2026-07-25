@@ -855,10 +855,6 @@ async function ensureSchema() {
     create index if not exists idx_sent_messages_school_id on public.sent_messages (school_id);
   `);
   console.log("Schema ready");
-  try {
-    await pool.query("drop table if exists public.teachers cascade");
-    console.log("Dropped teachers table (use employees instead)");
-  } catch (_e) {}
 }
 
 async function ensureSmsTables() {
@@ -1539,7 +1535,7 @@ async function getSchoolDatabase(schoolId) {
     return rows.map((row) => row || {}).filter((row) => row && typeof row === "object");
   };
 
-  var tables = ["students","classes","app_users","subjects","attendance","fees","fee_invoices","fee_collections","salary_payments","accounts_ledger","activity_logs","exams","exam_marks","timetable","homework","class_tests","class_test_marks","question_papers","certificates","employees","teachers","notices","events","sms_templates","account_activity"];
+  var tables = ["students","classes","app_users","subjects","attendance","fees","fee_invoices","fee_collections","salary_payments","accounts_ledger","activity_logs","exams","exam_marks","timetable","homework","class_tests","class_test_marks","question_papers","certificates","employees","notices","events","sms_templates","account_activity"];
   var cteParts = [];
   var selectParts = [];
   tables.forEach(function(t, i) {
@@ -1566,14 +1562,13 @@ async function getSchoolDatabase(schoolId) {
     feeInvoices, feeCollections, salaryPayments, accountsLedger,
     activityLogs, exams, examMarks, timetable, homework,
     classTests, classTestMarks, questionPapers, certificates,
-    employees, teachers, notices, events, smsTemplates, accountActivity
+    employees, _teachersDropped, notices, events, smsTemplates, accountActivity
   ] = allResults;
 
   // Migration: if dedicated table is empty but JSONB blob has data, migrate to dedicated table
   var migrateEntities = [
     { key: "students", table: "students" },
     { key: "classes", table: "classes" },
-    { key: "teachers", table: "teachers" },
     { key: "employees", table: "employees" },
     { key: "subjects", table: "subjects" },
     { key: "attendance", table: "attendance" },
@@ -1584,7 +1579,7 @@ async function getSchoolDatabase(schoolId) {
     { key: "smsTemplates", table: "sms_templates" },
     { key: "accountActivity", table: "account_activity" }
   ];
-  var dedicatedResults = { students: students, classes: classes, subjects: subjects, attendance: attendance, fees: fees, teachers: teachers, notices: notices, events: events, activityLogs: activityLogs, smsTemplates: smsTemplates, accountActivity: accountActivity, employees: employees };
+  var dedicatedResults = { students: students, classes: classes, subjects: subjects, attendance: attendance, fees: fees, notices: notices, events: events, activityLogs: activityLogs, smsTemplates: smsTemplates, accountActivity: accountActivity, employees: employees };
   for (var mi = 0; mi < migrateEntities.length; mi++) {
     var ent = migrateEntities[mi];
     var blobArr = blob[ent.key] || [];
@@ -1616,7 +1611,6 @@ async function getSchoolDatabase(schoolId) {
   smsTemplates = dedicatedResults.smsTemplates;
   accountActivity = dedicatedResults.accountActivity;
   employees = dedicatedResults.employees;
-  teachers = dedicatedResults.teachers;
 
   // Migration: also migrate users from JSONB blob to app_users table
   var usersDed = dedicatedResults.users || users;
@@ -1648,13 +1642,7 @@ async function getSchoolDatabase(schoolId) {
   database.accountActivity = accountActivity;
   database.smsTemplates = smsTemplates;
   database.employees = employees;
-  if (teachers.length) {
-    database.teachers = teachers;
-  } else if (employees.length) {
-    database.teachers = employees;
-  } else {
-    database.teachers = [];
-  }
+  database.teachers = employees;
   database.generalSettings.feeInvoices = feeInvoices;
   database.generalSettings.feeCollections = feeCollections;
   database.generalSettings.salaryPayments = salaryPayments;
@@ -2834,7 +2822,6 @@ var ALLOWED_TABLES = {
   students: "students",
   classes: "classes",
   subjects: "subjects",
-  teachers: "teachers",
   attendance: "attendance",
   fees: "fees",
   fee_invoices: "fee_invoices",
@@ -2932,6 +2919,7 @@ app.post("/api/data/:schoolId/:table", requireSchoolAuth, async function (req, r
     );
     return res.json({ success: true, data: insertResult.rows[0] || record });
   } catch (error) {
+    console.error("[POST /api/data] ERROR table=" + req.params.table + " school=" + req.params.schoolId, error.message, error.stack);
     return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
@@ -3012,6 +3000,7 @@ app.put("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (req
     }
     return res.json({ success: true, data: updateResult.rows[0], updated_at: new Date().toISOString() });
   } catch (error) {
+    console.error("[PUT /api/data] ERROR table=" + req.params.table + " id=" + req.params.id + " school=" + req.params.schoolId, error.message);
     return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
