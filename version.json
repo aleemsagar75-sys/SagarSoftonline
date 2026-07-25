@@ -1,6 +1,6 @@
 {
-  "version": "5.0.0",
-  "releaseDate": "2026-07-18",
+  "version": "5.1.0",
+  "releaseDate": "2026-07-25",
   "updateUrl": "https://sagarsoftonline.onrender.com/app/dashboard.html",
-  "releaseNotes": "Enterprise SaaS: API retry with backoff, request deduplication, conflict detection (409), optimistic UI, offline queue (IndexedDB), real-time sync polling, server-side conflict verification."
+  "releaseNotes": "Employee ID auto-increment fixed, Dashboard 'Teachers' card renamed to 'Employees', Sidebar Dashboard link sticky at top with independent scroll, UI polish."
 }
