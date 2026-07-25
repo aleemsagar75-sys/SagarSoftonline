@@ -3219,6 +3219,7 @@ ensureSchema()
     app.listen(port, function () {
       console.log("SagarSoft online API listening on " + port);
       startKeepAlive();
+      startBackupCron();
     });
   })
   .catch(function (error) {
@@ -3541,6 +3542,104 @@ app.post("/api/setup-sms-tables", requireSuperAdmin, async function (req, res) {
     console.error("POST /api/setup-sms-tables error:", error.message);
     return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
+});
+
+var _backupLog = { lastRun: null, lastSuccess: null, schoolsBackedUp: 0, errors: 0, totalRuns: 0 };
+
+async function runAutomatedBackup() {
+  console.log("[AUTO-BACKUP] Starting automated backup...");
+  _backupLog.lastRun = new Date().toISOString();
+  _backupLog.totalRuns++;
+  var backedUp = 0;
+  var errors = 0;
+  try {
+    var schools = await pool.query("select school_id from public.license_accounts where status = 'active'");
+    for (var i = 0; i < schools.rows.length; i++) {
+      var schoolId = schools.rows[i].school_id;
+      try {
+        var db = await getSchoolDatabase(schoolId);
+        if (!db) continue;
+        var jsonStr = JSON.stringify(db);
+        var sizeBytes = Buffer.byteLength(jsonStr, "utf8");
+        await pool.query(
+          "insert into public.school_backups (school_id, database, size_bytes, created_at) values ($1, $2::jsonb, $3, now())",
+          [schoolId, jsonStr, sizeBytes]
+        );
+        backedUp++;
+      } catch (err) {
+        errors++;
+        console.error("[AUTO-BACKUP] Failed for school " + schoolId + ":", err.message);
+      }
+    }
+    await pool.query("delete from public.school_backups where id not in (select id from public.school_backups order by created_at desc limit 500)");
+    _backupLog.lastSuccess = new Date().toISOString();
+    _backupLog.schoolsBackedUp = backedUp;
+    _backupLog.errors = errors;
+    console.log("[AUTO-BACKUP] Complete. Backed up: " + backedUp + " schools, Errors: " + errors);
+  } catch (err) {
+    _backupLog.errors = errors;
+    console.error("[AUTO-BACKUP] Fatal error:", err.message);
+  }
+}
+
+function startBackupCron() {
+  var TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+  var now = new Date();
+  var nextMidnight = new Date(now);
+  nextMidnight.setHours(2, 0, 0, 0);
+  if (nextMidnight <= now) nextMidnight.setTime(nextMidnight.getTime() + TWENTY_FOUR_HOURS);
+  var delay = nextMidnight.getTime() - now.getTime();
+  console.log("[AUTO-BACKUP] First backup scheduled in " + Math.round(delay / 60000) + " minutes (at " + nextMidnight.toISOString() + ")");
+  setTimeout(function () {
+    runAutomatedBackup();
+    setInterval(runAutomatedBackup, TWENTY_FOUR_HOURS);
+  }, delay);
+}
+
+app.get("/api/monitor", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  var dbLatencyMs = 0;
+  try {
+    var t0 = Date.now();
+    await pool.query("select 1");
+    dbLatencyMs = Date.now() - t0;
+  } catch (_e) { dbLatencyMs = -1; }
+  var mem = process.memoryUsage();
+  var uptimeSec = Math.floor((Date.now() - _serverStartTime) / 1000);
+  var days = Math.floor(uptimeSec / 86400);
+  var hours = Math.floor((uptimeSec % 86400) / 3600);
+  res.json({
+    success: true,
+    monitor: {
+      version: "5.0.0",
+      uptime: days + "d " + hours + "h " + (uptimeSec % 3600) + "s",
+      uptimeSeconds: uptimeSec,
+      database: {
+        latencyMs: dbLatencyMs,
+        pool: { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount },
+        status: dbLatencyMs >= 0 ? "healthy" : "unavailable"
+      },
+      memory: {
+        rssMB: Math.floor(mem.rss / 1048576),
+        heapUsedMB: Math.floor(mem.heapUsed / 1048576),
+        heapTotalMB: Math.floor(mem.heapTotal / 1048576)
+      },
+      requests: { total: _requestMetrics.total, errors: _requestMetrics.errors, errorRate: _requestMetrics.total > 0 ? ((_requestMetrics.errors / _requestMetrics.total) * 100).toFixed(2) + "%" : "0%" },
+      backup: _backupLog,
+      env: {
+        NODE_ENV: process.env.NODE_ENV || "development",
+        PORT: process.env.PORT || "not set",
+        SUPABASE_DB_URL: process.env.SUPABASE_DB_URL ? "configured" : "MISSING",
+        SUPERADMIN_EMAIL: process.env.SUPERADMIN_EMAIL ? "configured" : "MISSING",
+        SUPERADMIN_PASSWORD_HASH: process.env.SUPERADMIN_PASSWORD_HASH ? "configured" : "MISSING",
+        SAGARSOFT_API_KEY: process.env.SAGARSOFT_API_KEY ? "configured" : "MISSING",
+        ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || "default"
+      }
+    }
+  });
 });
 
 function gracefulShutdown(signal) {
