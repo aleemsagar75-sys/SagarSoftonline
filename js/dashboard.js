@@ -4315,7 +4315,7 @@ document.addEventListener("DOMContentLoaded", function () {
         note: "Today's attendance"
       },
       {
-        icon: '<img src="./assets/subjects.png" class="menu-icon__img" style="filter:none;">',
+        icon: '<img src="./assets/parents.png" class="menu-icon__img" style="filter:none;">',
         tone: "parents",
         route: "parents-info-report",
         label: "Parents",
@@ -4409,12 +4409,14 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!activityList) return;
     var actLogs = Array.isArray(database.activityLogs) ? database.activityLogs : [];
     activityList.innerHTML = actLogs.slice(0, 5).map(function (item) {
-      const date = new Date(item.createdAt);
+      var ts = item.createdAt || item.created_at || item.updatedAt || item.updated_at || "";
+      const date = ts ? new Date(ts) : null;
+      var dateStr = (date && !isNaN(date.getTime())) ? date.toLocaleDateString() + " " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
       return `
         <article class="activity-item">
           <strong>${escapeHtml(item.title)}</strong>
           <p>${escapeHtml(item.description)}</p>
-          <time>${date.toLocaleDateString()} ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</time>
+          ${dateStr ? "<time>" + dateStr + "</time>" : ""}
         </article>
       `;
     }).join("");
@@ -4422,11 +4424,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function renderStudentActivity() {
     if (!studentsActivityList) return;
-    const items = database.activityLogs.filter(function (item) {
+    var actLogs = Array.isArray(database.activityLogs) ? database.activityLogs : [];
+    const items = actLogs.filter(function (item) {
       return item.title.toLowerCase().includes("student");
     }).slice(0, 5);
 
-    studentsActivityList.innerHTML = (items.length ? items : database.activityLogs.slice(0, 3)).map(function (item) {
+    studentsActivityList.innerHTML = (items.length ? items : actLogs.slice(0, 3)).map(function (item) {
       return `
         <article class="activity-item">
           <strong>${escapeHtml(item.title)}</strong>
