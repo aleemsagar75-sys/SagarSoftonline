@@ -647,6 +647,7 @@ async function ensureSchema() {
     alter table if exists public.teachers add column if not exists updated_at timestamptz not null default now();
     alter table if exists public.classes add column if not exists updated_at timestamptz not null default now();
     alter table if exists public.employees add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.account_activity add column if not exists updated_at timestamptz not null default now();
     alter table if exists public.activity_logs add column if not exists id text;
     alter table if exists public.license_accounts drop constraint if exists license_accounts_email_key;
     alter table if exists public.license_accounts add column if not exists api_token text;
@@ -1563,7 +1564,7 @@ async function getSchoolDatabase(schoolId) {
     feeInvoices, feeCollections, salaryPayments, accountsLedger,
     activityLogs, exams, examMarks, timetable, homework,
     classTests, classTestMarks, questionPapers, certificates,
-    employees, _teachersDropped, notices, events, smsTemplates, accountActivity
+    employees, notices, events, smsTemplates, accountActivity
   ] = allResults;
 
   // Migration: if dedicated table is empty but JSONB blob has data, migrate to dedicated table
@@ -1870,6 +1871,9 @@ app.post("/api/school/profile/:schoolId", requireSchoolAuth, async (req, res) =>
 
 app.get("/api/school-profile/:schoolId", requireSchoolAuth, async (req, res) => {
   const schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
   try {
     const licResult = await pool.query(
       "select school_id, school_name, email, status, plan, start_date, expiry_date, currency, symbol, timezone from public.license_accounts where school_id = $1 limit 1",
@@ -2393,6 +2397,10 @@ app.post("/api/resolve-school", async (req, res) => {
 });
 
 app.post("/api/school/register", async (req, res) => {
+  var regRateKey = "register:" + (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
+  if (!checkRateLimit(regRateKey)) {
+    return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
+  }
   try {
     const email = String(req.body.email || "").trim().toLowerCase();
     const password = String(req.body.password || "");
