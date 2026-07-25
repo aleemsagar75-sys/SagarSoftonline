@@ -1533,7 +1533,13 @@ async function getSchoolDatabase(schoolId) {
   };
 
   const readDataRowsSync = function (rows) {
-    return rows.map((row) => row || {}).filter((row) => row && typeof row === "object");
+    return rows.map(function (row) {
+      if (!row) return {};
+      if (row.data !== undefined && row.data !== null && typeof row.data === "object" && !Array.isArray(row.data)) {
+        return row.data;
+      }
+      return row;
+    }).filter(function (row) { return row && typeof row === "object"; });
   };
 
   var tables = ["students","classes","app_users","subjects","attendance","fees","fee_invoices","fee_collections","salary_payments","accounts_ledger","activity_logs","exams","exam_marks","timetable","homework","class_tests","class_test_marks","question_papers","certificates","employees","notices","events","sms_templates","account_activity"];
@@ -2860,10 +2866,19 @@ app.post("/api/data/:schoolId/:table", requireSchoolAuth, async function (req, r
       );
       return res.json({ success: true, data: { school_id: schoolId, setting_key: sKey, item_id: itemId, item_data: itemData } });
     }
-    var insertResult = await pool.query(
-      "insert into public." + tableName + " (id, school_id, source_id, data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, source_id) do update set data = excluded.data, updated_at = now() returning *",
-      [record.id, schoolId, record.id, JSON.stringify(record)]
-    );
+    var _hasIdCol = ["students", "classes", "employees", "activity_logs"].indexOf(tableName) >= 0;
+    var insertResult;
+    if (_hasIdCol) {
+      insertResult = await pool.query(
+        "insert into public." + tableName + " (id, school_id, source_id, data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, source_id) do update set data = excluded.data, updated_at = now() returning *",
+        [record.id, schoolId, record.id, JSON.stringify(record)]
+      );
+    } else {
+      insertResult = await pool.query(
+        "insert into public." + tableName + " (school_id, source_id, data, updated_at) values ($1, $2, $3::jsonb, now()) on conflict (school_id, source_id) do update set data = excluded.data, updated_at = now() returning *",
+        [schoolId, record.id || record.source_id || ("rec-" + Date.now()), JSON.stringify(record)]
+      );
+    }
     return res.json({ success: true, data: insertResult.rows[0] || record });
   } catch (error) {
     console.error("[POST /api/data] ERROR table=" + req.params.table + " school=" + req.params.schoolId, error.message, error.stack);
@@ -2988,8 +3003,10 @@ app.delete("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (
         if (typeof _blobDb === "string") { try { _blobDb = JSON.parse(_blobDb); } catch (_e2) { _blobDb = {}; } }
         if (!_blobDb._deletedIds) _blobDb._deletedIds = [];
         if (_blobDb._deletedIds.indexOf(recordId) === -1) _blobDb._deletedIds.push(recordId);
-        if (_blobDb[tableName] && Array.isArray(_blobDb[tableName])) {
-          _blobDb[tableName] = _blobDb[tableName].filter(function(item) { return item && item.id !== recordId; });
+        var _jsonbKeyMap = { activity_logs: "activityLogs", account_activity: "accountActivity", sms_templates: "smsTemplates", app_users: "users" };
+        var _jsonbKey = _jsonbKeyMap[tableName] || tableName;
+        if (_blobDb[_jsonbKey] && Array.isArray(_blobDb[_jsonbKey])) {
+          _blobDb[_jsonbKey] = _blobDb[_jsonbKey].filter(function(item) { return item && item.id !== recordId; });
         }
         if (_blobDb.generalSettings) {
           ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates"].forEach(function(key) {
