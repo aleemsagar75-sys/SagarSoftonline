@@ -4159,7 +4159,6 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     addActivity("Employee deleted", `${employee.name} record was removed.`);
     await saveDatabase("Deleting employee...", [
-      { table: "teachers", record: employee, operation: "delete" },
       { table: "employees", record: employee, operation: "delete" }
     ]);
   }
@@ -12816,7 +12815,7 @@ ${allContent}
 
         saveEmployeeRecord(employeeRecord, editingEmployee ? editingEmployee.id : null);
         addActivity(editingEmployee ? "Employee updated" : "Employee added", `${employeeRecord.name} employee record saved.`);
-        await saveDatabase(editingEmployee ? "Updating employee..." : "Saving employee...", [{ table: "teachers", record: employeeRecord, operation: editingEmployee ? "update" : "create" }]);
+        await saveDatabase(editingEmployee ? "Updating employee..." : "Saving employee...", [{ table: "employees", record: employeeRecord, operation: editingEmployee ? "update" : "create" }]);
         sessionStorage.removeItem("sagarsoft_edit_employee_id");
         renderDashboard();
         message.textContent = "Employee form submitted successfully.";
