@@ -1679,15 +1679,26 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   function getLastEmployeeNumber() {
-    const allStaff = [].concat(database.teachers || [], database.employees || []);
-    if (allStaff.length === 0) return "1";
-    const numbers = allStaff
-      .map(e => {
-        const match = String(e.id || "").match(/\d+$/);
-        return match ? parseInt(match[0], 10) : 0;
-      })
-      .filter(n => n > 0);
-    return numbers.length > 0 ? String(Math.max(...numbers) + 1) : "1";
+    var employees = database.employees || database.teachers || [];
+    var idSet = {};
+    for (var i = 0; i < employees.length; i++) {
+      var rawId = String((employees[i] && employees[i].id) || "");
+      var m = rawId.match(/EMP(\d+)/i);
+      if (m) idSet[parseInt(m[1], 10)] = true;
+    }
+    var domIds = document.querySelectorAll("[data-employee-id],[data-action=\"delete-employee\"],[data-action=\"edit-employee\"]");
+    for (var j = 0; j < domIds.length; j++) {
+      var rowId = String(domIds[j].getAttribute("data-employee-id") || domIds[j].getAttribute("data-id") || "");
+      var m2 = rowId.match(/EMP(\d+)/i);
+      if (m2) idSet[parseInt(m2[1], 10)] = true;
+    }
+    var maxNum = 0;
+    var keys = Object.keys(idSet);
+    for (var k = 0; k < keys.length; k++) {
+      var n = parseInt(keys[k], 10);
+      if (n > maxNum) maxNum = n;
+    }
+    return String(maxNum + 1);
   }
 
   function downloadBackupData() {
@@ -4275,8 +4286,8 @@ document.addEventListener("DOMContentLoaded", function () {
         icon: '<img src="./assets/employees.png" class="menu-icon__img" style="filter:none;">',
         tone: "teachers",
         route: "all-employees",
-        label: "Teachers",
-        value: database.teachers.length,
+        label: "Employees",
+        value: (database.employees || database.teachers || []).length,
         note: `${linkedSubjectsCount} subjects assigned`
       },
       {
