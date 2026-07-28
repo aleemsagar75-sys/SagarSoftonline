@@ -2116,7 +2116,7 @@ async function createSupabaseUser(email, password) {
 }
 
 
-app.post("/api/activate-school.php", async (req, res) => {
+app.post("/api/activate-school", async (req, res) => {
   try {
     var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
     var rateKey = "activate:" + clientIp;
@@ -2140,7 +2140,7 @@ app.post("/api/activate-school.php", async (req, res) => {
     const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
     return res.json(toLicensePayload(row, notes.rows));
   } catch (error) {
-    console.error("POST /api/activate-school.php error:", error.message);
+    console.error("POST /api/activate-school error:", error.message);
     return res.status(500).json({ success: false, message: "Activation failed." });
   }
 });
@@ -2414,7 +2414,7 @@ app.post("/api/mobile/database/:schoolId", async (req, res) => {
   }
 });
 
-app.post("/api/check-license.php", async (req, res) => {
+app.post("/api/check-license", async (req, res) => {
   const schoolId = normalizeSchoolId(req.body.school_id);
   const token = String(req.body.license_token || "").trim();
   try {
@@ -2432,12 +2432,12 @@ app.post("/api/check-license.php", async (req, res) => {
     delete payload.password;
     return res.json(payload);
   } catch (error) {
-    console.error("POST /api/check-license.php error:", error.message);
+    console.error("POST /api/check-license error:", error.message);
     return res.status(500).json({ success: false, message: "License check failed." });
   }
 });
 
-app.post("/api/sync-school-data.php", requireSuperAdmin, async (req, res) => {
+app.post("/api/sync-school-data", requireSuperAdmin, async (req, res) => {
   const schoolId = normalizeSchoolId(req.body.school_id);
   const schoolName = String(req.body.school_name || "").trim();
   const status = String(req.body.activation_status || "active").trim().toLowerCase();
@@ -2474,7 +2474,7 @@ app.post("/api/sync-school-data.php", requireSuperAdmin, async (req, res) => {
     const result = await pool.query("select * from public.license_accounts where school_id = $1", [schoolId]);
     return res.json({ success: true, license: toLicensePayload(result.rows[0], []) });
   } catch (error) {
-    console.error("POST /api/sync-school-data.php error:", error.message);
+    console.error("POST /api/sync-school-data error:", error.message);
     return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
