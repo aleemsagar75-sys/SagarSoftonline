@@ -1,6 +1,6 @@
 {
-  "version": "5.2.0",
-  "releaseDate": "2026-07-26",
+  "version": "5.3.0",
+  "releaseDate": "2026-07-28",
   "updateUrl": "https://sagarsoftonline.onrender.com/app/dashboard.html",
-  "releaseNotes": "Premium glassmorphism loading modal, button loading states, Institute Profile instant update, Parents icon fix, animation polish, LoadingManager."
+  "releaseNotes": "Super admin school activation dashboard, cloud-only messaging, fee invoice bank validation, homework mobile overflow fix, debug log cleanup, offline wording removal."
 }
