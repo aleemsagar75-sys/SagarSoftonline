@@ -1,5 +1,6 @@
-// ARCHITECTURE: This file (server/server.js) is the DEPLOYMENT copy used by Render.
-// The CANONICAL source is root server.js — edit that file, then push both to stay in sync.
+// ARCHITECTURE: This file (root server.js) is the CANONICAL source for the API server.
+// server/server.js is a mirror kept in sync for Render deployment (render.yaml uses server/server.js).
+// Edit ONLY this file, then push both files to stay in sync.
 require("dotenv").config({ path: __dirname + "/.env" });
 
 const dns = require("dns");
