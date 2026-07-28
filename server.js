@@ -46,8 +46,14 @@ async function verifyPasswordHash(password, stored) {
   var parts = stored.split(":");
   var salt = parts[0];
   var hash = parts[1];
-  var verify = (await pbkdf2Async(String(password), salt, 100000, 64, "sha512")).toString("hex");
-  return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(verify, "hex"));
+  if (!salt || !hash) return false;
+  try {
+    var verify = (await pbkdf2Async(String(password), salt, 100000, 64, "sha512")).toString("hex");
+    if (Buffer.byteLength(hash, "hex") !== Buffer.byteLength(verify, "hex")) return false;
+    return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(verify, "hex"));
+  } catch (e) {
+    return false;
+  }
 }
 
 function generateToken() {
