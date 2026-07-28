@@ -1276,11 +1276,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function getLicenseLockState() {
     const license = ensureLicenseSettings();
-    var _dbgUser = currentUser ? { id: currentUser.id, email: currentUser.email, role: currentUser.role, hasServerToken: !!currentUser.serverToken, serverTokenPreview: currentUser.serverToken ? String(currentUser.serverToken).substring(0, 15) + "..." : "NONE" } : "NULL";
-    var _dbgLicense = { activated: license.activated, status: license.status, expiryDate: license.expiryDate, schoolId: license.schoolId, subscriptionPlan: license.subscriptionPlan };
-    var _dbgToday = new Date().toISOString();
-    var _dbgExpiry = license.expiryDate ? new Date(license.expiryDate).toISOString() : "NULL";
-    var _dbgExpiryFuture = license.expiryDate ? (new Date(license.expiryDate) > new Date()) : false;
     if (superAdminBypass) {
       return { locked: false, reason: "" };
     }
@@ -1288,12 +1283,10 @@ document.addEventListener("DOMContentLoaded", function () {
       return { locked: false, reason: "" };
     }
     if (currentUser && currentUser.serverToken) {
-      console.log("[LICENSE] UNLOCKED via serverToken check");
       return { locked: false, reason: "" };
     }
     var _dbCfg = (window.SagarSoftDB && window.SagarSoftDB.getConfig) ? window.SagarSoftDB.getConfig() : {};
     if (currentUser && _dbCfg && _dbCfg.authToken) {
-      console.log("[LICENSE] UNLOCKED via SagarSoftDB.authToken fallback");
       currentUser.serverToken = _dbCfg.authToken;
       return { locked: false, reason: "" };
     }
@@ -1309,17 +1302,10 @@ document.addEventListener("DOMContentLoaded", function () {
       if (String(license.status || "").toLowerCase() !== "active") {
         license.status = "active";
       }
-      console.log("[LICENSE] UNLOCKED via valid future expiry");
       return { locked: false, reason: "" };
     }
     var isActivated = license.activated === true || String(license.status || "").toLowerCase() === "active";
     if (!isActivated) {
-      console.log("[LICENSE] LOCKED — Account activation required");
-      console.log("[LICENSE] User:", JSON.stringify(_dbgUser));
-      console.log("[LICENSE] License:", JSON.stringify(_dbgLicense));
-      console.log("[LICENSE] Today:", _dbgToday, "| Expiry:", _dbgExpiry, "| Future?:", _dbgExpiryFuture);
-      console.log("[LICENSE] Raw expiry string:", expiryRaw);
-      console.log("[LICENSE] SagarSoftDB config:", JSON.stringify({ schoolId: _dbCfg.schoolId || "NONE", hasAuthToken: !!_dbCfg.authToken }));
       return { locked: true, reason: "Account activation is required. Please contact Super Admin." };
     }
     if (String(license.status || "").toLowerCase() === "inactive") {
@@ -1908,12 +1894,12 @@ document.addEventListener("DOMContentLoaded", function () {
     if (Array.isArray(data.classes)) {
       database.classes = data.classes;
     }
-    addActivity("Offline update imported", `Update package applied (${data.versionTag || "latest"}).`);
+    addActivity("Update imported", `Update package applied (${data.versionTag || "latest"}).`);
     window.SagarSoftDB.saveDatabase(database);
     refreshDatabase();
     applySavedThemeSettings();
     applyRouteAccessVisibility();
-    return { ok: true, message: "Offline update package imported successfully." };
+    return { ok: true, message: "Update package imported successfully." };
   }
 
   function ensureOfflineSchoolsRegistry() {
@@ -4832,7 +4818,7 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleGuide.innerHTML = `
         <article>
           <strong>How it works</strong>
-          <p>These rules are saved locally and printed at the end of the Admission Form.</p>
+          <p>These rules are saved and printed at the end of the Admission Form.</p>
         </article>
       `;
 
@@ -7118,6 +7104,11 @@ document.addEventListener("DOMContentLoaded", function () {
           message.className = "form-message error";
           return;
         }
+        if (!bankSelect.value) {
+          message.textContent = "Please select a bank account before generating invoice.";
+          message.className = "form-message error";
+          return;
+        }
         await generateInvoiceForStudent(student);
       });
 
@@ -7125,6 +7116,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const selectedClass = classSelect.value;
         if (selectedClass === "all" || !selectedClass) {
           message.textContent = "Please select a specific class for classwise invoice.";
+          message.className = "form-message error";
+          return;
+        }
+        if (!bankSelect.value) {
+          message.textContent = "Please select a bank account before generating invoice.";
           message.className = "form-message error";
           return;
         }
@@ -19938,11 +19934,11 @@ ${allContent}
               msgEl.textContent = "Account updated successfully.";
               msgEl.className = "form-message success";
             } else if (msgEl) {
-              msgEl.textContent = "Saved locally, but server sync failed.";
-              msgEl.className = "form-message warning";
+              msgEl.textContent = "Server sync failed. Please check your connection and try again.";
+              msgEl.className = "form-message error";
             }
           } catch (_e) {
-            if (msgEl) { msgEl.textContent = "Saved locally. Server sync unavailable."; msgEl.className = "form-message warning"; }
+            if (msgEl) { msgEl.textContent = "Connection failed. Please check your internet and try again."; msgEl.className = "form-message error"; }
           }
         });
       }
@@ -20152,11 +20148,8 @@ ${allContent}
             var url = apiBase + "/api/admin/schools";
             var method = isNew ? "POST" : "PUT";
             if (!isNew) url += "/" + encodeURIComponent(editSchoolId);
-            console.log("[SagarSoft] School save request:", method, url, JSON.stringify(body));
             var resp = await fetch(url, { method: method, headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") }, body: JSON.stringify(body) });
-            console.log("[SagarSoft] School save response status:", resp.status);
             var data = await resp.json().catch(function () { return {}; });
-            console.log("[SagarSoft] School save response:", JSON.stringify(data));
             if (data.success) {
               var savedSchoolId = data.school_id || editSchoolId || "";
               if (savedSchoolId) {
@@ -20172,7 +20165,7 @@ ${allContent}
                     if (planEl.value !== verifiedSchool.plan) planEl.value = verifiedSchool.plan;
                   }
                 } catch (_vErr) {
-                  console.warn("[SagarSoft] Read-back verification failed (non-critical):", _vErr);
+                  // non-critical verification failure
                 }
               }
               var successMsg = isNew ? "School activated successfully! ID: " + (savedSchoolId) : "School saved successfully!";
@@ -20191,10 +20184,8 @@ ${allContent}
               openAppMessageBox("Error", errMsg, "error");
             }
           } catch (_e) {
-            console.error("[SagarSoft] School save error:", _e);
             var errDetail = (_e && _e.message) ? _e.message : String(_e);
-            var diagMsg = "Save failed: " + errDetail + " | URL: " + apiBase + " | apiBase defined: " + (typeof apiBase !== "undefined");
-            console.error("[SagarSoft] DIAG:", diagMsg);
+            var diagMsg = "Save failed: " + errDetail;
             if (msgEl) { msgEl.textContent = diagMsg; msgEl.className = "form-message error"; }
             window.SagarSoftDB.LoadingManager.hide(); _setButtonLoading(activateAccountBtn, false);
             openAppMessageBox("Error", diagMsg, "error");
@@ -20292,9 +20283,9 @@ ${allContent}
       if (exportOfflineUpdatePackageBtn && isSuperAdmin) {
         exportOfflineUpdatePackageBtn.addEventListener("click", function () {
           exportOfflineUpdatePackage();
-          licenseMessage.textContent = "Offline update file generated successfully.";
+          licenseMessage.textContent = "Update file exported successfully.";
           licenseMessage.className = "form-message success";
-          openAppMessageBox("Success", "Offline update file generated successfully.", "success");
+          openAppMessageBox("Success", "Update file exported successfully.", "success");
         });
       }
 
@@ -20660,7 +20651,11 @@ ${allContent}
       : "Rs";
 
     welcomeTitle.textContent = `Welcome back, ${currentUser.name}`;
-    welcomeText.textContent = `You are signed in as ${currentUser.role}. Use the left sidebar to switch between dashboard sections without reloading the page.`;
+    if (currentUser.role === superAdminRole) {
+      welcomeText.textContent = `You are signed in as Super Admin. Use the sidebar to manage schools, subscriptions, and system settings.`;
+    } else {
+      welcomeText.textContent = `You are signed in as ${currentUser.role}. Use the left sidebar to switch between dashboard sections.`;
+    }
     const revenueEl = document.getElementById("heroRevenueValue");
     const revenueFooter = document.getElementById("heroRevenueFooter");
     const revenueSymbol = document.getElementById("heroRevenueSymbol");
@@ -23498,6 +23493,36 @@ ${allContent}
     });
   }
 
+  function renderSuperAdminDashboard() {
+    var section = document.getElementById("superAdminDashboardSection");
+    var listEl = document.getElementById("superAdminSchoolList");
+    if (!section || !listEl) return;
+    if (currentUser.role !== superAdminRole) { section.style.display = "none"; return; }
+    section.style.display = "";
+    listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#888;">Loading schools...</p>';
+    var apiBase = window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
+    fetch(apiBase + "/api/admin/schools", { cache: "no-store", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } })
+      .then(function (resp) { return resp.json().catch(function () { return {}; }); })
+      .then(function (data) {
+        if (!data.success || !Array.isArray(data.schools) || !data.schools.length) {
+          listEl.innerHTML = '<p style="text-align:center;padding:16px;">No schools found. Use Account Settings to add a school.</p>';
+          return;
+        }
+        listEl.innerHTML = '<table class="data-table" style="width:100%;font-size:13px;"><thead><tr><th>School ID</th><th>Name</th><th>Plan</th><th>Expiry</th><th>Status</th><th>Last Seen</th></tr></thead><tbody>' +
+          data.schools.map(function (s) {
+            var statusClass = s.status === "active" && !s.modules_locked ? "active" : "inactive";
+            var statusLabel = s.status === "active" && !s.modules_locked ? "Active" : "Inactive";
+            var lastSeen = s.last_seen ? new Date(s.last_seen).toLocaleString() : "-";
+            var expiry = s.expiry_date ? s.expiry_date.slice(0, 10) : "-";
+            return '<tr><td style="font-family:monospace;font-size:12px;">' + escapeHtml(s.school_id || "-") + '</td><td>' + escapeHtml(s.school_name || "-") + '</td><td>' + escapeHtml(s.plan || "-") + '</td><td>' + escapeHtml(expiry) + '</td><td><span class="status-pill ' + statusClass + '">' + statusLabel + '</span></td><td style="font-size:12px;">' + escapeHtml(lastSeen) + '</td></tr>';
+          }).join("") +
+          '</tbody></table>';
+      })
+      .catch(function () {
+        listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#d64b4b;">Could not load schools. Check your connection.</p>';
+      });
+  }
+
   function renderDashboard() {
     if (activeRoute && activeRoute !== "dashboard" && activeRoute !== "home") return;
     refreshDatabase();
@@ -23514,6 +23539,7 @@ ${allContent}
     renderDashboardAnalytics();
     refreshAttendanceOverview();
     renderDashboardTodayAttendance();
+    renderSuperAdminDashboard();
     startDashboardClock();
     updateHero();
     renderStudentsWorkspace();
@@ -24163,7 +24189,6 @@ ${allContent}
         var _statusCode = _e.statusCode || 0;
         if (_statusCode === 401 || _statusCode === 403 || (_e.message && (_e.message.indexOf("401") > -1 || _e.message.indexOf("Invalid school token") > -1 || _e.message.indexOf("School authentication required") > -1))) {
           _serverLoadAuthFailed = true;
-          console.error("[LOAD-SERVER] AUTH FAILED (HTTP " + _statusCode + ") — token rejected by server. Session serverToken:", currentUser && currentUser.serverToken ? currentUser.serverToken.substring(0, 15) + "..." : "NONE");
         }
       }
     }
