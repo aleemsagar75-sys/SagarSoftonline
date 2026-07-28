@@ -11,8 +11,8 @@
   <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
   <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
   <title>SagarSoft Management System | Dashboard</title>
-  <link rel="stylesheet" href="./css/base.css?v=20260726">
-  <link rel="stylesheet" href="./css/dashboard.css?v=20260726">
+  <link rel="stylesheet" href="./css/base.css?v=20260728">
+  <link rel="stylesheet" href="./css/dashboard.css?v=20260728">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
@@ -423,9 +423,9 @@
         <section class="view active" id="view-dashboard" data-view="dashboard">
           <div class="hero-panel">
             <div>
-              <span class="hero-chip">Realtime Local Snapshot</span>
+              <span class="hero-chip">Cloud Dashboard</span>
               <h2 id="welcomeTitle">Welcome back</h2>
-              <p id="welcomeText">Your school data is available locally and ready for today's work.</p>
+              <p id="welcomeText">Your school data is synced to the cloud and ready for today's work.</p>
             </div>
             <div class="hero-metrics">
               <article>
@@ -533,6 +533,19 @@
                 <button class="secondary-button dashboard-mini-card__viewall" type="button" data-dashboard-route="event-calendar">View All</button>
               </div>
               <div id="dashboardEventCalendar" class="dashboard-mini-card__body"></div>
+            </article>
+          </section>
+
+          <section class="dashboard-grid dashboard-grid--super-admin" id="superAdminDashboardSection" style="display:none;">
+            <article class="panel-card" style="grid-column:1/-1;">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">School Management</p>
+                  <h3>Activate & manage schools</h3>
+                </div>
+                <button class="secondary-button" type="button" data-dashboard-route="account-settings">Open Settings</button>
+              </div>
+              <div id="superAdminSchoolList" style="overflow-x:auto;"></div>
             </article>
           </section>
 
@@ -1191,13 +1204,13 @@
 
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous" defer></script>
-  <script src="./js/online-config.js?v=20260726" defer></script>
-  <script src="./js/crypto-utils.js?v=20260726" defer></script>
-  <script src="./js/utils.js?v=20260726" defer></script>
-  <script src="./js/storage.js?v=20260726" defer></script>
-  <script src="./js/enterprise.js?v=20260726" defer></script>
-  <script src="./js/auth.js?v=20260726" defer></script>
-  <script src="./js/dashboard.js?v=20260726" defer></script>
+  <script src="./js/online-config.js?v=20260728" defer></script>
+  <script src="./js/crypto-utils.js?v=20260728" defer></script>
+  <script src="./js/utils.js?v=20260728" defer></script>
+  <script src="./js/storage.js?v=20260728" defer></script>
+  <script src="./js/enterprise.js?v=20260728" defer></script>
+  <script src="./js/auth.js?v=20260728" defer></script>
+  <script src="./js/dashboard.js?v=20260728" defer></script>
   <script>
     var _origFetch = window.fetch;
     window.fetch = function () {
