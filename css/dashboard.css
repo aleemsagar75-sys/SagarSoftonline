@@ -1,4 +1,4 @@
-*, ::before, ::after {
+﻿*, ::before, ::after {
   box-sizing: border-box;
 }
 
@@ -4527,7 +4527,7 @@ th {
   animation: viewFadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* ===== RICH STAT CARD TONES — REMOVED (using animated wave cards at bottom) ===== */
+/* ===== RICH STAT CARD TONES â€” REMOVED (using animated wave cards at bottom) ===== */
 
 .stat-card:hover,
 .panel-card:hover,
@@ -5776,7 +5776,7 @@ select:focus, input:focus, textarea:focus {
   .language-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)) !important; }
 }
 
-/* ===== ALL MODULES RESPONSIVE — COMPREHENSIVE ===== */
+/* ===== ALL MODULES RESPONSIVE â€” COMPREHENSIVE ===== */
 
 /* Timetable Module */
 @media (max-width: 768px) {
@@ -5889,14 +5889,14 @@ select:focus, input:focus, textarea:focus {
   .login-title { font-size: 1.2rem; }
 }
 
-/* Print Layouts — Hide on Mobile */
+/* Print Layouts â€” Hide on Mobile */
 @media print {
   .sidebar, .topbar, .mobile-menu-button, .no-print { display: none !important; }
   .content-area { padding: 0 !important; }
   body { margin: 0; padding: 0; }
 }
 
-/* Tables — Horizontal Scroll on Mobile */
+/* Tables â€” Horizontal Scroll on Mobile */
 @media (max-width: 768px) {
   .data-table, .fees-table, .salary-table, .exam-table, .homework-table,
   .timetable-table, .attendance-table, .employee-table, .class-table,
@@ -5909,7 +5909,7 @@ select:focus, input:focus, textarea:focus {
   table.data-table td { font-size: 0.72rem; padding: 0.35rem 0.4rem; white-space: nowrap; }
 }
 
-/* Modals — Full Width on Mobile */
+/* Modals â€” Full Width on Mobile */
 @media (max-width: 480px) {
   .student-modal__dialog,
   .scanner-modal__dialog,
@@ -5974,7 +5974,7 @@ select:focus, input:focus, textarea:focus {
   .invoice-print-layout .report-grid { grid-template-columns: 1fr !important; }
 }
 
-/* Buttons — Full Width on Mobile */
+/* Buttons â€” Full Width on Mobile */
 @media (max-width: 480px) {
   .table-actions { flex-direction: column; gap: 0.3rem; }
   .table-actions .table-action-btn { width: 100%; }
@@ -6027,7 +6027,7 @@ select:focus, input:focus, textarea:focus {
   }
 }
 
-/* Inline Styles Override — Force Responsive on ALL inline grids */
+/* Inline Styles Override â€” Force Responsive on ALL inline grids */
 @media (max-width: 768px) {
   [style*="grid-template-columns:1fr 1fr"],
   [style*="grid-template-columns: 1fr 1fr"],
@@ -6914,7 +6914,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .dashboard-grid--two-col { grid-template-columns: 1fr; }
 }
 
-/* ===== DASHBOARD STAT CARDS — SLOW COLOR WAVE ===== */
+/* ===== DASHBOARD STAT CARDS â€” SLOW COLOR WAVE ===== */
 @keyframes wave1 {
   0% { background-position: 0% 50%; }
   25% { background-position: 50% 0%; }
@@ -7032,7 +7032,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   text-shadow: 0 1px 3px rgba(0,0,0,0.35);
 }
 
-/* === STUDENTS — Sky Blue → Cyan → Teal === */
+/* === STUDENTS â€” Sky Blue â†’ Cyan â†’ Teal === */
 .dashboard-stat-card--students {
   background: linear-gradient(135deg, #0284c7, #0ea5e9, #06b6d4, #14b8a6, #0ea5e9, #0284c7) !important;
   background-size: 400% 400% !important;
@@ -7050,7 +7050,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === TEACHERS — Indigo → Violet → Purple === */
+/* === TEACHERS â€” Indigo â†’ Violet â†’ Purple === */
 .dashboard-stat-card--teachers {
   background: linear-gradient(135deg, #4f46e5, #6366f1, #8b5cf6, #a78bfa, #8b5cf6, #4f46e5) !important;
   background-size: 400% 400% !important;
@@ -7068,7 +7068,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === CLASSES — Emerald → Green → Lime === */
+/* === CLASSES â€” Emerald â†’ Green â†’ Lime === */
 .dashboard-stat-card--classes {
   background: linear-gradient(135deg, #059669, #10b981, #22c55e, #34d399, #22c55e, #059669) !important;
   background-size: 400% 400% !important;
@@ -7086,7 +7086,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === FEES — Amber → Orange → Red === */
+/* === FEES â€” Amber â†’ Orange â†’ Red === */
 .dashboard-stat-card--fees {
   background: linear-gradient(135deg, #d97706, #f59e0b, #f97316, #fb923c, #f97316, #d97706) !important;
   background-size: 400% 400% !important;
@@ -7104,7 +7104,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === ATTENDANCE — Rose → Pink → Fuchsia === */
+/* === ATTENDANCE â€” Rose â†’ Pink â†’ Fuchsia === */
 .dashboard-stat-card--attendance {
   background: linear-gradient(135deg, #e11d48, #f43f5e, #ec4899, #f472b6, #ec4899, #e11d48) !important;
   background-size: 400% 400% !important;
@@ -7122,7 +7122,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === PARENTS — Sky → Blue → Indigo === */
+/* === PARENTS â€” Sky â†’ Blue â†’ Indigo === */
 .dashboard-stat-card--parents {
   background: linear-gradient(135deg, #0369a1, #0284c7, #2563eb, #3b82f6, #2563eb, #0369a1) !important;
   background-size: 400% 400% !important;
@@ -7140,7 +7140,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === SUBJECTS — Cyan → Teal → Emerald === */
+/* === SUBJECTS â€” Cyan â†’ Teal â†’ Emerald === */
 .dashboard-stat-card--subjects {
   background: linear-gradient(135deg, #0891b2, #06b6d4, #14b8a6, #22d3ee, #14b8a6, #0891b2) !important;
   background-size: 400% 400% !important;
@@ -7158,7 +7158,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   pointer-events: none;
 }
 
-/* === ACTIVITY — Slate → Indigo → Violet === */
+/* === ACTIVITY â€” Slate â†’ Indigo â†’ Violet === */
 .dashboard-stat-card--activity {
   background: linear-gradient(135deg, #334155, #475569, #6366f1, #818cf8, #6366f1, #334155) !important;
   background-size: 400% 400% !important;
@@ -7185,7 +7185,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   box-shadow: 0 8px 28px rgba(27,95,122,0.4) !important;
 }
 
-/* ===== LOADING OVERLAY — PREMIUM GLASSMORPHISM ===== */
+/* ===== LOADING OVERLAY â€” PREMIUM GLASSMORPHISM ===== */
 .ss-modal-glass {
   display: flex;
   flex-direction: column;
@@ -7294,7 +7294,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   100% { width: 10%; margin-left: 90%; }
 }
 
-/* ===== RESPONSIVE — TOPBAR / PROFILE / NOTIFICATION ===== */
+/* ===== RESPONSIVE â€” TOPBAR / PROFILE / NOTIFICATION ===== */
 @media (max-width: 900px) {
   .hero-panel { grid-template-columns: 1fr !important; }
   .hero-metrics { grid-template-columns: 1fr !important; }
@@ -7347,7 +7347,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 
 /* --- 768px: Primary mobile breakpoint --- */
 @media (max-width: 768px) {
-  /* === UNIVERSAL OVERFLOW PREVENTION — nothing escapes the viewport === */
+  /* === UNIVERSAL OVERFLOW PREVENTION â€” nothing escapes the viewport === */
   *, *::before, *::after { box-sizing: border-box !important; }
   html, body { overflow-x: hidden !important; max-width: 100vw !important; width: 100vw !important; }
   .app-shell { overflow: hidden !important; max-width: 100vw !important; width: 100vw !important; grid-template-columns: 1fr !important; }
@@ -7361,7 +7361,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .stat-card, .table-card { max-width: 100% !important; }
   table { width: 100% !important; }
 
-  /* Override ALL inline grid-template-columns on ANY element — collapse to 1 column */
+  /* Override ALL inline grid-template-columns on ANY element â€” collapse to 1 column */
   [style*="grid-template-columns"] { grid-template-columns: 1fr !important; }
 
   /* Layout */
@@ -7383,7 +7383,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .toolbar > * { width: 100% !important; }
   .toolbar--students, .toolbar--status, .toolbar--promote, .toolbar--simple { grid-template-columns: 1fr !important; }
 
-  /* Tables — horizontal scroll inside their wrapper */
+  /* Tables â€” horizontal scroll inside their wrapper */
   .table-wrap table { min-width: 600px !important; }
 
   /* Employee module */
@@ -7502,11 +7502,11 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .form-actions[style*="display:flex"] { flex-wrap: wrap !important; }
   .form-actions[style*="display:flex"] > button { min-width: 0 !important; flex: 1 1 120px !important; }
 
-  /* Employee modal profile header: 120px 1fr → 1fr */
+  /* Employee modal profile header: 120px 1fr â†’ 1fr */
   [style*="grid-template-columns: 120px 1fr"],
   [style*="grid-template-columns:120px 1fr"] { grid-template-columns: 1fr !important; }
 
-  /* Salary paid slip header: 70px/72px 1fr → 1fr */
+  /* Salary paid slip header: 70px/72px 1fr â†’ 1fr */
   [style*="grid-template-columns: 70px 1fr"],
   [style*="grid-template-columns:70px 1fr"],
   [style*="grid-template-columns: 72px 1fr"],
@@ -7569,13 +7569,13 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .exam-marks-grid { grid-template-columns: 1fr !important; }
   .view.module--timetable .table-wrap table { min-width: 700px !important; }
 
-  /* Account Statement — small phone */
+  /* Account Statement â€” small phone */
   .accounts-filter-bar { grid-template-columns: 1fr !important; gap: 0.4rem !important; }
   .accounts-filter-date { min-height: 38px !important; padding: 0.45rem 0.5rem !important; font-size: 0.82rem !important; }
   .btn-account-action { min-height: 38px !important; font-size: 0.72rem !important; padding: 0.4rem 0.3rem !important; }
   .report-cards { grid-template-columns: 1fr !important; gap: 0.5rem !important; }
 
-  /* Add Income/Expense — small phone */
+  /* Add Income/Expense â€” small phone */
   .form-grid { gap: 0.6rem !important; }
   .field-group input, .field-group select { min-height: 42px !important; padding: 0.6rem 0.75rem !important; }
   .field-group textarea { min-height: 70px !important; }
@@ -7607,12 +7607,12 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 }
 
 /* ===================================================================
-   PROFILE DROPDOWN + NOTIFICATION DROPDOWN — FULL MOBILE RESPONSIVE
+   PROFILE DROPDOWN + NOTIFICATION DROPDOWN â€” FULL MOBILE RESPONSIVE
    Works on: Android, iPhone, iPad, tablets, all screen sizes
    Mobile: centered on screen via position:fixed + left/right equal margins
    =================================================================== */
 
-/* --- Desktop base (1024px+) — already defined above, no changes needed --- */
+/* --- Desktop base (1024px+) â€” already defined above, no changes needed --- */
 
 /* --- Tablet landscape (1024px) --- */
 @media (max-width: 1024px) {
@@ -7639,7 +7639,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .profile-avatar { width: 36px !important; height: 36px !important; font-size: 0.72rem !important; }
   .profile-copy { display: none !important; }
 
-  /* Profile dropdown — centered on screen */
+  /* Profile dropdown â€” centered on screen */
   .profile-menu__dropdown {
     position: fixed !important;
     top: 52px !important;
@@ -7663,7 +7663,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
     border-radius: 12px !important;
   }
 
-  /* Notification dropdown — centered on screen */
+  /* Notification dropdown â€” centered on screen */
   .notification-menu__dropdown {
     position: fixed !important;
     top: 52px !important;
@@ -7823,7 +7823,7 @@ body[data-theme="dark"] .notification-item { background: rgba(255,255,255,0.03) 
 [dir="rtl"] .notification-menu__dropdown { right: auto !important; left: 0 !important; }
 
 /* ===================================================================
-   COMPREHENSIVE MOBILE RESPONSIVENESS FIX — ALL MODULES
+   COMPREHENSIVE MOBILE RESPONSIVENESS FIX â€” ALL MODULES
    Hero panel, stat cards, tables, forms, buttons, overflow, options
    =================================================================== */
 
@@ -8373,7 +8373,7 @@ img, video, svg { max-width: 100%; height: auto; }
 }
 
 /* ===================================================================
-   MODULE-SPECIFIC RESPONSIVE FIX — ACCOUNTS, FEES, EMPLOYEE, REPORTS
+   MODULE-SPECIFIC RESPONSIVE FIX â€” ACCOUNTS, FEES, EMPLOYEE, REPORTS
    Revenue/Profit form, toolbar, search, tables, options
    =================================================================== */
 
@@ -8650,7 +8650,7 @@ img, video, svg { max-width: 100%; height: auto; }
   max-width: 100%;
 }
 
-/* --- Revenue/Profit click → accounts-report: ensure full responsive --- */
+/* --- Revenue/Profit click â†’ accounts-report: ensure full responsive --- */
 @media (max-width: 768px) {
   .view.module--reports .toolbar--promote,
   .view.module--reports .toolbar--simple,
@@ -8700,7 +8700,7 @@ img, video, svg { max-width: 100%; height: auto; }
 }
 
 /* ===================================================================
-   FINAL OVERRIDE — NO CONTENT ESCAPES VIEWPORT (mobile only)
+   FINAL OVERRIDE â€” NO CONTENT ESCAPES VIEWPORT (mobile only)
    This block runs LAST and overrides all earlier overflow:visible
    =================================================================== */
 @media (max-width: 768px) {
@@ -9179,7 +9179,7 @@ img, video, svg { max-width: 100%; height: auto; }
    Standardized components for General Settings
    ============================================ */
 
-/* 1. GS Form Section — wraps each settings sub-section */
+/* 1. GS Form Section â€” wraps each settings sub-section */
 .gs-form-section {
   background: var(--surface-color, #fff);
   border-radius: var(--radius-lg, 20px);
@@ -9218,14 +9218,14 @@ img, video, svg { max-width: 100%; height: auto; }
   margin: 2px 0 0;
 }
 
-/* 2. GS Form Grid — responsive form layout */
+/* 2. GS Form Grid â€” responsive form layout */
 .gs-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
 }
 
-/* 3. GS Field — individual form field */
+/* 3. GS Field â€” individual form field */
 .gs-field {
   display: flex;
   flex-direction: column;
@@ -9271,7 +9271,7 @@ img, video, svg { max-width: 100%; height: auto; }
   border-top: 1px solid rgba(15, 43, 63, 0.06);
 }
 
-/* 5. GS Primary Button — standardized 44px height */
+/* 5. GS Primary Button â€” standardized 44px height */
 .gs-btn-primary {
   display: inline-flex;
   align-items: center;
@@ -9372,7 +9372,7 @@ img, video, svg { max-width: 100%; height: auto; }
   transform: none;
 }
 
-/* 8. GS Message — professional success/error/warning */
+/* 8. GS Message â€” professional success/error/warning */
 .gs-message {
   display: none;
   align-items: center;
@@ -9442,7 +9442,7 @@ img, video, svg { max-width: 100%; height: auto; }
   border: 1px solid rgba(15, 43, 63, 0.06);
 }
 
-/* 10. GS Table — standardized settings table */
+/* 10. GS Table â€” standardized settings table */
 .gs-table-wrap {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -9518,7 +9518,7 @@ img, video, svg { max-width: 100%; height: auto; }
   margin-bottom: 0.75rem;
 }
 
-/* 13. GS Inline List Row — for fee particulars, grading rows, etc */
+/* 13. GS Inline List Row â€” for fee particulars, grading rows, etc */
 .gs-row-list {
   display: flex;
   flex-direction: column;
