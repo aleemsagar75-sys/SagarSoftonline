@@ -1380,14 +1380,13 @@ document.addEventListener("DOMContentLoaded", function () {
   function normalizeLicenseEndpoint(value) {
     const defaultEndpoint = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
     let endpoint = String(value || defaultEndpoint).trim().replace(/\/+$/, "");
-    if (!endpoint || endpoint.includes("infinityfreeapp.com")) {
+    if (!endpoint) {
       return defaultEndpoint;
     }
     endpoint = endpoint
-      .replace(/\/backend-php\/api\.php$/i, "")
-      .replace(/\/api\/activate-school\.php$/i, "")
-      .replace(/\/api\/check-license\.php$/i, "")
-      .replace(/\/api\/sync-school-data\.php$/i, "")
+      .replace(/\/api\/activate-school$/i, "")
+      .replace(/\/api\/check-license$/i, "")
+      .replace(/\/api\/sync-school-data$/i, "")
       .replace(/\/api$/i, "");
     return endpoint || defaultEndpoint;
   }
@@ -1492,7 +1491,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!syncEmail || !syncPassword) {
         throw new Error("School email and password are required for online activation.");
       }
-      payload = await postLicenseJson(`${endpoint}/api/sync-school-data.php`, {
+      payload = await postLicenseJson(`${endpoint}/api/sync-school-data`, {
         school_id: license.schoolId,
         school_name: license.schoolName,
         email: syncEmail,
@@ -1521,14 +1520,14 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!email || !password) {
         throw new Error("School email and password are required.");
       }
-      payload = await postLicenseJson(`${endpoint}/api/activate-school.php`, {
+      payload = await postLicenseJson(`${endpoint}/api/activate-school`, {
         email: email,
         password: password,
         device_id: getOnlineDeviceId()
       });
       applyOnlineLicensePayload(payload);
     } else {
-      payload = await postLicenseJson(`${endpoint}/api/check-license.php`, {
+      payload = await postLicenseJson(`${endpoint}/api/check-license`, {
         school_id: license.schoolId,
         license_token: license.licenseToken
       });
@@ -1543,7 +1542,7 @@ document.addEventListener("DOMContentLoaded", function () {
       var syncPassword2 = syncPassword2Input ? String(syncPassword2Input.value).trim() : "";
       var syncPayload = null;
       if (!opts.forceActivate) {
-        syncPayload = await postLicenseJson(`${endpoint}/api/sync-school-data.php`, {
+        syncPayload = await postLicenseJson(`${endpoint}/api/sync-school-data`, {
           school_id: refreshedLicense.schoolId,
           license_token: refreshedLicense.licenseToken,
           school_name: refreshedLicense.schoolName,
