@@ -6,27 +6,8 @@
   const DEMO_SNAPSHOT_KEY = "sagarsoft_demo_snapshot";
   const DEMO_EMAIL_SET = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"]);
 
-  const SA_EMAIL = "";
-  const SA_STORED = "";
+  const SA_EMAIL = "aleemsagar@gmail.com";
 
-  function verifySuperAdminPassword(password) {
-    var parts = SA_STORED.split(":");
-    var salt = parts[0];
-    var hash = parts[1];
-    var enc = new TextEncoder();
-    return crypto.subtle.importKey("raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits"]).then(function (key) {
-      return crypto.subtle.deriveBits({ name: "PBKDF2", salt: enc.encode(salt), iterations: 100000, hash: "SHA-512" }, key, 512);
-    }).then(function (bits) {
-      var arr = new Uint8Array(bits);
-      var hex = Array.from(arr).map(function (b) { return b.toString(16).padStart(2, "0"); }).join("");
-      if (hex.length !== hash.length) return false;
-      var a = enc.encode(hex);
-      var b = enc.encode(hash);
-      var result = 0;
-      for (var i = 0; i < a.length; i++) result |= a[i] ^ b[i];
-      return result === 0;
-    }).catch(function () { return false; });
-  }
 
   function isDemoEmail(email) {
     return DEMO_EMAIL_SET.has(String(email || "").trim().toLowerCase());
@@ -62,14 +43,13 @@
 
   function normalizePortalEndpoint(value) {
     let endpoint = String(value || DEFAULT_PORTAL_URL).trim().replace(/\/+$/, "");
-    if (!endpoint || endpoint.includes("infinityfreeapp.com")) {
+    if (!endpoint) {
       return DEFAULT_PORTAL_URL;
     }
     endpoint = endpoint
-      .replace(/\/backend-php\/api\.php$/i, "")
-      .replace(/\/api\/activate-school\.php$/i, "")
-      .replace(/\/api\/check-license\.php$/i, "")
-      .replace(/\/api\/sync-school-data\.php$/i, "")
+      .replace(/\/api\/activate-school$/i, "")
+      .replace(/\/api\/check-license$/i, "")
+      .replace(/\/api\/sync-school-data$/i, "")
       .replace(/\/api$/i, "");
     return endpoint || DEFAULT_PORTAL_URL;
   }
@@ -175,7 +155,7 @@
     const endpoint = normalizePortalEndpoint(database.generalSettings && database.generalSettings.licenseSettings
       ? database.generalSettings.licenseSettings.websiteEndpoint
       : DEFAULT_PORTAL_URL);
-    const response = await fetch(`${endpoint}/api/activate-school.php`, {
+    const response = await fetch(`${endpoint}/api/activate-school`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -419,8 +399,8 @@
         body: JSON.stringify({ email: email, password: password })
       });
       var data = await response.json();
-      if (data.success && data.session) {
-        var session = data.session;
+      if (data.success && data.user) {
+        var session = { id: data.user.id || "USR-SUPER-001", name: data.user.name || "SagarSoft Super Admin", email: data.user.email || email, role: data.user.role || "superadmin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: data.token || "" };
         if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
         else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
         window.__sagarSoftSession = session;
@@ -473,7 +453,7 @@
         var matchedUser = data.user || null;
         var userName = (matchedUser && matchedUser.name) ? matchedUser.name : (database.school.name || "School Admin");
         var userId = (matchedUser && matchedUser.id) ? matchedUser.id : "USR-ADMIN-001";
-        var session = { id: userId, name: userName, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: data.license_token || "" };
+        var session = { id: userId, name: userName, email: email, role: (matchedUser && matchedUser.role) || "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: data.license_token || "" };
         if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
         else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
         window.__sagarSoftSession = session;
@@ -546,50 +526,10 @@
     
     if (normalizedRole === "admin" || normalizedRole === "superadmin") {
       if (normalizedEmail === SA_EMAIL) {
-        var pwdOk = await verifySuperAdminPassword(password);
-        if (pwdOk) {
-          var serverToken = null;
-          var serverSchoolId = null;
-          try {
-            var apiBase = getApiBaseUrl();
-            var resp = await fetch(apiBase + "/api/auth/superadmin", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email: email, password: password })
-            });
-            var data = await resp.json();
-            if (data.success && data.token) serverToken = data.token;
-            if (data.school_id) serverSchoolId = data.school_id;
-          } catch (e) { /* server offline, continue without token */ }
-          if (!serverSchoolId) {
-            try {
-              var resolveResp = await fetch(getApiBaseUrl() + "/api/resolve-school", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email: email })
-              });
-              var resolveData = await resolveResp.json().catch(function () { return {}; });
-              if (resolveData.success && resolveData.school_id) serverSchoolId = resolveData.school_id;
-            } catch (e) {}
-          }
-          if (serverSchoolId && window.SagarSoftDB) {
-            window.SagarSoftDB.setSchoolId(serverSchoolId);
-            if (serverToken) window.SagarSoftDB.setAuthToken(serverToken);
-            try {
-              var serverDb = await window.SagarSoftDB.loadDatabaseFromServer();
-              if (serverDb) {
-                window.SagarSoftDB.saveDatabase(serverDb);
-                window.SagarSoftDB.flushPendingSync().catch(function(){});
-              }
-            } catch (e) {}
-          }
-          var session = { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: SA_EMAIL, role: "superadmin", rememberMe: !!rememberMe, loginAt: Date.now(), serverToken: serverToken, schoolId: serverSchoolId || "" };
-          if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
-          else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
-          window.__sagarSoftSession = session;
-          if (serverToken) SUPER_ADMIN_SESSION_TOKEN = serverToken;
-          return { success: true, message: "Super admin login successful", user: session };
-        }
+        try {
+          var superServerResult = await tryServerSuperAdminLogin(email, password, rememberMe);
+          if (superServerResult.success) return superServerResult;
+        } catch (e) { /* continue to normal flow */ }
       }
       if (normalizedRole === "admin" && !DEMO_EMAIL_SET.has(normalizedEmail)) {
         var serverResult = await tryServerAdminLogin(email, password, "admin", rememberMe);
@@ -601,8 +541,8 @@
         var superResult = await login(email, password, "superadmin", rememberMe);
         if (superResult.success) return superResult;
         try {
-          var superServerResult = await tryServerSuperAdminLogin(email, password, rememberMe);
-          if (superServerResult.success) return superServerResult;
+          var superServerResult2 = await tryServerSuperAdminLogin(email, password, rememberMe);
+          if (superServerResult2.success) return superServerResult2;
         } catch (e) { /* continue to activate */ }
         try {
           return await activateSchoolOnline(email, password);
