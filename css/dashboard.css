@@ -9692,3 +9692,31 @@ button.ss-btn-loading {
 .sidebar__body {
   transition: opacity 0.2s ease;
 }
+
+@media (max-width: 560px) {
+  .view.module--homework .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .view.module--homework .form-grid .field-group {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  .view.module--homework .homework-actions-row {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .view.module--homework .homework-actions-row > * {
+    width: 100% !important;
+    flex: none !important;
+    min-width: 0 !important;
+  }
+  .view.module--homework .homework-pdf-filter-controls {
+    grid-template-columns: 1fr !important;
+  }
+  .view.module--homework .search-dropdown {
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+  }
+}
