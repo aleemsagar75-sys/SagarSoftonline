@@ -3139,7 +3139,6 @@ body {
   margin: 0 auto;
   border-radius: 22px;
   padding: 1.15rem 1.25rem;
-  overflow: hidden;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -3206,7 +3205,6 @@ body {
 @media (max-width: 560px) {
   .view.module--timetable .panel-card:first-child {
     padding: 0.8rem;
-    overflow: hidden;
   }
 
   .view.module--timetable .form-grid {
@@ -3214,12 +3212,10 @@ body {
     gap: 0.5rem !important;
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
   }
 
   .view.module--timetable .form-grid .field-group {
     min-width: 0;
-    overflow: hidden;
   }
 
   .view.module--timetable .form-grid .field-group input,
@@ -3480,7 +3476,6 @@ body {
   margin: 0 auto;
   border-radius: 22px;
   padding: 1.15rem 1.25rem;
-  overflow: hidden;
   max-width: 100%;
   box-sizing: border-box;
 }
@@ -3495,7 +3490,6 @@ body {
   background: rgba(255, 255, 255, 0.64);
   flex-wrap: wrap;
   max-width: 100%;
-  overflow: hidden;
   box-sizing: border-box;
 }
 
@@ -3504,8 +3498,6 @@ body {
   flex: 0 1 auto;
   padding: 0.4rem 0.7rem;
   font-size: 0.78rem;
-  max-width: 100%;
-  min-width: 0;
   box-sizing: border-box;
 }
 
@@ -3591,7 +3583,6 @@ body {
 @media (max-width: 560px) {
   .view.module--homework .panel-card:first-child {
     padding: 0.8rem;
-    overflow: hidden;
   }
 
   .view.module--homework .form-grid {
@@ -3599,12 +3590,10 @@ body {
     gap: 0.5rem !important;
     width: 100%;
     max-width: 100%;
-    overflow: hidden;
   }
 
   .view.module--homework .form-grid .field-group {
     min-width: 0;
-    overflow: hidden;
   }
 
   .view.module--homework .form-grid .field-group input,
@@ -3626,7 +3615,6 @@ body {
     gap: 0.4rem;
     padding: 0.5rem;
     max-width: 100%;
-    overflow: hidden;
     box-sizing: border-box;
   }
 
@@ -3637,7 +3625,6 @@ body {
     min-height: 36px;
     padding: 0.45rem 0.6rem;
     box-sizing: border-box;
-    max-width: 100%;
   }
 
   .view.module--homework .homework-pdf-filter-controls {
