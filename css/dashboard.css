@@ -3135,65 +3135,11 @@ body {
 }
 
 .view.module--timetable .panel-card:first-child {
-  width: min(1160px, 100%);
   margin: 0 auto;
-  border-radius: 20px;
-  padding: 1rem 1.1rem;
-  background:
-    radial-gradient(circle at top right, rgba(20, 84, 145, 0.13), transparent 38%),
-    linear-gradient(165deg, #ffffff, #edf6ff);
-  border: 1px solid rgba(20, 84, 145, 0.16);
-}
-
-.view.module--timetable #moduleSummary {
-  gap: 0.8rem;
-}
-
-.view.module--timetable #moduleSummary > article {
-  padding: 0.9rem;
-  border-radius: 14px;
-}
-
-.view.module--timetable .module-toolbar {
-  margin: 0 0 0.75rem;
-}
-
-.view.module--timetable .form-grid {
-  gap: 0.8rem;
-}
-
-.view.module--timetable .field-group label {
-  font-size: 0.88rem;
-}
-
-.view.module--timetable .field-group input,
-.view.module--timetable .field-group select {
-  min-height: 44px;
-  padding: 0.7rem 0.8rem;
-  box-sizing: border-box;
-}
-
-.view.module--timetable .table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  width: 100%;
 }
 
 .view.module--timetable .table-wrap table {
   min-width: 600px;
-}
-
-.view.module--timetable .table-wrap th,
-.view.module--timetable .table-wrap td {
-  padding: 0.74rem 0.62rem;
-  white-space: nowrap;
-}
-
-@media (max-width: 560px) {
-  .view.module--timetable .form-grid {
-    grid-template-columns: 1fr !important;
-    gap: 0.6rem !important;
-  }
 }
 
 .view.module--reports {
@@ -3422,105 +3368,11 @@ body {
 }
 
 .view.module--homework .panel-card:first-child {
-  width: min(1160px, 100%);
   margin: 0 auto;
-  border-radius: 20px;
-  padding: 1rem 1.1rem;
-  background:
-    radial-gradient(circle at top right, rgba(20, 84, 145, 0.13), transparent 38%),
-    linear-gradient(165deg, #ffffff, #edf6ff);
-  border: 1px solid rgba(20, 84, 145, 0.16);
-}
-
-.view.module--homework #moduleSummary {
-  gap: 0.8rem;
-}
-
-.view.module--homework #moduleSummary > article {
-  padding: 0.9rem;
-  border-radius: 14px;
-}
-
-.view.module--homework .module-toolbar {
-  margin: 0 0 0.75rem;
-}
-
-.view.module--homework .form-grid {
-  gap: 0.8rem;
-}
-
-.view.module--homework .field-group label {
-  font-size: 0.88rem;
-}
-
-.view.module--homework .field-group input,
-.view.module--homework .field-group select {
-  min-height: 44px;
-  padding: 0.7rem 0.8rem;
-  box-sizing: border-box;
-}
-
-.view.module--homework .homework-actions-row {
-  align-items: end;
-  gap: 0.65rem;
-  margin-top: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.view.module--homework .homework-actions-row > button {
-  min-height: 44px;
-  padding: 0.7rem 0.8rem;
-  font-size: 0.85rem;
-  box-sizing: border-box;
-}
-
-.view.module--homework .homework-pdf-filter-controls {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 0.5rem;
-  align-items: end;
-  width: 100%;
-  min-width: 0;
-}
-
-.view.module--homework .homework-pdf-filter {
-  display: grid;
-  gap: 0.3rem;
-  min-width: 0;
-}
-
-.view.module--homework .table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  width: 100%;
 }
 
 .view.module--homework .table-wrap table {
   min-width: 600px;
-}
-
-.view.module--homework .table-wrap th,
-.view.module--homework .table-wrap td {
-  padding: 0.74rem 0.62rem;
-  white-space: nowrap;
-}
-
-@media (max-width: 560px) {
-  .view.module--homework .form-grid {
-    grid-template-columns: 1fr !important;
-    gap: 0.6rem !important;
-  }
-
-  .view.module--homework .homework-actions-row {
-    flex-direction: column;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .view.module--homework .homework-actions-row > button {
-    width: 100%;
-    flex: none;
-  }
 }
 
 .question-editor-toolbar {
@@ -8790,6 +8642,12 @@ img, video, svg { max-width: 100%; height: auto; }
     width: 100% !important;
   }
 
+  /* 4b. Remove overflow-x:hidden from ALL article elements — content must flow, not clip */
+  article[style*="overflow-x:hidden"],
+  article[style*="overflow-x: hidden"] {
+    overflow-x: visible !important;
+  }
+
   /* 5. Panel-card and cards: max-width enforced, no overflow clipping */
   .panel-card,
   .stat-card,
@@ -8976,6 +8834,7 @@ img, video, svg { max-width: 100%; height: auto; }
   .view.module--reports .table-wrap table { min-width: 400px !important; }
   .view.module--exam .table-wrap table { min-width: 500px !important; }
   .view.module--timetable .table-wrap table { min-width: 500px !important; }
+  .view.module--homework .table-wrap table { min-width: 500px !important; }
 
   /* 18. Employee card actions: single column */
   .employee-card__actions {
@@ -9660,13 +9519,45 @@ img, video, svg { max-width: 100%; height: auto; }
 
 /* Mobile responsive for GS components */
 @media (max-width: 768px) {
-  .gs-form-section { padding: 1rem; }
-  .gs-form-grid { grid-template-columns: 1fr; }
-  .gs-button-row { flex-direction: column; }
+  .gs-form-section {
+    padding: 1rem;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+  .gs-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.7rem !important;
+  }
+  .gs-field__input {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+  }
+  .gs-button-row {
+    flex-direction: column !important;
+    flex-wrap: wrap;
+  }
   .gs-button-row .gs-btn-primary,
   .gs-button-row .gs-btn-secondary,
-  .gs-button-row .gs-btn-danger { width: 100%; }
-  .gs-table th, .gs-table td { padding: 0.5rem 0.65rem; font-size: 0.8rem; }
+  .gs-button-row .gs-btn-danger {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+  .gs-table-wrap {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .gs-table th, .gs-table td {
+    padding: 0.5rem 0.65rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
 }
 
 @keyframes spin {
