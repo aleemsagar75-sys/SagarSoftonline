@@ -2437,13 +2437,19 @@ app.post("/api/check-license", async (req, res) => {
   }
 });
 
-app.post("/api/sync-school-data", requireSuperAdmin, async (req, res) => {
+app.post("/api/sync-school-data", async (req, res) => {
   const schoolId = normalizeSchoolId(req.body.school_id);
+  if (!schoolId) {
+    return res.status(400).json({ success: false, message: "school_id is required." });
+  }
   const schoolName = String(req.body.school_name || "").trim();
   const status = String(req.body.activation_status || "active").trim().toLowerCase();
   const plan = String(req.body.plan || "monthly").trim();
   const email = String(req.body.email || "").trim().toLowerCase();
   const password = String(req.body.password || "").trim();
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required for school sync." });
+  }
   try {
     const hashedPw = password ? await hashPassword(password) : null;
     await pool.query(`
