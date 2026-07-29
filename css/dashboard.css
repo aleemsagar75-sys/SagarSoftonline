@@ -3414,12 +3414,13 @@ body {
 }
 
 .view.module--homework .homework-actions-row > button {
-  min-height: 40px;
+  min-height: 36px;
   flex: 0 1 auto;
-  padding: 0.5rem 1rem;
-  font-size: 0.82rem;
+  padding: 0.4rem 0.7rem;
+  font-size: 0.78rem;
   max-width: 100%;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .view.module--homework .homework-pdf-filter-controls {
@@ -3466,9 +3467,34 @@ body {
   box-shadow: 0 0 0 3px rgba(30, 94, 255, 0.12);
 }
 
+.view.module--homework .table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 37, 66, 0.06);
+}
+
+.view.module--homework .table-wrap table {
+  min-width: 620px;
+}
+
+.view.module--homework .table-wrap th,
+.view.module--homework .table-wrap td {
+  white-space: nowrap;
+  padding: 0.5rem 0.6rem;
+  font-size: 0.8rem;
+}
+
 @media (max-width: 900px) {
   .view.module--homework .homework-actions-row {
     align-items: stretch;
+  }
+
+  .view.module--homework .form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 0.6rem !important;
   }
 
   .view.module--homework .homework-pdf-filter-controls {
@@ -9788,32 +9814,4 @@ button.ss-btn-loading {
 .sidebar__header,
 .sidebar__body {
   transition: opacity 0.2s ease;
-}
-
-@media (max-width: 560px) {
-  .view.module--homework .form-grid {
-    grid-template-columns: 1fr !important;
-  }
-  .view.module--homework .form-grid .field-group {
-    min-width: 0 !important;
-    max-width: 100% !important;
-    overflow: hidden !important;
-  }
-  .view.module--homework .homework-actions-row {
-    flex-direction: column !important;
-    gap: 0.5rem !important;
-  }
-  .view.module--homework .homework-actions-row > * {
-    width: 100% !important;
-    flex: none !important;
-    min-width: 0 !important;
-  }
-  .view.module--homework .homework-pdf-filter-controls {
-    grid-template-columns: 1fr !important;
-  }
-  .view.module--homework .search-dropdown {
-    max-width: 100% !important;
-    left: 0 !important;
-    right: 0 !important;
-  }
 }
