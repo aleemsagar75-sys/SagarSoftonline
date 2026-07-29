@@ -3394,6 +3394,9 @@ body {
   margin: 0 auto;
   border-radius: 22px;
   padding: 1.15rem 1.25rem;
+  overflow: hidden;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .view.module--homework .homework-actions-row {
@@ -3405,6 +3408,9 @@ body {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.64);
   flex-wrap: wrap;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .view.module--homework .homework-actions-row > button {
@@ -3471,13 +3477,22 @@ body {
 }
 
 @media (max-width: 560px) {
+  .view.module--homework .panel-card:first-child {
+    padding: 0.8rem;
+    overflow: hidden;
+  }
+
   .view.module--homework .form-grid {
     grid-template-columns: 1fr !important;
     gap: 0.5rem !important;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
   }
 
   .view.module--homework .form-grid .field-group {
     min-width: 0;
+    overflow: hidden;
   }
 
   .view.module--homework .form-grid .field-group input,
@@ -3497,18 +3512,38 @@ body {
     flex-direction: column;
     flex-wrap: wrap;
     gap: 0.4rem;
-    padding: 0.6rem;
+    padding: 0.5rem;
+    max-width: 100%;
+    overflow: hidden;
+    box-sizing: border-box;
   }
 
   .view.module--homework .homework-actions-row > button {
     width: 100%;
-    flex: 1 1 100%;
-    font-size: 0.8rem;
-    min-height: 38px;
+    flex: none;
+    font-size: 0.78rem;
+    min-height: 36px;
+    padding: 0.45rem 0.6rem;
+    box-sizing: border-box;
+    max-width: 100%;
   }
 
   .view.module--homework .homework-pdf-filter-controls {
     grid-template-columns: 1fr !important;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .view.module--homework .homework-pdf-filter {
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .view.module--homework .homework-pdf-filter select,
+  .view.module--homework .homework-pdf-filter input {
+    min-height: 34px;
+    padding: 0.4rem 0.55rem;
+    font-size: 0.78rem;
   }
 
   .view.module--homework .table-wrap {
