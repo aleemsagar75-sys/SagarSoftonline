@@ -3404,10 +3404,15 @@ body {
   border: 1px solid rgba(16, 37, 66, 0.08);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.64);
+  flex-wrap: wrap;
 }
 
 .view.module--homework .homework-actions-row > button {
   min-height: 44px;
+  flex: 1 1 140px;
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .view.module--homework .homework-pdf-filter-controls {
@@ -3416,6 +3421,8 @@ body {
   gap: 0.7rem;
   align-items: end;
   margin-left: auto;
+  min-width: 0;
+  width: 100%;
 }
 
 .view.module--homework .homework-pdf-filter {
@@ -3466,10 +3473,48 @@ body {
 @media (max-width: 560px) {
   .view.module--homework .homework-actions-row > button {
     width: 100%;
+    flex: 1 1 100%;
   }
 
   .view.module--homework .homework-pdf-filter-controls {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .view.module--homework .form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem !important;
+  }
+
+  .view.module--homework .form-grid .field-group {
+    min-width: 0;
+  }
+
+  .view.module--homework .form-grid .field-group input,
+  .view.module--homework .form-grid .field-group select,
+  .view.module--homework .form-grid .field-group textarea {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  .view.module--homework .form-grid .field-group--full {
+    grid-column: 1 / -1;
+  }
+
+  .view.module--homework .table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    max-width: 100%;
+  }
+
+  .view.module--homework .table-wrap table {
+    min-width: 600px;
+  }
+
+  .view.module--homework .homework-actions-row {
+    flex-wrap: wrap;
+    gap: 0.5rem;
   }
 }
 
@@ -5816,7 +5861,10 @@ select:focus, input:focus, textarea:focus {
 
 /* Homework Module */
 @media (max-width: 768px) {
-  .homework-actions-row { grid-template-columns: 1fr !important; }
+  .homework-actions-row { flex-wrap: wrap !important; gap: 0.5rem !important; }
+  .homework-actions-row > * { min-width: 0 !important; max-width: 100% !important; }
+  .homework-pdf-filter-controls { grid-template-columns: 1fr !important; }
+  .homework-pdf-filter input[type="search"] { width: 100% !important; min-width: 0 !important; }
 }
 
 /* Question Papers */
@@ -7440,9 +7488,10 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .test-result-table-wrap { overflow-x: auto !important; min-width: 0 !important; }
 
   /* Homework */
-  .homework-actions-row { flex-direction: column !important; }
-  .homework-actions-row > * { width: 100% !important; flex: none !important; }
+  .homework-actions-row { flex-direction: column !important; flex-wrap: wrap !important; }
+  .homework-actions-row > * { width: 100% !important; flex: none !important; min-width: 0 !important; max-width: 100% !important; box-sizing: border-box !important; }
   .homework-pdf-filter-controls { grid-template-columns: 1fr !important; }
+  .homework-pdf-filter input[type="search"] { width: 100% !important; min-width: 0 !important; max-width: 100% !important; }
 
   /* Question paper */
   .question-paper-grid { grid-template-columns: 1fr !important; }
