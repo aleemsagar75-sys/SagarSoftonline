@@ -478,16 +478,16 @@ body {
   display: none;
 }
 
-.account-core-card .data-table { min-width: 500px; width: 100%; font-size: 13px; }
+.account-core-card .data-table { width: 100%; font-size: 13px; }
 .account-core-card .data-table th,
 .account-core-card .data-table td { padding: 0.4rem 0.5rem; }
-.super-admin-card .data-table { min-width: 600px; }
+.super-admin-card .data-table { width: 100%; }
 
 @media (max-width: 768px) {
-  .account-core-card .data-table { min-width: 100%; font-size: 12px; }
+  .account-core-card .data-table { font-size: 12px; }
   .account-core-card .data-table th,
   .account-core-card .data-table td { padding: 0.3rem 0.35rem; white-space: nowrap; }
-  .super-admin-card .data-table { min-width: 500px; font-size: 11px; }
+  .super-admin-card .data-table { font-size: 11px; }
   .data-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 }
 
@@ -495,7 +495,7 @@ body {
   .account-core-card .form-grid { grid-template-columns: 1fr !important; }
   .account-core-card .field-group--full { grid-column: 1 !important; }
   .super-admin-card .form-grid { grid-template-columns: 1fr !important; }
-  .super-admin-card .data-table { min-width: 400px; font-size: 10px; }
+  .super-admin-card .data-table { font-size: 10px; }
 }
 
 .notification-menu {
@@ -682,7 +682,7 @@ body {
   min-width: 0;
   min-height: 0;
   overflow-y: auto;
-  overflow-x: visible;
+  overflow-x: hidden;
 }
 
 .view {
@@ -1508,7 +1508,7 @@ body {
   text-align: center;
   background: linear-gradient(135deg, rgba(27, 95, 122, 0.08) 0%, rgba(47, 176, 138, 0.06) 100%);
   border-bottom: 1px solid rgba(27, 95, 122, 0.1);
-  margin: -1.2rem -1.2rem 1.2rem -1.2rem;
+  margin: 0 0 1.2rem 0;
   padding: 1.5rem;
   border-radius: 24px 24px 0 0;
 }
@@ -2782,7 +2782,7 @@ body {
   justify-content: space-between;
   gap: 1rem;
   padding: 0.8rem;
-  margin: -1.2rem -1.2rem 0.8rem -1.2rem;
+  margin: 0 0 0.8rem 0;
   padding-bottom: 0.8rem;
   border-bottom: none;
   background: linear-gradient(135deg, rgba(15, 43, 63, 0.08) 0%, rgba(27, 95, 122, 0.06) 100%);
@@ -2883,7 +2883,7 @@ body {
   gap: 1rem;
   align-items: start;
   padding: 0.8rem;
-  margin: -1.2rem -1.2rem 0.8rem -1.2rem;
+  margin: 0 0 0.8rem 0;
   border-bottom: 1px solid rgba(27, 95, 122, 0.1);
   background: linear-gradient(135deg, rgba(27, 95, 122, 0.06) 0%, rgba(47, 176, 138, 0.04) 100%);
   border-radius: 16px 16px 0 0;
@@ -3505,7 +3505,7 @@ body {
 
 .qp-question-rich {
   position: relative;
-  overflow: visible;
+  overflow: hidden;
 }
 
 .qp-object-menu {
@@ -3847,7 +3847,6 @@ body {
 table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 500px;
 }
 
 th,
@@ -7256,7 +7255,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   *, *::before, *::after { box-sizing: border-box !important; }
   html, body { overflow-x: hidden !important; max-width: 100vw !important; width: 100vw !important; }
   .app-shell { overflow: hidden !important; max-width: 100vw !important; width: 100vw !important; grid-template-columns: 1fr !important; }
-  .content-area { overflow-x: visible !important; max-width: 100% !important; width: 100% !important; padding: 0.65rem !important; }
+  .content-area { overflow-x: hidden !important; max-width: 100% !important; width: 100% !important; padding: 0.65rem !important; }
   .view.active { max-width: 100% !important; width: 100% !important; }
   .view.active > * { max-width: 100% !important; }
   .view.active > article { max-width: 100% !important; }
@@ -8099,7 +8098,7 @@ img, video, svg { max-width: 100%; height: auto; }
 
 /* --- Content area: full width, no overflow --- */
 .content-area {
-  overflow-x: visible;
+  overflow-x: hidden;
   min-width: 0;
   max-width: 100%;
 }
@@ -8626,7 +8625,7 @@ img, video, svg { max-width: 100%; height: auto; }
 
   /* 3. Content area: allow internal scroll but prevent overflow */
   .content-area {
-    overflow-x: visible !important;
+    overflow-x: hidden !important;
     max-width: 100% !important;
     width: 100% !important;
     padding: 0.5rem !important;
@@ -8645,7 +8644,7 @@ img, video, svg { max-width: 100%; height: auto; }
   /* 4b. Remove overflow-x:hidden from ALL article elements — content must flow, not clip */
   article[style*="overflow-x:hidden"],
   article[style*="overflow-x: hidden"] {
-    overflow-x: visible !important;
+    overflow-x: hidden !important;
   }
 
   /* 5. Panel-card and cards: max-width enforced, no overflow clipping */

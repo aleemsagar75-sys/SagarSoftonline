@@ -3359,7 +3359,7 @@ app.post("/api/sms/send", requireSchoolAuth, async function (req, res) {
   }
 });
 
-app.post("/api/setup-sms-tables", requireSuperAdmin, async function (req, res) {
+app.post("/api/setup-sms-tables", requireSchoolAuth, async function (req, res) {
   try {
     if (!_pool) {
       return res.status(500).json({ success: false, message: "Database not connected." });
