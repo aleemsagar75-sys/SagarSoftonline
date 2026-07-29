@@ -8848,6 +8848,7 @@ ${allContent}
       }
 
       function renderEmployeeSuggestions() {
+        if (!searchSuggestions) return;
         const employees = getFilteredEmployees();
         searchSuggestions.innerHTML = employees.map(function (employee) {
           return `<option value="${escapeAttr(employee.name)} (${escapeAttr(employee.phone || "-")})"></option>`;
