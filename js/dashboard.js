@@ -5754,19 +5754,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
       function renderRows() {
         const cls = classSelect.value;
-        const rows = settings.feeParticulars[cls] || getDefaultFeeParticulars(cls);
+        const liveDefaults = getDefaultFeeParticulars(cls);
+        const saved = (settings.feeParticulars && settings.feeParticulars[cls]) || [];
+        const savedMap = new Map(saved.map(function (r) { return [String(r.label || "").toUpperCase().trim(), r]; }));
+        const merged = liveDefaults.map(function (def) {
+          const key = String(def.label || "").toUpperCase().trim();
+          if (!key) return def;
+          const isMonthlyFee = key.includes("MONTHLY") && key.includes("TUITION");
+          if (isMonthlyFee) {
+            return { label: def.label, amount: def.amount, fixed: true };
+          }
+          const fromSaved = savedMap.get(key);
+          return fromSaved ? { label: fromSaved.label || def.label, amount: fromSaved.amount || def.amount, fixed: false } : def;
+        });
+        const extraSaved = saved.filter(function (r) {
+          const key = String(r.label || "").toUpperCase().trim();
+          return key && !liveDefaults.some(function (d) { return String(d.label || "").toUpperCase().trim() === key; });
+        });
+        const rows = merged.concat(extraSaved);
         rowsWrap.innerHTML = rows.map(function (row, index) {
-          const fixed = row.fixed ? "readonly" : "";
+          const key = String(row.label || "").toUpperCase().trim();
+          const isMonthlyFee = key.includes("MONTHLY") && key.includes("TUITION");
+          const isFixed = row.fixed || isMonthlyFee;
+          const fixed = isFixed ? "readonly" : "";
           const safeAmount = Math.max(0, parseFloat(row.amount || 0));
           return `
             <div class="gs-row-item">
               <div class="gs-field" style="flex:2;">
-                <label class="gs-field__label" style="font-size:0.75rem;">Particular Label*</label>
-                <input class="gs-field__input fee-particular-label" data-index="${index}" type="text" value="${escapeAttr(row.label)}" ${fixed} style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;">
+                <label class="gs-field__label" style="font-size:0.75rem;">Particular Label* ${isFixed ? '<span style="color:#1e5eff;">[AUTO]</span>' : ''}</label>
+                <input class="gs-field__input fee-particular-label" data-index="${index}" type="text" value="${escapeAttr(row.label)}" ${fixed} style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;${isFixed ? 'background:#f1f5fc;color:#4e678f;' : ''}">
               </div>
               <div class="gs-field" style="flex:1;">
-                <label class="gs-field__label" style="font-size:0.75rem;">Amount* ${row.fixed ? "[FIXED]" : ""}</label>
-                <input class="gs-field__input fee-particular-amount" data-index="${index}" type="text" placeholder="0" inputmode="numeric" value="${safeAmount}" ${fixed} style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;">
+                <label class="gs-field__label" style="font-size:0.75rem;">Amount* ${isFixed ? '<span style="color:#1e5eff;">[AUTO]</span>' : ''}</label>
+                <input class="gs-field__input fee-particular-amount" data-index="${index}" type="text" placeholder="0" inputmode="numeric" value="${safeAmount}" ${fixed} style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;${isFixed ? 'background:#f1f5fc;color:#4e678f;font-weight:700;' : ''}">
               </div>
             </div>
           `;
@@ -7249,7 +7269,8 @@ document.addEventListener("DOMContentLoaded", function () {
         } else if (latestInvoicePreviewData) {
           await openPrintReport({
             subtitle: "Fees Invoice for Student",
-            contentHtml: await buildAllCopiesA4(latestInvoicePreviewData)
+            contentHtml: await buildAllCopiesA4(latestInvoicePreviewData),
+            hideHeader: true
           }, null, null);
         }
       });
