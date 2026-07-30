@@ -6635,6 +6635,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (route === "generate-fees-invoice") {
       const currentFeeMonth = getCurrentMonthInputValue();
       const feeMonthOptionsMarkup = buildFeeMonthOptionList();
+      const today = new Date().toISOString().slice(0, 10);
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
       }).join("");
@@ -6643,38 +6644,58 @@ document.addEventListener("DOMContentLoaded", function () {
         return `<option value="${bank.id}">${escapeHtml(bank.name)}</option>`;
       }).join("");
 
+      let invoiceMode = "studentwise";
+      let copyBank = true, copyStudent = true, copyInstitute = true;
+      let classifyInvoicesForPrint = [];
+      let latestInvoicePreviewData = null;
+      let feeInvoiceSearchTimer = null;
+
       moduleSummary.innerHTML = `
         <article class="invoice-config-card">
-          <strong class="module-center-title">Fees Invoice for Student</strong>
-          <p class="helper-text">Search student, select month/date and bank, then generate invoice.</p>
-          <div class="form-grid invoice-form-grid">
+          <strong class="module-center-title">Fees Invoice Generator</strong>
+          <p class="helper-text">Select mode, fill details, and generate invoice.</p>
+          <div class="invoice-entry-cards">
+            <button class="invoice-entry-card active" data-mode="studentwise" type="button">
+              <span class="invoice-entry-card__icon">&#128100;</span>
+              <span class="invoice-entry-card__title">Studentwise</span>
+              <span class="invoice-entry-card__desc">Generate invoice for a single student</span>
+            </button>
+            <button class="invoice-entry-card" data-mode="classwise" type="button">
+              <span class="invoice-entry-card__icon">&#128218;</span>
+              <span class="invoice-entry-card__title">Classwise</span>
+              <span class="invoice-entry-card__desc">Generate invoices for all students in a class</span>
+            </button>
+          </div>
+          <div class="invoice-mode-form active" data-form="studentwise">
             <div class="field-group">
               <label for="feeInvoiceStudentSearchInput">Search Student*</label>
-              <div id="feeInvoiceStudentSearchContainer" style="position: relative;">
-                <input id="feeInvoiceStudentSearchInput" type="search" placeholder="Search by roll no. / name" style="width: 100%;">
-                <div id="feeInvoiceStudentSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
+              <div id="feeInvoiceStudentSearchContainer" style="position:relative;">
+                <input id="feeInvoiceStudentSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;">
+                <div id="feeInvoiceStudentSearchDropdown" class="search-dropdown" style="display:none;"></div>
               </div>
             </div>
+          </div>
+          <div class="invoice-mode-form" data-form="classwise">
             <div class="field-group">
               <label for="feeInvoiceClassSelect">Select Class*</label>
               <select id="feeInvoiceClassSelect">
-                <option value="all">All Classes</option>
+                <option value="">Select Class</option>
                 ${classOptionsMarkup}
               </select>
             </div>
+          </div>
+          <div class="form-grid invoice-form-grid">
             <div class="field-group">
               <label for="feeInvoiceMonthSelect">Fee Month*</label>
-              <select id="feeInvoiceMonthSelect">
-                ${feeMonthOptionsMarkup}
-              </select>
+              <select id="feeInvoiceMonthSelect">${feeMonthOptionsMarkup}</select>
             </div>
             <div class="field-group">
               <label for="feeInvoiceDateInput">Date*</label>
-              <input id="feeInvoiceDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}">
+              <input id="feeInvoiceDateInput" type="date" value="${today}">
             </div>
             <div class="field-group">
               <label for="feeInvoiceDueDateInput">Due Date*</label>
-              <input id="feeInvoiceDueDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}">
+              <input id="feeInvoiceDueDateInput" type="date" value="${today}">
             </div>
             <div class="field-group">
               <label for="feeInvoiceFineInput">Fine After Due Date</label>
@@ -6685,9 +6706,25 @@ document.addEventListener("DOMContentLoaded", function () {
               <select id="feeInvoiceBankSelect">${bankOptionsMarkup || '<option value="">No Bank Added</option>'}</select>
             </div>
           </div>
+          <div class="invoice-copy-toggles">
+            <label class="invoice-toggle">
+              <input type="checkbox" id="copyBankToggle" checked>
+              <span class="invoice-toggle__track"><span class="invoice-toggle__thumb"></span></span>
+              <span class="invoice-toggle__label">Bank Copy</span>
+            </label>
+            <label class="invoice-toggle">
+              <input type="checkbox" id="copyStudentToggle" checked>
+              <span class="invoice-toggle__track"><span class="invoice-toggle__thumb"></span></span>
+              <span class="invoice-toggle__label">Student Copy</span>
+            </label>
+            <label class="invoice-toggle">
+              <input type="checkbox" id="copyInstituteToggle" checked>
+              <span class="invoice-toggle__track"><span class="invoice-toggle__thumb"></span></span>
+              <span class="invoice-toggle__label">Institute Copy</span>
+            </label>
+          </div>
           <div class="form-actions invoice-form-actions">
-            <button class="secondary-button" id="generateClasswiseInvoiceBtn" type="button">Generate Classwise Invoice</button>
-            <button class="primary-button" id="generateStudentInvoiceBtn" type="button">Generate Invoice</button>
+            <button class="primary-button" id="generateInvoiceBtn" type="button">Generate Invoice</button>
           </div>
           <p class="form-message" id="feeInvoiceMessage"></p>
         </article>
@@ -6697,11 +6734,13 @@ document.addEventListener("DOMContentLoaded", function () {
         <article style="display:grid;grid-template-rows:1fr auto;height:100%;min-height:600px;">
           <div style="display:grid;grid-template-rows:auto 1fr;gap:6px;">
             <strong style="padding:0 8px;">Invoice Preview</strong>
-            <div id="feeInvoicePreviewBox" class="module-preview-card" style="height:100%;overflow-y:auto;"><p>Select student and generate invoice.</p></div>
+            <div id="feeInvoicePreviewEmpty" style="text-align:center;color:#888;padding:2rem 1rem;font-size:0.9rem;">Generate an invoice to see preview here.</div>
+            <div id="feeInvoicePreviewBox" class="module-preview-card" style="display:none;height:100%;overflow-y:auto;"></div>
           </div>
-          <div class="form-actions" style="display:flex;gap:6px;padding:8px 0;border-top:1px solid #e0e6f2;">
-            <button class="primary-button" id="printFeeInvoiceA4Btn" type="button" disabled style="flex:1;">Print Invoice</button>
-            <button class="secondary-button" id="printFeeInvoiceThermalBtn" type="button" disabled style="flex:1;">Print (Thermal)</button>
+          <div class="invoice-toolbar" id="feeInvoiceToolbar" style="display:none;">
+            <button class="primary-button" id="printFeeInvoiceA4Btn" type="button">Print A4</button>
+            <button class="secondary-button" id="printFeeInvoiceThermalBtn" type="button">Print Thermal</button>
+            <button class="secondary-button" id="downloadFeeInvoicePdfBtn" type="button">Download PDF</button>
           </div>
         </article>
       `;
@@ -6709,21 +6748,23 @@ document.addEventListener("DOMContentLoaded", function () {
       const searchInput = document.getElementById("feeInvoiceStudentSearchInput");
       const classSelect = document.getElementById("feeInvoiceClassSelect");
       const monthSelect = document.getElementById("feeInvoiceMonthSelect");
-
-      if (monthSelect) {
-        monthSelect.value = currentFeeMonth;
-      }
       const dateInput = document.getElementById("feeInvoiceDateInput");
       const dueDateInput = document.getElementById("feeInvoiceDueDateInput");
       const fineInput = document.getElementById("feeInvoiceFineInput");
       const bankSelect = document.getElementById("feeInvoiceBankSelect");
       const previewBox = document.getElementById("feeInvoicePreviewBox");
+      const previewEmpty = document.getElementById("feeInvoicePreviewEmpty");
+      const toolbar = document.getElementById("feeInvoiceToolbar");
       const message = document.getElementById("feeInvoiceMessage");
       const printInvoiceBtn = document.getElementById("printFeeInvoiceA4Btn");
       const printThermalBtn = document.getElementById("printFeeInvoiceThermalBtn");
-      const generateStudentInvoiceBtn = document.getElementById("generateStudentInvoiceBtn");
-      const generateClasswiseInvoiceBtn = document.getElementById("generateClasswiseInvoiceBtn");
+      const downloadPdfBtn = document.getElementById("downloadFeeInvoicePdfBtn");
+      const generateBtn = document.getElementById("generateInvoiceBtn");
       const feeInvoiceStudentDropdown = document.getElementById("feeInvoiceStudentSearchDropdown");
+      const copyBankToggle = document.getElementById("copyBankToggle");
+      const copyStudentToggle = document.getElementById("copyStudentToggle");
+      const copyInstituteToggle = document.getElementById("copyInstituteToggle");
+
       const feeInvoiceStudentIndex = (database.students || []).map(function (student) {
         return {
           id: student.id || "",
@@ -6738,67 +6779,33 @@ document.addEventListener("DOMContentLoaded", function () {
       (database.students || []).forEach(function (student) {
         feeInvoiceStudentById.set(student.id || "", student);
       });
-      let feeInvoiceSearchTimer = null;
-      let latestInvoicePreviewData = null;
-      let classifyInvoicesForPrint = [];
-      previewBox.style.display = "none";
-      printInvoiceBtn.style.display = "none";
-      printThermalBtn.style.display = "none";
 
-      function getFilteredStudents() {
-        const search = searchInput.value.trim().toLowerCase();
-        const selectedClass = classSelect.value;
-        return database.students.filter(function (student) {
-          const active = student.status === "active";
-          const classMatch = selectedClass === "all" || student.className === selectedClass;
-          const searchMatch = !search ||
-            String(student.name || "").toLowerCase().includes(search) ||
-            String(student.admissionNo || "").toLowerCase().includes(search);
-          return active && classMatch && searchMatch;
-        }).sort(function (a, b) {
-          const query = searchInput.value.trim().toLowerCase();
-          if (!query) {
-            return String(a.name || "").localeCompare(String(b.name || ""));
-          }
-          const aName = String(a.name || "").toLowerCase();
-          const bName = String(b.name || "").toLowerCase();
-          const aRoll = String(a.admissionNo || "").toLowerCase();
-          const bRoll = String(b.admissionNo || "").toLowerCase();
-          const aScore = (aRoll.startsWith(query) ? 0 : aName.startsWith(query) ? 1 : 2);
-          const bScore = (bRoll.startsWith(query) ? 0 : bName.startsWith(query) ? 1 : 2);
-          if (aScore !== bScore) {
-            return aScore - bScore;
-          }
-          return aName.localeCompare(bName);
-        });
-      }
-
-      function renderStudentSuggestions() {
-        // Professional search handles invoice student suggestions.
-      }
-
-      function selectFeeInvoiceStudent(student) {
-        if (!student) {
-          return;
-        }
-        searchInput.value = `${student.name || ""} (${student.admissionNo || "-"})`;
+      function resetInvoicePreview() {
         classifyInvoicesForPrint = [];
-        const particulates = buildFeeParticularsForStudent(student);
-        const totalAmount = particulates.reduce(function (sum, item) { return sum + (parseFloat(item.amount || 0)); }, 0);
-        const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0));
-        const invoiceData = {
-          id: `INV-TEMP-${generateId()}`,
-          studentId: student.id,
-          className: student.className,
-          feeMonth: normalizeFeeMonthLabel(monthSelect ? monthSelect.value : ""),
-          date: dateInput ? dateInput.value : "",
-          dueDate: dueDateInput ? dueDateInput.value : "",
-          fineAfterDueDate: fineAmount,
-          bankId: bankSelect ? bankSelect.value : "",
-          particulars: particulates,
-          totalAmount: totalAmount
-        };
+        latestInvoicePreviewData = null;
+        previewBox.style.display = "none";
+        previewEmpty.style.display = "";
+        toolbar.style.display = "none";
+        message.textContent = "";
+        message.className = "form-message";
       }
+
+      document.querySelectorAll(".invoice-entry-card").forEach(function (card) {
+        card.addEventListener("click", function () {
+          const mode = card.getAttribute("data-mode");
+          if (mode === invoiceMode) return;
+          invoiceMode = mode;
+          document.querySelectorAll(".invoice-entry-card").forEach(function (c) { c.classList.remove("active"); });
+          card.classList.add("active");
+          document.querySelectorAll(".invoice-mode-form").forEach(function (f) { f.classList.remove("active"); });
+          document.querySelector('.invoice-mode-form[data-form="' + mode + '"]').classList.add("active");
+          resetInvoicePreview();
+        });
+      });
+
+      copyBankToggle.addEventListener("change", function () { copyBank = this.checked; });
+      copyStudentToggle.addEventListener("change", function () { copyStudent = this.checked; });
+      copyInstituteToggle.addEventListener("change", function () { copyInstitute = this.checked; });
 
       function renderFeeInvoiceSearchResults(searchTerm) {
         const matches = [];
@@ -6809,17 +6816,15 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
         if (!matches.length) {
-          feeInvoiceStudentDropdown.innerHTML = `<div style="padding: 0.75rem; color: #888; text-align: center; font-size: 0.9rem;">No results found</div>`;
+          feeInvoiceStudentDropdown.innerHTML = '<div style="padding:0.75rem;color:#888;text-align:center;font-size:0.9rem;">No results found</div>';
           feeInvoiceStudentDropdown.style.display = "block";
           return;
         }
         feeInvoiceStudentDropdown.innerHTML = matches.map(function (student) {
-          return `
-            <button type="button" class="search-result-item" data-student-id="${escapeAttr(student.id)}" style="width:100%;padding:0.65rem 0.8rem;border:0;border-bottom:1px solid rgba(27,95,122,0.1);background:#fff;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:0.8rem;align-items:center;text-align:left;">
-              <span><strong>${escapeHtml(student.name || "-")}</strong><small style="display:block;color:#888;">${escapeHtml(student.className || "-")}</small></span>
-              <span style="color:#1b5f7a;font-weight:700;">${escapeHtml(student.admissionNo || "-")}</span>
-            </button>
-          `;
+          return `<button type="button" class="search-result-item" data-student-id="${escapeAttr(student.id)}" style="width:100%;padding:0.65rem 0.8rem;border:0;border-bottom:1px solid rgba(27,95,122,0.1);background:#fff;cursor:pointer;display:grid;grid-template-columns:1fr auto;gap:0.8rem;align-items:center;text-align:left;">
+            <span><strong>${escapeHtml(student.name || "-")}</strong><small style="display:block;color:#888;">${escapeHtml(student.className || "-")}</small></span>
+            <span style="color:#1b5f7a;font-weight:700;">${escapeHtml(student.admissionNo || "-")}</span>
+          </button>`;
         }).join("");
         feeInvoiceStudentDropdown.style.display = "block";
       }
@@ -6827,9 +6832,7 @@ document.addEventListener("DOMContentLoaded", function () {
       searchInput.addEventListener("input", function () {
         classifyInvoicesForPrint = [];
         const searchTerm = this.value.toLowerCase().trim();
-        if (feeInvoiceSearchTimer) {
-          clearTimeout(feeInvoiceSearchTimer);
-        }
+        if (feeInvoiceSearchTimer) clearTimeout(feeInvoiceSearchTimer);
         if (!searchTerm) {
           feeInvoiceStudentDropdown.innerHTML = "";
           feeInvoiceStudentDropdown.style.display = "none";
@@ -6842,52 +6845,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
       feeInvoiceStudentDropdown.addEventListener("click", function (event) {
         const button = event.target.closest("[data-student-id]");
-        if (!button) {
-          return;
-        }
+        if (!button) return;
         const student = feeInvoiceStudentById.get(button.getAttribute("data-student-id")) || null;
         feeInvoiceStudentDropdown.style.display = "none";
-        selectFeeInvoiceStudent(student);
+        if (student) {
+          searchInput.value = `${student.name || ""} (${student.admissionNo || "-"})`;
+          resetInvoicePreview();
+        }
       });
 
       function getSelectedStudentFromSearch() {
         const typed = searchInput.value.trim().toLowerCase();
-        if (!typed) {
-          return null;
-        }
-        const selectedClass = classSelect.value;
+        if (!typed) return null;
         const candidates = database.students.filter(function (student) {
-          const active = student.status === "active";
-          const classMatch = selectedClass === "all" || student.className === selectedClass;
-          return active && classMatch;
+          return student.status === "active";
         });
         const exact = candidates.find(function (student) {
           const nameText = String(student.name || "").toLowerCase();
           const rollText = String(student.admissionNo || "-").toLowerCase();
-          const optionText = `${nameText} (${rollText})`;
-          return optionText === typed || nameText === typed || rollText === typed;
+          return nameText === typed || rollText === typed || `${nameText} (${rollText})` === typed;
         });
-        if (exact) {
-          return exact;
-        }
-        const partialMatches = candidates.filter(function (student) {
+        if (exact) return exact;
+        return candidates.find(function (student) {
           const nameText = String(student.name || "").toLowerCase();
           const rollText = String(student.admissionNo || "-").toLowerCase();
-          const optionText = `${nameText} (${rollText})`;
-          return nameText.includes(typed) || rollText.includes(typed) || optionText.includes(typed);
-        }).sort(function (a, b) {
-          const aName = String(a.name || "").toLowerCase();
-          const bName = String(b.name || "").toLowerCase();
-          const aRoll = String(a.admissionNo || "").toLowerCase();
-          const bRoll = String(b.admissionNo || "").toLowerCase();
-          const aScore = (aRoll.startsWith(typed) ? 0 : aName.startsWith(typed) ? 1 : 2);
-          const bScore = (bRoll.startsWith(typed) ? 0 : bName.startsWith(typed) ? 1 : 2);
-          if (aScore !== bScore) {
-            return aScore - bScore;
-          }
-          return aName.localeCompare(bName);
-        });
-        return partialMatches[0] || null;
+          return nameText.includes(typed) || rollText.includes(typed);
+        }) || null;
       }
 
       function buildFeeParticularsForStudent(student) {
@@ -6895,9 +6878,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const discountPercent = Math.max(0, Math.min(100, parseFloat(student.discountInFee || 0)));
         var items = classParticulars.map(function (item) {
           const label = String(item.label || "");
-          if (label.toUpperCase().includes("DISCOUNT IN FEE")) {
-            return null;
-          }
+          if (label.toUpperCase().includes("DISCOUNT IN FEE")) return null;
           const amount = Math.max(0, parseFloat(item.amount || 0));
           return { ...item, amount: amount };
         }).filter(function (item) { return item !== null; });
@@ -6939,10 +6920,6 @@ document.addEventListener("DOMContentLoaded", function () {
         const feeIndex = database.fees.findIndex(function (feeItem) {
           return feeItem.studentId === student.id && (feeItem.feeMonth || feeItem.month) === invoiceData.feeMonth;
         });
-        upsertFeeRecordAtIndex(student, invoiceData, feeIndex);
-      }
-
-      function upsertFeeRecordAtIndex(student, invoiceData, feeIndex) {
         const feeRecord = createFeeRecordFromInvoice(student, invoiceData, feeIndex >= 0 ? database.fees[feeIndex].id : "");
         if (feeIndex >= 0) {
           database.fees[feeIndex] = { ...database.fees[feeIndex], ...feeRecord };
@@ -6963,67 +6940,42 @@ document.addEventListener("DOMContentLoaded", function () {
         return invoiceData;
       }
 
-      function renderInvoicePreview(student, invoiceData) {
-        const bank = banks.find(function (bankItem) { return bankItem.id === invoiceData.bankId; }) || null;
-        const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-        const rows = invoiceData.particulars.map(function (item, index) {
-          return `<tr><td style="padding:3px 5px;border:1px solid #dce5f4;">${index + 1}</td><td style="padding:3px 5px;border:1px solid #dce5f4;">${escapeHtml(item.label || "-")}</td><td style="padding:3px 5px;border:1px solid #dce5f4;text-align:right;">${Number(item.amount || 0)}</td></tr>`;
+      function renderCompactPreview(student, invoiceData) {
+        const particularRows = invoiceData.particulars.map(function (item) {
+          return `<tr><td style="padding:3px 6px;border-bottom:1px solid #eee;">${escapeHtml(item.label || "-")}</td><td style="padding:3px 6px;border-bottom:1px solid #eee;text-align:right;white-space:nowrap;">${Number(item.amount || 0)}</td></tr>`;
         }).join("");
         previewBox.innerHTML = `
-          <div style="display:grid;gap:10px;font-size:0.93rem;line-height:1.42;max-height:560px;overflow:auto;">
-            <div style="display:grid;grid-template-columns:92px 1fr 92px;align-items:center;gap:10px;">
-              <div style="text-align:center;">${student.picture ? `<img src="${student.picture}" alt="Student" style="width:62px;height:62px;border-radius:10px;object-fit:cover;border:1px solid #ccc;">` : "<span style='font-weight:700;font-size:0.8rem;color:#999;'>Student Photo</span>"}<p style="font-size:0.7rem;color:#999;margin:2px 0 0;">Student Photo</p></div>
-              <div style="text-align:center;">
-                <h3 style="margin:0;font-size:1.08rem;">${escapeHtml(profile.name || (database.school && database.school.name) || "School Name")}</h3>
-                <p style="margin:2px 0 0;font-size:0.86rem;">${escapeHtml(profile.slogan || "-")}</p>
-              </div>
-              <div style="text-align:right;display:flex;align-items:center;gap:8px;justify-content:flex-end;">${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : "<span style='font-weight:700;'>School Logo</span>"}</div>
+          <div style="padding:0.5rem;font-size:0.88rem;line-height:1.5;">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.3rem 1rem;margin-bottom:0.6rem;">
+              <p><strong>Student:</strong> ${escapeHtml(student.name || "-")}</p>
+              <p><strong>Roll No:</strong> ${escapeHtml(student.admissionNo || "-")}</p>
+              <p><strong>Class:</strong> ${escapeHtml(student.className || "-")}</p>
+              <p><strong>Father:</strong> ${escapeHtml(student.fatherName || "-")}</p>
+              <p><strong>Month:</strong> ${escapeHtml(invoiceData.feeMonth)}</p>
+              <p><strong>Date:</strong> ${escapeHtml(invoiceData.date)}</p>
             </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch;">
-              <article style="padding:10px;border:1px solid #dce5f4;border-radius:10px;background:#fff;min-height:360px;">
-                <p><strong>Roll No:</strong> ${escapeHtml(student.admissionNo || "-")}</p>
-                <p style="font-size:1.06rem;font-weight:800;color:#0f2f58;"><strong>Student Name:</strong> ${escapeHtml(student.name || "-")}</p>
-                <p><strong>Father Name:</strong> ${escapeHtml(student.fatherName || "-")}</p>
-                <p><strong>Class:</strong> ${escapeHtml(student.className || "-")}</p>
-                <p><strong>Fee Month:</strong> ${escapeHtml(invoiceData.feeMonth)}</p>
-                <p><strong>Date:</strong> ${escapeHtml(invoiceData.date)}</p>
-                <p><strong>Due Date:</strong> ${escapeHtml(invoiceData.dueDate)}</p>
-                <p><strong>Fine After Due Date:</strong> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
-                <h4 style="margin:10px 0 6px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="background:#1e5eff;color:#fff;padding:4px 10px;border-radius:8px;">Bank Copy</span>${bank && bank.logo ? `<img src="${bank.logo}" alt="Bank Logo" style="width:24px;height:24px;border-radius:4px;object-fit:cover;border:1px solid #ccc;">` : ""}</h4>
-                <p><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
-                <p><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
-                <p><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
-                <p><strong>Instructions:</strong> ${escapeHtml(bank ? bank.instructions : "-")}</p>
-              </article>
-              <article style="padding:10px;border:1px solid #dce5f4;border-radius:10px;background:#fff;display:flex;min-height:360px;">
-                <table style="width:100%;border-collapse:collapse;height:100%;">
-                  <thead><tr><th style="padding:3px 5px;border:1px solid #dce5f4;">Sr</th><th style="padding:3px 5px;border:1px solid #dce5f4;">Particular</th><th style="padding:3px 5px;border:1px solid #dce5f4;">Amount</th></tr></thead>
-                  <tbody>${rows}</tbody>
-                  <tfoot><tr><th colspan="2" style="padding:3px 5px;border:1px solid #dce5f4;text-align:left;">Total</th><th style="padding:3px 5px;border:1px solid #dce5f4;text-align:right;">${invoiceData.totalAmount}</th></tr></tfoot>
-                </table>
-              </article>
-            </div>
+            <table style="width:100%;border-collapse:collapse;font-size:0.82rem;">
+              <thead><tr><th style="padding:3px 6px;border-bottom:2px solid #dce5f4;text-align:left;">Particular</th><th style="padding:3px 6px;border-bottom:2px solid #dce5f4;text-align:right;">Amount</th></tr></thead>
+              <tbody>${particularRows}</tbody>
+              <tfoot><tr><th style="padding:4px 6px;border-top:2px solid #dce5f4;text-align:left;">Total</th><th style="padding:4px 6px;border-top:2px solid #dce5f4;text-align:right;">${Number(invoiceData.totalAmount || 0)}</th></tr></tfoot>
+            </table>
           </div>
         `;
+        previewBox.style.display = "block";
+        previewEmpty.style.display = "none";
+        toolbar.style.display = "flex";
         latestInvoicePreviewData = {
           student: student,
           invoiceData: invoiceData,
-          bank: bank,
-          profile: profile
+          bank: banks.find(function (b) { return b.id === invoiceData.bankId; }) || null,
+          profile: (database.generalSettings && database.generalSettings.instituteProfile) || {}
         };
-        printInvoiceBtn.disabled = false;
-        printThermalBtn.disabled = false;
       }
 
       async function generateInvoiceForStudent(student) {
-        if (!student) {
-          return;
-        }
+        if (!student) return;
         classifyInvoicesForPrint = [];
-        generateStudentInvoiceBtn.disabled = true;
-        generateClasswiseInvoiceBtn.disabled = true;
-        printInvoiceBtn.disabled = true;
-        printThermalBtn.disabled = true;
+        generateBtn.disabled = true;
         message.textContent = "Generating invoice...";
         message.className = "form-message";
         await new Promise(function (resolve) { setTimeout(resolve, 0); });
@@ -7031,7 +6983,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const totalAmount = particulars.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
         const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0));
         const invoiceData = {
-              id: `INV-${generateId()}-${student.id}`,
+          id: `INV-${generateId()}-${student.id}`,
           studentId: student.id,
           className: student.className,
           feeMonth: normalizeFeeMonthLabel(monthSelect.value),
@@ -7047,14 +6999,9 @@ document.addEventListener("DOMContentLoaded", function () {
           upsertFeeInvoiceRecord(invoiceData);
           upsertFeeRecord(student, invoiceData);
           addActivity("Fee invoice generated", `${student.name} invoice generated for ${invoiceData.feeMonth}.`);
-          renderInvoicePreview(student, invoiceData);
+          renderCompactPreview(student, invoiceData);
           message.textContent = "Fees invoice generated successfully.";
           message.className = "form-message success";
-          previewBox.style.display = "block";
-          printInvoiceBtn.style.display = "";
-          printThermalBtn.style.display = "";
-          var _pgBlock = moduleGuide.closest(".panel-card");
-          if (_pgBlock) _pgBlock.style.display = "block";
           setTimeout(function () {
             var _fIdx = database.fees.findIndex(function(f) { return f.studentId === student.id && (f.feeMonth || f.month) === invoiceData.feeMonth; });
             var _fRec = _fIdx >= 0 ? database.fees[_fIdx] : createFeeRecordFromInvoice(student, invoiceData, "");
@@ -7064,389 +7011,301 @@ document.addEventListener("DOMContentLoaded", function () {
           message.textContent = "Unable to generate invoice. Please try again.";
           message.className = "form-message error";
         } finally {
-          generateStudentInvoiceBtn.disabled = false;
-          generateClasswiseInvoiceBtn.disabled = false;
-          printInvoiceBtn.disabled = !latestInvoicePreviewData;
-          printThermalBtn.disabled = !latestInvoicePreviewData;
+          generateBtn.disabled = false;
         }
       }
 
-      generateStudentInvoiceBtn.addEventListener("click", async function () {
-        const student = getSelectedStudentFromSearch();
-        if (!student) {
-          message.textContent = "Please select student from search suggestions.";
-          message.className = "form-message error";
-          return;
-        }
-        if (!bankSelect.value) {
-          message.textContent = "Please select a bank account before generating invoice.";
-          message.className = "form-message error";
-          return;
-        }
-        await generateInvoiceForStudent(student);
-      });
-
-      generateClasswiseInvoiceBtn.addEventListener("click", async function () {
-        const selectedClass = classSelect.value;
-        if (selectedClass === "all" || !selectedClass) {
-          message.textContent = "Please select a specific class for classwise invoice.";
-          message.className = "form-message error";
-          return;
-        }
-        if (!bankSelect.value) {
-          message.textContent = "Please select a bank account before generating invoice.";
-          message.className = "form-message error";
-          return;
-        }
-        const students = database.students.filter(function (student) {
-          return student.status === "active" && student.className === selectedClass;
-        }).sort(function (a, b) {
-          return String(a.name || "").localeCompare(String(b.name || ""));
-        });
-        if (!students.length) {
-          message.textContent = "No active students found in selected class.";
-          message.className = "form-message error";
-          return;
-        }
-        generateClasswiseInvoiceBtn.disabled = true;
-        generateStudentInvoiceBtn.disabled = true;
-        printInvoiceBtn.disabled = true;
-        printThermalBtn.disabled = true;
-        window.SagarSoftDB.LoadingManager.show("Generating invoices...");
-        window.SagarSoftDB.LoadingManager.updateSubtext(students.length + " students");
-        message.textContent = `Generating ${students.length} invoices...`;
-        message.className = "form-message";
-        await new Promise(function (resolve) { setTimeout(resolve, 0); });
-        try {
-          const invoicesData = [];
-          const newFeeRecords = [];
-          const feeByKey = new Map();
-          const invoiceByKey = new Map();
-          database.fees.forEach(function (feeItem) {
-            feeByKey.set(`${feeItem.studentId || ""}__${feeItem.feeMonth || feeItem.month || ""}`, feeItem);
+      generateBtn.addEventListener("click", async function () {
+        if (invoiceMode === "studentwise") {
+          const student = getSelectedStudentFromSearch();
+          if (!student) {
+            message.textContent = "Please select student from search suggestions.";
+            message.className = "form-message error";
+            return;
+          }
+          if (!bankSelect.value) {
+            message.textContent = "Please select a bank account before generating invoice.";
+            message.className = "form-message error";
+            return;
+          }
+          await generateInvoiceForStudent(student);
+        } else {
+          const selectedClass = classSelect.value;
+          if (!selectedClass) {
+            message.textContent = "Please select a specific class for classwise invoice.";
+            message.className = "form-message error";
+            return;
+          }
+          if (!bankSelect.value) {
+            message.textContent = "Please select a bank account before generating invoice.";
+            message.className = "form-message error";
+            return;
+          }
+          const students = database.students.filter(function (student) {
+            return student.status === "active" && student.className === selectedClass;
+          }).sort(function (a, b) {
+            return String(a.name || "").localeCompare(String(b.name || ""));
           });
-          settings.feeInvoices.forEach(function (invoice) {
-            invoiceByKey.set(`${invoice.studentId || ""}__${invoice.feeMonth || ""}`, invoice);
-          });
-          for (let index = 0; index < students.length; index += 1) {
-            const student = students[index];
-            if (!student) {
-              continue;
-            }
-            const particulars = buildFeeParticularsForStudent(student);
-            const totalAmount = particulars.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
-            const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0));
-            const invoiceData = {
-          id: `INV-${generateId()}-${student.id}`,
-              studentId: student.id,
-              className: student.className,
-              feeMonth: normalizeFeeMonthLabel(monthSelect.value),
-              date: dateInput.value,
-              dueDate: dueDateInput.value,
-              fineAfterDueDate: fineAmount,
-              bankId: bankSelect.value,
-              particulars: particulars,
-              totalAmount: totalAmount,
-              createdAt: new Date().toISOString()
-            };
-            const feeKey = `${student.id || ""}__${invoiceData.feeMonth || ""}`;
-            const existingInvoice = invoiceByKey.get(feeKey) || null;
-            if (existingInvoice) {
-              Object.assign(existingInvoice, invoiceData);
-            } else {
-              settings.feeInvoices.unshift(invoiceData);
-              invoiceByKey.set(feeKey, invoiceData);
-            }
-            const existingFee = feeByKey.get(feeKey) || null;
-            const feeRecord = createFeeRecordFromInvoice(student, invoiceData, existingFee ? existingFee.id : "");
-            if (existingFee) {
-              Object.assign(existingFee, feeRecord);
-            } else {
-              newFeeRecords.push(feeRecord);
-              feeByKey.set(feeKey, feeRecord);
-            }
-            invoicesData.push({ student: student, invoiceData: invoiceData });
-            if ((index + 1) % 10 === 0) {
-              message.textContent = `Generating invoices... ${index + 1}/${students.length}`;
-              await new Promise(function (resolve) { setTimeout(resolve, 0); });
-            }
+          if (!students.length) {
+            message.textContent = "No active students found in selected class.";
+            message.className = "form-message error";
+            return;
           }
-          if (newFeeRecords.length) {
-            database.fees = newFeeRecords.concat(database.fees);
-          }
-          addActivity("Classwise fees invoice generated", `Invoices generated for ${students.length} students in ${selectedClass} for ${normalizeFeeMonthLabel(monthSelect.value)}.`);
-          if (invoicesData.length > 0) {
-            renderInvoicePreview(invoicesData[0].student, invoicesData[0].invoiceData);
-          }
-          message.textContent = `Invoices generated for ${students.length} students.`;
-          message.className = "form-message success";
-          classifyInvoicesForPrint = invoicesData;
-          printInvoiceBtn.disabled = false;
-          printThermalBtn.disabled = false;
-          previewBox.style.display = "block";
-          printInvoiceBtn.style.display = "";
-          printThermalBtn.style.display = "";
-          setTimeout(function () {
-            var _classChanges = invoicesData.map(function(item) {
-              var _fi = database.fees.findIndex(function(f) { return f.studentId === item.student.id && (f.feeMonth || f.month) === item.invoiceData.feeMonth; });
-              return { table: "fees", record: _fi >= 0 ? database.fees[_fi] : createFeeRecordFromInvoice(item.student, item.invoiceData, ""), operation: _fi >= 0 ? "update" : "create" };
+          generateBtn.disabled = true;
+          window.SagarSoftDB.LoadingManager.show("Generating invoices...");
+          window.SagarSoftDB.LoadingManager.updateSubtext(students.length + " students");
+          message.textContent = `Generating ${students.length} invoices...`;
+          message.className = "form-message";
+          await new Promise(function (resolve) { setTimeout(resolve, 0); });
+          try {
+            const invoicesData = [];
+            const newFeeRecords = [];
+            const feeByKey = new Map();
+            const invoiceByKey = new Map();
+            (database.fees || []).forEach(function (feeItem) {
+              feeByKey.set(`${feeItem.studentId || ""}__${feeItem.feeMonth || feeItem.month || ""}`, feeItem);
             });
-            saveDatabase(null, _classChanges);
-          }, 0);
-        } catch (error) {
-          window.SagarSoftDB.LoadingManager.hide();
-          message.textContent = "Unable to generate classwise invoices. Please try again.";
-          message.className = "form-message error";
-        } finally {
-          window.SagarSoftDB.LoadingManager.hide();
-          generateClasswiseInvoiceBtn.disabled = false;
-          generateStudentInvoiceBtn.disabled = false;
+            (settings.feeInvoices || []).forEach(function (invoice) {
+              invoiceByKey.set(`${invoice.studentId || ""}__${invoice.feeMonth || ""}`, invoice);
+            });
+            for (let index = 0; index < students.length; index += 1) {
+              const student = students[index];
+              if (!student) continue;
+              const particulars = buildFeeParticularsForStudent(student);
+              const totalAmount = particulars.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
+              const fineAmount = Math.max(0, parseFloat(fineInput ? fineInput.value : 0));
+              const invoiceData = {
+                id: `INV-${generateId()}-${student.id}`,
+                studentId: student.id,
+                className: student.className,
+                feeMonth: normalizeFeeMonthLabel(monthSelect.value),
+                date: dateInput.value,
+                dueDate: dueDateInput.value,
+                fineAfterDueDate: fineAmount,
+                bankId: bankSelect.value,
+                particulars: particulars,
+                totalAmount: totalAmount,
+                createdAt: new Date().toISOString()
+              };
+              const feeKey = `${student.id || ""}__${invoiceData.feeMonth || ""}`;
+              const existingInvoice = invoiceByKey.get(feeKey) || null;
+              if (existingInvoice) {
+                Object.assign(existingInvoice, invoiceData);
+              } else {
+                settings.feeInvoices.unshift(invoiceData);
+                invoiceByKey.set(feeKey, invoiceData);
+              }
+              const existingFee = feeByKey.get(feeKey) || null;
+              const feeRecord = createFeeRecordFromInvoice(student, invoiceData, existingFee ? existingFee.id : "");
+              if (existingFee) {
+                Object.assign(existingFee, feeRecord);
+              } else {
+                newFeeRecords.push(feeRecord);
+                feeByKey.set(feeKey, feeRecord);
+              }
+              invoicesData.push({ student: student, invoiceData: invoiceData });
+              if ((index + 1) % 10 === 0) {
+                message.textContent = `Generating invoices... ${index + 1}/${students.length}`;
+                await new Promise(function (resolve) { setTimeout(resolve, 0); });
+              }
+            }
+            if (newFeeRecords.length) {
+              database.fees = newFeeRecords.concat(database.fees);
+            }
+            addActivity("Classwise fees invoice generated", `Invoices generated for ${students.length} students in ${selectedClass} for ${normalizeFeeMonthLabel(monthSelect.value)}.`);
+            if (invoicesData.length > 0) {
+              renderCompactPreview(invoicesData[0].student, invoicesData[0].invoiceData);
+            }
+            message.textContent = `Invoices generated for ${students.length} students.`;
+            message.className = "form-message success";
+            classifyInvoicesForPrint = invoicesData;
+            setTimeout(function () {
+              var _classChanges = invoicesData.map(function(item) {
+                var _fi = database.fees.findIndex(function(f) { return f.studentId === item.student.id && (f.feeMonth || f.month) === item.invoiceData.feeMonth; });
+                return { table: "fees", record: _fi >= 0 ? database.fees[_fi] : createFeeRecordFromInvoice(item.student, item.invoiceData, ""), operation: _fi >= 0 ? "update" : "create" };
+              });
+              saveDatabase(null, _classChanges);
+            }, 0);
+          } catch (error) {
+            message.textContent = "Unable to generate classwise invoices. Please try again.";
+            message.className = "form-message error";
+          } finally {
+            window.SagarSoftDB.LoadingManager.hide();
+            generateBtn.disabled = false;
+          }
         }
       });
 
       [searchInput, classSelect].forEach(function (input) {
         input.addEventListener("input", function () {
           classifyInvoicesForPrint = [];
-          renderStudentSuggestions();
-          moduleSummary.style.display = "";
-          previewBox.style.display = "none";
-          printInvoiceBtn.style.display = "none";
-          printThermalBtn.style.display = "none";
+          resetInvoicePreview();
         });
         input.addEventListener("change", function () {
           classifyInvoicesForPrint = [];
-          renderStudentSuggestions();
-          moduleSummary.style.display = "";
-          previewBox.style.display = "none";
-          printInvoiceBtn.style.display = "none";
-          printThermalBtn.style.display = "none";
+          resetInvoicePreview();
         });
       });
 
-      printInvoiceBtn.addEventListener("click", async function () {
-        // Get institute details for print
+      async function buildSingleInvoiceA4(entry) {
+        const bank = banks.find(function (b) { return b.id === entry.invoiceData.bankId; }) || null;
+        const student = entry.student;
+        const invoiceData = entry.invoiceData;
         const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-        const instituteProfile = profile;
-        const instituteLogo = profile.logo || "";
-        const printableLogo = await normalizeImageForPrintShared(instituteLogo);
-          
-        // If classwise invoices exist, print all combined; otherwise print single invoice
+        const printableLogo = await normalizeImageForPrintShared(profile.logo || "");
+        const printableBankLogo = bank && bank.logo ? await normalizeImageForPrintShared(bank.logo) : "";
+
+        let headerHtml = "";
+        if (copyInstitute) {
+          headerHtml = `<section class="report-header">
+            ${printableLogo ? `<img class="logo" src="${printableLogo}" alt="School logo">` : `<span class="logo-placeholder">${getInitials(profile.name || "S")}</span>`}
+            <h1 class="school-title">${escapeHtml(profile.name || "-")}</h1>
+            <p class="school-slogan">${escapeHtml(profile.slogan || "School Management System")}</p>
+            <div class="school-meta">
+              <div>${escapeHtml(profile.phone || "-")} | PSRA ${escapeHtml(profile.psra || "-")}</div>
+              <div>${escapeHtml(profile.address || "-")}, ${escapeHtml(profile.country || "-")}</div>
+            </div>
+          </section>`;
+        }
+
+        const columns = [];
+        if (copyStudent) {
+          columns.push(`<div style="text-align:center;">
+            ${student.picture ? `<img src="${student.picture}" alt="Student Photo" style="width:78px;height:78px;border-radius:12px;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:78px;height:78px;border-radius:12px;border:1px solid #000;align-items:center;justify-content:center;font-size:12px;">PHOTO</span>`}
+            <p style="font-size:11px;margin:4px 0 0;color:#666;">Student Photo</p>
+          </div>`);
+          columns.push(`<div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+            <p><strong>Roll No:</strong> ${escapeHtml(student.admissionNo || "-")}</p>
+            <p><strong>Class:</strong> ${escapeHtml(student.className || "-")}</p>
+            <p><strong>Student Name:</strong> ${escapeHtml(student.name || "-")}</p>
+            <p><strong>Father Name:</strong> ${escapeHtml(student.fatherName || "-")}</p>
+            <p><strong>Fee Month:</strong> ${escapeHtml(invoiceData.feeMonth || "-")}</p>
+            <p><strong>Date:</strong> ${escapeHtml(invoiceData.date || "-")}</p>
+            <p><strong>Due Date:</strong> ${escapeHtml(invoiceData.dueDate || "-")}</p>
+            <p><strong>Fine After Due Date:</strong> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
+          </div>`);
+        }
+        if (copyBank) {
+          columns.push(`<div>
+            <h4 style="margin:0 0 6px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="background:#1e5eff;color:#fff;padding:4px 10px;border-radius:8px;">Bank Copy</span>${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:24px;height:24px;border-radius:4px;object-fit:cover;border:1px solid #000;">` : ""}</h4>
+            <p style="margin:0 0 4px;"><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
+            <p style="margin:0 0 4px;"><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
+            <p style="margin:0 0 4px;"><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
+            <p style="margin:0;"><strong>Instructions:</strong> ${escapeHtml(bank ? bank.instructions : "-")}</p>
+          </div>`);
+        }
+
+        const gridCols = columns.length >= 3 ? "1fr 1fr 1fr" : columns.length === 2 ? "1fr 1fr" : "1fr";
+        const rowsMarkup = invoiceData.particulars.map(function (item, index) {
+          return `<tr><td>${index + 1}</td><td>${escapeHtml(item.label || "-")}</td><td style="text-align:right;">${Number(item.amount || 0)}</td></tr>`;
+        }).join("");
+
+        return headerHtml +
+          `<article class="report-card" style="display:grid;grid-template-columns:${gridCols};gap:10px;align-items:start;">${columns.join("")}</article>` +
+          `<table><thead><tr><th>Sr</th><th>Particular</th><th>Amount</th></tr></thead><tbody>${rowsMarkup}</tbody>` +
+          `<tfoot><tr><th colspan="2" style="text-align:left;">Total</th><th style="text-align:right;">${Number(invoiceData.totalAmount || 0)}</th></tr></tfoot></table>`;
+      }
+
+      printInvoiceBtn.addEventListener("click", async function () {
+        if (!latestInvoicePreviewData && !classifyInvoicesForPrint.length) return;
         if (classifyInvoicesForPrint.length > 0) {
           let allInvoicesHtml = "";
-          
-          // Group invoices by page: page N contains 3 thermal invoices.
-          const pages = [];
-          const invoicesPerPage = 3;
-          let currentPageInvoices = [];
-          
-          for (let i = 0; i < classifyInvoicesForPrint.length; i++) {
-            currentPageInvoices.push(classifyInvoicesForPrint[i]);
-            if (currentPageInvoices.length === invoicesPerPage) {
-              pages.push(currentPageInvoices);
-              currentPageInvoices = [];
-            }
-          }
-          if (currentPageInvoices.length > 0) {
-            pages.push(currentPageInvoices);
-          }
-          
-          // Render each page with its invoices
-          for (let pageIdx = 0; pageIdx < pages.length; pageIdx++) {
-            const pageInvoices = pages[pageIdx];
-            const pageBreakAfter = pageIdx === pages.length - 1 ? "auto" : "always";
+          const perPage = 3;
+          for (let i = 0; i < classifyInvoicesForPrint.length; i += perPage) {
+            const group = classifyInvoicesForPrint.slice(i, i + perPage);
+            const pageBreakAfter = (i + perPage >= classifyInvoicesForPrint.length) ? "auto" : "always";
             let pageContent = `<div style="page-break-after:${pageBreakAfter};">`;
-            
-            for (let invIdx = 0; invIdx < pageInvoices.length; invIdx++) {
-              const invoiceEntry = pageInvoices[invIdx];
-              const bank = banks.find(function (b) { return b.id === invoiceEntry.invoiceData.bankId; }) || null;
-              const printableBankLogo = bank && bank.logo ? await normalizeImageForPrintShared(bank.logo) : "";
-              const rowsMarkup = invoiceEntry.invoiceData.particulars.map(function (item, index) {
-                return `<tr><td>${index + 1}</td><td>${escapeHtml(item.label || "-")}</td><td style="text-align:right;">${Number(item.amount || 0)}</td></tr>`;
-              }).join("");
-              
-              pageContent += `
-                <div style="padding:15px;margin-bottom:10px;">
-                <section class="report-header">
-                  ${printableLogo ? `<img class="logo" src="${printableLogo}" alt="School logo">` : `<span class="logo-placeholder">${getInitials(instituteProfile.name || "S")}</span>`}
-                  <h1 class="school-title">${escapeHtml(instituteProfile.name || "-")}</h1>
-                  <p class="school-slogan">${escapeHtml(instituteProfile.slogan || "School Management System")}</p>
-                  <div class="school-meta">
-                    <div>${escapeHtml(instituteProfile.phone || "-")} | PSRA ${escapeHtml(instituteProfile.psra || "-")}</div>
-                    <div>${escapeHtml(instituteProfile.address || "-")}, ${escapeHtml(instituteProfile.country || "-")}</div>
-                  </div>
-                </section>
-                <article class="report-card" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.5mm;align-items:start;margin:0;">
-                  <div style="text-align:center;">
-                    ${invoiceEntry.student.picture ? `<img src="${await normalizeImageForPrintShared(invoiceEntry.student.picture)}" alt="Student Photo" style="width:12mm;height:12mm;border-radius:2mm;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:12mm;height:12mm;border-radius:2mm;border:1px solid #000;align-items:center;justify-content:center;font-size:5.5pt;">PHOTO</span>`}
-                    <p style="font-size:5pt;margin:1mm 0 0;">Student Photo</p>
-                  </div>
-                  <div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-                    <p><strong>Roll No:</strong> ${escapeHtml(invoiceEntry.student.admissionNo || "-")}</p>
-                    <p><strong>Class:</strong> ${escapeHtml(invoiceEntry.student.className || "-")}</p>
-                    <p><strong>Student Name:</strong> ${escapeHtml(invoiceEntry.student.name || "-")}</p>
-                    <p><strong>Father Name:</strong> ${escapeHtml(invoiceEntry.student.fatherName || "-")}</p>
-                    <p><strong>Fee Month:</strong> ${escapeHtml(invoiceEntry.invoiceData.feeMonth || "-")}</p>
-                    <p><strong>Date:</strong> ${escapeHtml(invoiceEntry.invoiceData.date || "-")}</p>
-                    <p><strong>Due Date:</strong> ${escapeHtml(invoiceEntry.invoiceData.dueDate || "-")}</p>
-                    <p><strong>Fine After Due Date:</strong> ${Number(invoiceEntry.invoiceData.fineAfterDueDate || 0)}</p>
-                  </div>
-                  <div>
-                    <h4 style="margin:0 0 1mm;display:flex;align-items:center;justify-content:center;gap:1mm;font-size:5.8pt;"><span style="background:#1e5eff;color:#fff;padding:1px 4px;border-radius:2mm;">Bank Copy</span>${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:4mm;height:4mm;border-radius:1mm;object-fit:cover;border:1px solid #000;">` : ""}</h4>
-                    <p style="margin:0 0 1px;"><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
-                    <p style="margin:0 0 1px;"><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
-                    <p style="margin:0 0 1px;"><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
-                    <p style="margin:0;"><strong>Instructions:</strong> ${escapeHtml(bank ? bank.instructions : "-")}</p>
-                  </div>
-                </article>
-                <table style="width:100%;border-collapse:collapse;margin:0;">
-                  <thead><tr><th style="border:1px solid #ddd;padding:1px 2px;">Sr</th><th style="border:1px solid #ddd;padding:1px 2px;">Particular</th><th style="border:1px solid #ddd;padding:1px 2px;">Amount</th></tr></thead>
-                  <tbody>${rowsMarkup}</tbody>
-                  <tfoot><tr><th colspan="2" style="border:1px solid #ddd;padding:1px 2px;text-align:left;">Total</th><th style="border:1px solid #ddd;padding:1px 2px;text-align:right;">${Number(invoiceEntry.invoiceData.totalAmount || 0)}</th></tr></tfoot>
-                </table>
-                </div>
-              `;
+            for (let j = 0; j < group.length; j++) {
+              pageContent += `<div style="padding:15px;margin-bottom:10px;">${await buildSingleInvoiceA4(group[j])}</div>`;
             }
             pageContent += `</div>`;
             allInvoicesHtml += pageContent;
           }
-          await openPrintReport({
-            contentHtml: allInvoicesHtml,
-            hideHeader: true
-          }, null, null);
-        } else {
-          // Single invoice print
-          if (!latestInvoicePreviewData) {
-            return;
-          }
-          const invoiceData = latestInvoicePreviewData.invoiceData;
-          const student = latestInvoicePreviewData.student;
-          const bank = latestInvoicePreviewData.bank;
-          const printableBankLogo = bank && bank.logo ? await normalizeImageForPrintShared(bank.logo) : "";
-          const rowsMarkup = invoiceData.particulars.map(function (item, index) {
-            return `<tr><td>${index + 1}</td><td>${escapeHtml(item.label || "-")}</td><td style="text-align:right;">${Number(item.amount || 0)}</td></tr>`;
-          }).join("");
+          await openPrintReport({ contentHtml: allInvoicesHtml, hideHeader: true }, null, null);
+        } else if (latestInvoicePreviewData) {
           await openPrintReport({
             subtitle: "Fees Invoice for Student",
-            contentHtml: `
-              <article class="report-card" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:start;">
-                <div style="text-align:center;">
-                  ${student.picture ? `<img src="${student.picture}" alt="Student Photo" style="width:78px;height:78px;border-radius:12px;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:78px;height:78px;border-radius:12px;border:1px solid #000;align-items:center;justify-content:center;font-size:12px;">PHOTO</span>`}
-                  <p style="font-size:11px;margin:4px 0 0;color:#666;">Student Photo</p>
-                </div>
-                <div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-                  <p><strong>Roll No:</strong> ${escapeHtml(student.admissionNo || "-")}</p>
-                  <p><strong>Class:</strong> ${escapeHtml(student.className || "-")}</p>
-                  <p><strong>Student Name:</strong> ${escapeHtml(student.name || "-")}</p>
-                  <p><strong>Father Name:</strong> ${escapeHtml(student.fatherName || "-")}</p>
-                  <p><strong>Fee Month:</strong> ${escapeHtml(invoiceData.feeMonth || "-")}</p>
-                  <p><strong>Date:</strong> ${escapeHtml(invoiceData.date || "-")}</p>
-                  <p><strong>Due Date:</strong> ${escapeHtml(invoiceData.dueDate || "-")}</p>
-                  <p><strong>Fine After Due Date:</strong> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
-                </div>
-                <div>
-                  <h4 style="margin:0 0 6px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="background:#1e5eff;color:#fff;padding:4px 10px;border-radius:8px;">Bank Copy</span>${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:24px;height:24px;border-radius:4px;object-fit:cover;border:1px solid #000;">` : ""}</h4>
-                  <p style="margin:0 0 4px;"><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
-                  <p style="margin:0 0 4px;"><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
-                  <p style="margin:0 0 4px;"><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
-                  <p style="margin:0;"><strong>Instructions:</strong> ${escapeHtml(bank ? bank.instructions : "-")}</p>
-                </div>
-              </article>
-              <table>
-                <thead><tr><th>Sr</th><th>Particular</th><th>Amount</th></tr></thead>
-                <tbody>${rowsMarkup}</tbody>
-                <tfoot><tr><th colspan="2" style="text-align:left;">Total</th><th style="text-align:right;">${Number(invoiceData.totalAmount || 0)}</th></tr></tfoot>
-              </table>
-            `
+            contentHtml: await buildSingleInvoiceA4(latestInvoicePreviewData)
           }, null, null);
         }
       });
 
-      // Thermal — 3 invoices per page, A4-like layout
-      printThermalBtn.addEventListener("click", async function () {
+      async function buildSingleInvoiceThermal(entry) {
+        const bank = banks.find(function (b) { return b.id === entry.invoiceData.bankId; }) || null;
+        const student = entry.student;
+        const invoiceData = entry.invoiceData;
         const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
         const printableLogo = await normalizeImageForPrintShared(profile.logo || "");
-        const instituteProfile = profile;
+        const printableBankLogo = bank && bank.logo ? await normalizeImageForPrintShared(bank.logo) : "";
+
+        let headerHtml = "";
+        if (copyInstitute) {
+          headerHtml = `<section style="text-align:center;margin-bottom:0.5mm;padding:0.5mm 0;">
+            ${printableLogo ? `<img src="${printableLogo}" style="width:5mm;height:5mm;border-radius:0.5mm;object-fit:cover;">` : `<span style="display:inline-flex;width:5mm;height:5mm;border-radius:0.5mm;background:linear-gradient(135deg,#1e5eff,#30b59c);color:#fff;align-items:center;justify-content:center;font-size:4pt;font-weight:700;">${getInitials(profile.name || "S")}</span>`}
+            <div style="font-size:6.5pt;font-weight:700;margin:0.2mm 0;">${escapeHtml(profile.name || "-")}</div>
+            <div style="font-size:4pt;color:#4e678f;margin:0;">${escapeHtml(profile.slogan || "School Management System")}</div>
+            <div style="font-size:3.5pt;color:#4e678f;margin-top:0.2mm;">${escapeHtml(profile.phone || "-")} | PSRA ${escapeHtml(profile.psra || "-")}</div>
+            <div style="font-size:3.5pt;color:#4e678f;">${escapeHtml(profile.address || "-")}, ${escapeHtml(profile.country || "-")}</div>
+          </section>`;
+        }
+
+        const studentCol = copyStudent ? `<article style="display:grid;grid-template-columns:${copyStudent && copyBank ? '8mm 8mm 1fr 1fr' : '8mm 1fr'};gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">
+          <div style="text-align:center;">
+            ${student.picture ? `<img src="${student.picture}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">PHOTO</span>`}
+          </div>
+          ${copyBank ? '<div></div>' : ''}
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.2mm;">
+            <p style="margin:0;"><b>Roll No:</b> ${escapeHtml(student.admissionNo || "-")}</p>
+            <p style="margin:0;"><b>Class:</b> ${escapeHtml(student.className || "-")}</p>
+            <p style="margin:0;"><b>Student:</b> ${escapeHtml(student.name || "-")}</p>
+            <p style="margin:0;"><b>Father:</b> ${escapeHtml(student.fatherName || "-")}</p>
+            <p style="margin:0;"><b>Month:</b> ${escapeHtml(invoiceData.feeMonth || "-")}</p>
+            <p style="margin:0;"><b>Date:</b> ${escapeHtml(invoiceData.date || "-")}</p>
+            <p style="margin:0;"><b>Due:</b> ${escapeHtml(invoiceData.dueDate || "-")}</p>
+            <p style="margin:0;"><b>Fine:</b> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
+          </div>` : '';
+
+        const bankCol = copyBank ? `<div>
+          <div style="text-align:center;margin-bottom:0.3mm;display:flex;align-items:center;justify-content:center;gap:0.5mm;">
+            <span style="display:inline-block;background:#1e5eff;color:#fff;padding:0.2mm 0.8mm;border-radius:0.5mm;font-size:4.5pt;">Bank Copy</span>
+            ${printableBankLogo ? `<img src="${printableBankLogo}" style="width:3.5mm;height:3.5mm;border-radius:0.3mm;border:0.3px solid #000;object-fit:cover;">` : ""}
+          </div>
+          <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Bank:</b> ${escapeHtml(bank ? bank.name : "-")}</p>
+          <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Address:</b> ${escapeHtml(bank ? bank.address : "-")}</p>
+          <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>A/C#:</b> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
+          <p style="margin:0;font-size:4.5pt;"><b>Inst:</b> ${escapeHtml(bank ? bank.instructions : "-")}</p>
+        </div>` : '';
+
+        const thermalCols = [studentCol, bankCol].filter(Boolean);
+        const rows = (invoiceData.particulars || []).map(function (item, idx) {
+          return `<tr><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${idx+1}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${escapeHtml(item.label||"-")}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;text-align:right;">${Number(item.amount||0)}</td></tr>`;
+        }).join("");
+
+        return `<div style="page-break-inside:avoid;">
+          ${headerHtml}
+          ${thermalCols.length ? `<article style="display:grid;grid-template-columns:${thermalCols.length >= 2 ? '8mm 8mm 1fr 1fr' : '1fr'};gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">${studentCol}${bankCol}</article>` : ''}
+          <table style="width:100%;border-collapse:collapse;font-size:5.5pt;">
+            <thead><tr><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Sr</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Particular</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;text-align:right;">Amount</th></tr></thead>
+            <tbody>${rows}</tbody>
+            <tfoot><tr><th colspan="2" style="border:0.5px solid #888;padding:0.3mm 0.8mm;text-align:left;font-size:5pt;">Total</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;text-align:right;font-size:5pt;">${Number(invoiceData.totalAmount||0)}</th></tr></tfoot>
+          </table>
+        </div>`;
+      }
+
+      printThermalBtn.addEventListener("click", async function () {
         const invoices = classifyInvoicesForPrint.length > 0 ? classifyInvoicesForPrint : (latestInvoicePreviewData ? [latestInvoicePreviewData] : []);
         if (!invoices.length) return;
-
-        const bankLogoMap = {};
-        for (let i = 0; i < invoices.length; i++) {
-          const b = banks.find(function(bn){return bn.id===invoices[i].invoiceData.bankId;})||null;
-          if (b && b.logo) bankLogoMap[b.id] = await normalizeImageForPrintShared(b.logo);
-        }
-
-        function rowsHtml(particulars) {
-          return (particulars||[]).map(function (item, idx) {
-            return `<tr><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${idx+1}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${escapeHtml(item.label||"-")}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;text-align:right;">${Number(item.amount||0)}</td></tr>`;
-          }).join("");
-        }
-
-        function buildInvoice(entry, isLast) {
-          const bankId = entry.invoiceData.bankId || null;
-          const bank = banks.find(function (b) { return b.id === bankId; }) || null;
-          const bankLogo = bankId && bankLogoMap[bankId] ? bankLogoMap[bankId] : "";
-          const rows = rowsHtml(entry.invoiceData.particulars);
-          return `
-            <div style="${isLast ? '' : 'margin-bottom:12mm;'}page-break-inside:avoid;">
-              <section style="text-align:center;margin-bottom:0.5mm;padding:0.5mm 0;">
-                ${printableLogo ? `<img src="${printableLogo}" style="width:5mm;height:5mm;border-radius:0.5mm;object-fit:cover;">` : `<span style="display:inline-flex;width:5mm;height:5mm;border-radius:0.5mm;background:linear-gradient(135deg,#1e5eff,#30b59c);color:#fff;align-items:center;justify-content:center;font-size:4pt;font-weight:700;">${getInitials(instituteProfile.name || "S")}</span>`}
-                <div style="font-size:6.5pt;font-weight:700;margin:0.2mm 0;">${escapeHtml(instituteProfile.name || "-")}</div>
-                <div style="font-size:4pt;color:#4e678f;margin:0;">${escapeHtml(instituteProfile.slogan || "School Management System")}</div>
-                <div style="font-size:3.5pt;color:#4e678f;margin-top:0.2mm;">
-                  ${escapeHtml(instituteProfile.phone || "-")} | PSRA ${escapeHtml(instituteProfile.psra || "-")}
-                </div>
-                <div style="font-size:3.5pt;color:#4e678f;">
-                  ${escapeHtml(instituteProfile.address || "-")}, ${escapeHtml(instituteProfile.country || "-")}
-                </div>
-              </section>
-              <article style="display:grid;grid-template-columns:8mm 8mm 1fr 1fr;gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">
-                <div style="text-align:center;">
-                  ${entry.student.picture ? `<img src="${entry.student.picture}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">PHOTO</span>`}
-                </div>
-                <div style="text-align:center;">
-                </div>
-                <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.2mm;">
-                  <p style="margin:0;"><b>Roll No:</b> ${escapeHtml(entry.student.admissionNo || "-")}</p>
-                  <p style="margin:0;"><b>Class:</b> ${escapeHtml(entry.student.className || "-")}</p>
-                  <p style="margin:0;"><b>Student:</b> ${escapeHtml(entry.student.name || "-")}</p>
-                  <p style="margin:0;"><b>Father:</b> ${escapeHtml(entry.student.fatherName || "-")}</p>
-                  <p style="margin:0;"><b>Month:</b> ${escapeHtml(entry.invoiceData.feeMonth || "-")}</p>
-                  <p style="margin:0;"><b>Date:</b> ${escapeHtml(entry.invoiceData.date || "-")}</p>
-                  <p style="margin:0;"><b>Due:</b> ${escapeHtml(entry.invoiceData.dueDate || "-")}</p>
-                  <p style="margin:0;"><b>Fine:</b> ${Number(entry.invoiceData.fineAfterDueDate || 0)}</p>
-                </div>
-                <div>
-                  <div style="text-align:center;margin-bottom:0.3mm;display:flex;align-items:center;justify-content:center;gap:0.5mm;">
-                    <span style="display:inline-block;background:#1e5eff;color:#fff;padding:0.2mm 0.8mm;border-radius:0.5mm;font-size:4.5pt;">Bank Copy</span>
-                    ${bankLogo ? `<img src="${bankLogo}" style="width:3.5mm;height:3.5mm;border-radius:0.3mm;border:0.3px solid #000;object-fit:cover;">` : ""}
-                  </div>
-                  <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Bank:</b> ${escapeHtml(bank ? bank.name : "-")}</p>
-                  <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Address:</b> ${escapeHtml(bank ? bank.address : "-")}</p>
-                  <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>A/C#:</b> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
-                  <p style="margin:0;font-size:4.5pt;"><b>Inst:</b> ${escapeHtml(bank ? bank.instructions : "-")}</p>
-                </div>
-              </article>
-              <table style="width:100%;border-collapse:collapse;font-size:5.5pt;">
-                <thead><tr><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Sr</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Particular</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;text-align:right;">Amount</th></tr></thead>
-                <tbody>${rows}</tbody>
-                <tfoot><tr><th colspan="2" style="border:0.5px solid #888;padding:0.3mm 0.8mm;text-align:left;font-size:5pt;">Total</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;text-align:right;font-size:5pt;">${Number(entry.invoiceData.totalAmount||0)}</th></tr></tfoot>
-              </table>
-            </div>`;
-        }
-
-        const perPage = 3;
         let allContent = "";
         let maxH = 0;
-        for (let i = 0; i < invoices.length; i += perPage) {
-          const group = invoices.slice(i, i + perPage);
+        for (let i = 0; i < invoices.length; i += 3) {
+          const group = invoices.slice(i, i + 3);
           let pageContent = "";
           let pageH = 0;
           for (let j = 0; j < group.length; j++) {
-            const n = (group[j].invoiceData.particulars||[]).length;
+            const n = (group[j].invoiceData.particulars || []).length;
             const marginH = (j < group.length - 1) ? 12 : 0;
-            const est = 40 + (n * 4.5) + marginH;
-            pageH += est;
-            pageContent += buildInvoice(group[j], j === group.length - 1);
+            pageH += 40 + (n * 4.5) + marginH;
+            pageContent += await buildSingleInvoiceThermal(group[j]);
             if (j < group.length - 1) {
               pageContent += `<div style="border-top:0.5px dashed #888;margin:0 0 0.5mm 0;"></div>`;
               pageH += 0.5;
@@ -7456,12 +7315,11 @@ document.addEventListener("DOMContentLoaded", function () {
           maxH = Math.max(maxH, pageH);
           allContent += `<div style="page-break-after:always;padding:0.5mm 1mm;margin:0;overflow:hidden;">${pageContent}</div>`;
         }
-
         const thermalHtml = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title></title>
 <style>
 *{box-sizing:border-box;}
-            @page{size:80mm ${Math.ceil(maxH)}mm;margin:0;}
+@page{size:80mm ${Math.ceil(maxH)}mm;margin:0;}
 body{width:80mm;margin:0;padding:0;font-family:"Segoe UI",Arial,sans-serif;color:#102542;background:#fff;
   -webkit-print-color-adjust:exact;print-color-adjust:exact;}
 @media print{
@@ -7471,8 +7329,24 @@ body{width:80mm;margin:0;padding:0;font-family:"Segoe UI",Arial,sans-serif;color
 </head><body>
 ${allContent}
 </body></html>`;
-
         await openPrintHtmlWindow(thermalHtml, "width=420,height=700", "Please allow popups to print thermal document.");
+      });
+
+      downloadPdfBtn.addEventListener("click", async function () {
+        const invoices = classifyInvoicesForPrint.length > 0 ? classifyInvoicesForPrint : (latestInvoicePreviewData ? [latestInvoicePreviewData] : []);
+        if (!invoices.length) return;
+        let allHtml = "";
+        for (let i = 0; i < invoices.length; i++) {
+          allHtml += await buildSingleInvoiceA4(invoices[i]);
+          if (i < invoices.length - 1) {
+            allHtml += '<div style="page-break-after:always;"></div>';
+          }
+        }
+        const timestamp = new Date().toISOString().slice(0, 10);
+        const fileName = classifyInvoicesForPrint.length > 0 ? `Fee-Invoices-${timestamp}.pdf` : `Fee-Invoice-${invoices[0].student.name || "Student"}-${timestamp}.pdf`;
+        await saveCommunicationPdf(allHtml, fileName);
+        message.textContent = "PDF downloaded successfully.";
+        message.className = "form-message success";
       });
 
       return;
@@ -7764,7 +7638,7 @@ ${allContent}
         
         // Calculate and mark previous month dues as paid
         let previousDues = 0;
-        database.fees.forEach(function (feeItem) {
+        (database.fees || []).forEach(function (feeItem) {
           if (feeItem.studentId === student.id) {
             const feeItemMonth = feeItem.feeMonth || feeItem.month;
             // Mark previous unpaid/partial fees as paid
