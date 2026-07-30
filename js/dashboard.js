@@ -1113,6 +1113,9 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!ok) allOk = false;
       }
       _saved = allOk;
+      if (_saved) {
+        try { window.SagarSoftDB.saveDatabase(database); } catch (_e) {}
+      }
       if (!_saved) {
         try { refreshDatabase(); } catch (_e) {}
       }
@@ -5308,7 +5311,15 @@ document.addEventListener("DOMContentLoaded", function () {
       settings.homeworkAssignments = Array.isArray(settings.homeworkAssignments) ? settings.homeworkAssignments : [];
       settings.messageTemplates = settings.messageTemplates && typeof settings.messageTemplates === "object" ? settings.messageTemplates : {};
       if (purgeUntouchedLegacyFinanceData(settings)) {
-        saveDatabase("Saving settings...", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger }, operation: "update" }]);
+        saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger }, operation: "update" }]);
+      }
+      if (!settings.__phantomLedgerCleanedV1) {
+        var _beforeLen = (settings.accountsLedger || []).length;
+        settings.accountsLedger = (settings.accountsLedger || []).filter(function (row) { return Number(row.amount || 0) > 0; });
+        settings.__phantomLedgerCleanedV1 = true;
+        if (settings.accountsLedger.length !== _beforeLen) {
+          saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        }
       }
       settings.questionChapters = Array.isArray(settings.questionChapters) ? settings.questionChapters : [];
       settings.questionBank = Array.isArray(settings.questionBank) ? settings.questionBank : [];
@@ -5316,7 +5327,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!settings.__questionPaperOldTitlesClearedV1) {
         settings.questionPapers = [];
         settings.__questionPaperOldTitlesClearedV1 = true;
-        saveDatabase("Migrating question papers...", [
+        saveDatabase(null, [
           { table: "school_settings", record: { id: "questionPapers", source_id: "questionPapers", data: settings.questionPapers }, operation: "update" },
           { table: "school_settings", record: { id: "__questionPaperOldTitlesClearedV1", source_id: "__questionPaperOldTitlesClearedV1", data: true }, operation: "update" }
         ]);
@@ -7828,7 +7839,8 @@ ${allContent}
         addActivity("Fee collected", `${student.name} fee collected for ${feeMonth}.`);
         saveDatabase("Saving fee collection...", [
           { table: "fees", record: feeRecord, operation: feeIndex >= 0 ? "update" : "create" },
-          { table: "fee_collections", record: collectionRecord, operation: collectionIndex >= 0 ? "update" : "create" }
+          { table: "fee_collections", record: collectionRecord, operation: collectionIndex >= 0 ? "update" : "create" },
+          { table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }
         ]);
         refreshDatabase();
 
@@ -8716,7 +8728,8 @@ ${allContent}
         addActivity("Fee deleted", "A submitted fee record was deleted.");
         saveDatabase("Deleting fee...", [
           { table: "fees", record: _removedFee, operation: "delete" },
-          { table: "fee_collections", record: _removedFeeCollection, operation: "delete" }
+          { table: "fee_collections", record: _removedFeeCollection, operation: "delete" },
+          { table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }
         ]);
         refreshDatabase();
         renderDashboard();
@@ -14896,7 +14909,7 @@ ${allContent}
         const currentLedger = Array.isArray(database.generalSettings && database.generalSettings.accountsLedger)
           ? database.generalSettings.accountsLedger
           : [];
-        return currentLedger.slice().sort(function (a, b) {
+        return currentLedger.filter(function (row) { return Number(row.amount || 0) > 0; }).sort(function (a, b) {
           return String(b.date || "").localeCompare(String(a.date || "")) || String(b.createdAt || "").localeCompare(String(a.createdAt || ""));
         });
       }
