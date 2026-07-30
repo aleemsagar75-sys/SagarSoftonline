@@ -4282,7 +4282,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Get monthly fees breakdown (all months with records)
     const feesByMonth = {};
-    database.fees.forEach(function (item) {
+    (database.fees || []).forEach(function (item) {
       const feeMonth = item.feeMonth || item.month || "Unknown";
       if (!feesByMonth[feeMonth]) {
         feesByMonth[feeMonth] = { total: 0, paid: 0 };
@@ -4310,7 +4310,7 @@ document.addEventListener("DOMContentLoaded", function () {
         tone: "students",
         route: "all-students",
         label: "Students",
-        value: database.students.length,
+        value: (database.students || []).length,
         note: `${totalStudents} active records`
       },
       {
@@ -4326,8 +4326,8 @@ document.addEventListener("DOMContentLoaded", function () {
         tone: "classes",
         route: "all-classes",
         label: "Classes",
-        value: database.classes.length,
-        note: `${database.classes.length} academic groups`
+        value: (database.classes || []).length,
+        note: `${(database.classes || []).length} academic groups`
       },
       {
         icon: '<img src="./assets/fees.png" class="menu-icon__img" alt="Fees">',
@@ -4373,7 +4373,7 @@ document.addEventListener("DOMContentLoaded", function () {
         tone: "activity",
         route: "students-info-report",
         label: "Activity",
-        value: database.activityLogs.length,
+        value: (database.activityLogs || []).length,
         note: "System events stored"
       }
     ];
@@ -23489,27 +23489,27 @@ ${allContent}
 
   function renderDashboard() {
     if (activeRoute && activeRoute !== "dashboard" && activeRoute !== "home") return;
-    refreshDatabase();
-    applySavedThemeSettings();
+    try { refreshDatabase(); } catch (_e) { console.error("[DASH] refreshDatabase:", _e.message); }
+    try { applySavedThemeSettings(); } catch (_e) { console.error("[DASH] applySavedThemeSettings:", _e.message); }
     if (currentUser.role === "parent") {
-      renderParentDashboard();
-      applyMessagingVisibility();
+      try { renderParentDashboard(); } catch (_e) { console.error("[DASH] renderParentDashboard:", _e.message); }
+      try { applyMessagingVisibility(); } catch (_e) {}
       return;
     }
-    renderStats();
-    renderActivity();
-    renderInsights();
-    renderDashboardMiniCards();
-    renderDashboardAnalytics();
-    refreshAttendanceOverview();
-    renderDashboardTodayAttendance();
-    renderSuperAdminDashboard();
-    startDashboardClock();
-    updateHero();
-    renderStudentsWorkspace();
-    applyMessagingVisibility();
+    try { renderStats(); } catch (_e) { console.error("[DASH] renderStats:", _e.message); }
+    try { renderActivity(); } catch (_e) {}
+    try { renderInsights(); } catch (_e) {}
+    try { renderDashboardMiniCards(); } catch (_e) {}
+    try { renderDashboardAnalytics(); } catch (_e) { console.error("[DASH] renderDashboardAnalytics:", _e.message); }
+    try { refreshAttendanceOverview(); } catch (_e) {}
+    try { renderDashboardTodayAttendance(); } catch (_e) {}
+    try { renderSuperAdminDashboard(); } catch (_e) {}
+    try { startDashboardClock(); } catch (_e) {}
+    try { updateHero(); } catch (_e) {}
+    try { renderStudentsWorkspace(); } catch (_e) {}
+    try { applyMessagingVisibility(); } catch (_e) {}
     if (window.applyLanguage && database.generalSettings && database.generalSettings.themeLanguage && database.generalSettings.themeLanguage.language) {
-      window.applyLanguage(database.generalSettings.themeLanguage.language);
+      try { window.applyLanguage(database.generalSettings.themeLanguage.language); } catch (_e) {}
     }
     setTimeout(setupRevealAnimations, 80);
   }
