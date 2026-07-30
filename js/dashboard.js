@@ -5880,17 +5880,19 @@ document.addEventListener("DOMContentLoaded", function () {
       const preview = document.getElementById("feeStructurePreview");
       const message = document.getElementById("feeStructureMessage");
 
-      function makeRow(type, amount) {
+      function makeRow(type, amount, fixed) {
         const row = document.createElement("article");
         row.className = "module-line-item";
+        const isFixed = !!fixed;
+        const safeAmount = Math.max(0, parseFloat(amount || 0));
         row.innerHTML = `
           <div class="field-group">
-            <label>Fee Type</label>
-            <input class="fee-structure-type" type="text" value="${escapeAttr(type || "")}">
+            <label>Fee Type ${isFixed ? '<span style="color:#1e5eff;font-size:0.75rem;">[AUTO]</span>' : ''}</label>
+            <input class="fee-structure-type" type="text" value="${escapeAttr(type || "")}" ${isFixed ? 'readonly style="background:#f1f5fc;color:#4e678f;"' : ''}>
           </div>
           <div class="field-group">
-            <label>Amount</label>
-            <input class="fee-structure-amount" type="number" min="0" value="${Number(amount || 0)}">
+            <label>Amount ${isFixed ? '<span style="color:#1e5eff;font-size:0.75rem;">[AUTO]</span>' : ''}</label>
+            <input class="fee-structure-amount" type="number" min="0" value="${safeAmount}" ${isFixed ? 'readonly style="background:#f1f5fc;color:#4e678f;font-weight:700;"' : ''}>
           </div>
         `;
         return row;
@@ -5899,9 +5901,24 @@ document.addEventListener("DOMContentLoaded", function () {
       function renderStructureRows() {
         rowsWrap.innerHTML = "";
         const cls = classSelect.value;
-        const rows = settings.feeStructures[cls] || [{ type: "Monthly Fee", amount: 0 }];
+        const liveDefaults = getDefaultFeeParticulars(cls);
+        const saved = (settings.feeStructures && settings.feeStructures[cls]) || [];
+        const savedMap = new Map(saved.map(function (r) { return [String(r.type || "").toUpperCase().trim(), r]; }));
+        const merged = liveDefaults.map(function (def) {
+          const key = String(def.label || "").toUpperCase().trim();
+          if (!key) return null;
+          const isMonthlyFee = key.includes("MONTHLY") && key.includes("TUITION");
+          if (isMonthlyFee) return { type: def.label, amount: def.amount, fixed: true };
+          const fromSaved = savedMap.get(key);
+          return fromSaved ? { type: fromSaved.type || def.label, amount: fromSaved.amount || def.amount, fixed: false } : { type: def.label, amount: def.amount, fixed: false };
+        }).filter(Boolean);
+        const extraSaved = saved.filter(function (r) {
+          const key = String(r.type || "").toUpperCase().trim();
+          return key && !liveDefaults.some(function (d) { return String(d.label || "").toUpperCase().trim() === key; });
+        }).map(function (r) { return { type: r.type, amount: r.amount, fixed: false }; });
+        const rows = merged.concat(extraSaved);
         rows.forEach(function (row) {
-          rowsWrap.appendChild(makeRow(row.type, row.amount));
+          rowsWrap.appendChild(makeRow(row.type, row.amount, row.fixed));
         });
         renderStructurePreview();
         renderStructureList();
@@ -5965,7 +5982,12 @@ document.addEventListener("DOMContentLoaded", function () {
       var _el = document.getElementById("removeFeeStructureFieldBtn"); if (_el) _el.addEventListener("click", function () {
         const rows = rowsWrap.querySelectorAll(".module-line-item");
         if (rows.length > 1) {
-          rows[rows.length - 1].remove();
+          var lastRow = rows[rows.length - 1];
+          var lastInput = lastRow.querySelector(".fee-structure-type");
+          if (lastInput && lastInput.hasAttribute("readonly")) {
+            return;
+          }
+          lastRow.remove();
           renderStructurePreview();
         }
       });
@@ -5974,9 +5996,11 @@ document.addEventListener("DOMContentLoaded", function () {
         const cls = classSelect.value;
         var _rows = Array.from(rowsWrap.querySelectorAll(".module-line-item")).map(function (row) {
           const amount = Math.max(0, parseFloat(row.querySelector(".fee-structure-amount").value || 0, 10));
+          var typeInput = row.querySelector(".fee-structure-type");
           return {
-            type: row.querySelector(".fee-structure-type").value.trim(),
-            amount: amount
+            type: typeInput.value.trim(),
+            amount: amount,
+            fixed: typeInput.hasAttribute("readonly")
           };
         }).filter(function (row) { return row.type; });
         settings.feeStructures[cls] = _rows;

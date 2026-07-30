@@ -8609,17 +8609,17 @@ img, video, svg { max-width: 100%; height: auto; }
 
 /* Entry mode cards */
 .invoice-entry-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.5rem;
+  display: flex;
+  gap: 0.6rem;
   margin-bottom: 0.6rem;
+  justify-content: center;
 }
 .invoice-entry-card {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.15rem;
-  padding: 0.55rem 0.4rem;
+  padding: 0.55rem 0.8rem;
   border: 1.5px solid rgba(27, 95, 122, 0.12);
   border-radius: 10px;
   background: linear-gradient(135deg, #f8fbff, #f0f6ff);
@@ -8627,6 +8627,8 @@ img, video, svg { max-width: 100%; height: auto; }
   transition: all 0.2s ease;
   text-align: center;
   min-width: 0;
+  max-width: 300px;
+  flex: 1 1 140px;
 }
 .invoice-entry-card:hover {
   border-color: rgba(30, 94, 255, 0.25);
@@ -8656,6 +8658,7 @@ img, video, svg { max-width: 100%; height: auto; }
 /* Mode-specific form sections */
 .invoice-mode-form {
   display: none;
+  max-width: 420px;
 }
 .invoice-mode-form.active {
   display: block;
@@ -9228,14 +9231,16 @@ img, video, svg { max-width: 100%; height: auto; }
 
   /* 51. Invoice redesign: entry cards stack on mobile */
   .invoice-entry-cards {
-    grid-template-columns: 1fr 1fr !important;
+    flex-direction: column !important;
     gap: 0.4rem !important;
+    align-items: stretch !important;
   }
   .invoice-entry-card {
     flex-direction: row !important;
     text-align: left !important;
-    padding: 0.45rem !important;
+    padding: 0.45rem 0.6rem !important;
     gap: 0.5rem !important;
+    max-width: 100% !important;
   }
   .invoice-entry-card__icon {
     font-size: 1rem !important;
@@ -9245,6 +9250,9 @@ img, video, svg { max-width: 100%; height: auto; }
   }
   .invoice-entry-card__desc {
     font-size: 0.6rem !important;
+  }
+  .invoice-mode-form {
+    max-width: 100% !important;
   }
   .invoice-copy-toggles {
     flex-direction: column !important;
