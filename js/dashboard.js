@@ -7249,8 +7249,9 @@ document.addEventListener("DOMContentLoaded", function () {
           </section>`;
         }
 
-        const studentCol = copyStudent ? `<article style="display:grid;grid-template-columns:${copyStudent && copyBank ? '8mm 8mm 1fr 1fr' : '8mm 1fr'};gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">
-          <div style="text-align:center;">
+        let studentInner = "";
+        if (copyStudent) {
+          studentInner = `<div style="text-align:center;">
             ${student.picture ? `<img src="${student.picture}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">PHOTO</span>`}
           </div>
           ${copyBank ? '<div></div>' : ''}
@@ -7263,27 +7264,34 @@ document.addEventListener("DOMContentLoaded", function () {
             <p style="margin:0;"><b>Date:</b> ${escapeHtml(invoiceData.date || "-")}</p>
             <p style="margin:0;"><b>Due:</b> ${escapeHtml(invoiceData.dueDate || "-")}</p>
             <p style="margin:0;"><b>Fine:</b> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
-          </div>` : '';
+          </div>`;
+        }
 
-        const bankCol = copyBank ? `<div>
-          <div style="text-align:center;margin-bottom:0.3mm;display:flex;align-items:center;justify-content:center;gap:0.5mm;">
-            <span style="display:inline-block;background:#1e5eff;color:#fff;padding:0.2mm 0.8mm;border-radius:0.5mm;font-size:4.5pt;">Bank Copy</span>
-            ${printableBankLogo ? `<img src="${printableBankLogo}" style="width:3.5mm;height:3.5mm;border-radius:0.3mm;border:0.3px solid #000;object-fit:cover;">` : ""}
-          </div>
-          <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Bank:</b> ${escapeHtml(bank ? bank.name : "-")}</p>
-          <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Address:</b> ${escapeHtml(bank ? bank.address : "-")}</p>
-          <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>A/C#:</b> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
-          <p style="margin:0;font-size:4.5pt;"><b>Inst:</b> ${escapeHtml(bank ? bank.instructions : "-")}</p>
-        </div>` : '';
+        let bankInner = "";
+        if (copyBank) {
+          bankInner = `<div>
+            <div style="text-align:center;margin-bottom:0.3mm;display:flex;align-items:center;justify-content:center;gap:0.5mm;">
+              <span style="display:inline-block;background:#1e5eff;color:#fff;padding:0.2mm 0.8mm;border-radius:0.5mm;font-size:4.5pt;">Bank Copy</span>
+              ${printableBankLogo ? `<img src="${printableBankLogo}" style="width:3.5mm;height:3.5mm;border-radius:0.3mm;border:0.3px solid #000;object-fit:cover;">` : ""}
+            </div>
+            <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Bank:</b> ${escapeHtml(bank ? bank.name : "-")}</p>
+            <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Address:</b> ${escapeHtml(bank ? bank.address : "-")}</p>
+            <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>A/C#:</b> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
+            <p style="margin:0;font-size:4.5pt;"><b>Inst:</b> ${escapeHtml(bank ? bank.instructions : "-")}</p>
+          </div>`;
+        }
 
-        const thermalCols = [studentCol, bankCol].filter(Boolean);
+        const hasStudent = !!copyStudent;
+        const hasBank = !!copyBank;
+        const thermalGridCols = hasStudent && hasBank ? "8mm 8mm 1fr 1fr" : hasStudent ? "8mm 1fr" : "1fr";
+        const thermalContent = studentInner + bankInner;
         const rows = (invoiceData.particulars || []).map(function (item, idx) {
           return `<tr><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${idx+1}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${escapeHtml(item.label||"-")}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;text-align:right;">${Number(item.amount||0)}</td></tr>`;
         }).join("");
 
         return `<div style="page-break-inside:avoid;">
           ${headerHtml}
-          ${thermalCols.length ? `<article style="display:grid;grid-template-columns:${thermalCols.length >= 2 ? '8mm 8mm 1fr 1fr' : '1fr'};gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">${studentCol}${bankCol}</article>` : ''}
+          ${thermalContent ? `<article style="display:grid;grid-template-columns:${thermalGridCols};gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">${thermalContent}</article>` : ''}
           <table style="width:100%;border-collapse:collapse;font-size:5.5pt;">
             <thead><tr><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Sr</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Particular</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;text-align:right;">Amount</th></tr></thead>
             <tbody>${rows}</tbody>
