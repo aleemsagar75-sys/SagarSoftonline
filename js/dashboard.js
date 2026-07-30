@@ -24758,7 +24758,7 @@ ${allContent}
     var panelCards = document.querySelectorAll(".panel-card");
     for (var pc = 0; pc < panelCards.length; pc++) {
       panelCards[pc].style.maxWidth = "100%";
-      panelCards[pc].style.overflow = "hidden";
+      panelCards[pc].style.overflowX = "hidden";
     }
 
     var allButtons = document.querySelectorAll(".btn-account-action, .primary-button, .secondary-button, .table-action-btn, .table-action-link");

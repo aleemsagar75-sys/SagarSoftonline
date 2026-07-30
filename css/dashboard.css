@@ -1581,8 +1581,8 @@ body {
 .toolbar select {
   width: 100%;
   max-width: 100%;
-  min-height: 50px;
-  padding: 0.9rem 1rem;
+  min-height: 42px;
+  padding: 0.65rem 0.85rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border-color);
   background: #fff;
@@ -5387,9 +5387,9 @@ select:focus, input:focus, textarea:focus {
   .primary-button,
   .secondary-button,
   .danger-button {
-    min-height: 44px;
-    padding: 0.7rem 1rem;
-    font-size: 0.85rem;
+    min-height: 38px;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
   }
 
   .student-form-card .panel-card__header h3 { font-size: 1.4rem; }
@@ -5579,9 +5579,9 @@ select:focus, input:focus, textarea:focus {
   .primary-button,
   .secondary-button,
   .danger-button {
-    min-height: 40px;
-    padding: 0.55rem 0.85rem;
-    font-size: 0.8rem;
+    min-height: 36px;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.78rem;
     border-radius: 8px;
   }
 
@@ -7277,7 +7277,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .form-section { padding: 0.8rem !important; }
   .form-actions { flex-direction: column !important; }
   .form-actions > * { width: 100% !important; }
-  .field-group input, .field-group select, .field-group textarea { min-height: 44px !important; padding: 0.7rem 0.8rem !important; font-size: 0.88rem !important; width: 100% !important; }
+  .field-group input, .field-group select, .field-group textarea { min-height: 38px !important; padding: 0.55rem 0.75rem !important; font-size: 0.85rem !important; width: 100% !important; }
   .field-group textarea { min-height: 80px !important; }
   .field-group label { font-size: 0.85rem !important; }
 
@@ -7753,7 +7753,7 @@ img, video, svg { max-width: 100%; height: auto; }
   }
   .dashboard-action-buttons .primary-button {
     width: 100% !important;
-    min-height: 44px !important;
+    min-height: 36px !important;
     justify-content: center !important;
   }
 }
@@ -7937,9 +7937,9 @@ img, video, svg { max-width: 100%; height: auto; }
   }
   [style*="display:flex"][style*="justify-content:space-between"] .primary-button {
     width: 100% !important;
-    min-height: 44px !important;
-    font-size: 0.85rem !important;
-    padding: 0.65rem 1rem !important;
+    min-height: 36px !important;
+    font-size: 0.82rem !important;
+    padding: 0.5rem 0.85rem !important;
     justify-content: center !important;
   }
 }
@@ -7999,8 +7999,8 @@ img, video, svg { max-width: 100%; height: auto; }
   .field-group input,
   .field-group select,
   .field-group textarea {
-    min-height: 44px !important;
-    padding: 0.65rem 0.75rem !important;
+    min-height: 38px !important;
+    padding: 0.55rem 0.7rem !important;
     font-size: 16px !important;
   }
 }
@@ -8044,9 +8044,9 @@ img, video, svg { max-width: 100%; height: auto; }
 }
 @media (max-width: 480px) {
   .primary-button {
-    min-height: 44px !important;
-    padding: 0.65rem 1rem !important;
-    font-size: 0.88rem !important;
+    min-height: 34px !important;
+    padding: 0.45rem 0.8rem !important;
+    font-size: 0.82rem !important;
   }
 }
 
@@ -8328,7 +8328,7 @@ img, video, svg { max-width: 100%; height: auto; }
   .module-toolbar .secondary-button,
   .module-toolbar .btn-account-action {
     width: 100% !important;
-    min-height: 42px !important;
+    min-height: 36px !important;
   }
 }
 
@@ -8638,12 +8638,13 @@ img, video, svg { max-width: 100%; height: auto; }
     max-width: 100% !important;
     min-width: 0 !important;
     width: 100% !important;
+    overflow-x: hidden;
   }
 
-  /* 4b. Remove overflow-x:hidden from ALL article elements — content must flow, not clip */
-  article[style*="overflow-x:hidden"],
-  article[style*="overflow-x: hidden"] {
-    overflow-x: hidden !important;
+  /* 4b. Article overflow control */
+  article {
+    max-width: 100% !important;
+    overflow-x: hidden;
   }
 
   /* 5. Panel-card and cards: max-width enforced, no overflow clipping */
@@ -8765,7 +8766,7 @@ img, video, svg { max-width: 100%; height: auto; }
   .module-toolbar .secondary-button,
   .btn-account-action {
     width: 100% !important;
-    min-height: 40px !important;
+    min-height: 36px !important;
   }
 
   /* 12. Form inputs: never overflow */
