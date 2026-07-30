@@ -24027,10 +24027,15 @@ ${allContent}
       button.classList.toggle("active", button.dataset.route === normalizedRoute);
     });
 
+    document.querySelectorAll(".menu-group").forEach(function (menuGroup) {
+      menuGroup.classList.remove("open");
+      var trigger = menuGroup.querySelector(".menu-group__trigger");
+      if (trigger) { trigger.setAttribute("aria-expanded", "false"); }
+    });
     var _activeBtn = sidebar.querySelector('.menu-link[data-route="' + normalizedRoute + '"], .submenu-link[data-route="' + normalizedRoute + '"]');
     if (_activeBtn) {
       var _parentGroup = _activeBtn.closest(".menu-group");
-      if (_parentGroup && !_parentGroup.classList.contains("open")) {
+      if (_parentGroup) {
         _parentGroup.classList.add("open");
         var _trigger = _parentGroup.querySelector(".menu-group__trigger");
         if (_trigger) { _trigger.setAttribute("aria-expanded", "true"); }
@@ -24258,15 +24263,6 @@ ${allContent}
   routeButtons.forEach(function (button) {
     button.addEventListener("click", function () {
       const route = (button.dataset.route === "settings" ? "account-settings" : button.dataset.route);
-      const parentGroup = button.closest(".menu-group");
-
-      if (parentGroup) {
-        parentGroup.classList.add("open");
-        const trigger = parentGroup.querySelector(".menu-group__trigger");
-        if (trigger) {
-          trigger.setAttribute("aria-expanded", "true");
-        }
-      }
 
       if (route === "new-class") {
         populateClassForm(null);
