@@ -8604,7 +8604,136 @@ img, video, svg { max-width: 100%; height: auto; }
 }
 
 /* ===================================================================
-   FINAL OVERRIDE â€” NO CONTENT ESCAPES VIEWPORT (mobile only)
+   INVOICE REDESIGN — Entry Cards, Copy Toggles, Toolbar
+   =================================================================== */
+
+/* Entry mode cards */
+.invoice-entry-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+  margin-bottom: 1rem;
+}
+.invoice-entry-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 1rem 0.6rem;
+  border: 2px solid rgba(27, 95, 122, 0.12);
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8fbff, #f0f6ff);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  min-width: 0;
+}
+.invoice-entry-card:hover {
+  border-color: rgba(30, 94, 255, 0.25);
+  background: linear-gradient(135deg, #f0f6ff, #e8f0fe);
+  transform: translateY(-1px);
+}
+.invoice-entry-card.active {
+  border-color: #1e5eff;
+  background: linear-gradient(135deg, #e8f0fe, #dce8ff);
+  box-shadow: 0 2px 12px rgba(30, 94, 255, 0.15);
+}
+.invoice-entry-card__icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.invoice-entry-card__title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #102542;
+}
+.invoice-entry-card__desc {
+  font-size: 0.72rem;
+  color: #6b82a3;
+  line-height: 1.2;
+}
+
+/* Mode-specific form sections */
+.invoice-mode-form {
+  display: none;
+}
+.invoice-mode-form.active {
+  display: block;
+}
+
+/* Copy toggles */
+.invoice-copy-toggles {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding: 0.7rem 0;
+  border-top: 1px solid rgba(16, 37, 66, 0.08);
+  margin-top: 0.5rem;
+}
+.invoice-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #4e678f;
+  user-select: none;
+}
+.invoice-toggle input[type="checkbox"] {
+  display: none;
+}
+.invoice-toggle__track {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: #c5d0dc;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.invoice-toggle__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  transition: transform 0.2s ease;
+}
+.invoice-toggle input:checked + .invoice-toggle__track {
+  background: #1e5eff;
+}
+.invoice-toggle input:checked + .invoice-toggle__track .invoice-toggle__thumb {
+  transform: translateX(16px);
+}
+.invoice-toggle__label {
+  white-space: nowrap;
+}
+
+/* Invoice toolbar */
+.invoice-toolbar {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.6rem 0;
+  border-top: 1px solid rgba(16, 37, 66, 0.09);
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  z-index: 10;
+}
+.invoice-toolbar > button {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+/* ===================================================================
+   FINAL OVERRIDE — NO CONTENT ESCAPES VIEWPORT (mobile only)
    This block runs LAST and overrides all earlier overflow:visible
    =================================================================== */
 @media (max-width: 768px) {
@@ -9082,6 +9211,32 @@ img, video, svg { max-width: 100%; height: auto; }
   [style*="grid-template-columns:92px 1fr 92px"],
   [style*="grid-template-columns: 92px 1fr 92px"] {
     grid-template-columns: 1fr !important;
+  }
+
+  /* 51. Invoice redesign: entry cards stack on mobile */
+  .invoice-entry-cards {
+    grid-template-columns: 1fr !important;
+    gap: 0.6rem !important;
+  }
+  .invoice-entry-card {
+    flex-direction: row !important;
+    text-align: left !important;
+    padding: 0.7rem !important;
+    gap: 0.6rem !important;
+  }
+  .invoice-entry-card__icon {
+    font-size: 1.3rem !important;
+  }
+  .invoice-copy-toggles {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+  }
+  .invoice-toolbar {
+    flex-direction: column !important;
+    gap: 0.4rem !important;
+  }
+  .invoice-toolbar > button {
+    width: 100% !important;
   }
 }
 
