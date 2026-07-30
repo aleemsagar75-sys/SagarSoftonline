@@ -6739,8 +6739,8 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <div class="invoice-toolbar" id="feeInvoiceToolbar" style="display:none;">
             <button class="primary-button" id="printFeeInvoiceA4Btn" type="button">Print A4</button>
-            <button class="secondary-button" id="printFeeInvoiceThermalBtn" type="button">Print Thermal</button>
-            <button class="secondary-button" id="downloadFeeInvoicePdfBtn" type="button">Download PDF</button>
+            <button class="primary-button" id="printFeeInvoiceThermalBtn" type="button">Print Thermal</button>
+            <button class="primary-button" id="downloadFeeInvoicePdfBtn" type="button">Download PDF</button>
           </div>
         </article>
       `;
@@ -6875,11 +6875,14 @@ document.addEventListener("DOMContentLoaded", function () {
 
       function buildFeeParticularsForStudent(student) {
         const classParticulars = (settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className);
+        const classRecord = database.classes.find(function (c) { return c.name === student.className; });
+        const liveMonthlyFee = Math.max(0, parseFloat(classRecord && classRecord.monthlyTuitionFees ? classRecord.monthlyTuitionFees : 0));
         const discountPercent = Math.max(0, Math.min(100, parseFloat(student.discountInFee || 0)));
         var items = classParticulars.map(function (item) {
           const label = String(item.label || "");
           if (label.toUpperCase().includes("DISCOUNT IN FEE")) return null;
-          const amount = Math.max(0, parseFloat(item.amount || 0));
+          const isMonthlyFee = label.toUpperCase().includes("MONTHLY") && label.toUpperCase().includes("TUITION");
+          const amount = isMonthlyFee ? liveMonthlyFee : Math.max(0, parseFloat(item.amount || 0));
           return { ...item, amount: amount };
         }).filter(function (item) { return item !== null; });
         if (discountPercent > 0) {
@@ -7147,151 +7150,162 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       });
 
-      async function buildSingleInvoiceA4(entry) {
+      function getEnabledCopyTypes() {
+        var copies = [];
+        if (copyBank) copies.push("bank");
+        if (copyStudent) copies.push("student");
+        if (copyInstitute) copies.push("institute");
+        return copies;
+      }
+
+      function getCopyLabel(copyType) {
+        if (copyType === "bank") return "Bank Copy";
+        if (copyType === "student") return "Student Copy";
+        return "Institute Copy";
+      }
+
+      async function buildInvoiceCopyA4(entry, copyType) {
         const bank = banks.find(function (b) { return b.id === entry.invoiceData.bankId; }) || null;
         const student = entry.student;
         const invoiceData = entry.invoiceData;
         const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
         const printableLogo = await normalizeImageForPrintShared(profile.logo || "");
         const printableBankLogo = bank && bank.logo ? await normalizeImageForPrintShared(bank.logo) : "";
+        const copyLabel = getCopyLabel(copyType);
 
-        let headerHtml = "";
-        if (copyInstitute) {
-          headerHtml = `<section class="report-header">
-            ${printableLogo ? `<img class="logo" src="${printableLogo}" alt="School logo">` : `<span class="logo-placeholder">${getInitials(profile.name || "S")}</span>`}
-            <h1 class="school-title">${escapeHtml(profile.name || "-")}</h1>
-            <p class="school-slogan">${escapeHtml(profile.slogan || "School Management System")}</p>
-            <div class="school-meta">
-              <div>${escapeHtml(profile.phone || "-")} | PSRA ${escapeHtml(profile.psra || "-")}</div>
-              <div>${escapeHtml(profile.address || "-")}, ${escapeHtml(profile.country || "-")}</div>
-            </div>
-          </section>`;
-        }
+        const headerHtml = `<section class="report-header">
+          ${printableLogo ? `<img class="logo" src="${printableLogo}" alt="School logo">` : `<span class="logo-placeholder">${getInitials(profile.name || "S")}</span>`}
+          <h1 class="school-title">${escapeHtml(profile.name || "-")}</h1>
+          <p class="school-slogan">${escapeHtml(profile.slogan || "School Management System")}</p>
+          <div class="school-meta">
+            <div>${escapeHtml(profile.phone || "-")} | PSRA ${escapeHtml(profile.psra || "-")}</div>
+            <div>${escapeHtml(profile.address || "-")}, ${escapeHtml(profile.country || "-")}</div>
+          </div>
+        </section>`;
 
         const columns = [];
-        if (copyStudent) {
-          columns.push(`<div style="text-align:center;">
-            ${student.picture ? `<img src="${student.picture}" alt="Student Photo" style="width:78px;height:78px;border-radius:12px;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:78px;height:78px;border-radius:12px;border:1px solid #000;align-items:center;justify-content:center;font-size:12px;">PHOTO</span>`}
-            <p style="font-size:11px;margin:4px 0 0;color:#666;">Student Photo</p>
-          </div>`);
-          columns.push(`<div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
-            <p><strong>Roll No:</strong> ${escapeHtml(student.admissionNo || "-")}</p>
-            <p><strong>Class:</strong> ${escapeHtml(student.className || "-")}</p>
-            <p><strong>Student Name:</strong> ${escapeHtml(student.name || "-")}</p>
-            <p><strong>Father Name:</strong> ${escapeHtml(student.fatherName || "-")}</p>
-            <p><strong>Fee Month:</strong> ${escapeHtml(invoiceData.feeMonth || "-")}</p>
-            <p><strong>Date:</strong> ${escapeHtml(invoiceData.date || "-")}</p>
-            <p><strong>Due Date:</strong> ${escapeHtml(invoiceData.dueDate || "-")}</p>
-            <p><strong>Fine After Due Date:</strong> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
-          </div>`);
-        }
-        if (copyBank) {
-          columns.push(`<div>
-            <h4 style="margin:0 0 6px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="background:#1e5eff;color:#fff;padding:4px 10px;border-radius:8px;">Bank Copy</span>${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:24px;height:24px;border-radius:4px;object-fit:cover;border:1px solid #000;">` : ""}</h4>
-            <p style="margin:0 0 4px;"><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
-            <p style="margin:0 0 4px;"><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
-            <p style="margin:0 0 4px;"><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
-            <p style="margin:0;"><strong>Instructions:</strong> ${escapeHtml(bank ? bank.instructions : "-")}</p>
-          </div>`);
-        }
+        columns.push(`<div style="text-align:center;">
+          ${student.picture ? `<img src="${student.picture}" alt="Student Photo" style="width:78px;height:78px;border-radius:12px;object-fit:cover;border:1px solid #000;">` : `<span style="display:inline-flex;width:78px;height:78px;border-radius:12px;border:1px solid #000;align-items:center;justify-content:center;font-size:12px;">PHOTO</span>`}
+          <p style="font-size:11px;margin:4px 0 0;color:#666;">Student Photo</p>
+        </div>`);
+        columns.push(`<div class="report-grid" style="grid-template-columns:repeat(2,minmax(0,1fr));">
+          <p><strong>Roll No:</strong> ${escapeHtml(student.admissionNo || "-")}</p>
+          <p><strong>Class:</strong> ${escapeHtml(student.className || "-")}</p>
+          <p><strong>Student Name:</strong> ${escapeHtml(student.name || "-")}</p>
+          <p><strong>Father Name:</strong> ${escapeHtml(student.fatherName || "-")}</p>
+          <p><strong>Fee Month:</strong> ${escapeHtml(invoiceData.feeMonth || "-")}</p>
+          <p><strong>Date:</strong> ${escapeHtml(invoiceData.date || "-")}</p>
+          <p><strong>Due Date:</strong> ${escapeHtml(invoiceData.dueDate || "-")}</p>
+          <p><strong>Fine After Due Date:</strong> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
+        </div>`);
+        columns.push(`<div>
+          <h4 style="margin:0 0 6px;display:flex;align-items:center;justify-content:center;gap:8px;"><span style="background:#1e5eff;color:#fff;padding:4px 10px;border-radius:8px;">${copyLabel}</span>${printableBankLogo ? `<img src="${printableBankLogo}" alt="Bank Logo" style="width:24px;height:24px;border-radius:4px;object-fit:cover;border:1px solid #000;">` : ""}</h4>
+          <p style="margin:0 0 4px;"><strong>Bank Name:</strong> ${escapeHtml(bank ? bank.name : "-")}</p>
+          <p style="margin:0 0 4px;"><strong>Address:</strong> ${escapeHtml(bank ? bank.address : "-")}</p>
+          <p style="margin:0 0 4px;"><strong>Account#:</strong> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
+          <p style="margin:0;"><strong>Instructions:</strong> ${escapeHtml(bank ? bank.instructions : "-")}</p>
+        </div>`);
 
-        const gridCols = columns.length >= 3 ? "1fr 1fr 1fr" : columns.length === 2 ? "1fr 1fr" : "1fr";
         const rowsMarkup = invoiceData.particulars.map(function (item, index) {
           return `<tr><td>${index + 1}</td><td>${escapeHtml(item.label || "-")}</td><td style="text-align:right;">${Number(item.amount || 0)}</td></tr>`;
         }).join("");
 
         return headerHtml +
-          `<article class="report-card" style="display:grid;grid-template-columns:${gridCols};gap:10px;align-items:start;">${columns.join("")}</article>` +
+          `<article class="report-card" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;align-items:start;">${columns.join("")}</article>` +
           `<table><thead><tr><th>Sr</th><th>Particular</th><th>Amount</th></tr></thead><tbody>${rowsMarkup}</tbody>` +
           `<tfoot><tr><th colspan="2" style="text-align:left;">Total</th><th style="text-align:right;">${Number(invoiceData.totalAmount || 0)}</th></tr></tfoot></table>`;
       }
 
+      async function buildAllCopiesA4(entry) {
+        var enabledCopies = getEnabledCopyTypes();
+        if (!enabledCopies.length) return "";
+        var html = "";
+        for (var c = 0; c < enabledCopies.length; c++) {
+          html += await buildInvoiceCopyA4(entry, enabledCopies[c]);
+          if (c < enabledCopies.length - 1) {
+            html += '<div style="page-break-after:always;"></div>';
+          }
+        }
+        return html;
+      }
+
       printInvoiceBtn.addEventListener("click", async function () {
         if (!latestInvoicePreviewData && !classifyInvoicesForPrint.length) return;
+        var enabledCopies = getEnabledCopyTypes();
+        if (!enabledCopies.length) {
+          message.textContent = "Please select at least one invoice copy.";
+          message.className = "form-message error";
+          return;
+        }
         if (classifyInvoicesForPrint.length > 0) {
           let allInvoicesHtml = "";
-          const perPage = 3;
-          for (let i = 0; i < classifyInvoicesForPrint.length; i += perPage) {
-            const group = classifyInvoicesForPrint.slice(i, i + perPage);
-            const pageBreakAfter = (i + perPage >= classifyInvoicesForPrint.length) ? "auto" : "always";
-            let pageContent = `<div style="page-break-after:${pageBreakAfter};">`;
-            for (let j = 0; j < group.length; j++) {
-              pageContent += `<div style="padding:15px;margin-bottom:10px;">${await buildSingleInvoiceA4(group[j])}</div>`;
+          for (let i = 0; i < classifyInvoicesForPrint.length; i++) {
+            allInvoicesHtml += await buildAllCopiesA4(classifyInvoicesForPrint[i]);
+            if (i < classifyInvoicesForPrint.length - 1) {
+              allInvoicesHtml += '<div style="page-break-after:always;"></div>';
             }
-            pageContent += `</div>`;
-            allInvoicesHtml += pageContent;
           }
           await openPrintReport({ contentHtml: allInvoicesHtml, hideHeader: true }, null, null);
         } else if (latestInvoicePreviewData) {
           await openPrintReport({
             subtitle: "Fees Invoice for Student",
-            contentHtml: await buildSingleInvoiceA4(latestInvoicePreviewData)
+            contentHtml: await buildAllCopiesA4(latestInvoicePreviewData)
           }, null, null);
         }
       });
 
-      async function buildSingleInvoiceThermal(entry) {
+      async function buildInvoiceCopyThermal(entry, copyType) {
         const bank = banks.find(function (b) { return b.id === entry.invoiceData.bankId; }) || null;
         const student = entry.student;
         const invoiceData = entry.invoiceData;
         const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
         const printableLogo = await normalizeImageForPrintShared(profile.logo || "");
         const printableBankLogo = bank && bank.logo ? await normalizeImageForPrintShared(bank.logo) : "";
+        const copyLabel = getCopyLabel(copyType);
 
-        let headerHtml = "";
-        if (copyInstitute) {
-          headerHtml = `<section style="text-align:center;margin-bottom:0.5mm;padding:0.5mm 0;">
-            ${printableLogo ? `<img src="${printableLogo}" style="width:5mm;height:5mm;border-radius:0.5mm;object-fit:cover;">` : `<span style="display:inline-flex;width:5mm;height:5mm;border-radius:0.5mm;background:linear-gradient(135deg,#1e5eff,#30b59c);color:#fff;align-items:center;justify-content:center;font-size:4pt;font-weight:700;">${getInitials(profile.name || "S")}</span>`}
-            <div style="font-size:6.5pt;font-weight:700;margin:0.2mm 0;">${escapeHtml(profile.name || "-")}</div>
-            <div style="font-size:4pt;color:#4e678f;margin:0;">${escapeHtml(profile.slogan || "School Management System")}</div>
-            <div style="font-size:3.5pt;color:#4e678f;margin-top:0.2mm;">${escapeHtml(profile.phone || "-")} | PSRA ${escapeHtml(profile.psra || "-")}</div>
-            <div style="font-size:3.5pt;color:#4e678f;">${escapeHtml(profile.address || "-")}, ${escapeHtml(profile.country || "-")}</div>
-          </section>`;
-        }
+        const headerHtml = `<section style="text-align:center;margin-bottom:0.5mm;padding:0.5mm 0;">
+          ${printableLogo ? `<img src="${printableLogo}" style="width:5mm;height:5mm;border-radius:0.5mm;object-fit:cover;">` : `<span style="display:inline-flex;width:5mm;height:5mm;border-radius:0.5mm;background:linear-gradient(135deg,#1e5eff,#30b59c);color:#fff;align-items:center;justify-content:center;font-size:4pt;font-weight:700;">${getInitials(profile.name || "S")}</span>`}
+          <div style="font-size:6.5pt;font-weight:700;margin:0.2mm 0;">${escapeHtml(profile.name || "-")}</div>
+          <div style="font-size:4pt;color:#4e678f;margin:0;">${escapeHtml(profile.slogan || "School Management System")}</div>
+          <div style="font-size:3.5pt;color:#4e678f;margin-top:0.2mm;">${escapeHtml(profile.phone || "-")} | PSRA ${escapeHtml(profile.psra || "-")}</div>
+          <div style="font-size:3.5pt;color:#4e678f;">${escapeHtml(profile.address || "-")}, ${escapeHtml(profile.country || "-")}</div>
+        </section>`;
 
-        let studentInner = "";
-        if (copyStudent) {
-          studentInner = `<div style="text-align:center;">
-            ${student.picture ? `<img src="${student.picture}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">PHOTO</span>`}
+        const studentInner = `<div style="text-align:center;">
+          ${student.picture ? `<img src="${student.picture}" style="width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;object-fit:cover;">` : `<span style="display:inline-flex;width:7mm;height:7mm;border-radius:0.5mm;border:0.5px solid #000;align-items:center;justify-content:center;font-size:4pt;">PHOTO</span>`}
+        </div>
+        <div></div>
+        <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.2mm;">
+          <p style="margin:0;"><b>Roll No:</b> ${escapeHtml(student.admissionNo || "-")}</p>
+          <p style="margin:0;"><b>Class:</b> ${escapeHtml(student.className || "-")}</p>
+          <p style="margin:0;"><b>Student:</b> ${escapeHtml(student.name || "-")}</p>
+          <p style="margin:0;"><b>Father:</b> ${escapeHtml(student.fatherName || "-")}</p>
+          <p style="margin:0;"><b>Month:</b> ${escapeHtml(invoiceData.feeMonth || "-")}</p>
+          <p style="margin:0;"><b>Date:</b> ${escapeHtml(invoiceData.date || "-")}</p>
+          <p style="margin:0;"><b>Due:</b> ${escapeHtml(invoiceData.dueDate || "-")}</p>
+          <p style="margin:0;"><b>Fine:</b> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
+        </div>`;
+
+        const bankInner = `<div>
+          <div style="text-align:center;margin-bottom:0.3mm;display:flex;align-items:center;justify-content:center;gap:0.5mm;">
+            <span style="display:inline-block;background:#1e5eff;color:#fff;padding:0.2mm 0.8mm;border-radius:0.5mm;font-size:4.5pt;">${copyLabel}</span>
+            ${printableBankLogo ? `<img src="${printableBankLogo}" style="width:3.5mm;height:3.5mm;border-radius:0.3mm;border:0.3px solid #000;object-fit:cover;">` : ""}
           </div>
-          ${copyBank ? '<div></div>' : ''}
-          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0.2mm;">
-            <p style="margin:0;"><b>Roll No:</b> ${escapeHtml(student.admissionNo || "-")}</p>
-            <p style="margin:0;"><b>Class:</b> ${escapeHtml(student.className || "-")}</p>
-            <p style="margin:0;"><b>Student:</b> ${escapeHtml(student.name || "-")}</p>
-            <p style="margin:0;"><b>Father:</b> ${escapeHtml(student.fatherName || "-")}</p>
-            <p style="margin:0;"><b>Month:</b> ${escapeHtml(invoiceData.feeMonth || "-")}</p>
-            <p style="margin:0;"><b>Date:</b> ${escapeHtml(invoiceData.date || "-")}</p>
-            <p style="margin:0;"><b>Due:</b> ${escapeHtml(invoiceData.dueDate || "-")}</p>
-            <p style="margin:0;"><b>Fine:</b> ${Number(invoiceData.fineAfterDueDate || 0)}</p>
-          </div>`;
-        }
+          <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Bank:</b> ${escapeHtml(bank ? bank.name : "-")}</p>
+          <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Address:</b> ${escapeHtml(bank ? bank.address : "-")}</p>
+          <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>A/C#:</b> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
+          <p style="margin:0;font-size:4.5pt;"><b>Inst:</b> ${escapeHtml(bank ? bank.instructions : "-")}</p>
+        </div>`;
 
-        let bankInner = "";
-        if (copyBank) {
-          bankInner = `<div>
-            <div style="text-align:center;margin-bottom:0.3mm;display:flex;align-items:center;justify-content:center;gap:0.5mm;">
-              <span style="display:inline-block;background:#1e5eff;color:#fff;padding:0.2mm 0.8mm;border-radius:0.5mm;font-size:4.5pt;">Bank Copy</span>
-              ${printableBankLogo ? `<img src="${printableBankLogo}" style="width:3.5mm;height:3.5mm;border-radius:0.3mm;border:0.3px solid #000;object-fit:cover;">` : ""}
-            </div>
-            <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Bank:</b> ${escapeHtml(bank ? bank.name : "-")}</p>
-            <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>Address:</b> ${escapeHtml(bank ? bank.address : "-")}</p>
-            <p style="margin:0 0 0.2mm;font-size:4.5pt;"><b>A/C#:</b> ${escapeHtml(bank ? bank.accountNo : "-")}</p>
-            <p style="margin:0;font-size:4.5pt;"><b>Inst:</b> ${escapeHtml(bank ? bank.instructions : "-")}</p>
-          </div>`;
-        }
-
-        const hasStudent = !!copyStudent;
-        const hasBank = !!copyBank;
-        const thermalGridCols = hasStudent && hasBank ? "8mm 8mm 1fr 1fr" : hasStudent ? "8mm 1fr" : "1fr";
-        const thermalContent = studentInner + bankInner;
         const rows = (invoiceData.particulars || []).map(function (item, idx) {
           return `<tr><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${idx+1}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;">${escapeHtml(item.label||"-")}</td><td style="border:0.5px solid #888;padding:0.3mm 0.8mm;font-size:5.5pt;text-align:right;">${Number(item.amount||0)}</td></tr>`;
         }).join("");
 
         return `<div style="page-break-inside:avoid;">
           ${headerHtml}
-          ${thermalContent ? `<article style="display:grid;grid-template-columns:${thermalGridCols};gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">${thermalContent}</article>` : ''}
+          <article style="display:grid;grid-template-columns:8mm 8mm 1fr 1fr;gap:0.3mm;align-items:start;margin-bottom:0.5mm;font-size:5.5pt;">
+            ${studentInner}${bankInner}
+          </article>
           <table style="width:100%;border-collapse:collapse;font-size:5.5pt;">
             <thead><tr><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Sr</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;">Particular</th><th style="border:0.5px solid #888;padding:0.3mm 0.8mm;background:#eee;font-size:5pt;text-align:right;">Amount</th></tr></thead>
             <tbody>${rows}</tbody>
@@ -7300,28 +7314,35 @@ document.addEventListener("DOMContentLoaded", function () {
         </div>`;
       }
 
+      async function buildAllCopiesThermal(entry) {
+        var enabledCopies = getEnabledCopyTypes();
+        if (!enabledCopies.length) return "";
+        var html = "";
+        for (var c = 0; c < enabledCopies.length; c++) {
+          html += await buildInvoiceCopyThermal(entry, enabledCopies[c]);
+          if (c < enabledCopies.length - 1) {
+            html += `<div style="border-top:0.5px dashed #888;margin:0 0 0.5mm 0;"></div>`;
+          }
+        }
+        return html;
+      }
+
       printThermalBtn.addEventListener("click", async function () {
         const invoices = classifyInvoicesForPrint.length > 0 ? classifyInvoicesForPrint : (latestInvoicePreviewData ? [latestInvoicePreviewData] : []);
         if (!invoices.length) return;
+        var enabledCopies = getEnabledCopyTypes();
+        if (!enabledCopies.length) {
+          message.textContent = "Please select at least one invoice copy.";
+          message.className = "form-message error";
+          return;
+        }
         let allContent = "";
         let maxH = 0;
-        for (let i = 0; i < invoices.length; i += 3) {
-          const group = invoices.slice(i, i + 3);
-          let pageContent = "";
-          let pageH = 0;
-          for (let j = 0; j < group.length; j++) {
-            const n = (group[j].invoiceData.particulars || []).length;
-            const marginH = (j < group.length - 1) ? 12 : 0;
-            pageH += 40 + (n * 4.5) + marginH;
-            pageContent += await buildSingleInvoiceThermal(group[j]);
-            if (j < group.length - 1) {
-              pageContent += `<div style="border-top:0.5px dashed #888;margin:0 0 0.5mm 0;"></div>`;
-              pageH += 0.5;
-            }
-          }
-          pageH += 2;
+        for (let i = 0; i < invoices.length; i++) {
+          const n = (invoices[i].invoiceData.particulars || []).length;
+          const pageH = 40 + (n * 4.5);
           maxH = Math.max(maxH, pageH);
-          allContent += `<div style="page-break-after:always;padding:0.5mm 1mm;margin:0;overflow:hidden;">${pageContent}</div>`;
+          allContent += `<div style="page-break-after:always;padding:0.5mm 1mm;margin:0;overflow:hidden;">${await buildAllCopiesThermal(invoices[i])}</div>`;
         }
         const thermalHtml = `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title></title>
@@ -7343,9 +7364,15 @@ ${allContent}
       downloadPdfBtn.addEventListener("click", async function () {
         const invoices = classifyInvoicesForPrint.length > 0 ? classifyInvoicesForPrint : (latestInvoicePreviewData ? [latestInvoicePreviewData] : []);
         if (!invoices.length) return;
+        var enabledCopies = getEnabledCopyTypes();
+        if (!enabledCopies.length) {
+          message.textContent = "Please select at least one invoice copy.";
+          message.className = "form-message error";
+          return;
+        }
         let allHtml = "";
         for (let i = 0; i < invoices.length; i++) {
-          allHtml += await buildSingleInvoiceA4(invoices[i]);
+          allHtml += await buildAllCopiesA4(invoices[i]);
           if (i < invoices.length - 1) {
             allHtml += '<div style="page-break-after:always;"></div>';
           }
@@ -7468,13 +7495,16 @@ ${allContent}
 
       function getFeeParticularRows(student) {
         const classParticulars = (settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className);
+        const classRecord7497 = database.classes.find(function (c) { return c.name === student.className; });
+        const liveMonthlyFee7497 = Math.max(0, parseFloat(classRecord7497 && classRecord7497.monthlyTuitionFees ? classRecord7497.monthlyTuitionFees : 0));
         const discountPercent = Math.max(0, Math.min(100, parseFloat(student.discountInFee || 0)));
         var items = classParticulars.map(function (item) {
           const label = String(item.label || "");
           if (label.toUpperCase().includes("DISCOUNT IN FEE")) {
             return null;
           }
-          const amount = Math.max(0, parseFloat(item.amount || 0));
+          const isMonthlyFee = label.toUpperCase().includes("MONTHLY") && label.toUpperCase().includes("TUITION");
+          const amount = isMonthlyFee ? liveMonthlyFee7497 : Math.max(0, parseFloat(item.amount || 0));
           return { label: item.label || "-", amount: amount };
         }).filter(function (item) { return item !== null; });
         if (discountPercent > 0) {
@@ -8043,8 +8073,11 @@ ${allContent}
         if (!student) {
           return;
         }
+        const classRecord8073 = database.classes.find(function (c) { return c.name === student.className; });
+        const liveMonthlyFee8073 = Math.max(0, parseFloat(classRecord8073 && classRecord8073.monthlyTuitionFees ? classRecord8073.monthlyTuitionFees : 0));
         const particulars = ((settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className)).map(function (item) {
-          const amount = Math.max(0, parseFloat(item.amount || 0));
+          const isMonthlyFee = String(item.label || "").toUpperCase().includes("MONTHLY") && String(item.label || "").toUpperCase().includes("TUITION");
+          const amount = isMonthlyFee ? liveMonthlyFee8073 : Math.max(0, parseFloat(item.amount || 0));
           return { label: item.label || "-", amount: amount };
         });
         const total = particulars.reduce(function (sum, row) { return sum + Math.max(0, parseFloat(row.amount || 0)); }, 0);
