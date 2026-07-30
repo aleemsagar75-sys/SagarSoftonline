@@ -15121,7 +15121,8 @@ ${allContent}
              return;
            }
          });
-         document.getElementById("saveLedgerBtn").addEventListener("click", function () {
+         document.getElementById("saveLedgerBtn").addEventListener("click", async function () {
+          const btn = this;
           const date = document.getElementById("ledgerDateInput").value;
           const category = document.getElementById("ledgerCategoryInput").value.trim();
           const amount = Number(document.getElementById("ledgerAmountInput").value);
@@ -15131,45 +15132,61 @@ ${allContent}
             msg.className = "form-message error";
             return;
           }
-          
-          const currentSettings = database.generalSettings;
-          const editId = sessionStorage.getItem("sagarsoft_edit_ledger_id");
-          if (editId) {
-            const index = (currentSettings.accountsLedger || []).findIndex(function (item) { return String(item.id) === String(editId); });
-            if (index >= 0) {
-              currentSettings.accountsLedger[index].date = date;
-              currentSettings.accountsLedger[index].category = category;
-              currentSettings.accountsLedger[index].amount = amount;
-              currentSettings.accountsLedger[index].note = note;
-              currentSettings.accountsLedger[index].updatedAt = new Date().toISOString();
-              currentSettings.__accountsLedgerUserTouched = true;
-              sessionStorage.removeItem("sagarsoft_edit_ledger_id");
-              addActivity("Account entry updated", `${isIncome ? "Income" : "Expense"} entry updated: ${category}`);
-              saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: currentSettings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-              refreshDatabase();
-              openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} updated successfully.`, "success");
-              renderDynamicModuleWorkspace(route, title);
-              (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
-              return;
+          _setButtonLoading(btn, true);
+          window.SagarSoftDB.LoadingManager.show(isIncome ? "Saving income..." : "Saving expense...");
+          window.SagarSoftDB.LoadingManager.updateSubtext("Please wait");
+          try {
+            const currentSettings = database.generalSettings;
+            const editId = sessionStorage.getItem("sagarsoft_edit_ledger_id");
+            if (editId) {
+              const index = (currentSettings.accountsLedger || []).findIndex(function (item) { return String(item.id) === String(editId); });
+              if (index >= 0) {
+                currentSettings.accountsLedger[index].date = date;
+                currentSettings.accountsLedger[index].category = category;
+                currentSettings.accountsLedger[index].amount = amount;
+                currentSettings.accountsLedger[index].note = note;
+                currentSettings.accountsLedger[index].updatedAt = new Date().toISOString();
+                currentSettings.__accountsLedgerUserTouched = true;
+                sessionStorage.removeItem("sagarsoft_edit_ledger_id");
+                addActivity("Account entry updated", `${isIncome ? "Income" : "Expense"} entry updated: ${category}`);
+                await saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: currentSettings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+                refreshDatabase();
+                window.SagarSoftDB.LoadingManager.update("Updated successfully");
+                window.SagarSoftDB.LoadingManager.updateSubtext("Done");
+                setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
+                openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} updated successfully.`, "success");
+                renderDynamicModuleWorkspace(route, title);
+                (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
+                return;
+              }
             }
+            currentSettings.accountsLedger.unshift({
+              id: `LED-${generateId()}`,
+              date: date,
+              type: isIncome ? "Income" : "Expense",
+              category: category,
+              amount: amount,
+              note: note,
+              createdAt: new Date().toISOString()
+            });
+            currentSettings.__accountsLedgerUserTouched = true;
+            addActivity("Account entry created", `${isIncome ? "Income" : "Expense"} entry created: ${category}`);
+            await saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: currentSettings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            refreshDatabase();
+            window.SagarSoftDB.LoadingManager.update("Saved successfully");
+            window.SagarSoftDB.LoadingManager.updateSubtext("Done");
+            setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
+            openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} saved successfully.`, "success");
+            renderDynamicModuleWorkspace(route, title);
+            (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
+          } catch (_e) {
+            window.SagarSoftDB.LoadingManager.update("Save failed");
+            window.SagarSoftDB.LoadingManager.updateSubtext("Please try again");
+            setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
+            openAppMessageBox("Error", "Failed to save. Please try again.", "error");
+          } finally {
+            _setButtonLoading(btn, false);
           }
-          
-          currentSettings.accountsLedger.unshift({
-            id: `LED-${generateId()}`,
-            date: date,
-            type: isIncome ? "Income" : "Expense",
-            category: category,
-            amount: amount,
-            note: note,
-            createdAt: new Date().toISOString()
-          });
-          currentSettings.__accountsLedgerUserTouched = true;
-          addActivity("Account entry created", `${isIncome ? "Income" : "Expense"} entry created: ${category}`);
-          saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: currentSettings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          refreshDatabase();
-          openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} saved successfully.`, "success");
-          renderDynamicModuleWorkspace(route, title);
-          (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
         });
         return;
       }
@@ -24009,6 +24026,16 @@ ${allContent}
     routeButtons.forEach(function (button) {
       button.classList.toggle("active", button.dataset.route === normalizedRoute);
     });
+
+    var _activeBtn = sidebar.querySelector('.menu-link[data-route="' + normalizedRoute + '"], .submenu-link[data-route="' + normalizedRoute + '"]');
+    if (_activeBtn) {
+      var _parentGroup = _activeBtn.closest(".menu-group");
+      if (_parentGroup && !_parentGroup.classList.contains("open")) {
+        _parentGroup.classList.add("open");
+        var _trigger = _parentGroup.querySelector(".menu-group__trigger");
+        if (_trigger) { _trigger.setAttribute("aria-expanded", "true"); }
+      }
+    }
 
     pageTitle.textContent = title;
     scrollContentToTop();
