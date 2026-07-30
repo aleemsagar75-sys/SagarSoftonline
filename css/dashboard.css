@@ -4097,8 +4097,8 @@ th {
   }
 
   .table-wrap {
-    margin: 0 -1rem;
-    width: calc(100% + 2rem);
+    margin: 0;
+    width: 100%;
     border-radius: 0;
   }
   
@@ -5347,13 +5347,12 @@ select:focus, input:focus, textarea:focus {
   .panel-card__header strong { font-size: 0.9rem; }
 
   .table-wrap { 
-    margin: 0 -0.85rem;
-    width: calc(100% + 1.7rem);
+    margin: 0;
+    width: 100%;
     border-radius: 0;
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
   }
-  .table-wrap table { min-width: 600px; }
   .table-wrap th,
   .table-wrap td { padding: 0.5rem 0.55rem; font-size: 0.78rem; white-space: nowrap; }
   .table-action-btn {
@@ -6022,7 +6021,7 @@ select:focus, input:focus, textarea:focus {
   .view.module--account .subscription-activation-card .form-actions { grid-template-columns: 1fr !important; }
   .view.module--account .offline-registry-card { position: static !important; top: auto !important; overflow: visible !important; }
   .view.module--account .offline-registry-card .registry-table-wrap { overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
-  .view.module--account .offline-registry-card .registry-table-wrap .data-table { min-width: 600px !important; font-size: 10px !important; }
+  .view.module--account .offline-registry-card .registry-table-wrap .data-table { min-width: 600px; font-size: 10px !important; }
   .view.module--account .offline-registry-card .registry-table-wrap .data-table th,
   .view.module--account .offline-registry-card .registry-table-wrap .data-table td { padding: 0.2rem 0.3rem !important; white-space: nowrap !important; font-size: 10px !important; }
   .view.module--account .offline-registry-card .registry-table-wrap .status-pill { font-size: 0.55rem !important; }
@@ -6054,7 +6053,7 @@ select:focus, input:focus, textarea:focus {
   .view.module--account .account-core-card label { font-size: 0.7rem !important; }
   .view.module--account .account-core-card input,
   .view.module--account .account-core-card select { font-size: 0.75rem !important; padding: 0.4rem !important; }
-  .view.module--account .super-admin-card .data-table { min-width: 400px !important; font-size: 9px !important; }
+  .view.module--account .super-admin-card .data-table { min-width: 400px; font-size: 9px !important; }
   .view.module--account .super-admin-card .data-table th,
   .view.module--account .super-admin-card .data-table td { font-size: 9px !important; padding: 0.15rem 0.2rem !important; }
   .view.module--account .super-admin-card { padding: 0.4rem !important; }
@@ -7288,7 +7287,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .toolbar--students, .toolbar--status, .toolbar--promote, .toolbar--simple { grid-template-columns: 1fr !important; }
 
   /* Tables â€” horizontal scroll inside their wrapper */
-  .table-wrap table { min-width: 600px !important; }
+  .table-wrap table { min-width: 600px; }
 
   /* Employee module */
   .employees-card-grid { grid-template-columns: 1fr !important; }
@@ -7472,7 +7471,7 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   .employee-card__actions { grid-template-columns: 1fr !important; }
   .salary-cards-row { grid-template-columns: 1fr !important; }
   .exam-marks-grid { grid-template-columns: 1fr !important; }
-  .view.module--timetable .table-wrap table { min-width: 700px !important; }
+  .view.module--timetable .table-wrap table { min-width: 700px; }
 
   /* Account Statement â€” small phone */
   .accounts-filter-bar { grid-template-columns: 1fr !important; gap: 0.4rem !important; }
@@ -8191,7 +8190,7 @@ img, video, svg { max-width: 100%; height: auto; }
 }
 .view.module--accounts .table-wrap table,
 .module--accounts .table-wrap table {
-  min-width: 500px !important;
+  min-width: 500px;
 }
 
 /* --- Modal / dialog: full screen on small phones --- */
@@ -8396,11 +8395,11 @@ img, video, svg { max-width: 100%; height: auto; }
 
 /* --- Employee module: manage login table overflow --- */
 .view.module--employee .table-wrap table {
-  min-width: 600px !important;
+  min-width: 600px;
 }
 @media (max-width: 768px) {
   .view.module--employee .table-wrap table {
-    min-width: 500px !important;
+    min-width: 500px;
   }
   .view.module--employee .table-actions {
     flex-direction: column !important;
@@ -8414,11 +8413,11 @@ img, video, svg { max-width: 100%; height: auto; }
 
 /* --- Fees report table --- */
 .view.module--fees-report .table-wrap table {
-  min-width: 700px !important;
+  min-width: 700px;
 }
 @media (max-width: 768px) {
   .view.module--fees-report .table-wrap table {
-    min-width: 600px !important;
+    min-width: 600px;
   }
 }
 
@@ -8440,11 +8439,11 @@ img, video, svg { max-width: 100%; height: auto; }
 
 /* --- Accounts report table inline min-width --- */
 .view.module--reports .table-wrap table {
-  min-width: 500px !important;
+  min-width: 500px;
 }
 @media (max-width: 768px) {
   .view.module--reports .table-wrap table {
-    min-width: 450px !important;
+    min-width: 450px;
   }
 }
 
@@ -8670,7 +8669,6 @@ img, video, svg { max-width: 100%; height: auto; }
     padding: 0 !important;
   }
   .table-wrap table {
-    min-width: 0 !important;
     width: auto !important;
   }
 
@@ -8827,13 +8825,13 @@ img, video, svg { max-width: 100%; height: auto; }
     max-width: 100% !important;
   }
 
-  /* 17. Module-specific tables */
-  .view.module--employee .table-wrap table { min-width: 450px !important; }
-  .view.module--fees-report .table-wrap table { min-width: 500px !important; }
-  .view.module--reports .table-wrap table { min-width: 400px !important; }
-  .view.module--exam .table-wrap table { min-width: 500px !important; }
-  .view.module--timetable .table-wrap table { min-width: 500px !important; }
-  .view.module--homework .table-wrap table { min-width: 500px !important; }
+  /* 17. Module-specific tables: let .table-wrap handle horizontal scroll */
+  .view.module--employee .table-wrap table { min-width: 450px; }
+  .view.module--fees-report .table-wrap table { min-width: 500px; }
+  .view.module--reports .table-wrap table { min-width: 400px; }
+  .view.module--exam .table-wrap table { min-width: 500px; }
+  .view.module--timetable .table-wrap table { min-width: 500px; }
+  .view.module--homework .table-wrap table { min-width: 500px; }
 
   /* 18. Employee card actions: single column */
   .employee-card__actions {

@@ -24688,14 +24688,14 @@ ${allContent}
     if (shell) { shell.style.overflow = "hidden"; shell.style.maxWidth = "100vw"; }
 
     var content = document.querySelector(".content-area");
-    if (content) { content.style.overflowX = "auto"; content.style.maxWidth = "100%"; content.style.width = "100%"; }
+    if (content) { content.style.overflowX = "hidden"; content.style.maxWidth = "100%"; content.style.width = "100%"; }
 
     var activeViews = document.querySelectorAll(".view.active");
     for (var vi = 0; vi < activeViews.length; vi++) {
       var v = activeViews[vi];
-      v.style.overflowX = "visible";
       v.style.maxWidth = "100%";
       v.style.width = "100%";
+      v.style.minWidth = "0";
     }
 
     var allElements = document.querySelectorAll(
@@ -24716,6 +24716,7 @@ ${allContent}
       var el = allElements[i];
       el.style.gridTemplateColumns = "1fr";
       el.style.maxWidth = "100%";
+      el.style.minWidth = "0";
     }
 
     var reportCards = document.querySelectorAll(".report-cards");
@@ -24751,16 +24752,13 @@ ${allContent}
       tableWraps[tw].style.webkitOverflowScrolling = "touch";
       tableWraps[tw].style.maxWidth = "100%";
       tableWraps[tw].style.width = "100%";
-      var tables = tableWraps[tw].querySelectorAll("table");
-      for (var ti = 0; ti < tables.length; ti++) {
-        tables[ti].style.minWidth = "500px";
-        tables[ti].style.width = "100%";
-      }
+      tableWraps[tw].style.margin = "0";
     }
 
     var panelCards = document.querySelectorAll(".panel-card");
     for (var pc = 0; pc < panelCards.length; pc++) {
       panelCards[pc].style.maxWidth = "100%";
+      panelCards[pc].style.overflow = "hidden";
     }
 
     var allButtons = document.querySelectorAll(".btn-account-action, .primary-button, .secondary-button, .table-action-btn, .table-action-link");
@@ -24816,7 +24814,7 @@ ${allContent}
     var allChildren = document.querySelectorAll(".view.active *");
     for (var c = 0; c < allChildren.length; c++) {
       var child = allChildren[c];
-      if (child.tagName === "TABLE" || child.closest("div[style*='overflow-x:auto']")) continue;
+      if (child.tagName === "TABLE" || child.closest(".table-wrap") || child.closest("div[style*='overflow-x:auto']")) continue;
       var computed = window.getComputedStyle(child);
       if (computed.getPropertyValue("min-width") !== "0px" &&
           computed.getPropertyValue("min-width") !== "auto" &&
