@@ -4858,7 +4858,12 @@ document.addEventListener("DOMContentLoaded", function () {
           .rules-toolbar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px 10px 0 0;border-bottom:none}
           .rules-toolbar button{padding:5px 10px;font-size:0.78rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;cursor:pointer;font-weight:500;transition:all 0.15s}
           .rules-toolbar button:hover{background:#e0f2fe;border-color:#93c5fd;color:#0369a1}
-          .rules-toolbar select{padding:5px 8px;font-size:0.78rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;cursor:pointer;font-weight:500}
+          .rules-fontsize-group{display:inline-flex;align-items:center;border:1px solid #cbd5e1;border-radius:6px;overflow:hidden;background:#fff;height:30px}
+          .rules-fontsize-btn{width:28px;height:30px;display:flex;align-items:center;justify-content:center;border:none;background:#f8fafc;color:#334155;cursor:pointer;font-size:0.85rem;font-weight:600;transition:background 0.15s;padding:0}
+          .rules-fontsize-btn:hover{background:#e0f2fe;color:#0369a1}
+          .rules-fontsize-input{width:40px;height:30px;border:none;border-left:1px solid #cbd5e1;border-right:1px solid #cbd5e1;text-align:center;font-size:0.78rem;font-weight:500;color:#334155;background:#fff;outline:none;-moz-appearance:textfield;padding:0}
+          .rules-fontsize-input::-webkit-outer-spin-button,.rules-fontsize-input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+          .rules-fontsize-input:focus{background:#f0f7ff}
           .rules-toolbar input[type="color"]{width:32px;height:30px;padding:2px;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;background:#fff}
           .rules-editor{min-height:300px;padding:14px 16px;border:1px solid #e2e8f0;border-radius:0 0 10px 10px;background:#fff;outline:none;font-size:0.9rem;line-height:1.7;color:#1e293b}
           .rules-editor:focus{border-color:rgba(30,94,255,0.5);box-shadow:0 0 0 3px rgba(30,94,255,0.1)}
@@ -4889,12 +4894,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 <button data-cmd="underline" type="button"><u>U</u></button>
                 <button data-cmd="italic" type="button"><i>I</i></button>
                 <input data-cmd="foreColor" type="color" value="#102542" title="Text Color">
-                <select data-cmd="fontSize" title="Font Size">
-                  <option value="3">Normal</option>
-                  <option value="4">Medium</option>
-                  <option value="5">Large</option>
-                  <option value="6">X-Large</option>
-                </select>
+                <span class="rules-fontsize-group">
+                  <button class="rules-fontsize-btn rules-fontsize-minus" type="button" title="Decrease font size">&#8722;</button>
+                  <input class="rules-fontsize-input" type="number" min="8" max="72" value="14" title="Font size (px)">
+                  <button class="rules-fontsize-btn rules-fontsize-plus" type="button" title="Increase font size">+</button>
+                </span>
                 <button data-cmd="insertUnorderedList" type="button">&#x2022; List</button>
                 <button data-cmd="insertOrderedList" type="button">1. List</button>
               </div>
@@ -4920,12 +4924,11 @@ document.addEventListener("DOMContentLoaded", function () {
                 <button data-cmd="underline" type="button"><u>U</u></button>
                 <button data-cmd="italic" type="button"><i>I</i></button>
                 <input data-cmd="foreColor" type="color" value="#102542" title="Text Color">
-                <select data-cmd="fontSize" title="Font Size">
-                  <option value="3">Normal</option>
-                  <option value="4">Medium</option>
-                  <option value="5">Large</option>
-                  <option value="6">X-Large</option>
-                </select>
+                <span class="rules-fontsize-group">
+                  <button class="rules-fontsize-btn rules-fontsize-minus" type="button" title="Decrease font size">&#8722;</button>
+                  <input class="rules-fontsize-input" type="number" min="8" max="72" value="14" title="Font size (px)">
+                  <button class="rules-fontsize-btn rules-fontsize-plus" type="button" title="Increase font size">+</button>
+                </span>
                 <button data-cmd="insertUnorderedList" type="button">&#x2022; List</button>
                 <button data-cmd="insertOrderedList" type="button">1. List</button>
               </div>
@@ -4959,14 +4962,85 @@ document.addEventListener("DOMContentLoaded", function () {
             var cmd = btn.getAttribute("data-cmd");
             if (cmd === "foreColor") {
               document.execCommand("foreColor", false, btn.value);
-            } else if (cmd === "fontSize") {
-              document.execCommand("fontSize", false, btn.value);
             } else {
               document.execCommand(cmd, false, null);
             }
             editorEl.focus();
           });
         });
+
+        function applyFontSize(sizePx) {
+          sizePx = Math.max(8, Math.min(72, parseInt(sizePx) || 14));
+          var sel = window.getSelection();
+          if (!sel.rangeCount) return;
+          var range = sel.getRangeAt(0);
+          if (!range.collapsed) {
+            var span = document.createElement("span");
+            span.style.fontSize = sizePx + "px";
+            range.surroundContents(span);
+          } else {
+            var span = document.createElement("span");
+            span.style.fontSize = sizePx + "px";
+            span.innerHTML = "\u200B";
+            range.insertNode(span);
+            range.setStartAfter(span);
+            range.setEndAfter(span);
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }
+
+        function syncFontSizeInput(input) {
+          var sel = window.getSelection();
+          if (!sel.rangeCount) return;
+          var node = sel.anchorNode;
+          if (node && node.nodeType === 3) node = node.parentNode;
+          while (node && node !== editorEl) {
+            if (node.nodeType === 1 && node.style && node.style.fontSize) {
+              var px = parseInt(node.style.fontSize);
+              if (!isNaN(px)) { input.value = px; return; }
+            }
+            node = node.parentNode;
+          }
+          input.value = 14;
+        }
+
+        var fsGroup = toolbar.querySelector(".rules-fontsize-group");
+        if (!fsGroup) return;
+        var fsInput = fsGroup.querySelector(".rules-fontsize-input");
+        var fsMinus = fsGroup.querySelector(".rules-fontsize-minus");
+        var fsPlus = fsGroup.querySelector(".rules-fontsize-plus");
+
+        fsPlus.addEventListener("click", function () {
+          var next = parseInt(fsInput.value) + 1;
+          if (next > 72) next = 72;
+          fsInput.value = next;
+          applyFontSize(next);
+          editorEl.focus();
+        });
+
+        fsMinus.addEventListener("click", function () {
+          var next = parseInt(fsInput.value) - 1;
+          if (next < 8) next = 8;
+          fsInput.value = next;
+          applyFontSize(next);
+          editorEl.focus();
+        });
+
+        fsInput.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            applyFontSize(fsInput.value);
+            editorEl.focus();
+          }
+        });
+
+        fsInput.addEventListener("change", function () {
+          applyFontSize(fsInput.value);
+        });
+
+        editorEl.addEventListener("keyup", function () { syncFontSizeInput(fsInput); });
+        editorEl.addEventListener("mouseup", function () { syncFontSizeInput(fsInput); });
       }
       wireToolbar("studentRulesToolbar", studentEditor);
       wireToolbar("employeeRulesToolbar", employeeEditor);
