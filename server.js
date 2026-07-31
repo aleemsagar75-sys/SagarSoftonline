@@ -1452,7 +1452,7 @@ async function syncCertificatesTable(client, schoolId, database) {
 const GENERAL_SETTINGS_SINGLETON_KEYS = [
   "instituteProfile","accountSettings","themeLanguage","smsGateway",
   "rulesAndRegulations","failCriteria","messageTemplates","marksGrading",
-  "feeParticulars","feeStructures","supabaseConfig","offlineSchoolsRegistry","smsOutbox",
+  "feeStructures","discountTypes","supabaseConfig","offlineSchoolsRegistry","smsOutbox",
   "accountsLedger"
 ];
 const GENERAL_SETTINGS_ARRAY_KEYS = [
