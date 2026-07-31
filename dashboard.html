@@ -641,39 +641,24 @@
               </div>
             </div>
 
-            <div class="admission-search-bar">
-              <div class="admission-search-field">
-                <span class="admission-search-icon">&#x1F50D;</span>
-                <input id="admissionLetterSearchInput" type="search" placeholder="Search Student by Name / Roll No." class="admission-search-input">
+            <div class="admission-search-center">
+              <div class="admission-search-bar admission-search-bar--narrow">
+                <div class="admission-search-field">
+                  <span class="admission-search-icon">&#x1F50D;</span>
+                  <input id="admissionLetterSearchInput" type="search" placeholder="Search Student by Name / Roll No." class="admission-search-input">
+                </div>
+                <button class="admission-search-btn" id="admissionLetterSearchBtn" type="button">Search</button>
               </div>
-              <button class="admission-search-btn" id="admissionLetterSearchBtn" type="button">Search</button>
+              <p class="admission-search-hint">Search a student to generate an admission letter.</p>
             </div>
-            <div id="admissionLetterSearchDropdown" class="search-dropdown" style="display:none;"></div>
 
             <div id="admissionLetterLoading" class="admission-loading" style="display:none;">
               <div class="admission-spinner"></div>
               <p>Searching students...</p>
             </div>
 
-            <div id="admissionLetterEmptyVisual" class="admission-empty-visual">
-              <div class="admission-empty-icon">&#x1F50D;</div>
-              <p class="admission-empty-title">Search a student to preview</p>
-              <p class="admission-empty-sub">the admission letter.</p>
-            </div>
-
-            <div class="admission-letter-layout" id="admissionLetterLayout" style="display:none;">
-              <article class="panel-card admission-search-card">
-                <div class="panel-card__header">
-                  <div>
-                    <p class="panel-label">Students</p>
-                    <h3>Select student</h3>
-                  </div>
-                </div>
-                <div id="admissionLetterStudentList" class="compact-list"></div>
-                <p class="empty-state" id="admissionLetterEmptyState" hidden>No student found for this search.</p>
-              </article>
-
-              <article class="panel-card admission-detail-card" id="admissionDetailCard" style="display:none;">
+            <div id="admissionLetterPreviewArea" style="display:none;">
+              <article class="panel-card admission-detail-card" id="admissionDetailCard">
                 <div class="panel-card__header">
                   <div>
                     <p class="panel-label">Selected Student</p>
@@ -684,8 +669,8 @@
                 <div class="admission-actions-bar" id="admissionActionsBar">
                   <button class="admission-action-btn admission-action-btn--print" id="printAdmissionLetterBtn" type="button">&#x1F5A8; Print</button>
                   <button class="admission-action-btn admission-action-btn--pdf" id="downloadAdmissionPdfBtn" type="button">&#x1F4C5; PDF</button>
-                  <button class="admission-action-btn admission-action-btn--msg" id="sendAdmissionMessageBtn" type="button">&#x1F4E8; Message</button>
                   <button class="admission-action-btn admission-action-btn--wa" id="sendAdmissionWhatsappBtn" type="button">&#x1F4AC; WhatsApp</button>
+                  <button class="admission-action-btn admission-action-btn--msg" id="sendAdmissionMessageBtn" type="button">&#x1F4E8; Message</button>
                 </div>
               </article>
             </div>
