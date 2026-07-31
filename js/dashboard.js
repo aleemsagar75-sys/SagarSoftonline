@@ -730,6 +730,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const dateOfAdmissionInput = document.getElementById("dateOfAdmission");
   const studentClassNameInput = document.getElementById("studentClassName");
   const discountInFeeInput = document.getElementById("discountInFee");
+  const discountTypeSelectInput = document.getElementById("discountTypeSelect");
 
   const dateOfBirthInput = document.getElementById("dateOfBirth");
   const studentGenderInput = document.getElementById("studentGender");
@@ -1195,7 +1196,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function _syncSettingsToDedicatedTables() {
     if (!database.generalSettings) return;
     var gs = database.generalSettings;
-    var singletonKeys = ["instituteProfile","accountSettings","licenseSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeParticulars","feeStructures"];
+    var singletonKeys = ["instituteProfile","accountSettings","licenseSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeParticulars","feeStructures","discountTypes"];
     var promises = [];
     singletonKeys.forEach(function (key) {
       if (gs[key] !== undefined && gs[key] !== null) {
@@ -3869,6 +3870,23 @@ document.addEventListener("DOMContentLoaded", function () {
     populateAssignSubjectsForm(className);
   }
 
+  function populateDiscountTypeDropdown(selectedTypeId) {
+    if (!discountTypeSelectInput) return;
+    var settings = database.generalSettings || {};
+    var activeTypes = (settings.discountTypes || []).filter(function (d) { return d.status !== "inactive"; });
+    var opts = '<option value="">No Discount</option>' + activeTypes.map(function (d) {
+      return '<option value="' + escapeAttr(d.id) + '">' + escapeHtml(d.name) + ' (' + escapeHtml(String(d.percentage)) + '%)</option>';
+    }).join("");
+    discountTypeSelectInput.innerHTML = opts;
+    if (selectedTypeId) {
+      discountTypeSelectInput.value = selectedTypeId;
+      var dt = activeTypes.find(function (d) { return d.id === selectedTypeId; });
+      discountInFeeInput.value = dt ? String(dt.percentage) : "";
+    } else {
+      discountInFeeInput.value = "";
+    }
+  }
+
   function populateStudentForm(student) {
     if (!student) {
       studentIdInput.value = "";
@@ -3879,6 +3897,7 @@ document.addEventListener("DOMContentLoaded", function () {
       dateOfAdmissionInput.value = "";
       studentClassNameInput.value = getStudentClassOptions()[0] || "";
       discountInFeeInput.value = "";
+      populateDiscountTypeDropdown("");
       dateOfBirthInput.value = "";
       studentGenderInput.value = "";
       bloodGroupInput.value = "";
@@ -3914,7 +3933,7 @@ document.addEventListener("DOMContentLoaded", function () {
     studentPictureInput.value = "";
     dateOfAdmissionInput.value = student.dateOfAdmission || "";
     studentClassNameInput.value = student.className;
-    discountInFeeInput.value = student.discountInFee || "";
+    populateDiscountTypeDropdown(student.discountTypeId || "");
     dateOfBirthInput.value = student.dateOfBirth || "";
     studentGenderInput.value = student.gender || "";
     bloodGroupInput.value = student.bloodGroup || "";
@@ -5972,12 +5991,12 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (route === "discount-type") {
-      const classOptionsMarkup = ['<option value="all">All Classes</option>'].concat(classOptions.map(function (className) {
+      const classOptionsMarkup = ['<option value="">Select Class</option>'].concat(classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
       })).join("");
-      const discountTypeOptionsMarkup = (settings.discountTypes || []).filter(function (d) { return d.status !== "inactive"; }).map(function (d) {
-        return `<option value="${escapeAttr(d.id)}">${escapeHtml(d.name)} (${escapeHtml(String(d.percentage))}%)</option>`;
-      }).join("");
+
+      let assignMode = "studentwise";
+      var editingDiscountTypeId = null;
 
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
@@ -5993,6 +6012,7 @@ document.addEventListener("DOMContentLoaded", function () {
           </div>
           <div class="gs-button-row" style="margin-top:0.75rem;">
             <button class="gs-btn-primary" id="dtSaveBtn" type="button">Add Discount Type</button>
+            <button class="gs-btn-secondary" id="dtCancelEditBtn" type="button" style="display:none;">Cancel Edit</button>
           </div>
           <div class="gs-message" id="dtMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
           <div id="dtTypesTable" style="margin-top:1rem;"></div>
@@ -6001,21 +6021,47 @@ document.addEventListener("DOMContentLoaded", function () {
         <article class="gs-form-section" style="margin-top:1.25rem;">
           <div class="gs-form-section__header">
             <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;">📋</div>
-            <div><p class="gs-form-section__title">Section B: Assign Discount</p><p class="gs-form-section__subtitle">Search student and assign a discount type</p></div>
+            <div><p class="gs-form-section__title">Section B: Assign Discount</p><p class="gs-form-section__subtitle">Assign a discount type to students</p></div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
-            <div class="gs-field" style="flex:2;min-width:200px;position:relative;"><label class="gs-field__label">Search Student</label><input class="gs-field__input" id="assignDiscountSearchInput" type="search" placeholder="Search by name or roll no."><div id="assignDiscountSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            <div class="gs-field" style="flex:1;min-width:150px;"><label class="gs-field__label">Filter by Class</label><select class="gs-field__input" id="assignDiscountClassFilter">${classOptionsMarkup}</select></div>
+          <div class="invoice-entry-cards" style="margin-bottom:0.75rem;">
+            <button class="invoice-entry-card active" data-assign-mode="studentwise" type="button">
+              <span class="invoice-entry-card__icon">&#128100;</span>
+              <span class="invoice-entry-card__title">Studentwise</span>
+              <span class="invoice-entry-card__desc">Assign to one student</span>
+            </button>
+            <button class="invoice-entry-card" data-assign-mode="classwise" type="button">
+              <span class="invoice-entry-card__icon">&#128218;</span>
+              <span class="invoice-entry-card__title">Classwise</span>
+              <span class="invoice-entry-card__desc">Assign to entire class</span>
+            </button>
           </div>
-          <div class="gs-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
-            <div class="gs-field"><label class="gs-field__label">Discount Type*</label><select class="gs-field__input" id="assignDiscountTypeSelect"><option value="">Select Type</option>${discountTypeOptionsMarkup || '<option value="">No Types Created</option>'}</select></div>
-            <div class="gs-field"><label class="gs-field__label">Discount %</label><input class="gs-field__input" id="assignDiscountPercentDisplay" type="text" readonly style="background:#f1f5fc;color:#4e678f;font-weight:700;"></div>
+
+          <div id="assignStudentwiseForm" style="display:block;">
+            <div style="position:relative;margin-bottom:0.75rem;">
+              <div class="gs-field" style="max-width:420px;"><label class="gs-field__label">Search Student</label><input class="gs-field__input" id="assignDiscountSearchInput" type="search" placeholder="Search by name or roll no."><div id="assignDiscountSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
+            </div>
+            <div class="gs-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
+              <div class="gs-field"><label class="gs-field__label">Discount Type*</label><select class="gs-field__input" id="assignDiscountTypeSelect"><option value="">Select Type</option></select></div>
+              <div class="gs-field"><label class="gs-field__label">Discount %</label><input class="gs-field__input" id="assignDiscountPercentDisplay" type="text" readonly style="background:#f1f5fc;color:#4e678f;font-weight:700;"></div>
+            </div>
+            <div id="assignDiscountStudentsList" style="margin-top:0.75rem;"></div>
+            <div class="gs-button-row" style="margin-top:0.75rem;">
+              <button class="gs-btn-primary" id="assignDiscountBtn" type="button">Apply / Update Discount</button>
+            </div>
           </div>
-          <div id="assignDiscountStudentsList" style="margin-top:1rem;"></div>
-          <div class="gs-button-row" style="margin-top:0.75rem;">
-            <button class="gs-btn-primary" id="assignDiscountBtn" type="button">Apply / Update Discount</button>
+
+          <div id="assignClasswiseForm" style="display:none;">
+            <div class="gs-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
+              <div class="gs-field"><label class="gs-field__label">Select Class*</label><select class="gs-field__input" id="assignClasswiseClassSelect">${classOptionsMarkup}</select></div>
+              <div class="gs-field"><label class="gs-field__label">Discount Type*</label><select class="gs-field__input" id="assignClasswiseTypeSelect"><option value="">Select Type</option></select></div>
+              <div class="gs-field"><label class="gs-field__label">Discount %</label><input class="gs-field__input" id="assignClasswisePercentDisplay" type="text" readonly style="background:#f1f5fc;color:#4e678f;font-weight:700;"></div>
+            </div>
+            <div class="gs-button-row" style="margin-top:0.75rem;">
+              <button class="gs-btn-primary" id="assignClasswiseBtn" type="button">Apply Discount to Entire Class</button>
+            </div>
           </div>
-          <div class="gs-message" id="assignDiscountMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
+
+          <div class="gs-message" id="assignDiscountMessage" style="margin-top:0.75rem;"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
 
         <article class="gs-preview" style="margin-top:1rem;">
@@ -6030,7 +6076,36 @@ document.addEventListener("DOMContentLoaded", function () {
       var _ps = moduleSummary.closest(".panel-card");
       if (_ps) _ps.style.gridColumn = "1 / -1";
 
-      var editingDiscountTypeId = null;
+      function showAssignMessage(text, type) {
+        var el = document.getElementById("assignDiscountMessage");
+        el.querySelector(".gs-message__text").textContent = text;
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : "✕";
+        el.className = "gs-message gs-message--" + type + " gs-message--visible";
+      }
+
+      function refreshAllTypeDropdowns() {
+        var activeTypes = (settings.discountTypes || []).filter(function (d) { return d.status !== "inactive"; });
+        var opts = '<option value="">Select Type</option>' + activeTypes.map(function (d) {
+          return '<option value="' + escapeAttr(d.id) + '">' + escapeHtml(d.name) + ' (' + escapeHtml(String(d.percentage)) + '%)</option>';
+        }).join("");
+        var el1 = document.getElementById("assignDiscountTypeSelect");
+        var el2 = document.getElementById("assignClasswiseTypeSelect");
+        if (el1) el1.innerHTML = opts;
+        if (el2) el2.innerHTML = opts;
+        if (discountTypeSelectInput) {
+          var currentVal = discountTypeSelectInput.value;
+          var opts2 = '<option value="">No Discount</option>' + activeTypes.map(function (d) {
+            return '<option value="' + escapeAttr(d.id) + '">' + escapeHtml(d.name) + ' (' + escapeHtml(String(d.percentage)) + '%)</option>';
+          }).join("");
+          discountTypeSelectInput.innerHTML = opts2;
+          if (currentVal && activeTypes.some(function (d) { return d.id === currentVal; })) {
+            discountTypeSelectInput.value = currentVal;
+          } else {
+            discountTypeSelectInput.value = "";
+            discountInFeeInput.value = "";
+          }
+        }
+      }
 
       function renderTypesTable() {
         var types = settings.discountTypes || [];
@@ -6040,7 +6115,9 @@ document.addEventListener("DOMContentLoaded", function () {
           '<thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">Name</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">%</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">Description</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">Status</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">Actions</th></tr></thead><tbody>' +
           types.map(function (dt, idx) {
             var statusColor = dt.status === "inactive" ? "#dc2626" : "#059669";
-            return '<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">' + escapeHtml(dt.name) + '</td>' +
+            var assignedCount = database.students.filter(function (s) { return s.discountTypeId === dt.id; }).length;
+            return '<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">' + escapeHtml(dt.name) +
+              (assignedCount > 0 ? ' <small style="color:#888;">(' + assignedCount + ' students)</small>' : '') + '</td>' +
               '<td style="padding:6px 8px;border-bottom:1px solid #eee;font-weight:700;">' + escapeHtml(String(dt.percentage)) + '%</td>' +
               '<td style="padding:6px 8px;border-bottom:1px solid #eee;color:#666;">' + escapeHtml(dt.description || "-") + '</td>' +
               '<td style="padding:6px 8px;border-bottom:1px solid #eee;"><span style="color:' + statusColor + ';font-weight:600;">' + escapeHtml(dt.status || "active") + '</span></td>' +
@@ -6062,40 +6139,43 @@ document.addEventListener("DOMContentLoaded", function () {
             document.getElementById("dtDescInput").value = dt.description || "";
             document.getElementById("dtStatusInput").value = dt.status || "active";
             document.getElementById("dtSaveBtn").textContent = "Update Discount Type";
+            document.getElementById("dtCancelEditBtn").style.display = "";
           });
         });
         tableEl.querySelectorAll(".dt-delete-btn").forEach(function (btn) {
           btn.addEventListener("click", async function () {
             var idx = parseInt(btn.getAttribute("data-idx"));
             var dt = types[idx];
-            if (!dt || !confirm("Delete discount type \"" + dt.name + "\"?")) return;
+            if (!dt) return;
+            var assignedCount = database.students.filter(function (s) { return s.discountTypeId === dt.id; }).length;
+            if (assignedCount > 0) {
+              var msg = document.getElementById("dtMessage");
+              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" — it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
+              msg.querySelector(".gs-message__icon").textContent = "✕";
+              msg.className = "gs-message gs-message--error gs-message--visible";
+              return;
+            }
+            if (!confirm("Delete discount type \"" + dt.name + "\"?")) return;
             settings.discountTypes.splice(idx, 1);
-            database.students.forEach(function (s) {
-              if (s.discountTypeId === dt.id) {
-                s.discountTypeId = "";
-                s.discountInFee = "";
-                s.discountType = "";
-                s.discountAmount = 0;
-              }
-            });
+            addActivity("Discount type deleted", dt.name + " deleted.");
             await saveDatabase("Deleting discount type...", [
-              { table: "school_settings", record: { id: "discountTypes", source_id: "discountTypes", data: settings.discountTypes, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
-              ...database.students.filter(function (s) { return s.discountTypeId === dt.id; }).map(function (s) { return { table: "students", record: s, operation: "update" }; })
+              { table: "school_settings", record: { id: "discountTypes", source_id: "discountTypes", data: settings.discountTypes, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
             ]);
             renderTypesTable();
-            refreshAssignTypeDropdown();
+            refreshAllTypeDropdowns();
           });
         });
       }
 
-      function refreshAssignTypeDropdown() {
-        var select = document.getElementById("assignDiscountTypeSelect");
-        if (!select) return;
-        var activeTypes = (settings.discountTypes || []).filter(function (d) { return d.status !== "inactive"; });
-        select.innerHTML = '<option value="">Select Type</option>' + activeTypes.map(function (d) {
-          return '<option value="' + escapeAttr(d.id) + '">' + escapeHtml(d.name) + ' (' + escapeHtml(String(d.percentage)) + '%)</option>';
-        }).join("");
-      }
+      document.getElementById("dtCancelEditBtn").addEventListener("click", function () {
+        editingDiscountTypeId = null;
+        document.getElementById("dtNameInput").value = "";
+        document.getElementById("dtPercentInput").value = "";
+        document.getElementById("dtDescInput").value = "";
+        document.getElementById("dtStatusInput").value = "active";
+        document.getElementById("dtSaveBtn").textContent = "Add Discount Type";
+        document.getElementById("dtCancelEditBtn").style.display = "none";
+      });
 
       document.getElementById("dtSaveBtn").addEventListener("click", async function () {
         var name = document.getElementById("dtNameInput").value.trim();
@@ -6119,13 +6199,13 @@ document.addEventListener("DOMContentLoaded", function () {
             database.students.forEach(function (s) {
               if (s.discountTypeId === dt.id) {
                 s.discountInFee = String(percentage);
-                s.discountAmount = 0;
                 s.discountType = name;
               }
             });
           }
           editingDiscountTypeId = null;
           document.getElementById("dtSaveBtn").textContent = "Add Discount Type";
+          document.getElementById("dtCancelEditBtn").style.display = "none";
         } else {
           settings.discountTypes.push({
             id: "DT-" + generateId(),
@@ -6150,15 +6230,26 @@ document.addEventListener("DOMContentLoaded", function () {
         msg.querySelector(".gs-message__icon").textContent = "✓";
         msg.className = "gs-message gs-message--success gs-message--visible";
         renderTypesTable();
-        refreshAssignTypeDropdown();
+        refreshAllTypeDropdowns();
+      });
+
+      document.querySelectorAll("[data-assign-mode]").forEach(function (card) {
+        card.addEventListener("click", function () {
+          var mode = card.getAttribute("data-assign-mode");
+          if (mode === assignMode) return;
+          assignMode = mode;
+          document.querySelectorAll("[data-assign-mode]").forEach(function (c) { c.classList.remove("active"); });
+          card.classList.add("active");
+          document.getElementById("assignStudentwiseForm").style.display = mode === "studentwise" ? "block" : "none";
+          document.getElementById("assignClasswiseForm").style.display = mode === "classwise" ? "block" : "none";
+          document.getElementById("assignDiscountMessage").className = "gs-message";
+        });
       });
 
       var assignSearchInput = document.getElementById("assignDiscountSearchInput");
-      var assignClassFilter = document.getElementById("assignDiscountClassFilter");
       var assignTypeSelect = document.getElementById("assignDiscountTypeSelect");
       var assignPercentDisplay = document.getElementById("assignDiscountPercentDisplay");
       var assignStudentsList = document.getElementById("assignDiscountStudentsList");
-      var assignMessage = document.getElementById("assignDiscountMessage");
 
       initializeStudentProfessionalSearch(
         "assignDiscountSearchInput",
@@ -6175,52 +6266,36 @@ document.addEventListener("DOMContentLoaded", function () {
         assignPercentDisplay.value = dt ? dt.percentage + "%" : "";
       });
 
-      function getAssignStudents() {
-        var search = assignSearchInput.value.trim().toLowerCase();
-        var cls = assignClassFilter.value;
-        return database.students.filter(function (student) {
-          if (student.status !== "active") return false;
-          var matchClass = cls === "all" || student.className === cls;
-          var matchSearch = !search || String(student.name || "").toLowerCase().includes(search) || String(student.admissionNo || "").toLowerCase().includes(search);
-          return matchClass && matchSearch;
-        });
-      }
-
       function renderAssignStudents() {
-        var students = getAssignStudents();
+        var search = assignSearchInput.value.trim().toLowerCase();
+        var students = database.students.filter(function (student) {
+          if (student.status !== "active") return false;
+          return !search || String(student.name || "").toLowerCase().includes(search) || String(student.admissionNo || "").toLowerCase().includes(search);
+        });
         assignStudentsList.innerHTML = students.map(function (student) {
-          var currentDiscount = "";
+          var currentDiscount = "None";
           if (student.discountTypeId) {
             var dt = (settings.discountTypes || []).find(function (d) { return d.id === student.discountTypeId; });
-            currentDiscount = dt ? dt.name + " (" + dt.percentage + "%)" : (student.discountInFee ? student.discountInFee + "%" : "None");
+            currentDiscount = dt ? dt.name + " (" + dt.percentage + "%)" : "None";
           } else if (student.discountInFee) {
             currentDiscount = student.discountInFee + "%";
-          } else {
-            currentDiscount = "None";
           }
           return '<label class="module-check-item"><input type="checkbox" class="assign-discount-check" value="' + student.id + '"><span>' + escapeHtml(student.name) + ' (' + escapeHtml(student.admissionNo || "-") + ') <small style="color:#888;">Current: ' + escapeHtml(currentDiscount) + '</small></span></label>';
         }).join("");
       }
 
-      [assignSearchInput, assignClassFilter].forEach(function (input) {
-        input.addEventListener("input", renderAssignStudents);
-        input.addEventListener("change", renderAssignStudents);
-      });
+      assignSearchInput.addEventListener("input", renderAssignStudents);
 
       document.getElementById("assignDiscountBtn").addEventListener("click", async function () {
         var selectedTypeId = assignTypeSelect.value;
         var dt = (settings.discountTypes || []).find(function (d) { return d.id === selectedTypeId; });
         if (!dt) {
-          assignMessage.querySelector(".gs-message__text").textContent = "Please select a discount type.";
-          assignMessage.querySelector(".gs-message__icon").textContent = "✕";
-          assignMessage.className = "gs-message gs-message--error gs-message--visible";
+          showAssignMessage("Please select a discount type.", "error");
           return;
         }
         var selectedIds = Array.from(document.querySelectorAll(".assign-discount-check:checked")).map(function (cb) { return cb.value; });
         if (!selectedIds.length) {
-          assignMessage.querySelector(".gs-message__text").textContent = "Please select at least one student.";
-          assignMessage.querySelector(".gs-message__icon").textContent = "✕";
-          assignMessage.className = "gs-message gs-message--error gs-message--visible";
+          showAssignMessage("Please select at least one student.", "error");
           return;
         }
         database.students.forEach(function (student) {
@@ -6235,10 +6310,50 @@ document.addEventListener("DOMContentLoaded", function () {
         await saveDatabase("Saving discount assignment...", [
           ...database.students.filter(function (s) { return selectedIds.includes(s.id); }).map(function (s) { return { table: "students", record: s, operation: "update" }; })
         ]);
-        assignMessage.querySelector(".gs-message__text").textContent = "Discount assigned to " + selectedIds.length + " student(s).";
-        assignMessage.querySelector(".gs-message__icon").textContent = "✓";
-        assignMessage.className = "gs-message gs-message--success gs-message--visible";
+        showAssignMessage("Discount assigned to " + selectedIds.length + " student(s).", "success");
         renderAssignStudents();
+        renderDiscountPreview();
+      });
+
+      var assignClasswiseClassSelect = document.getElementById("assignClasswiseClassSelect");
+      var assignClasswiseTypeSelect = document.getElementById("assignClasswiseTypeSelect");
+      var assignClasswisePercentDisplay = document.getElementById("assignClasswisePercentDisplay");
+
+      assignClasswiseTypeSelect.addEventListener("change", function () {
+        var dt = (settings.discountTypes || []).find(function (d) { return d.id === assignClasswiseTypeSelect.value; });
+        assignClasswisePercentDisplay.value = dt ? dt.percentage + "%" : "";
+      });
+
+      document.getElementById("assignClasswiseBtn").addEventListener("click", async function () {
+        var selectedClass = assignClasswiseClassSelect.value;
+        var selectedTypeId = assignClasswiseTypeSelect.value;
+        var dt = (settings.discountTypes || []).find(function (d) { return d.id === selectedTypeId; });
+        if (!selectedClass) {
+          showAssignMessage("Please select a class.", "error");
+          return;
+        }
+        if (!dt) {
+          showAssignMessage("Please select a discount type.", "error");
+          return;
+        }
+        var classStudents = database.students.filter(function (s) { return s.status === "active" && s.className === selectedClass; });
+        if (!classStudents.length) {
+          showAssignMessage("No active students found in " + selectedClass + ".", "error");
+          return;
+        }
+        database.students.forEach(function (student) {
+          if (student.status === "active" && student.className === selectedClass) {
+            student.discountTypeId = dt.id;
+            student.discountInFee = String(dt.percentage);
+            student.discountType = dt.name;
+            student.discountAmount = 0;
+          }
+        });
+        addActivity("Discount applied to class", dt.name + " (" + dt.percentage + "%) applied to " + classStudents.length + " students in " + selectedClass + ".");
+        await saveDatabase("Saving class discount...", [
+          ...classStudents.map(function (s) { return { table: "students", record: s, operation: "update" }; })
+        ]);
+        showAssignMessage(dt.name + " (" + dt.percentage + "%) applied to " + classStudents.length + " students in " + selectedClass + ".", "success");
         renderDiscountPreview();
       });
 
@@ -6258,6 +6373,7 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       renderTypesTable();
+      refreshAllTypeDropdowns();
       renderAssignStudents();
       renderDiscountPreview();
       return;
@@ -23652,6 +23768,9 @@ ${allContent}
 
     const studentId = studentIdInput.value;
     const admissionNumber = admissionNoInput.value.trim();
+    var _selectedDiscountTypeId = discountTypeSelectInput ? discountTypeSelectInput.value : "";
+    var _settings = database.generalSettings || {};
+    var _selectedDt = (_selectedDiscountTypeId && (_settings.discountTypes || []).find(function (d) { return d.id === _selectedDiscountTypeId; })) || null;
     const studentRecord = {
       id: studentId || generateStudentId(),
       admissionNo: "STD" + admissionNumber,
@@ -23659,7 +23778,10 @@ ${allContent}
       picture: pictureData,
       dateOfAdmission: dateOfAdmissionInput.value,
       className: studentClassNameInput.value,
-      discountInFee: discountInFeeInput.value.trim(),
+      discountInFee: _selectedDt ? String(_selectedDt.percentage) : "",
+      discountTypeId: _selectedDt ? _selectedDt.id : "",
+      discountType: _selectedDt ? _selectedDt.name : "",
+      discountAmount: 0,
       dateOfBirth: dateOfBirthInput.value,
       gender: studentGenderInput.value,
       bloodGroup: bloodGroupInput.value.trim(),
@@ -24326,6 +24448,14 @@ ${allContent}
   });
 
   studentForm.addEventListener("submit", handleStudentFormSubmit);
+
+  if (discountTypeSelectInput) {
+    discountTypeSelectInput.addEventListener("change", function () {
+      var settings = database.generalSettings || {};
+      var dt = (settings.discountTypes || []).find(function (d) { return d.id === discountTypeSelectInput.value; });
+      discountInFeeInput.value = dt ? String(dt.percentage) : "";
+    });
+  }
   newClassForm.addEventListener("submit", handleClassFormSubmit);
 
 
