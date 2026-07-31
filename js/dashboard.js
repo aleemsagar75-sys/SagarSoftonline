@@ -5260,6 +5260,7 @@ document.addEventListener("DOMContentLoaded", function () {
       };
       settings.feeParticulars = settings.feeParticulars || {};
       settings.feeStructures = settings.feeStructures || {};
+      settings.discountTypes = Array.isArray(settings.discountTypes) ? settings.discountTypes : [];
       settings.discountPolicies = Array.isArray(settings.discountPolicies) ? settings.discountPolicies : [];
       settings.bankAccounts = Array.isArray(settings.bankAccounts) ? settings.bankAccounts : [];
       settings.rulesAndRegulations = settings.rulesAndRegulations || { students: database.school.rulesRegulations || "", employees: "" };
@@ -5550,6 +5551,12 @@ document.addEventListener("DOMContentLoaded", function () {
         return item.name === selectedClass;
       });
       const monthlyFee = Math.max(0, parseFloat(classRecord && classRecord.monthlyTuitionFees ? classRecord.monthlyTuitionFees : 0));
+      const saved = (settings.feeStructures && settings.feeStructures[selectedClass]) || [];
+      if (saved.length > 0) {
+        return saved.map(function (r) {
+          return { label: r.type || r.label || "-", amount: Math.max(0, parseFloat(r.amount || 0)), fixed: !!r.fixed };
+        });
+      }
       return [
         { label: "Monthly Tuition Fees", amount: monthlyFee, fixed: true },
         { label: "ADMISSION FEE", amount: 0, fixed: false },
@@ -5557,11 +5564,8 @@ document.addEventListener("DOMContentLoaded", function () {
         { label: "ART MATERIAL", amount: 0, fixed: false },
         { label: "TRANSPORT", amount: 0, fixed: false },
         { label: "BOOKS", amount: 0, fixed: false },
-        { label: "", amount: 0, fixed: false },
         { label: "FINE", amount: 0, fixed: false },
-        { label: "OTHERS", amount: 0, fixed: false },
-        { label: "PREVIOUS BALANCE", amount: 0, fixed: true },
-        { label: "DISCOUNT IN FEE", amount: 0, fixed: true }
+        { label: "OTHERS", amount: 0, fixed: false }
       ];
     }
 
@@ -5728,12 +5732,11 @@ document.addEventListener("DOMContentLoaded", function () {
         <article class="gs-form-section">
           <div class="gs-form-section__header">
             <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;">💰</div>
-            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Manage fee items for each class</p></div>
+            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view — edits are managed in Fee Structure</p></div>
           </div>
           <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Fee Particulars for*</label><select class="gs-field__input" id="feeParticularClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
           <div id="feeParticularRows" class="gs-row-list" style="margin-top:1rem;"></div>
-          <div class="gs-button-row"><button class="gs-btn-primary" id="saveFeeParticularBtn" type="button">Update Particulars</button></div>
-          <div class="gs-message" id="feeParticularMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
+          <div class="gs-message" id="feeParticularMessage" style="margin-top:0.75rem;"><span class="gs-message__icon"></span><span class="gs-message__text" style="color:#6b82a3;font-size:0.85rem;">This is a read-only view. To make changes, go to General Settings &rarr; Fee Structure.</span></div>
         </article>
         <article class="gs-preview" style="margin-top:1rem;">
           <p class="gs-preview__title">Preview</p>
@@ -5750,43 +5753,25 @@ document.addEventListener("DOMContentLoaded", function () {
       const classSelect = document.getElementById("feeParticularClassSelect");
       const rowsWrap = document.getElementById("feeParticularRows");
       const preview = document.getElementById("feeParticularPreview");
-      const message = document.getElementById("feeParticularMessage");
 
       function renderRows() {
         const cls = classSelect.value;
-        const liveDefaults = getDefaultFeeParticulars(cls);
-        const saved = (settings.feeParticulars && settings.feeParticulars[cls]) || [];
-        const savedMap = new Map(saved.map(function (r) { return [String(r.label || "").toUpperCase().trim(), r]; }));
-        const merged = liveDefaults.map(function (def) {
-          const key = String(def.label || "").toUpperCase().trim();
-          if (!key) return def;
-          const isMonthlyFee = key.includes("MONTHLY") && key.includes("TUITION");
-          if (isMonthlyFee) {
-            return { label: def.label, amount: def.amount, fixed: true };
-          }
-          const fromSaved = savedMap.get(key);
-          return fromSaved ? { label: fromSaved.label || def.label, amount: fromSaved.amount || def.amount, fixed: false } : def;
-        });
-        const extraSaved = saved.filter(function (r) {
-          const key = String(r.label || "").toUpperCase().trim();
-          return key && !liveDefaults.some(function (d) { return String(d.label || "").toUpperCase().trim() === key; });
-        });
-        const rows = merged.concat(extraSaved);
-        rowsWrap.innerHTML = rows.map(function (row, index) {
+        const items = getDefaultFeeParticulars(cls);
+        rowsWrap.innerHTML = items.map(function (row, index) {
+          const isFixed = !!row.fixed;
           const key = String(row.label || "").toUpperCase().trim();
           const isMonthlyFee = key.includes("MONTHLY") && key.includes("TUITION");
-          const isFixed = row.fixed || isMonthlyFee;
-          const fixed = isFixed ? "readonly" : "";
+          const showAuto = isFixed || isMonthlyFee;
           const safeAmount = Math.max(0, parseFloat(row.amount || 0));
           return `
-            <div class="gs-row-item">
+            <div class="gs-row-item" style="opacity:${isFixed ? 0.85 : 1};">
               <div class="gs-field" style="flex:2;">
-                <label class="gs-field__label" style="font-size:0.75rem;">Particular Label* ${isFixed ? '<span style="color:#1e5eff;">[AUTO]</span>' : ''}</label>
-                <input class="gs-field__input fee-particular-label" data-index="${index}" type="text" value="${escapeAttr(row.label)}" ${fixed} style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;${isFixed ? 'background:#f1f5fc;color:#4e678f;' : ''}">
+                <label class="gs-field__label" style="font-size:0.75rem;">Particular Label* ${showAuto ? '<span style="color:#1e5eff;">[AUTO]</span>' : ''}</label>
+                <input class="gs-field__input" type="text" value="${escapeAttr(row.label)}" readonly style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;background:#f1f5fc;color:#4e678f;cursor:default;">
               </div>
               <div class="gs-field" style="flex:1;">
-                <label class="gs-field__label" style="font-size:0.75rem;">Amount* ${isFixed ? '<span style="color:#1e5eff;">[AUTO]</span>' : ''}</label>
-                <input class="gs-field__input fee-particular-amount" data-index="${index}" type="text" placeholder="0" inputmode="numeric" value="${safeAmount}" ${fixed} style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;${isFixed ? 'background:#f1f5fc;color:#4e678f;font-weight:700;' : ''}">
+                <label class="gs-field__label" style="font-size:0.75rem;">Amount* ${showAuto ? '<span style="color:#1e5eff;">[AUTO]</span>' : ''}</label>
+                <input class="gs-field__input" type="text" value="${safeAmount}" readonly style="min-height:36px;padding:0.45rem 0.65rem;font-size:0.85rem;background:#f1f5fc;color:#4e678f;font-weight:700;cursor:default;">
               </div>
             </div>
           `;
@@ -5795,46 +5780,12 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       function renderPreview() {
-        const amounts = Array.from(rowsWrap.querySelectorAll(".fee-particular-amount")).map(function (input) {
-          const val = input.value.trim();
-          return val === "" ? 0 : Math.max(0, parseFloat(val) || 0);
-        });
-        const total = amounts.reduce(function (sum, value) { return sum + value; }, 0);
+        const items = getDefaultFeeParticulars(classSelect.value);
+        const total = items.reduce(function (sum, row) { return sum + Math.max(0, parseFloat(row.amount || 0)); }, 0);
         preview.innerHTML = `<p><strong>Class:</strong> ${escapeHtml(classSelect.value || "-")}</p><p><strong>Total Amount:</strong> ${total}</p>`;
       }
 
       classSelect.addEventListener("change", renderRows);
-      rowsWrap.addEventListener("input", renderPreview);
-
-      var _el = document.getElementById("saveFeeParticularBtn"); if (_el) _el.addEventListener("click", async function () {
-        const cls = classSelect.value;
-        if (!cls) {
-          return;
-        }
-        const labels = rowsWrap.querySelectorAll(".fee-particular-label");
-        const amounts = rowsWrap.querySelectorAll(".fee-particular-amount");
-        settings.feeParticulars[cls] = Array.from(labels).map(function (labelInput, index) {
-          const amountVal = amounts[index].value.trim();
-          const amount = amountVal === "" ? 0 : Math.max(0, parseFloat(amountVal) || 0);
-          return {
-            label: labelInput.value.trim(),
-            amount: amount,
-            fixed: labelInput.hasAttribute("readonly")
-          };
-        });
-        addActivity("Fee particulars updated", `${cls} fee particulars updated.`);
-        var _saved = await saveDatabase("Saving fee particulars...", [
-          { table: "school_settings", record: { id: "feeParticulars", source_id: "feeParticulars", data: settings.feeParticulars, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
-        ]);
-        if (_saved) {
-          message.textContent = "Fee particulars updated successfully.";
-          message.className = "form-message success";
-        } else {
-          message.textContent = "Save failed. Please check your connection and try again.";
-          message.className = "form-message error";
-        }
-      });
-
       renderRows();
       return;
     }
@@ -5962,10 +5913,8 @@ document.addEventListener("DOMContentLoaded", function () {
             var cls = btn.getAttribute("data-class");
             if (!confirm("Delete fee structure for " + cls + "?")) return;
             delete settings.feeStructures[cls];
-            if (settings.feeParticulars) delete settings.feeParticulars[cls];
             await saveDatabase("Deleting fee structure...", [
-              { table: "school_settings", record: { id: "feeStructures", source_id: "feeStructures", data: settings.feeStructures, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
-              { table: "school_settings", record: { id: "feeParticulars", source_id: "feeParticulars", data: settings.feeParticulars, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+              { table: "school_settings", record: { id: "feeStructures", source_id: "feeStructures", data: settings.feeStructures, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
             ]);
             renderStructureRows();
           });
@@ -6004,19 +5953,9 @@ document.addEventListener("DOMContentLoaded", function () {
           };
         }).filter(function (row) { return row.type; });
         settings.feeStructures[cls] = _rows;
-        if (!settings.feeParticulars) settings.feeParticulars = {};
-        var _existing = settings.feeParticulars[cls] || [];
-        var _existingFixed = _existing.filter(function (p) { return p.fixed; });
-        var _mapped = _rows.map(function (r) {
-          return { label: r.type, amount: r.amount, fixed: false };
-        });
-        settings.feeParticulars[cls] = _mapped.concat(_existingFixed.filter(function (ef) {
-          return !_mapped.some(function (m) { return m.label.toUpperCase() === ef.label.toUpperCase(); });
-        }));
         addActivity("Fee structure updated", `${cls} fee structure updated.`);
         var _saved = await saveDatabase("Saving fee structure...", [
-          { table: "school_settings", record: { id: "feeStructures", source_id: "feeStructures", data: settings.feeStructures, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
-          { table: "school_settings", record: { id: "feeParticulars", source_id: "feeParticulars", data: settings.feeParticulars, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+          { table: "school_settings", record: { id: "feeStructures", source_id: "feeStructures", data: settings.feeStructures, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
         ]);
         if (_saved) {
           message.textContent = "Fee structure saved successfully.";
@@ -6033,185 +5972,293 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (route === "discount-type") {
-      const optionsMarkup = ['<option value="all">All Classes</option>'].concat(classOptions.map(function (className) {
+      const classOptionsMarkup = ['<option value="all">All Classes</option>'].concat(classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
       })).join("");
+      const discountTypeOptionsMarkup = (settings.discountTypes || []).filter(function (d) { return d.status !== "inactive"; }).map(function (d) {
+        return `<option value="${escapeAttr(d.id)}">${escapeHtml(d.name)} (${escapeHtml(String(d.percentage))}%)</option>`;
+      }).join("");
 
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
             <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">🏷</div>
-            <div><p class="gs-form-section__title">Discount Type</p><p class="gs-form-section__subtitle">Apply discounts to selected students</p></div>
+            <div><p class="gs-form-section__title">Section A: Manage Discount Types</p><p class="gs-form-section__subtitle">Create reusable discount templates</p></div>
+          </div>
+          <div class="gs-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
+            <div class="gs-field"><label class="gs-field__label">Discount Name*</label><input class="gs-field__input" id="dtNameInput" type="text" placeholder="e.g. Sibling, Merit"></div>
+            <div class="gs-field"><label class="gs-field__label">Percentage (%)*</label><input class="gs-field__input" id="dtPercentInput" type="number" min="0" max="100" placeholder="0"></div>
+            <div class="gs-field"><label class="gs-field__label">Description</label><input class="gs-field__input" id="dtDescInput" type="text" placeholder="Optional description"></div>
+            <div class="gs-field"><label class="gs-field__label">Status</label><select class="gs-field__input" id="dtStatusInput"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+          </div>
+          <div class="gs-button-row" style="margin-top:0.75rem;">
+            <button class="gs-btn-primary" id="dtSaveBtn" type="button">Add Discount Type</button>
+          </div>
+          <div class="gs-message" id="dtMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
+          <div id="dtTypesTable" style="margin-top:1rem;"></div>
+        </article>
+
+        <article class="gs-form-section" style="margin-top:1.25rem;">
+          <div class="gs-form-section__header">
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;">📋</div>
+            <div><p class="gs-form-section__title">Section B: Assign Discount</p><p class="gs-form-section__subtitle">Search student and assign a discount type</p></div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:0.75rem;margin-bottom:1rem;">
-            <div class="gs-field" style="flex:2;min-width:200px;position:relative;"><label class="gs-field__label">Search Student</label><input class="gs-field__input" id="discountSearchInput" type="search" placeholder="Search by name or roll no."><div id="discountSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            <div class="gs-field" style="flex:1;min-width:150px;"><label class="gs-field__label">Filter by Class</label><select class="gs-field__input" id="discountClassFilter">${optionsMarkup}</select></div>
+            <div class="gs-field" style="flex:2;min-width:200px;position:relative;"><label class="gs-field__label">Search Student</label><input class="gs-field__input" id="assignDiscountSearchInput" type="search" placeholder="Search by name or roll no."><div id="assignDiscountSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
+            <div class="gs-field" style="flex:1;min-width:150px;"><label class="gs-field__label">Filter by Class</label><select class="gs-field__input" id="assignDiscountClassFilter">${classOptionsMarkup}</select></div>
           </div>
-          <div class="gs-form-grid">
-            <div class="gs-field"><label class="gs-field__label">Discount Type</label><input class="gs-field__input" id="discountTypeInput" type="text" placeholder="e.g Sibling, Staff"></div>
-            <div class="gs-field"><label class="gs-field__label">Discount Amount</label><input class="gs-field__input" id="discountAmountInput" type="number" min="0" placeholder="0"></div>
+          <div class="gs-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
+            <div class="gs-field"><label class="gs-field__label">Discount Type*</label><select class="gs-field__input" id="assignDiscountTypeSelect"><option value="">Select Type</option>${discountTypeOptionsMarkup || '<option value="">No Types Created</option>'}</select></div>
+            <div class="gs-field"><label class="gs-field__label">Discount %</label><input class="gs-field__input" id="assignDiscountPercentDisplay" type="text" readonly style="background:#f1f5fc;color:#4e678f;font-weight:700;"></div>
           </div>
-          <div id="discountStudentsList" style="margin-top:1rem;"></div>
-          <div class="gs-button-row"><button class="gs-btn-primary" id="applyDiscountBtn" type="button">Apply Discount</button></div>
-          <div class="gs-message" id="discountMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
+          <div id="assignDiscountStudentsList" style="margin-top:1rem;"></div>
+          <div class="gs-button-row" style="margin-top:0.75rem;">
+            <button class="gs-btn-primary" id="assignDiscountBtn" type="button">Apply / Update Discount</button>
+          </div>
+          <div class="gs-message" id="assignDiscountMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
+
         <article class="gs-preview" style="margin-top:1rem;">
           <p class="gs-preview__title">Applied Discounts</p>
           <div id="discountPreviewList" class="compact-list"></div>
         </article>
       `;
 
-      moduleGuide.innerHTML = ``;
+      moduleGuide.innerHTML = "";
       var _pg = moduleGuide.closest(".panel-card");
       if (_pg) _pg.style.display = "none";
       var _ps = moduleSummary.closest(".panel-card");
       if (_ps) _ps.style.gridColumn = "1 / -1";
 
-      const searchInput = document.getElementById("discountSearchInput");
-      const classFilter = document.getElementById("discountClassFilter");
-      const discountTypeInput = document.getElementById("discountTypeInput");
-      const discountAmountInput = document.getElementById("discountAmountInput");
-      const studentsList = document.getElementById("discountStudentsList");
-      const previewList = document.getElementById("discountPreviewList");
-      const message = document.getElementById("discountMessage");
+      var editingDiscountTypeId = null;
+
+      function renderTypesTable() {
+        var types = settings.discountTypes || [];
+        var tableEl = document.getElementById("dtTypesTable");
+        if (!types.length) { tableEl.innerHTML = "<p style='color:#888;font-size:0.85rem;'>No discount types created yet.</p>"; return; }
+        tableEl.innerHTML = '<div class="table-wrap"><table style="width:100%;border-collapse:collapse;font-size:0.85rem;">' +
+          '<thead><tr><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">Name</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">%</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">Description</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">Status</th><th style="text-align:left;padding:6px 8px;border-bottom:2px solid #dce5f4;">Actions</th></tr></thead><tbody>' +
+          types.map(function (dt, idx) {
+            var statusColor = dt.status === "inactive" ? "#dc2626" : "#059669";
+            return '<tr><td style="padding:6px 8px;border-bottom:1px solid #eee;">' + escapeHtml(dt.name) + '</td>' +
+              '<td style="padding:6px 8px;border-bottom:1px solid #eee;font-weight:700;">' + escapeHtml(String(dt.percentage)) + '%</td>' +
+              '<td style="padding:6px 8px;border-bottom:1px solid #eee;color:#666;">' + escapeHtml(dt.description || "-") + '</td>' +
+              '<td style="padding:6px 8px;border-bottom:1px solid #eee;"><span style="color:' + statusColor + ';font-weight:600;">' + escapeHtml(dt.status || "active") + '</span></td>' +
+              '<td style="padding:6px 8px;border-bottom:1px solid #eee;white-space:nowrap;">' +
+              '<button class="gs-btn-secondary dt-edit-btn" data-idx="' + idx + '" style="padding:3px 8px;font-size:0.75rem;">Edit</button> ' +
+              '<button class="gs-btn-secondary dt-delete-btn" data-idx="' + idx + '" style="padding:3px 8px;font-size:0.75rem;color:#dc2626;">Delete</button>' +
+              '</td></tr>';
+          }).join("") +
+          '</tbody></table></div>';
+
+        tableEl.querySelectorAll(".dt-edit-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var idx = parseInt(btn.getAttribute("data-idx"));
+            var dt = types[idx];
+            if (!dt) return;
+            editingDiscountTypeId = dt.id;
+            document.getElementById("dtNameInput").value = dt.name || "";
+            document.getElementById("dtPercentInput").value = dt.percentage || 0;
+            document.getElementById("dtDescInput").value = dt.description || "";
+            document.getElementById("dtStatusInput").value = dt.status || "active";
+            document.getElementById("dtSaveBtn").textContent = "Update Discount Type";
+          });
+        });
+        tableEl.querySelectorAll(".dt-delete-btn").forEach(function (btn) {
+          btn.addEventListener("click", async function () {
+            var idx = parseInt(btn.getAttribute("data-idx"));
+            var dt = types[idx];
+            if (!dt || !confirm("Delete discount type \"" + dt.name + "\"?")) return;
+            settings.discountTypes.splice(idx, 1);
+            database.students.forEach(function (s) {
+              if (s.discountTypeId === dt.id) {
+                s.discountTypeId = "";
+                s.discountInFee = "";
+                s.discountType = "";
+                s.discountAmount = 0;
+              }
+            });
+            await saveDatabase("Deleting discount type...", [
+              { table: "school_settings", record: { id: "discountTypes", source_id: "discountTypes", data: settings.discountTypes, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
+              ...database.students.filter(function (s) { return s.discountTypeId === dt.id; }).map(function (s) { return { table: "students", record: s, operation: "update" }; })
+            ]);
+            renderTypesTable();
+            refreshAssignTypeDropdown();
+          });
+        });
+      }
+
+      function refreshAssignTypeDropdown() {
+        var select = document.getElementById("assignDiscountTypeSelect");
+        if (!select) return;
+        var activeTypes = (settings.discountTypes || []).filter(function (d) { return d.status !== "inactive"; });
+        select.innerHTML = '<option value="">Select Type</option>' + activeTypes.map(function (d) {
+          return '<option value="' + escapeAttr(d.id) + '">' + escapeHtml(d.name) + ' (' + escapeHtml(String(d.percentage)) + '%)</option>';
+        }).join("");
+      }
+
+      document.getElementById("dtSaveBtn").addEventListener("click", async function () {
+        var name = document.getElementById("dtNameInput").value.trim();
+        var percentage = parseFloat(document.getElementById("dtPercentInput").value) || 0;
+        var description = document.getElementById("dtDescInput").value.trim();
+        var status = document.getElementById("dtStatusInput").value;
+        if (!name || percentage <= 0) {
+          var msg = document.getElementById("dtMessage");
+          msg.querySelector(".gs-message__text").textContent = "Name and percentage are required.";
+          msg.querySelector(".gs-message__icon").textContent = "✕";
+          msg.className = "gs-message gs-message--error gs-message--visible";
+          return;
+        }
+        if (editingDiscountTypeId) {
+          var dt = (settings.discountTypes || []).find(function (d) { return d.id === editingDiscountTypeId; });
+          if (dt) {
+            dt.name = name;
+            dt.percentage = percentage;
+            dt.description = description;
+            dt.status = status;
+            database.students.forEach(function (s) {
+              if (s.discountTypeId === dt.id) {
+                s.discountInFee = String(percentage);
+                s.discountAmount = 0;
+                s.discountType = name;
+              }
+            });
+          }
+          editingDiscountTypeId = null;
+          document.getElementById("dtSaveBtn").textContent = "Add Discount Type";
+        } else {
+          settings.discountTypes.push({
+            id: "DT-" + generateId(),
+            name: name,
+            percentage: percentage,
+            description: description,
+            status: status,
+            createdAt: new Date().toISOString()
+          });
+        }
+        addActivity("Discount type saved", name + " (" + percentage + "%) saved.");
+        await saveDatabase("Saving discount type...", [
+          { table: "school_settings", record: { id: "discountTypes", source_id: "discountTypes", data: settings.discountTypes, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
+          ...database.students.filter(function (s) { return s.discountTypeId && (settings.discountTypes || []).some(function (dt) { return dt.id === s.discountTypeId; }); }).map(function (s) { return { table: "students", record: s, operation: "update" }; })
+        ]);
+        document.getElementById("dtNameInput").value = "";
+        document.getElementById("dtPercentInput").value = "";
+        document.getElementById("dtDescInput").value = "";
+        document.getElementById("dtStatusInput").value = "active";
+        var msg = document.getElementById("dtMessage");
+        msg.querySelector(".gs-message__text").textContent = "Discount type saved successfully.";
+        msg.querySelector(".gs-message__icon").textContent = "✓";
+        msg.className = "gs-message gs-message--success gs-message--visible";
+        renderTypesTable();
+        refreshAssignTypeDropdown();
+      });
+
+      var assignSearchInput = document.getElementById("assignDiscountSearchInput");
+      var assignClassFilter = document.getElementById("assignDiscountClassFilter");
+      var assignTypeSelect = document.getElementById("assignDiscountTypeSelect");
+      var assignPercentDisplay = document.getElementById("assignDiscountPercentDisplay");
+      var assignStudentsList = document.getElementById("assignDiscountStudentsList");
+      var assignMessage = document.getElementById("assignDiscountMessage");
 
       initializeStudentProfessionalSearch(
-        "discountSearchInput",
-        "discountSearchDropdown",
-        "discountSearchContainer",
-        function(student) {
-          // No direct action needed, search results are rendered based on input value
-          // But we can filter specifically for this student if needed
-          searchInput.value = student.name + " (" + (student.admissionNo || "-") + ")";
-          renderDiscountStudents();
+        "assignDiscountSearchInput",
+        "assignDiscountSearchDropdown",
+        null,
+        function (student) {
+          assignSearchInput.value = student.name + " (" + (student.admissionNo || "-") + ")";
+          renderAssignStudents();
         }
       );
 
-      function getStudentsForDiscount() {
-        const search = searchInput.value.trim().toLowerCase();
-        const selectedClass = classFilter.value;
+      assignTypeSelect.addEventListener("change", function () {
+        var dt = (settings.discountTypes || []).find(function (d) { return d.id === assignTypeSelect.value; });
+        assignPercentDisplay.value = dt ? dt.percentage + "%" : "";
+      });
+
+      function getAssignStudents() {
+        var search = assignSearchInput.value.trim().toLowerCase();
+        var cls = assignClassFilter.value;
         return database.students.filter(function (student) {
-          const matchClass = selectedClass === "all" || student.className === selectedClass;
-          const matchSearch = !search ||
-            String(student.name || "").toLowerCase().includes(search) ||
-            String(student.admissionNo || "").toLowerCase().includes(search);
+          if (student.status !== "active") return false;
+          var matchClass = cls === "all" || student.className === cls;
+          var matchSearch = !search || String(student.name || "").toLowerCase().includes(search) || String(student.admissionNo || "").toLowerCase().includes(search);
           return matchClass && matchSearch;
         });
       }
 
-      function renderDiscountStudents() {
-        const students = getStudentsForDiscount();
-        studentsList.innerHTML = students.map(function (student) {
-          return `<label class="module-check-item"><input type="checkbox" class="discount-student-check" value="${student.id}" checked><span>${escapeHtml(student.name)} (${escapeHtml(student.admissionNo || "-")})</span></label>`;
+      function renderAssignStudents() {
+        var students = getAssignStudents();
+        assignStudentsList.innerHTML = students.map(function (student) {
+          var currentDiscount = "";
+          if (student.discountTypeId) {
+            var dt = (settings.discountTypes || []).find(function (d) { return d.id === student.discountTypeId; });
+            currentDiscount = dt ? dt.name + " (" + dt.percentage + "%)" : (student.discountInFee ? student.discountInFee + "%" : "None");
+          } else if (student.discountInFee) {
+            currentDiscount = student.discountInFee + "%";
+          } else {
+            currentDiscount = "None";
+          }
+          return '<label class="module-check-item"><input type="checkbox" class="assign-discount-check" value="' + student.id + '"><span>' + escapeHtml(student.name) + ' (' + escapeHtml(student.admissionNo || "-") + ') <small style="color:#888;">Current: ' + escapeHtml(currentDiscount) + '</small></span></label>';
         }).join("");
       }
 
-      function renderDiscountPreview() {
-        previewList.innerHTML = settings.discountPolicies.map(function (policy, idx) {
-          var created = policy.createdAt ? new Date(policy.createdAt).toLocaleDateString() + " " + new Date(policy.createdAt).toLocaleTimeString() : "-";
-          var studentNames = (policy.studentIds || []).map(function (sid) {
-            var s = database.students.find(function (st) { return st.id === sid; });
-            return s ? s.name : "";
-          }).filter(Boolean).join(", ");
-          return `
-            <article style="padding:10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:8px;">
-              <div style="display:flex;justify-content:space-between;align-items:start;">
-                <div>
-                  <strong>${escapeHtml(policy.type)}</strong> — <strong>${Number(policy.amount || 0)}</strong>
-                  <p style="font-size:0.82rem;color:#666;margin:2px 0;">Class: ${escapeHtml(policy.className || "All")}</p>
-                  ${studentNames ? '<p style="font-size:0.78rem;color:#888;margin:2px 0;">Students: ' + escapeHtml(studentNames) + '</p>' : ""}
-                  <p style="font-size:0.75rem;color:#aaa;margin:2px 0;">Created: ${created}</p>
-                </div>
-                <div style="display:flex;gap:6px;">
-                  <button class="gs-btn-secondary edit-discount-btn" data-idx="${idx}" style="padding:4px 10px;font-size:0.78rem;">Edit</button>
-                  <button class="gs-btn-secondary delete-discount-btn" data-idx="${idx}" style="padding:4px 10px;font-size:0.78rem;color:#dc2626;">Delete</button>
-                </div>
-              </div>
-            </article>
-          `;
-        }).join("") || "<p>No discount applied yet.</p>";
-        previewList.querySelectorAll(".edit-discount-btn").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            var idx = parseInt(btn.getAttribute("data-idx"));
-            var policy = settings.discountPolicies[idx];
-            if (!policy) return;
-            discountTypeInput.value = policy.type || "";
-            discountAmountInput.value = policy.amount || 0;
-            if (policy.className) classFilter.value = policy.className;
-            renderDiscountStudents();
-          });
-        });
-        previewList.querySelectorAll(".delete-discount-btn").forEach(function (btn) {
-          btn.addEventListener("click", async function () {
-            var idx = parseInt(btn.getAttribute("data-idx"));
-            var policy = settings.discountPolicies[idx];
-            if (!policy || !confirm("Delete this discount?")) return;
-            if (policy.studentIds) {
-              database.students.forEach(function (student) {
-                if (policy.studentIds.includes(student.id)) {
-                  student.discountType = "";
-                  student.discountAmount = 0;
-                }
-              });
-            }
-            settings.discountPolicies.splice(idx, 1);
-            await saveDatabase("Deleting discount...", [
-              { table: "school_settings", record: { id: "discountPolicies", source_id: "discountPolicies", data: settings.discountPolicies, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
-              ...database.students.filter(function (s) { return policy.studentIds && policy.studentIds.includes(s.id); }).map(function (s) { return { table: "students", record: s, operation: "update" }; })
-            ]);
-            renderDiscountPreview();
-          });
-        });
-      }
-
-      [searchInput, classFilter].forEach(function (input) {
-        input.addEventListener("input", renderDiscountStudents);
-        input.addEventListener("change", renderDiscountStudents);
+      [assignSearchInput, assignClassFilter].forEach(function (input) {
+        input.addEventListener("input", renderAssignStudents);
+        input.addEventListener("change", renderAssignStudents);
       });
 
-      var _el = document.getElementById("applyDiscountBtn"); if (_el) _el.addEventListener("click", async function () {
-        const type = discountTypeInput.value.trim();
-        const amount = Number(discountAmountInput.value || 0);
-        const selectedIds = Array.from(document.querySelectorAll(".discount-student-check:checked")).map(function (checkbox) {
-          return checkbox.value;
-        });
-        if (!type || !amount) {
-          message.textContent = "Discount type and amount are required.";
-          message.className = "form-message error";
+      document.getElementById("assignDiscountBtn").addEventListener("click", async function () {
+        var selectedTypeId = assignTypeSelect.value;
+        var dt = (settings.discountTypes || []).find(function (d) { return d.id === selectedTypeId; });
+        if (!dt) {
+          assignMessage.querySelector(".gs-message__text").textContent = "Please select a discount type.";
+          assignMessage.querySelector(".gs-message__icon").textContent = "✕";
+          assignMessage.className = "gs-message gs-message--error gs-message--visible";
           return;
         }
-
+        var selectedIds = Array.from(document.querySelectorAll(".assign-discount-check:checked")).map(function (cb) { return cb.value; });
+        if (!selectedIds.length) {
+          assignMessage.querySelector(".gs-message__text").textContent = "Please select at least one student.";
+          assignMessage.querySelector(".gs-message__icon").textContent = "✕";
+          assignMessage.className = "gs-message gs-message--error gs-message--visible";
+          return;
+        }
         database.students.forEach(function (student) {
           if (selectedIds.includes(student.id)) {
-            student.discountType = type;
-            student.discountAmount = amount;
+            student.discountTypeId = dt.id;
+            student.discountInFee = String(dt.percentage);
+            student.discountType = dt.name;
+            student.discountAmount = 0;
           }
         });
-
-        settings.discountPolicies.unshift({
-          id: `DIS-${generateId()}`,
-          type: type,
-          amount: amount,
-          className: classFilter.value === "all" ? "" : classFilter.value,
-          studentIds: selectedIds,
-          createdAt: new Date().toISOString()
-        });
-        addActivity("Discount applied", `${type} discount applied to ${selectedIds.length} students.`);
-        var _saved = await saveDatabase("Saving discount...", [
-          { table: "school_settings", record: { id: "discountPolicies", source_id: "discountPolicies", data: settings.discountPolicies, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
+        addActivity("Discount assigned", dt.name + " (" + dt.percentage + "%) assigned to " + selectedIds.length + " students.");
+        await saveDatabase("Saving discount assignment...", [
           ...database.students.filter(function (s) { return selectedIds.includes(s.id); }).map(function (s) { return { table: "students", record: s, operation: "update" }; })
         ]);
-        if (_saved) {
-          message.textContent = "Discount applied successfully.";
-          message.className = "form-message success";
-        } else {
-          message.textContent = "Save failed. Please check your connection and try again.";
-          message.className = "form-message error";
-        }
+        assignMessage.querySelector(".gs-message__text").textContent = "Discount assigned to " + selectedIds.length + " student(s).";
+        assignMessage.querySelector(".gs-message__icon").textContent = "✓";
+        assignMessage.className = "gs-message gs-message--success gs-message--visible";
+        renderAssignStudents();
         renderDiscountPreview();
       });
 
-      renderDiscountStudents();
+      function renderDiscountPreview() {
+        var previewList = document.getElementById("discountPreviewList");
+        var studentsWithDiscount = database.students.filter(function (s) { return s.discountTypeId && s.status === "active"; });
+        if (!studentsWithDiscount.length) { previewList.innerHTML = "<p>No discounts assigned yet.</p>"; return; }
+        previewList.innerHTML = studentsWithDiscount.map(function (student) {
+          var dt = (settings.discountTypes || []).find(function (d) { return d.id === student.discountTypeId; });
+          var typeName = dt ? dt.name : (student.discountType || "-");
+          var percent = dt ? dt.percentage : (student.discountInFee || "-");
+          return '<article style="padding:8px 10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">' +
+            '<div><strong>' + escapeHtml(student.name) + '</strong> <small style="color:#888;">(' + escapeHtml(student.admissionNo || "-") + ')</small>' +
+            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' — <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
+            '</article>';
+        }).join("");
+      }
+
+      renderTypesTable();
+      renderAssignStudents();
       renderDiscountPreview();
       return;
     }
@@ -6918,17 +6965,26 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
       function buildFeeParticularsForStudent(student) {
-        const classParticulars = (settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className);
+        const classParticulars = getDefaultFeeParticulars(student.className);
         const classRecord = database.classes.find(function (c) { return c.name === student.className; });
         const liveMonthlyFee = Math.max(0, parseFloat(classRecord && classRecord.monthlyTuitionFees ? classRecord.monthlyTuitionFees : 0));
         const discountPercent = Math.max(0, Math.min(100, parseFloat(student.discountInFee || 0)));
         var items = classParticulars.map(function (item) {
           const label = String(item.label || "");
           if (label.toUpperCase().includes("DISCOUNT IN FEE")) return null;
+          if (label.toUpperCase().includes("PREVIOUS BALANCE")) return null;
           const isMonthlyFee = label.toUpperCase().includes("MONTHLY") && label.toUpperCase().includes("TUITION");
           const amount = isMonthlyFee ? liveMonthlyFee : Math.max(0, parseFloat(item.amount || 0));
           return { ...item, amount: amount };
         }).filter(function (item) { return item !== null; });
+        var previousBalance = database.fees.reduce(function (sum, feeItem) {
+          if (feeItem.studentId !== student.id) return sum;
+          var remaining = Math.max(0, Number(feeItem.remaining || 0));
+          return sum + remaining;
+        }, 0);
+        if (previousBalance > 0) {
+          items.push({ label: "PREVIOUS BALANCE", amount: previousBalance, fixed: true });
+        }
         if (discountPercent > 0) {
           var subtotal = items.reduce(function (sum, item) { return sum + item.amount; }, 0);
           var discountAmount = Math.round(subtotal * discountPercent / 100);
@@ -7539,19 +7595,25 @@ ${allContent}
       }
 
       function getFeeParticularRows(student) {
-        const classParticulars = (settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className);
+        const classParticulars = getDefaultFeeParticulars(student.className);
         const classRecord7497 = database.classes.find(function (c) { return c.name === student.className; });
         const liveMonthlyFee7497 = Math.max(0, parseFloat(classRecord7497 && classRecord7497.monthlyTuitionFees ? classRecord7497.monthlyTuitionFees : 0));
         const discountPercent = Math.max(0, Math.min(100, parseFloat(student.discountInFee || 0)));
         var items = classParticulars.map(function (item) {
           const label = String(item.label || "");
-          if (label.toUpperCase().includes("DISCOUNT IN FEE")) {
-            return null;
-          }
+          if (label.toUpperCase().includes("DISCOUNT IN FEE")) return null;
+          if (label.toUpperCase().includes("PREVIOUS BALANCE")) return null;
           const isMonthlyFee = label.toUpperCase().includes("MONTHLY") && label.toUpperCase().includes("TUITION");
           const amount = isMonthlyFee ? liveMonthlyFee7497 : Math.max(0, parseFloat(item.amount || 0));
           return { label: item.label || "-", amount: amount };
         }).filter(function (item) { return item !== null; });
+        var previousBalance = database.fees.reduce(function (sum, feeItem) {
+          if (feeItem.studentId !== student.id) return sum;
+          return sum + Math.max(0, Number(feeItem.remaining || 0));
+        }, 0);
+        if (previousBalance > 0) {
+          items.push({ label: "PREVIOUS BALANCE", amount: previousBalance });
+        }
         if (discountPercent > 0) {
           var subtotal = items.reduce(function (sum, item) { return sum + item.amount; }, 0);
           var discountAmount = Math.round(subtotal * discountPercent / 100);
@@ -7990,7 +8052,7 @@ ${allContent}
         if (classRecord && classRecord.monthlyTuitionFees != null) {
           return Math.max(0, parseFloat(classRecord.monthlyTuitionFees || 0));
         }
-        const particulars = (settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className);
+        const particulars = getDefaultFeeParticulars(student.className);
         const monthlyFeeRow = particulars.find(function (item) {
           return String(item.label || "").toLowerCase().includes("monthly");
         });
@@ -8120,7 +8182,7 @@ ${allContent}
         }
         const classRecord8073 = database.classes.find(function (c) { return c.name === student.className; });
         const liveMonthlyFee8073 = Math.max(0, parseFloat(classRecord8073 && classRecord8073.monthlyTuitionFees ? classRecord8073.monthlyTuitionFees : 0));
-        const particulars = ((settings.feeParticulars && settings.feeParticulars[student.className]) || getDefaultFeeParticulars(student.className)).map(function (item) {
+        const particulars = getDefaultFeeParticulars(student.className).map(function (item) {
           const isMonthlyFee = String(item.label || "").toUpperCase().includes("MONTHLY") && String(item.label || "").toUpperCase().includes("TUITION");
           const amount = isMonthlyFee ? liveMonthlyFee8073 : Math.max(0, parseFloat(item.amount || 0));
           return { label: item.label || "-", amount: amount };
