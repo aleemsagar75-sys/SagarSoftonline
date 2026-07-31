@@ -1196,7 +1196,7 @@ document.addEventListener("DOMContentLoaded", function () {
   function _syncSettingsToDedicatedTables() {
     if (!database.generalSettings) return;
     var gs = database.generalSettings;
-    var singletonKeys = ["instituteProfile","accountSettings","licenseSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeParticulars","feeStructures","discountTypes"];
+    var singletonKeys = ["instituteProfile","accountSettings","licenseSettings","themeLanguage","smsGateway","rulesAndRegulations","failCriteria","messageTemplates","marksGrading","feeStructures","discountTypes"];
     var promises = [];
     singletonKeys.forEach(function (key) {
       if (gs[key] !== undefined && gs[key] !== null) {
@@ -6182,9 +6182,26 @@ document.addEventListener("DOMContentLoaded", function () {
         var percentage = parseFloat(document.getElementById("dtPercentInput").value) || 0;
         var description = document.getElementById("dtDescInput").value.trim();
         var status = document.getElementById("dtStatusInput").value;
-        if (!name || percentage <= 0) {
+        if (!name) {
           var msg = document.getElementById("dtMessage");
-          msg.querySelector(".gs-message__text").textContent = "Name and percentage are required.";
+          msg.querySelector(".gs-message__text").textContent = "Discount type name is required.";
+          msg.querySelector(".gs-message__icon").textContent = "✕";
+          msg.className = "gs-message gs-message--error gs-message--visible";
+          return;
+        }
+        if (percentage <= 0 || percentage > 100) {
+          var msg = document.getElementById("dtMessage");
+          msg.querySelector(".gs-message__text").textContent = "Percentage must be between 1 and 100.";
+          msg.querySelector(".gs-message__icon").textContent = "✕";
+          msg.className = "gs-message gs-message--error gs-message--visible";
+          return;
+        }
+        var duplicateName = (settings.discountTypes || []).find(function (d) {
+          return d.name.toLowerCase() === name.toLowerCase() && d.id !== editingDiscountTypeId;
+        });
+        if (duplicateName) {
+          var msg = document.getElementById("dtMessage");
+          msg.querySelector(".gs-message__text").textContent = "A discount type with this name already exists.";
           msg.querySelector(".gs-message__icon").textContent = "✕";
           msg.className = "gs-message gs-message--error gs-message--visible";
           return;
@@ -6286,8 +6303,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
       assignSearchInput.addEventListener("input", renderAssignStudents);
 
-      document.getElementById("assignDiscountBtn").addEventListener("click", async function () {
-        var selectedTypeId = assignTypeSelect.value;
+      var _assignDiscountBtn = document.getElementById("assignDiscountBtn");
+      if (_assignDiscountBtn) _assignDiscountBtn.addEventListener("click", async function () {
+        var selectedTypeId = assignTypeSelect ? assignTypeSelect.value : "";
         var dt = (settings.discountTypes || []).find(function (d) { return d.id === selectedTypeId; });
         if (!dt) {
           showAssignMessage("Please select a discount type.", "error");
@@ -6319,14 +6337,17 @@ document.addEventListener("DOMContentLoaded", function () {
       var assignClasswiseTypeSelect = document.getElementById("assignClasswiseTypeSelect");
       var assignClasswisePercentDisplay = document.getElementById("assignClasswisePercentDisplay");
 
-      assignClasswiseTypeSelect.addEventListener("change", function () {
-        var dt = (settings.discountTypes || []).find(function (d) { return d.id === assignClasswiseTypeSelect.value; });
-        assignClasswisePercentDisplay.value = dt ? dt.percentage + "%" : "";
-      });
+      if (assignClasswiseTypeSelect) {
+        assignClasswiseTypeSelect.addEventListener("change", function () {
+          var dt = (settings.discountTypes || []).find(function (d) { return d.id === assignClasswiseTypeSelect.value; });
+          if (assignClasswisePercentDisplay) assignClasswisePercentDisplay.value = dt ? dt.percentage + "%" : "";
+        });
+      }
 
-      document.getElementById("assignClasswiseBtn").addEventListener("click", async function () {
-        var selectedClass = assignClasswiseClassSelect.value;
-        var selectedTypeId = assignClasswiseTypeSelect.value;
+      var _assignClasswiseBtn = document.getElementById("assignClasswiseBtn");
+      if (_assignClasswiseBtn) _assignClasswiseBtn.addEventListener("click", async function () {
+        var selectedClass = assignClasswiseClassSelect ? assignClasswiseClassSelect.value : "";
+        var selectedTypeId = assignClasswiseTypeSelect ? assignClasswiseTypeSelect.value : "";
         var dt = (settings.discountTypes || []).find(function (d) { return d.id === selectedTypeId; });
         if (!selectedClass) {
           showAssignMessage("Please select a class.", "error");
@@ -7728,7 +7749,7 @@ ${allContent}
           return sum + Math.max(0, Number(feeItem.remaining || 0));
         }, 0);
         if (previousBalance > 0) {
-          items.push({ label: "PREVIOUS BALANCE", amount: previousBalance });
+          items.push({ label: "PREVIOUS BALANCE", amount: previousBalance, fixed: true });
         }
         if (discountPercent > 0) {
           var subtotal = items.reduce(function (sum, item) { return sum + item.amount; }, 0);
@@ -7803,24 +7824,9 @@ ${allContent}
         const rows = getFeeParticularRows(student);
         const total = rows.reduce(function (sum, row) { return sum + Number(row.amount || 0); }, 0);
         
-        // Calculate previous month dues (unpaid remaining amounts)
-        const currentMonthFormatted = normalizeFeeMonthLabel(monthSelect.value);
-        const previousDues = database.fees.reduce(function (sum, feeItem) {
-          if (feeItem.studentId !== student.id) {
-            return sum;
-          }
-          const feeMonth = feeItem.feeMonth || feeItem.month;
-          // Only include unpaid/partial fees from BEFORE current month
-          if (feeMonth !== currentMonthFormatted && Number(feeItem.remaining || 0) > 0) {
-            return sum + Math.max(0, Number(feeItem.remaining || 0));
-          }
-          return sum;
-        }, 0);
-        
-        const totalWithPreviousDues = total + previousDues;
         const depositText = depositInput.value.trim();
         const deposit = depositText === "" ? 0 : Math.max(0, parseFloat(depositText) || 0);
-        const dueBalance = Math.max(totalWithPreviousDues - deposit, 0);
+        const dueBalance = Math.max(total - deposit, 0);
         detailsBox.innerHTML = `
           <article class="module-preview-card">
             <div class="module-line-item module-line-item--triple">
@@ -7837,9 +7843,9 @@ ${allContent}
                 <tbody>${rows.map(function (row, index) {
                   const safeAmount = Number(row.amount || 0);
                   return `<tr><td>${index + 1}</td><td>${escapeHtml(row.label || "-")}</td><td>${safeAmount}</td></tr>`;
-                }).join("")}${previousDues > 0 ? `<tr><td></td><td><strong>Previous Month Dues</strong></td><td>${previousDues}</td></tr>` : ""}</tbody>
+                }).join("")}</tbody>
                 <tfoot>
-                  <tr><th colspan="2" style="text-align:left;">TOTAL</th><th>${totalWithPreviousDues}</th></tr>
+                  <tr><th colspan="2" style="text-align:left;">TOTAL</th><th>${total}</th></tr>
                   <tr><th colspan="2" style="text-align:left;">DEPOSIT</th><th>${deposit}</th></tr>
                   <tr><th colspan="2" style="text-align:left;">DUE-ABLE BALANCE</th><th>${dueBalance}</th></tr>
                 </tfoot>
@@ -7897,21 +7903,18 @@ ${allContent}
           return;
         }
         
-        // Calculate and mark previous month dues as paid
-        let previousDues = 0;
+        // Mark previous month dues as paid (Previous Balance is already in currentMonthAmount via getFeeParticularRows)
         (database.fees || []).forEach(function (feeItem) {
           if (feeItem.studentId === student.id) {
             const feeItemMonth = feeItem.feeMonth || feeItem.month;
-            // Mark previous unpaid/partial fees as paid
             if (feeItemMonth !== feeMonth && Number(feeItem.remaining || 0) > 0) {
-              previousDues += Number(feeItem.remaining || 0);
               feeItem.status = "paid";
               feeItem.remaining = 0;
             }
           }
         });
         
-        const totalAmount = currentMonthAmount + previousDues;
+        const totalAmount = currentMonthAmount;
         const remaining = Math.max(totalAmount - deposit, 0);
         const status = remaining === 0 ? "paid" : "unpaid";
         const feeIndex = database.fees.findIndex(function (feeItem) {
