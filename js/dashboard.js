@@ -4841,42 +4841,156 @@ document.addEventListener("DOMContentLoaded", function () {
     moduleTitle.textContent = title;
     moduleCardTitle.textContent = title;
     if (route === "rules-regulations") {
+      settings.rulesAndRegulations = settings.rulesAndRegulations || { students: database.school.rulesRegulations || "", employees: "" };
       moduleSummary.innerHTML = `
-        <article>
-          <strong>Rules & Regulations</strong>
-          <p>Update school rules here. Admission letter print view will use this content.</p>
-        </article>
-        <article>
-          <textarea id="rulesRegulationsInput" rows="12" placeholder="Enter school rules and regulations">${database.school.rulesRegulations || ""}</textarea>
-        </article>
-        <article>
-          <button class="primary-button" id="saveRulesRegulationsBtn" type="button">Save Rules & Regulations</button>
-          <p class="form-message" id="rulesRegulationsMessage"></p>
-        </article>
+        <style>
+          .rules-cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:4px}
+          .rules-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06);display:flex;flex-direction:column}
+          .rules-card-header{display:flex;align-items:center;gap:14px;padding:18px 22px 14px;border-bottom:1px solid #f1f5f9}
+          .rules-card-icon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0}
+          .rules-card-icon--student{background:linear-gradient(135deg,#e0f2fe,#bae6fd);color:#0369a1}
+          .rules-card-icon--employee{background:linear-gradient(135deg,#dcfce7,#bbf7d0);color:#15803d}
+          .rules-card-title{font-size:1rem;font-weight:700;color:#1e293b;line-height:1.2}
+          .rules-card-subtitle{font-size:0.78rem;color:#64748b;margin-top:2px}
+          .rules-card-body{padding:16px 22px 20px;display:flex;flex-direction:column;flex-grow:1}
+          .rules-card-label{font-size:0.82rem;font-weight:600;color:#334155;margin-bottom:6px}
+          .rules-toolbar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;padding:8px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px 10px 0 0;border-bottom:none}
+          .rules-toolbar button{padding:5px 10px;font-size:0.78rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;cursor:pointer;font-weight:500;transition:all 0.15s}
+          .rules-toolbar button:hover{background:#e0f2fe;border-color:#93c5fd;color:#0369a1}
+          .rules-toolbar select{padding:5px 8px;font-size:0.78rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;cursor:pointer;font-weight:500}
+          .rules-toolbar input[type="color"]{width:32px;height:30px;padding:2px;border:1px solid #cbd5e1;border-radius:6px;cursor:pointer;background:#fff}
+          .rules-editor{min-height:300px;padding:14px 16px;border:1px solid #e2e8f0;border-radius:0 0 10px 10px;background:#fff;outline:none;font-size:0.9rem;line-height:1.7;color:#1e293b}
+          .rules-editor:focus{border-color:rgba(30,94,255,0.5);box-shadow:0 0 0 3px rgba(30,94,255,0.1)}
+          .rules-card-footer{padding:14px 22px 18px;display:flex;align-items:center;gap:12px}
+          .rules-save-btn{padding:10px 28px;font-size:0.88rem;font-weight:600;color:#fff;border:none;border-radius:10px;cursor:pointer;transition:all 0.2s}
+          .rules-save-btn--student{background:linear-gradient(135deg,#0ea5e9,#10b981)}
+          .rules-save-btn--student:hover{box-shadow:0 4px 14px rgba(16,185,129,0.35);transform:translateY(-1px)}
+          .rules-save-btn--employee{background:linear-gradient(135deg,#10b981,#059669)}
+          .rules-save-btn--employee:hover{box-shadow:0 4px 14px rgba(5,150,105,0.35);transform:translateY(-1px)}
+          .rules-save-msg{font-size:0.8rem;font-weight:500;min-height:20px}
+          .rules-save-msg--success{color:#16a34a}
+          .rules-save-msg--error{color:#dc2626}
+          @media(max-width:900px){.rules-cards-grid{grid-template-columns:1fr}}
+        </style>
+        <div class="rules-cards-grid">
+          <div class="rules-card">
+            <div class="rules-card-header">
+              <div class="rules-card-icon rules-card-icon--student">&#x1F4D6;</div>
+              <div>
+                <div class="rules-card-title">Student Rules &amp; Regulations</div>
+                <div class="rules-card-subtitle">Displayed on Student Admission Letter</div>
+              </div>
+            </div>
+            <div class="rules-card-body">
+              <div class="rules-card-label">Rules For Students *</div>
+              <div class="rules-toolbar" id="studentRulesToolbar">
+                <button data-cmd="bold" type="button"><b>B</b></button>
+                <button data-cmd="underline" type="button"><u>U</u></button>
+                <button data-cmd="italic" type="button"><i>I</i></button>
+                <input data-cmd="foreColor" type="color" value="#102542" title="Text Color">
+                <select data-cmd="fontSize" title="Font Size">
+                  <option value="3">Normal</option>
+                  <option value="4">Medium</option>
+                  <option value="5">Large</option>
+                  <option value="6">X-Large</option>
+                </select>
+                <button data-cmd="insertUnorderedList" type="button">&#x2022; List</button>
+                <button data-cmd="insertOrderedList" type="button">1. List</button>
+              </div>
+              <div id="studentRulesEditor" class="rules-editor" contenteditable="true"></div>
+            </div>
+            <div class="rules-card-footer">
+              <button class="rules-save-btn rules-save-btn--student" id="saveStudentRulesBtn" type="button">Save Student Rules</button>
+              <span class="rules-save-msg" id="studentRulesMsg"></span>
+            </div>
+          </div>
+          <div class="rules-card">
+            <div class="rules-card-header">
+              <div class="rules-card-icon rules-card-icon--employee">&#x1F4BC;</div>
+              <div>
+                <div class="rules-card-title">Employee Rules &amp; Regulations</div>
+                <div class="rules-card-subtitle">Displayed on Appointment Letter</div>
+              </div>
+            </div>
+            <div class="rules-card-body">
+              <div class="rules-card-label">Rules For Employees *</div>
+              <div class="rules-toolbar" id="employeeRulesToolbar">
+                <button data-cmd="bold" type="button"><b>B</b></button>
+                <button data-cmd="underline" type="button"><u>U</u></button>
+                <button data-cmd="italic" type="button"><i>I</i></button>
+                <input data-cmd="foreColor" type="color" value="#102542" title="Text Color">
+                <select data-cmd="fontSize" title="Font Size">
+                  <option value="3">Normal</option>
+                  <option value="4">Medium</option>
+                  <option value="5">Large</option>
+                  <option value="6">X-Large</option>
+                </select>
+                <button data-cmd="insertUnorderedList" type="button">&#x2022; List</button>
+                <button data-cmd="insertOrderedList" type="button">1. List</button>
+              </div>
+              <div id="employeeRulesEditor" class="rules-editor" contenteditable="true"></div>
+            </div>
+            <div class="rules-card-footer">
+              <button class="rules-save-btn rules-save-btn--employee" id="saveEmployeeRulesBtn" type="button">Save Employee Rules</button>
+              <span class="rules-save-msg" id="employeeRulesMsg"></span>
+            </div>
+          </div>
+        </div>
       `;
 
-      moduleGuide.innerHTML = `
-        <article>
-          <strong>How it works</strong>
-          <p>These rules are saved and printed at the end of the Admission Form.</p>
-        </article>
-      `;
+      moduleGuide.innerHTML = "";
+      var _pg = moduleGuide.closest(".panel-card");
+      if (_pg) _pg.style.display = "none";
+      var _ps = moduleSummary.closest(".panel-card");
+      if (_ps) _ps.style.gridColumn = "1 / -1";
 
-      const saveButton = document.getElementById("saveRulesRegulationsBtn");
-      saveButton.addEventListener("click", async function () {
-        const input = document.getElementById("rulesRegulationsInput");
-        const message = document.getElementById("rulesRegulationsMessage");
-        database.school.rulesRegulations = input.value.trim();
-        var _saved = await saveDatabase("Saving rules & regulations...", [
-          { table: "school_settings", record: { id: "rulesAndRegulations", source_id: "rulesAndRegulations", data: { rules: database.school.rulesRegulations }, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+      var studentEditor = document.getElementById("studentRulesEditor");
+      var employeeEditor = document.getElementById("employeeRulesEditor");
+
+      studentEditor.innerHTML = settings.rulesAndRegulations.students || "";
+      employeeEditor.innerHTML = settings.rulesAndRegulations.employees || "";
+
+      function wireToolbar(toolbarId, editorEl) {
+        var toolbar = document.getElementById(toolbarId);
+        if (!toolbar) return;
+        toolbar.querySelectorAll("[data-cmd]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var cmd = btn.getAttribute("data-cmd");
+            if (cmd === "foreColor") {
+              document.execCommand("foreColor", false, btn.value);
+            } else if (cmd === "fontSize") {
+              document.execCommand("fontSize", false, btn.value);
+            } else {
+              document.execCommand(cmd, false, null);
+            }
+            editorEl.focus();
+          });
+        });
+      }
+      wireToolbar("studentRulesToolbar", studentEditor);
+      wireToolbar("employeeRulesToolbar", employeeEditor);
+
+      document.getElementById("saveStudentRulesBtn").addEventListener("click", async function () {
+        var msg = document.getElementById("studentRulesMsg");
+        settings.rulesAndRegulations.students = studentEditor.innerHTML.trim();
+        database.school.rulesRegulations = studentEditor.textContent.trim();
+        addActivity("Rules updated", "Student rules and regulations updated.");
+        var saved = await saveDatabase("Saving student rules...", [
+          { table: "school_settings", record: { id: "rulesAndRegulations", source_id: "rulesAndRegulations", data: settings.rulesAndRegulations, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
         ]);
-        if (_saved) {
-          message.textContent = "Rules and regulations saved successfully.";
-          message.className = "form-message success";
-        } else {
-          message.textContent = "Save failed. Please check your connection and try again.";
-          message.className = "form-message error";
-        }
+        msg.textContent = saved ? "Student rules saved successfully." : "Save failed. Check connection.";
+        msg.className = "rules-save-msg " + (saved ? "rules-save-msg--success" : "rules-save-msg--error");
+      });
+
+      document.getElementById("saveEmployeeRulesBtn").addEventListener("click", async function () {
+        var msg = document.getElementById("employeeRulesMsg");
+        settings.rulesAndRegulations.employees = employeeEditor.innerHTML.trim();
+        addActivity("Rules updated", "Employee rules and regulations updated.");
+        var saved = await saveDatabase("Saving employee rules...", [
+          { table: "school_settings", record: { id: "rulesAndRegulations", source_id: "rulesAndRegulations", data: settings.rulesAndRegulations, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
+        ]);
+        msg.textContent = saved ? "Employee rules saved successfully." : "Save failed. Check connection.";
+        msg.className = "rules-save-msg " + (saved ? "rules-save-msg--success" : "rules-save-msg--error");
       });
       return;
     }
@@ -6591,101 +6705,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
       renderBankPreview();
       renderBankList();
-      return;
-    }
-
-    if (route === "rules-regulations") {
-      moduleSummary.innerHTML = `
-        <article>
-          <strong>Rules and Regulations</strong>
-          <div class="field-group">
-            <label for="rulesApplyToSelect">Apply To</label>
-            <select id="rulesApplyToSelect">
-              <option value="students">Students</option>
-              <option value="employees">Employees</option>
-            </select>
-          </div>
-          <div class="module-editor-toolbar">
-            <button class="table-action-btn" data-editor-cmd="bold" type="button">Bold</button>
-            <button class="table-action-btn" data-editor-cmd="underline" type="button">Underline</button>
-            <button class="table-action-btn" data-editor-cmd="insertOrderedList" type="button">Order List</button>
-            <button class="table-action-btn" data-editor-cmd="insertUnorderedList" type="button">Unorder List</button>
-            <input id="rulesColorPicker" type="color" value="#102542">
-            <select id="rulesFontSizeSelect">
-              <option value="3">Size Normal</option>
-              <option value="4">Size Medium</option>
-              <option value="5">Size Large</option>
-            </select>
-          </div>
-          <div id="rulesEditor" class="module-rich-editor" contenteditable="true"></div>
-          <div class="form-actions">
-            <button class="primary-button" id="saveRulesBtn" type="button">Apply Rules</button>
-          </div>
-          <p class="form-message" id="rulesMessage"></p>
-        </article>
-        <div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">
-          <strong>Preview</strong>
-          <div id="rulesPreview" class="module-preview-card"></div>
-        </div>
-      `;
-
-      moduleGuide.innerHTML = ``;
-      var _pg = moduleGuide.closest(".panel-card");
-      if (_pg) _pg.style.display = "none";
-      var _ps = moduleSummary.closest(".panel-card");
-      if (_ps) _ps.style.gridColumn = "1 / -1";
-
-      const applyToSelect = document.getElementById("rulesApplyToSelect");
-      const editor = document.getElementById("rulesEditor");
-      const preview = document.getElementById("rulesPreview");
-      const message = document.getElementById("rulesMessage");
-      const colorInput = document.getElementById("rulesColorPicker");
-      const sizeSelect = document.getElementById("rulesFontSizeSelect");
-
-      function loadRules() {
-        const target = applyToSelect.value;
-        editor.innerHTML = settings.rulesAndRegulations[target] || "";
-        preview.innerHTML = settings.rulesAndRegulations[target] || "<p>No rules set.</p>";
-      }
-
-      document.querySelectorAll("[data-editor-cmd]").forEach(function (button) {
-        button.addEventListener("click", function () {
-          document.execCommand(button.dataset.editorCmd, false, null);
-          editor.focus();
-        });
-      });
-
-      colorInput.addEventListener("input", function () {
-        document.execCommand("foreColor", false, colorInput.value);
-      });
-      sizeSelect.addEventListener("change", function () {
-        document.execCommand("fontSize", false, sizeSelect.value);
-      });
-      applyToSelect.addEventListener("change", loadRules);
-      editor.addEventListener("input", function () {
-        preview.innerHTML = editor.innerHTML;
-      });
-
-      var _el = document.getElementById("saveRulesBtn"); if (_el) _el.addEventListener("click", async function () {
-        const target = applyToSelect.value;
-        settings.rulesAndRegulations[target] = editor.innerHTML.trim();
-        if (target === "students") {
-          database.school.rulesRegulations = editor.textContent.trim();
-        }
-        addActivity("Rules updated", `${target} rules and regulations updated.`);
-        var _saved = await saveDatabase("Saving rules & regulations...", [
-          { table: "school_settings", record: { id: "rulesAndRegulations", source_id: "rulesAndRegulations", data: settings.rulesAndRegulations, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
-        ]);
-        if (_saved) {
-          message.textContent = "Rules and regulations applied successfully.";
-          message.className = "form-message success";
-        } else {
-          message.textContent = "Save failed. Please check your connection and try again.";
-          message.className = "form-message error";
-        }
-      });
-
-      loadRules();
       return;
     }
 
