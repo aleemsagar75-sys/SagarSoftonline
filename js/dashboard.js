@@ -4685,14 +4685,8 @@ document.addEventListener("DOMContentLoaded", function () {
     if (purgeUntouchedLegacyFinanceData(settings)) {
       saveDatabase("", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
     }
-    const feeCollections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
     const salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
     const accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
-    const totalFeeCollection = feeCollections.filter(function (item) {
-      return getMonthKeyFromValue(item.collectedAt || item.paymentDate || item.date || item.feeMonth || item.month) === currentMonth;
-    }).reduce(function (sum, item) {
-      return sum + Number(item.deposit || 0);
-    }, 0);
     const totalSalaries = salaryPayments.filter(function (item) {
       return getMonthKeyFromValue(item.paymentDate || item.date || item.salaryMonth || item.createdAt) === currentMonth;
     }).reduce(function (sum, item) {
@@ -4717,13 +4711,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 0);
     return {
       currentMonth: currentMonth,
-      totalFeeCollection: totalFeeCollection,
+      totalFeeCollection: 0,
       totalIncome: totalIncome,
       totalSalaries: totalSalaries,
       totalExpenses: totalExpenses,
-      incomeTotal: totalFeeCollection + totalIncome,
+      incomeTotal: totalIncome,
       expenseTotal: totalSalaries + totalExpenses,
-      totalProfit: (totalFeeCollection + totalIncome) - totalSalaries - totalExpenses
+      totalProfit: totalIncome - totalSalaries - totalExpenses
     };
   }
 
@@ -8817,10 +8811,10 @@ ${allContent}
           id: "LEDGER-" + generateId(),
           date: getTodayDateISO(),
           type: "Expense",
-          category: "Fee Deletion",
-          description: "Fee deleted for " + (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ")",
+          category: "Fee Collection Reversed",
+          description: "Fee Collection Reversed - " + (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ") for " + feeMonth,
           amount: depositAmount,
-          note: "Fee record deleted for month " + feeMonth,
+          note: "Fee collection reversed for " + feeMonth,
           createdAt: new Date().toISOString()
         });
         trackDeletion(collectionId);
@@ -14035,22 +14029,28 @@ ${allContent}
         }
         return isDateWithinRange(String(dateValue || ""), range.from, range.to);
       };
-      const incomes = (settings.feeCollections || []).filter(function (row) {
-        return inRange(row.paidDate || row.date || "");
+      const incomes = (settings.accountsLedger || []).filter(function (row) {
+        return String(row.type || "").toLowerCase() === "income" && inRange(row.date || row.createdAt || "");
       }).map(function (row) {
-        return { date: row.paidDate || row.date || "-", type: "Income", source: "Fee Collection", ref: row.studentName || row.studentId || "-", amount: Number(row.deposit || 0) };
+        return { date: row.date || row.createdAt || "-", type: "Income", source: row.category || "Income", ref: row.description || row.note || "-", amount: Number(row.amount || 0) };
       });
-      const expenses = (settings.salaryPayments || []).filter(function (row) {
+      const expenses = (settings.accountsLedger || []).filter(function (row) {
+        return String(row.type || "").toLowerCase() === "expense" && inRange(row.date || row.createdAt || "");
+      }).map(function (row) {
+        return { date: row.date || row.createdAt || "-", type: "Expense", source: row.category || "Expense", ref: row.description || row.note || "-", amount: Number(row.amount || 0) };
+      });
+      const salaryExpenses = (settings.salaryPayments || []).filter(function (row) {
         return inRange(row.paymentDate || row.date || "");
       }).map(function (row) {
         const total = Number(row.netAmount ?? (Number(row.salaryAmount || 0) + Number(row.bonus || 0) - Number(row.deduction || 0)));
         return { date: row.paymentDate || row.date || "-", type: "Expense", source: "Salary Payment", ref: row.employeeName || row.employeeId || "-", amount: total };
       });
-      const rows = incomes.concat(expenses).sort(function (a, b) {
+      const allExpenses = expenses.concat(salaryExpenses);
+      const rows = incomes.concat(allExpenses).sort(function (a, b) {
         return String(b.date || "").localeCompare(String(a.date || ""));
       });
       const incomeTotal = incomes.reduce(function (sum, row) { return sum + row.amount; }, 0);
-      const expenseTotal = expenses.reduce(function (sum, row) { return sum + row.amount; }, 0);
+      const expenseTotal = allExpenses.reduce(function (sum, row) { return sum + row.amount; }, 0);
       return { rows: rows, income: incomeTotal, expense: expenseTotal, net: incomeTotal - expenseTotal };
     }
 
@@ -14784,22 +14784,6 @@ ${allContent}
             credit: _type === "income" ? amt : 0,
             source: _type === "expense" ? "expense" : "income",
             category: item.category || ""
-          });
-        });
-        (settings.feeCollections || []).forEach(function (item) {
-          if (!inRange(item.collectedAt || item.date || "")) return;
-          var amt = Number(item.deposit || 0);
-          var _stu = database.students.find(function (s) { return s.id === item.studentId; }) || null;
-          var _fee = database.fees.find(function (f) { return f.id === item.feeId; }) || database.fees.find(function (f) { return f.studentId === item.studentId && (f.feeMonth || f.month) === item.feeMonth; }) || null;
-          var sName = (_stu ? _stu.name : "") || (_fee ? _fee.studentName : "") || item.studentName || item.studentId || "-";
-          var sRoll = (_stu ? _stu.admissionNo : "") || (_fee ? _fee.admissionNo : "") || item.studentRollNo || item.studentId || "-";
-          rows.push({
-            date: String(item.collectedAt || item.date || "-").substring(0, 10),
-            description: "Fee added for " + sName + " (" + sRoll + ")",
-            debit: 0,
-            credit: amt,
-            source: "fees",
-            category: "Fee Collection"
           });
         });
         (settings.salaryPayments || []).forEach(function (item) {
@@ -23215,7 +23199,6 @@ ${allContent}
 
   function getDashboardFinanceSeries() {
     const settings = (database && database.generalSettings) ? database.generalSettings : {};
-    const feeCollections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
     const salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
     const accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
     const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -23230,11 +23213,6 @@ ${allContent}
       });
     }
     return months.map(function (month) {
-      const feeIncome = feeCollections.filter(function (item) {
-        return getMonthKeyFromValue(item.collectedAt || item.paymentDate || item.date || item.feeMonth || item.month) === month.key;
-      }).reduce(function (sum, item) {
-        return sum + Number(item.deposit || 0);
-      }, 0);
       const ledgerIncome = accountsLedger.filter(function (item) {
         return String(item.type || "").toLowerCase() === "income" && getMonthKeyFromValue(item.date || item.createdAt) === month.key;
       }).reduce(function (sum, item) {
@@ -23252,7 +23230,7 @@ ${allContent}
       }, 0);
       return {
         label: month.label,
-        income: feeIncome + ledgerIncome,
+        income: ledgerIncome,
         expense: salaryExpense + ledgerExpense
       };
     });
@@ -23351,7 +23329,7 @@ ${allContent}
     const currencySymbol = (database.generalSettings && database.generalSettings.accountSettings && database.generalSettings.accountSettings.symbol)
       ? database.generalSettings.accountSettings.symbol
       : "Rs";
-    const income = Number(finance.totalFeeCollection || 0) + Number(finance.totalIncome || 0);
+    const income = Number(finance.totalIncome || 0);
     const expense = Number(finance.totalSalaries || 0) + Number(finance.totalExpenses || 0);
     const totalFinance = income + expense;
     const hasFinanceSeries = getDashboardFinanceSeries().some(function (row) {
