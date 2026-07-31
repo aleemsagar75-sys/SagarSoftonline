@@ -648,7 +648,12 @@
               </div>
             </div>
 
-            <div class="admission-letter-layout">
+            <div id="admissionLetterEmptyVisual" class="admission-empty-visual">
+              <div class="admission-empty-icon">&#x1F4C4;</div>
+              <p class="admission-empty-text">Search a student to generate Admission Letter</p>
+            </div>
+
+            <div class="admission-letter-layout" id="admissionLetterLayout" style="display:none;">
               <article class="panel-card admission-search-card">
                 <div class="panel-card__header">
                   <div>
@@ -660,19 +665,20 @@
                 <p class="empty-state" id="admissionLetterEmptyState" hidden>No student found for this search.</p>
               </article>
 
-              <article class="panel-card admission-detail-card">
+              <article class="panel-card admission-detail-card" id="admissionDetailCard" style="display:none;">
                 <div class="panel-card__header">
                   <div>
                     <p class="panel-label">Selected Student</p>
                     <h3>Admission details</h3>
                   </div>
-                  <div class="form-actions">
-                    <button class="table-action-btn" id="sendAdmissionMessageBtn" type="button">Send Message</button>
-                    <button class="table-action-btn" id="sendAdmissionWhatsappBtn" type="button">WhatsApp</button>
-                    <button class="primary-button" id="printAdmissionLetterBtn" type="button">Print Admission Letter</button>
-                  </div>
                 </div>
                 <div id="admissionLetterDetail" class="stacked-copy"></div>
+                <div class="admission-actions-bar" id="admissionActionsBar">
+                  <button class="admission-action-btn admission-action-btn--msg" id="sendAdmissionMessageBtn" type="button">&#x1F4E8; Send Message</button>
+                  <button class="admission-action-btn admission-action-btn--wa" id="sendAdmissionWhatsappBtn" type="button">&#x1F4AC; WhatsApp</button>
+                  <button class="admission-action-btn admission-action-btn--pdf" id="downloadAdmissionPdfBtn" type="button">&#x1F4C5; Download PDF</button>
+                  <button class="admission-action-btn admission-action-btn--print" id="printAdmissionLetterBtn" type="button">&#x1F5A8; Print</button>
+                </div>
               </article>
             </div>
           </section>

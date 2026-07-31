@@ -789,9 +789,14 @@ document.addEventListener("DOMContentLoaded", function () {
   const admissionLetterStudentList = document.getElementById("admissionLetterStudentList");
   const admissionLetterEmptyState = document.getElementById("admissionLetterEmptyState");
   const admissionLetterDetail = document.getElementById("admissionLetterDetail");
+  const admissionLetterLayout = document.getElementById("admissionLetterLayout");
+  const admissionLetterEmptyVisual = document.getElementById("admissionLetterEmptyVisual");
+  const admissionDetailCard = document.getElementById("admissionDetailCard");
+  const admissionActionsBar = document.getElementById("admissionActionsBar");
   const sendAdmissionMessageBtn = document.getElementById("sendAdmissionMessageBtn");
   const sendAdmissionWhatsappBtn = document.getElementById("sendAdmissionWhatsappBtn");
   const printAdmissionLetterBtn = document.getElementById("printAdmissionLetterBtn");
+  const downloadAdmissionPdfBtn = document.getElementById("downloadAdmissionPdfBtn");
   const studentIdCardsShell = document.getElementById("studentIdCardsShell");
   const studentIdCardsSearchInput = document.getElementById("studentIdCardsSearchInput");
   const studentIdCardsClassFilter = document.getElementById("studentIdCardsClassFilter");
@@ -13475,33 +13480,58 @@ ${allContent}
     }
 
     if (route === "job-letter") {
+      let selectedJobLetterEmployeeId = null;
+
       moduleSummary.innerHTML = `
         <article>
-          <strong>Job Letter</strong>
+          <strong class="module-center-title">Job Letter</strong>
           <div class="toolbar toolbar--simple module-toolbar">
             <div id="jobLetterSearchContainer" style="position: relative; flex: 1;">
               <input id="jobLetterSearchInput" type="search" placeholder="Search employee by name, role, or mobile no." style="width: 100%;">
               <div id="jobLetterSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
           </div>
-          <div id="jobLetterList" class="compact-list"></div>
-          <p class="empty-state" id="jobLetterEmptyState" hidden>No employee found.</p>
+          <div id="jobLetterEmptyVisual" class="admission-empty-visual">
+            <div class="admission-empty-icon">&#x1F4C4;</div>
+            <p class="admission-empty-text">Search an employee to generate Job Letter</p>
+          </div>
+          <div id="jobLetterLayout" style="display:none;">
+            <div id="jobLetterList" class="compact-list"></div>
+            <p class="empty-state" id="jobLetterEmptyState" hidden>No employee found.</p>
+            <div id="jobLetterDetailCard" class="panel-card" style="display:none;margin-top:1rem;">
+              <div class="panel-card__header">
+                <div>
+                  <p class="panel-label">Selected Employee</p>
+                  <h3>Job Letter Details</h3>
+                </div>
+              </div>
+              <div id="jobLetterDetailContent" class="stacked-copy"></div>
+              <div class="admission-actions-bar" id="jobLetterActionsBar">
+                <button class="admission-action-btn admission-action-btn--msg" id="jobLetterSmsBtn" type="button">&#x1F4E8; Send SMS</button>
+                <button class="admission-action-btn admission-action-btn--wa" id="jobLetterWhatsappBtn" type="button">&#x1F4AC; WhatsApp</button>
+                <button class="admission-action-btn admission-action-btn--pdf" id="jobLetterPdfBtn" type="button">&#x1F4C5; Download PDF</button>
+                <button class="admission-action-btn admission-action-btn--print" id="jobLetterPrintBtn" type="button">&#x1F5A8; Print</button>
+              </div>
+            </div>
+          </div>
         </article>
       `;
 
-      moduleGuide.innerHTML = `
-        <article>
-          <strong>Preview</strong>
-          <div id="jobLetterPreview">Search and click Print Job Letter.</div>
-        </article>
-      `;
+      moduleGuide.innerHTML = "";
 
       const searchInput = document.getElementById("jobLetterSearchInput");
       const searchDropdown = document.getElementById("jobLetterSearchDropdown");
       const searchContainer = document.getElementById("jobLetterSearchContainer");
       const list = document.getElementById("jobLetterList");
       const emptyState = document.getElementById("jobLetterEmptyState");
-      const preview = document.getElementById("jobLetterPreview");
+      const jobLetterLayout = document.getElementById("jobLetterLayout");
+      const jobLetterEmptyVisual = document.getElementById("jobLetterEmptyVisual");
+      const jobLetterDetailCard = document.getElementById("jobLetterDetailCard");
+      const jobLetterDetailContent = document.getElementById("jobLetterDetailContent");
+      const jobLetterSmsBtn = document.getElementById("jobLetterSmsBtn");
+      const jobLetterWhatsappBtn = document.getElementById("jobLetterWhatsappBtn");
+      const jobLetterPdfBtn = document.getElementById("jobLetterPdfBtn");
+      const jobLetterPrintBtn = document.getElementById("jobLetterPrintBtn");
 
       initializeEmployeeProfessionalSearch(
         "jobLetterSearchInput",
@@ -13609,7 +13639,50 @@ ${allContent}
         });
       }
 
-      function renderJobLetterList() {
+      function renderJobLetterDetail(employee) {
+        if (!employee) {
+          if (jobLetterDetailCard) jobLetterDetailCard.style.display = "none";
+          return;
+        }
+        jobLetterDetailContent.innerHTML = `
+          <article>
+            <div class="admission-profile">
+              ${employee.picture ? `<img src="${employee.picture}" alt="${escapeHtml(employee.name)}" class="student-avatar student-avatar--image">` : `<span class="student-avatar">${getInitials(employee.name || "")}</span>`}
+              <div>
+                <strong>${escapeHtml(employee.name || "-")}</strong>
+                <p>${escapeHtml(employee.role || "-")} | ${escapeHtml(getEmployeeDisplayPhone(employee))}</p>
+              </div>
+            </div>
+            <div class="admission-grid">
+              <div class="admission-field"><strong>Role</strong><span>${escapeHtml(employee.role || "-")}</span></div>
+              <div class="admission-field"><strong>Date of Joining</strong><span>${escapeHtml(employee.dateOfJoining || "-")}</span></div>
+              <div class="admission-field"><strong>Monthly Salary</strong><span>${Number(employee.monthlySalary || 0)}</span></div>
+              <div class="admission-field"><strong>Gender</strong><span>${escapeHtml(employee.gender || "-")}</span></div>
+              <div class="admission-field"><strong>Education</strong><span>${escapeHtml(employee.education || "-")}</span></div>
+              <div class="admission-field"><strong>National ID</strong><span>${escapeHtml(employee.nationalId || "-")}</span></div>
+            </div>
+          </article>
+        `;
+        if (jobLetterDetailCard) jobLetterDetailCard.style.display = "";
+        if (jobLetterPrintBtn) jobLetterPrintBtn.onclick = function () { printJobLetter(employee); };
+        if (jobLetterSmsBtn) jobLetterSmsBtn.onclick = function () { sendJobLetterSms(employee); };
+        if (jobLetterWhatsappBtn) jobLetterWhatsappBtn.onclick = function () { sendJobLetterWhatsapp(employee); };
+        if (jobLetterPdfBtn) {
+          jobLetterPdfBtn.onclick = function () {
+            var html = buildJobLetterDetailsMarkup(employee);
+            var fullHtml = "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Job Letter</title></head><body>" + html + "</body></html>";
+            var blob = new Blob([fullHtml], { type: "text/html" });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url;
+            a.download = "JobLetter_" + (employee.name || "employee") + ".html";
+            a.click();
+            URL.revokeObjectURL(url);
+          };
+        }
+      }
+
+      function renderList() {
         const employees = getFilteredEmployees();
         list.innerHTML = employees.map(function (employee) {
           return `
@@ -13618,42 +13691,54 @@ ${allContent}
                 <strong>${escapeHtml(employee.name || "-")}</strong>
                 <span>${escapeHtml(employee.role || "-")} | ${escapeHtml(getEmployeeDisplayPhone(employee))}</span>
               </div>
-              <div class="table-actions">
-                <button class="table-action-btn" type="button" data-emp-action="sms-job-letter" data-id="${employee.id}">SMS</button>
-                <button class="table-action-btn" type="button" data-emp-action="whatsapp" data-id="${employee.id}">WhatsApp</button>
-                <button class="table-action-btn" type="button" data-emp-action="print-job-letter" data-id="${employee.id}">Print Job Letter</button>
+              <div>
+                <button class="admission-student-select" type="button" data-emp-action="select-job-letter" data-id="${employee.id}">
+                  ${selectedJobLetterEmployeeId === employee.id ? "Selected" : "Select"}
+                </button>
               </div>
             </article>
           `;
         }).join("");
         emptyState.hidden = employees.length !== 0;
+
+        if (employees.length > 0) {
+          if (jobLetterEmptyVisual) jobLetterEmptyVisual.style.display = "none";
+          if (jobLetterLayout) jobLetterLayout.style.display = "";
+        } else if (!searchInput.value.trim()) {
+          if (jobLetterEmptyVisual) jobLetterEmptyVisual.style.display = "";
+          if (jobLetterLayout) jobLetterLayout.style.display = "none";
+        }
+
+        const selected = employees.find(function (e) { return e.id === selectedJobLetterEmployeeId; }) || null;
+        renderJobLetterDetail(selected);
       }
 
       list.addEventListener("click", function (event) {
-        const actionButton = event.target.closest("[data-emp-action]");
-        if (!actionButton) {
+        const btn = event.target.closest("[data-emp-action]");
+        if (!btn) return;
+        const action = btn.dataset.empAction;
+        const employee = getEmployeeById(btn.dataset.id);
+        if (!employee) return;
+        if (action === "select-job-letter") {
+          selectedJobLetterEmployeeId = employee.id;
+          renderList();
           return;
         }
-        const action = actionButton.dataset.empAction;
-        const employee = getEmployeeById(actionButton.dataset.id);
-        if (!employee) {
-          return;
-        }
-        if (action === "print-job-letter") {
-          printJobLetter(employee);
-          return;
-        }
-        if (action === "sms-job-letter") {
-          sendJobLetterSms(employee);
-          return;
-        }
-        if (action === "whatsapp") {
-          sendJobLetterWhatsapp(employee);
-        }
+        if (action === "print-job-letter") { printJobLetter(employee); return; }
+        if (action === "sms-job-letter") { sendJobLetterSms(employee); return; }
+        if (action === "whatsapp") { sendJobLetterWhatsapp(employee); }
       });
 
-      searchInput.addEventListener("input", renderJobLetterList);
-      renderJobLetterList();
+      searchInput.addEventListener("input", function () {
+        selectedJobLetterEmployeeId = null;
+        if (jobLetterDetailCard) jobLetterDetailCard.style.display = "none";
+        if (!searchInput.value.trim()) {
+          if (jobLetterEmptyVisual) jobLetterEmptyVisual.style.display = "";
+          if (jobLetterLayout) jobLetterLayout.style.display = "none";
+        }
+        renderList();
+      });
+      renderList();
       return;
     }
 
@@ -18464,12 +18549,16 @@ ${allContent}
         <article>
           <strong class="module-center-title">Assign Homework</strong>
           <div class="form-grid">
-            <div class="field-group">
-              <label for="homeworkTargetType">Assign For*</label>
-              <select id="homeworkTargetType">
-                <option value="class">Class Wise</option>
-                <option value="student">Single Student</option>
-              </select>
+            <div class="field-group field-group--full">
+              <label>Send Homework To *</label>
+              <div class="homework-radio-group">
+                <label class="homework-radio-label">
+                  <input type="radio" name="homeworkTargetRadio" value="class" checked> Class Wise
+                </label>
+                <label class="homework-radio-label">
+                  <input type="radio" name="homeworkTargetRadio" value="student"> Student Wise
+                </label>
+              </div>
             </div>
             <div class="field-group" id="homeworkClassField">
               <label for="homeworkClassSelect">Select Class*</label>
@@ -18503,9 +18592,9 @@ ${allContent}
             </div>
           </div>
           <div class="form-actions homework-actions-row">
-            <button class="primary-button" id="sendHomeworkBtn" type="button">Save Home Work</button>
-            <button class="primary-button" id="sendHomeworkSmsBatchBtn" type="button">Send SMS</button>
-            <button class="table-action-btn" id="downloadHomeworkPdfBtn" type="button">Download PDF</button>
+            <button class="homework-btn homework-btn--save" id="sendHomeworkBtn" type="button">&#x1F4BE; Save</button>
+            <button class="homework-btn homework-btn--sms" id="sendHomeworkSmsBatchBtn" type="button">&#x1F4E8; SMS</button>
+            <button class="homework-btn homework-btn--pdf" id="downloadHomeworkPdfBtn" type="button">&#x1F4C4; PDF</button>
             <div class="homework-pdf-filter-controls" aria-label="Homework filters">
               <label class="homework-pdf-filter">
                 <span>Send To</span>
@@ -18563,7 +18652,7 @@ ${allContent}
       var _ps = moduleSummary.closest(".panel-card");
       if (_ps) _ps.style.gridColumn = "1 / -1";
 
-      const targetTypeSelect = document.getElementById("homeworkTargetType");
+      const targetTypeRadio = document.querySelector('input[name="homeworkTargetRadio"]');
       const classField = document.getElementById("homeworkClassField");
       const classSelect = document.getElementById("homeworkClassSelect");
       const studentField = document.getElementById("homeworkStudentField");
@@ -18610,7 +18699,7 @@ ${allContent}
       }
 
       function getTargets() {
-        if (targetTypeSelect.value === "student") {
+        if (getTargetTypeValue() === "student") {
           const student = findStudentFromSearch();
           return student ? [student] : [];
         }
@@ -18686,20 +18775,30 @@ ${allContent}
       function resetHomeworkForm() {
         editingHomeworkId = "";
         selectedHomeworkPreviewId = "";
-        var _hwBtn = document.getElementById("sendHomeworkBtn"); if (_hwBtn) _hwBtn.textContent = "Save Home Work";
+        var _hwBtn = document.getElementById("sendHomeworkBtn"); if (_hwBtn) _hwBtn.innerHTML = "&#x1F4BE; Save";
+        var _classRadio = document.querySelector('input[name="homeworkTargetRadio"][value="class"]');
+        if (_classRadio) _classRadio.checked = true;
+        syncTargetFields();
         subjectInput.value = "";
         titleInput.value = "";
         dueDateInput.value = "";
         descriptionInput.value = "";
       }
 
+      function getTargetTypeValue() {
+        var checked = document.querySelector('input[name="homeworkTargetRadio"]:checked');
+        return checked ? checked.value : "class";
+      }
+
       function syncTargetFields() {
-        const isStudent = targetTypeSelect.value === "student";
+        const isStudent = getTargetTypeValue() === "student";
         classField.style.display = isStudent ? "none" : "";
         studentField.style.display = isStudent ? "" : "none";
       }
 
-      targetTypeSelect.addEventListener("change", syncTargetFields);
+      document.querySelectorAll('input[name="homeworkTargetRadio"]').forEach(function (radio) {
+        radio.addEventListener("change", syncTargetFields);
+      });
 
       function syncFilterTargetFields() {
         const isStudent = filterTargetType.value === "student";
@@ -18732,7 +18831,7 @@ ${allContent}
           : null;
         const targets = selectedHomework ? getHomeworkRecordTargets(selectedHomework) : getTargets();
         if (!targets.length) {
-          if (targetTypeSelect.value === "student") {
+          if (getTargetTypeValue() === "student") {
             selectionPreview.innerHTML = `<strong>Selection Details</strong><p>Select one student to view details.</p>`;
           } else {
             selectionPreview.innerHTML = `<strong>Selection Details</strong><p>Select a class to preview target students.</p>`;
@@ -18760,7 +18859,7 @@ ${allContent}
         selectionPreview.innerHTML = `
           <strong>Selection Details</strong>
           <div style="margin-top: 8px;">
-            <p><strong>Type:</strong> ${selectedHomework ? escapeHtml(selectedHomework.targetLabel || "-") : (targetTypeSelect.value === "student" ? "Single Student" : `Class: ${classSelect.value}`)}</p>
+            <p><strong>Type:</strong> ${selectedHomework ? escapeHtml(selectedHomework.targetLabel || "-") : (getTargetTypeValue() === "student" ? "Single Student" : `Class: ${classSelect.value}`)}</p>
             <p><strong>Total Students:</strong> ${targets.length}</p>
             ${homeworkInfo}
             <strong style="display: block; margin-top: 12px; margin-bottom: 8px;">Selected Students</strong>
@@ -18799,14 +18898,14 @@ ${allContent}
           message.className = "form-message error";
           return;
         }
-        if (targetTypeSelect.value === "class" && !classSelect.value) {
+        if (getTargetTypeValue() === "class" && !classSelect.value) {
           message.textContent = "Please select class.";
           message.className = "form-message error";
           return;
         }
         const targets = getTargets();
         if (!targets.length) {
-          message.textContent = targetTypeSelect.value === "student" ? "Please select a valid student." : "No students found in selected class.";
+          message.textContent = getTargetTypeValue() === "student" ? "Please select a valid student." : "No students found in selected class.";
           message.className = "form-message warning";
           return;
         }
@@ -18816,9 +18915,9 @@ ${allContent}
           : null;
         const duplicateHomework = (settings.homeworkAssignments || []).find(function (item) {
           return item.id !== editingHomeworkId
-            && String(item.targetType || "") === String(targetTypeSelect.value || "")
+            && String(item.targetType || "") === String(getTargetTypeValue() || "")
             && String(item.className || "") === String(classSelect.value || "")
-            && String(item.targetStudentId || "") === String(targetTypeSelect.value === "student" ? targets[0].id : "")
+            && String(item.targetStudentId || "") === String(getTargetTypeValue() === "student" ? targets[0].id : "")
             && String(item.subject || "").trim().toLowerCase() === subject.toLowerCase()
             && String(item.title || "").trim().toLowerCase() === title.toLowerCase()
             && String(item.dueDate || "") === dueDate
@@ -18832,10 +18931,10 @@ ${allContent}
         const homeworkRecord = {
           id: existingHomework ? existingHomework.id : `HW-${generateId()}`,
           createdAt: new Date().toLocaleString(),
-          targetType: targetTypeSelect.value,
-          targetLabel: targetTypeSelect.value === "student" ? (targets[0].name || "-") : `Class: ${classSelect.value}`,
+          targetType: getTargetTypeValue(),
+          targetLabel: getTargetTypeValue() === "student" ? (targets[0].name || "-") : `Class: ${classSelect.value}`,
           className: classSelect.value || "",
-          targetStudentId: targetTypeSelect.value === "student" ? targets[0].id : "",
+          targetStudentId: getTargetTypeValue() === "student" ? targets[0].id : "",
           subject: subject,
           title: title,
           dueDate: dueDate,
@@ -18896,10 +18995,12 @@ ${allContent}
         }
         editingHomeworkId = homework.id;
         selectedHomeworkPreviewId = homework.id;
-        targetTypeSelect.value = homework.targetType || "class";
+        var targetTypeVal = homework.targetType || "class";
+        var targetRadio = document.querySelector('input[name="homeworkTargetRadio"][value="' + targetTypeVal + '"]');
+        if (targetRadio) { targetRadio.checked = true; }
         syncTargetFields();
         classSelect.value = homework.className || "";
-        if (targetTypeSelect.value === "student") {
+        if (getTargetTypeValue() === "student") {
           const student = students.find(function (item) {
             return item.id === homework.targetStudentId || item.name === homework.targetLabel;
           });
@@ -18909,7 +19010,7 @@ ${allContent}
         titleInput.value = homework.title || "";
         dueDateInput.value = homework.dueDate || "";
         descriptionInput.value = homework.details || "";
-        var _hwBtn = document.getElementById("sendHomeworkBtn"); if (_hwBtn) _hwBtn.textContent = "Update Home Work";
+        var _hwBtn = document.getElementById("sendHomeworkBtn"); if (_hwBtn) _hwBtn.innerHTML = "&#x1F4BE; Update";
         renderHomeworkSelectionPreview();
         message.textContent = "Homework loaded for editing.";
         message.className = "form-message success";
@@ -19047,7 +19148,9 @@ ${allContent}
 
       syncTargetFields();
       renderHomeworkSelectionPreview();
-      targetTypeSelect.addEventListener("change", renderHomeworkSelectionPreview);
+      document.querySelectorAll('input[name="homeworkTargetRadio"]').forEach(function (radio) {
+        radio.addEventListener("change", renderHomeworkSelectionPreview);
+      });
       classSelect.addEventListener("change", renderHomeworkSelectionPreview);
       if (pdfClassSelect) {
         pdfClassSelect.addEventListener("change", refreshHomeworkSelectionAndHistory);
@@ -21648,13 +21751,11 @@ ${allContent}
           <p>Search by roll number or name and click Select to load admission details.</p>
         </article>
       `;
+      if (admissionDetailCard) admissionDetailCard.style.display = "none";
       printAdmissionLetterBtn.disabled = true;
-      if (sendAdmissionMessageBtn) {
-        sendAdmissionMessageBtn.disabled = true;
-      }
-      if (sendAdmissionWhatsappBtn) {
-        sendAdmissionWhatsappBtn.disabled = true;
-      }
+      if (sendAdmissionMessageBtn) { sendAdmissionMessageBtn.disabled = true; }
+      if (sendAdmissionWhatsappBtn) { sendAdmissionWhatsappBtn.disabled = true; }
+      if (downloadAdmissionPdfBtn) { downloadAdmissionPdfBtn.disabled = true; }
       return;
     }
 
@@ -21680,25 +21781,14 @@ ${allContent}
           <div class="admission-field"><strong>Username</strong><span>${loginInfo.username}</span></div>
           <div class="admission-field"><strong>Password</strong><span>••••••••</span></div>
         </div>
-        <div class="form-grid" style="margin-top:0.9rem;">
-          <div class="field-group">
-            <label for="admissionMessageChannelSelect">Channel</label>
-            <select id="admissionMessageChannelSelect">
-              <option value="sms">SMS</option>
-              <option value="whatsapp">WhatsApp</option>
-            </select>
-          </div>
-          </div>
       </article>
     `;
 
+    if (admissionDetailCard) admissionDetailCard.style.display = "";
     printAdmissionLetterBtn.disabled = false;
-    if (sendAdmissionMessageBtn) {
-      sendAdmissionMessageBtn.disabled = false;
-    }
-    if (sendAdmissionWhatsappBtn) {
-      sendAdmissionWhatsappBtn.disabled = false;
-    }
+    if (sendAdmissionMessageBtn) { sendAdmissionMessageBtn.disabled = false; }
+    if (sendAdmissionWhatsappBtn) { sendAdmissionWhatsappBtn.disabled = false; }
+    if (downloadAdmissionPdfBtn) { downloadAdmissionPdfBtn.disabled = false; }
   }
 
   function renderAdmissionLetterStudents() {
@@ -21729,6 +21819,14 @@ ${allContent}
     }).join("");
 
     admissionLetterEmptyState.hidden = students.length !== 0;
+
+    if (students.length > 0) {
+      if (admissionLetterEmptyVisual) admissionLetterEmptyVisual.style.display = "none";
+      if (admissionLetterLayout) admissionLetterLayout.style.display = "";
+    } else if (!admissionLetterSearchInput.value.trim()) {
+      if (admissionLetterEmptyVisual) admissionLetterEmptyVisual.style.display = "";
+      if (admissionLetterLayout) admissionLetterLayout.style.display = "none";
+    }
 
     const selectedStudent = students.find(function (student) { return student.id === selectedAdmissionStudentId; }) || null;
     renderAdmissionLetterDetail(selectedStudent);
@@ -23219,7 +23317,10 @@ ${allContent}
 
     if (route === "admission-letter") {
       admissionLetterSearchInput.value = "";
-      selectedAdmissionStudentId = database.students[0] ? database.students[0].id : null;
+      selectedAdmissionStudentId = null;
+      if (admissionLetterEmptyVisual) admissionLetterEmptyVisual.style.display = "";
+      if (admissionLetterLayout) admissionLetterLayout.style.display = "none";
+      if (admissionDetailCard) admissionDetailCard.style.display = "none";
     }
 
     if (route === "student-id-cards") {
@@ -24672,6 +24773,20 @@ ${allContent}
   printAdmissionLetterBtn.addEventListener("click", function () {
     printAdmissionLetter();
   });
+  if (downloadAdmissionPdfBtn) {
+    downloadAdmissionPdfBtn.addEventListener("click", function () {
+      var html = printAdmissionLetter(true);
+      if (html) {
+        var blob = new Blob([html], { type: "text/html" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "AdmissionLetter.html";
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+  }
   
   studentIdCardsSearchInput.addEventListener("input", renderStudentIdCards);
   studentIdCardsClassFilter.addEventListener("change", renderStudentIdCards);
