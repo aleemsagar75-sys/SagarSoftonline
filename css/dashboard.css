@@ -1566,6 +1566,140 @@ body {
   box-shadow: 0 4px 12px rgba(220,38,38,0.35);
   transform: translateY(-1px);
 }
+
+/* Homework Card Styles */
+.homework-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0.8rem 0;
+}
+.hw-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+.hw-card:hover {
+  border-color: #0ea5e9;
+  box-shadow: 0 2px 8px rgba(14, 165, 233, 0.1);
+}
+.hw-card-check {
+  display: flex;
+  align-items: center;
+  padding-top: 0.2rem;
+}
+.hw-card-check input[type="checkbox"] {
+  accent-color: #0ea5e9;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+.hw-card-body {
+  flex: 1;
+  min-width: 0;
+}
+.hw-card-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.3rem;
+}
+.hw-card-subject {
+  font-size: 0.85rem;
+  color: #0f2b3f;
+}
+.hw-card-title {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.hw-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+.hw-badge--sent {
+  background: #dcfce7;
+  color: #166534;
+}
+.hw-badge--draft {
+  background: #fef3c7;
+  color: #92400e;
+}
+.hw-card-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-bottom: 0.3rem;
+}
+.hw-card-desc {
+  font-size: 0.78rem;
+  color: #475569;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hw-card-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+.hw-card-btn {
+  padding: 0.25rem 0.6rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.hw-card-btn--edit {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+}
+.hw-card-btn--edit:hover {
+  box-shadow: 0 2px 8px rgba(217, 119, 6, 0.3);
+  transform: translateY(-1px);
+}
+.hw-card-btn--delete {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  color: #fff;
+}
+.hw-card-btn--delete:hover {
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+  transform: translateY(-1px);
+}
+.homework-btn--print {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: #fff;
+}
+.homework-btn--print:hover {
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.35);
+  transform: translateY(-1px);
+}
+
+@media (max-width: 600px) {
+  .hw-card {
+    flex-direction: column;
+  }
+  .hw-card-meta {
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+}
+
 .homework-btn--whatsapp {
   background: linear-gradient(135deg, #25d366, #128c7e);
   color: #fff;
