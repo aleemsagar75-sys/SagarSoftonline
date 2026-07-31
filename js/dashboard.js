@@ -5565,6 +5565,14 @@ document.addEventListener("DOMContentLoaded", function () {
       if (safeTheme.language) { applyLanguage(safeTheme.language); }
     }
 
+    function calculatePreviousFees(studentId) {
+      if (!studentId) return 0;
+      return (database.fees || []).reduce(function (sum, feeItem) {
+        if (feeItem.studentId !== studentId) return sum;
+        return sum + Math.max(0, Number(feeItem.remaining || 0));
+      }, 0);
+    }
+
     function getDefaultFeeParticulars(selectedClass) {
       const classRecord = database.classes.find(function (item) {
         return item.name === selectedClass;
@@ -5572,12 +5580,18 @@ document.addEventListener("DOMContentLoaded", function () {
       const monthlyFee = Math.max(0, parseFloat(classRecord && classRecord.monthlyTuitionFees ? classRecord.monthlyTuitionFees : 0));
       const saved = (settings.feeStructures && settings.feeStructures[selectedClass]) || [];
       if (saved.length > 0) {
-        return saved.map(function (r) {
+        var mapped = saved.map(function (r) {
           return { label: r.type || r.label || "-", amount: Math.max(0, parseFloat(r.amount || 0)), fixed: !!r.fixed };
         });
+        var hasPrevFees = mapped.some(function (r) { return String(r.label || "").toUpperCase().includes("PREVIOUS FEES"); });
+        if (!hasPrevFees) {
+          mapped.splice(Math.min(1, mapped.length), 0, { label: "Previous Fees", amount: 0, fixed: true });
+        }
+        return mapped;
       }
       return [
         { label: "Monthly Tuition Fees", amount: monthlyFee, fixed: true },
+        { label: "Previous Fees", amount: 0, fixed: true },
         { label: "ADMISSION FEE", amount: 0, fixed: false },
         { label: "REGISTRATION FEE", amount: 0, fixed: false },
         { label: "ART MATERIAL", amount: 0, fixed: false },
@@ -5878,7 +5892,8 @@ document.addEventListener("DOMContentLoaded", function () {
           const key = String(def.label || "").toUpperCase().trim();
           if (!key) return null;
           const isMonthlyFee = key.includes("MONTHLY") && key.includes("TUITION");
-          if (isMonthlyFee) return { type: def.label, amount: def.amount, fixed: true };
+          const isPrevFees = key.includes("PREVIOUS") && key.includes("FEES");
+          if (isMonthlyFee || isPrevFees) return { type: def.label, amount: 0, fixed: true };
           const fromSaved = savedMap.get(key);
           return fromSaved ? { type: fromSaved.type || def.label, amount: fromSaved.amount || def.amount, fixed: false } : { type: def.label, amount: def.amount, fixed: false };
         }).filter(Boolean);
@@ -7106,22 +7121,16 @@ document.addEventListener("DOMContentLoaded", function () {
         const classRecord = database.classes.find(function (c) { return c.name === student.className; });
         const liveMonthlyFee = Math.max(0, parseFloat(classRecord && classRecord.monthlyTuitionFees ? classRecord.monthlyTuitionFees : 0));
         const discountPercent = Math.max(0, Math.min(100, parseFloat(student.discountInFee || 0)));
+        var previousFees = calculatePreviousFees(student.id);
         var items = classParticulars.map(function (item) {
           const label = String(item.label || "");
           if (label.toUpperCase().includes("DISCOUNT IN FEE")) return null;
           if (label.toUpperCase().includes("PREVIOUS BALANCE")) return null;
           const isMonthlyFee = label.toUpperCase().includes("MONTHLY") && label.toUpperCase().includes("TUITION");
-          const amount = isMonthlyFee ? liveMonthlyFee : Math.max(0, parseFloat(item.amount || 0));
+          const isPrevFees = label.toUpperCase().includes("PREVIOUS") && label.toUpperCase().includes("FEES");
+          const amount = isMonthlyFee ? liveMonthlyFee : (isPrevFees ? previousFees : Math.max(0, parseFloat(item.amount || 0)));
           return { ...item, amount: amount };
         }).filter(function (item) { return item !== null; });
-        var previousBalance = database.fees.reduce(function (sum, feeItem) {
-          if (feeItem.studentId !== student.id) return sum;
-          var remaining = Math.max(0, Number(feeItem.remaining || 0));
-          return sum + remaining;
-        }, 0);
-        if (previousBalance > 0) {
-          items.push({ label: "PREVIOUS BALANCE", amount: previousBalance, fixed: true });
-        }
         if (discountPercent > 0) {
           var subtotal = items.reduce(function (sum, item) { return sum + item.amount; }, 0);
           var discountAmount = Math.round(subtotal * discountPercent / 100);
@@ -7736,21 +7745,16 @@ ${allContent}
         const classRecord7497 = database.classes.find(function (c) { return c.name === student.className; });
         const liveMonthlyFee7497 = Math.max(0, parseFloat(classRecord7497 && classRecord7497.monthlyTuitionFees ? classRecord7497.monthlyTuitionFees : 0));
         const discountPercent = Math.max(0, Math.min(100, parseFloat(student.discountInFee || 0)));
+        var previousFees = calculatePreviousFees(student.id);
         var items = classParticulars.map(function (item) {
           const label = String(item.label || "");
           if (label.toUpperCase().includes("DISCOUNT IN FEE")) return null;
           if (label.toUpperCase().includes("PREVIOUS BALANCE")) return null;
           const isMonthlyFee = label.toUpperCase().includes("MONTHLY") && label.toUpperCase().includes("TUITION");
-          const amount = isMonthlyFee ? liveMonthlyFee7497 : Math.max(0, parseFloat(item.amount || 0));
-          return { label: item.label || "-", amount: amount };
+          const isPrevFees = label.toUpperCase().includes("PREVIOUS") && label.toUpperCase().includes("FEES");
+          const amount = isMonthlyFee ? liveMonthlyFee7497 : (isPrevFees ? previousFees : Math.max(0, parseFloat(item.amount || 0)));
+          return { label: item.label || "-", amount: amount, fixed: !!item.fixed };
         }).filter(function (item) { return item !== null; });
-        var previousBalance = database.fees.reduce(function (sum, feeItem) {
-          if (feeItem.studentId !== student.id) return sum;
-          return sum + Math.max(0, Number(feeItem.remaining || 0));
-        }, 0);
-        if (previousBalance > 0) {
-          items.push({ label: "PREVIOUS BALANCE", amount: previousBalance, fixed: true });
-        }
         if (discountPercent > 0) {
           var subtotal = items.reduce(function (sum, item) { return sum + item.amount; }, 0);
           var discountAmount = Math.round(subtotal * discountPercent / 100);
