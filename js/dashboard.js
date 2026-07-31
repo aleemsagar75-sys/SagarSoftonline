@@ -4841,6 +4841,7 @@ document.addEventListener("DOMContentLoaded", function () {
     moduleTitle.textContent = title;
     moduleCardTitle.textContent = title;
     if (route === "rules-regulations") {
+      var settings = (database && database.generalSettings) ? database.generalSettings : {};
       settings.rulesAndRegulations = settings.rulesAndRegulations || { students: database.school.rulesRegulations || "", employees: "" };
       moduleSummary.innerHTML = `
         <style>
