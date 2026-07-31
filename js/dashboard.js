@@ -4679,45 +4679,72 @@ document.addEventListener("DOMContentLoaded", function () {
     return changed;
   }
 
-  function getDashboardMonthFinance() {
-    const currentMonth = getCurrentMonthYearISO();
-    const settings = (database && database.generalSettings) ? database.generalSettings : {};
-    if (purgeUntouchedLegacyFinanceData(settings)) {
-      saveDatabase("", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+  function calculateFinancialSummary(options) {
+    options = options || {};
+    var settings = (database && database.generalSettings) ? database.generalSettings : {};
+    var accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
+    var salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
+    var fromDate = options.from || "";
+    var toDate = options.to || "";
+    var monthKey = options.monthKey || "";
+    function matchesFilter(dateStr) {
+      if (monthKey) {
+        var itemMonth = getMonthKeyFromValue(dateStr);
+        return itemMonth ? itemMonth === monthKey : false;
+      }
+      if (fromDate || toDate) {
+        var ds = String(dateStr || "");
+        if (!ds || !fromDate || !toDate) return false;
+        return ds >= fromDate && ds <= toDate;
+      }
+      return true;
     }
-    const salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
-    const accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
-    const totalSalaries = salaryPayments.filter(function (item) {
-      return getMonthKeyFromValue(item.paymentDate || item.date || item.salaryMonth || item.createdAt) === currentMonth;
-    }).reduce(function (sum, item) {
-      return sum + Number(item.netSalary || item.salaryAmount || 0);
-    }, 0);
-    let monthlyLedger = accountsLedger.filter(function (item) {
-      const itemMonth = getMonthKeyFromValue(item.date || item.createdAt);
-      return itemMonth ? itemMonth === currentMonth : true;
+    var incomeEntries = accountsLedger.filter(function (item) {
+      return String(item.type || "").toLowerCase() === "income" && matchesFilter(item.date || item.createdAt);
     });
-    if (!monthlyLedger.length && accountsLedger.length) {
-      monthlyLedger = accountsLedger.slice();
-    }
-    const totalIncome = monthlyLedger.filter(function (item) {
-      return String(item.type || "").toLowerCase() === "income";
-    }).reduce(function (sum, item) {
-      return sum + Number(item.amount || 0);
-    }, 0);
-    const totalExpenses = monthlyLedger.filter(function (item) {
-      return String(item.type || "").toLowerCase() === "expense";
-    }).reduce(function (sum, item) {
-      return sum + Number(item.amount || 0);
-    }, 0);
+    var reversalEntries = accountsLedger.filter(function (item) {
+      return String(item.type || "").toLowerCase() === "expense" &&
+        String(item.category || "").toLowerCase().indexOf("reversed") !== -1 &&
+        matchesFilter(item.date || item.createdAt);
+    });
+    var expenseEntries = accountsLedger.filter(function (item) {
+      return String(item.type || "").toLowerCase() === "expense" &&
+        String(item.category || "").toLowerCase().indexOf("reversed") === -1 &&
+        matchesFilter(item.date || item.createdAt);
+    });
+    var salaryEntries = salaryPayments.filter(function (item) {
+      return matchesFilter(item.paymentDate || item.date || item.salaryMonth || item.createdAt);
+    });
+    var grossIncome = incomeEntries.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
+    var totalReversals = reversalEntries.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
+    var revenue = grossIncome - totalReversals;
+    var expenses = expenseEntries.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
+    var salaries = salaryEntries.reduce(function (sum, item) { return sum + Number(item.netSalary || item.salaryAmount || 0); }, 0);
+    var profit = revenue - expenses - salaries;
+    return {
+      revenue: revenue,
+      income: revenue,
+      grossIncome: grossIncome,
+      totalReversals: totalReversals,
+      expenses: expenses,
+      salaries: salaries,
+      totalExpenses: expenses + salaries,
+      profit: profit,
+      net: profit
+    };
+  }
+
+  function getDashboardMonthFinance() {
+    var currentMonth = getCurrentMonthYearISO();
+    var summary = calculateFinancialSummary({ monthKey: currentMonth });
     return {
       currentMonth: currentMonth,
-      totalFeeCollection: 0,
-      totalIncome: totalIncome,
-      totalSalaries: totalSalaries,
-      totalExpenses: totalExpenses,
-      incomeTotal: totalIncome,
-      expenseTotal: totalSalaries + totalExpenses,
-      totalProfit: totalIncome - totalSalaries - totalExpenses
+      totalIncome: summary.revenue,
+      totalSalaries: summary.salaries,
+      totalExpenses: summary.expenses,
+      incomeTotal: summary.revenue,
+      expenseTotal: summary.totalExpenses,
+      totalProfit: summary.profit
     };
   }
 
@@ -4763,7 +4790,7 @@ document.addEventListener("DOMContentLoaded", function () {
         route: "students-active-inactive"
       });
     }
-    if (finance.totalFeeCollection || finance.totalIncome || finance.totalSalaries || finance.totalExpenses) {
+    if (finance.totalIncome || finance.totalSalaries || finance.totalExpenses) {
       insights.push({
         badge: "PF",
         title: `Monthly profit snapshot: ${finance.totalProfit}`,
@@ -14022,36 +14049,35 @@ ${allContent}
       if (purgeUntouchedLegacyFinanceData(settings)) {
         saveDatabase("", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
       }
-      const range = periodValue === "monthly" ? getMonthRange(monthValue) : null;
-      const inRange = function (dateValue) {
-        if (!range) {
-          return true;
-        }
+      var range = periodValue === "monthly" ? getMonthRange(monthValue) : null;
+      var inRange = function (dateValue) {
+        if (!range) { return true; }
         return isDateWithinRange(String(dateValue || ""), range.from, range.to);
       };
-      const incomes = (settings.accountsLedger || []).filter(function (row) {
+      var incomes = (settings.accountsLedger || []).filter(function (row) {
         return String(row.type || "").toLowerCase() === "income" && inRange(row.date || row.createdAt || "");
       }).map(function (row) {
         return { date: row.date || row.createdAt || "-", type: "Income", source: row.category || "Income", ref: row.description || row.note || "-", amount: Number(row.amount || 0) };
       });
-      const expenses = (settings.accountsLedger || []).filter(function (row) {
+      var expenses = (settings.accountsLedger || []).filter(function (row) {
         return String(row.type || "").toLowerCase() === "expense" && inRange(row.date || row.createdAt || "");
       }).map(function (row) {
         return { date: row.date || row.createdAt || "-", type: "Expense", source: row.category || "Expense", ref: row.description || row.note || "-", amount: Number(row.amount || 0) };
       });
-      const salaryExpenses = (settings.salaryPayments || []).filter(function (row) {
+      var salaryExpenses = (settings.salaryPayments || []).filter(function (row) {
         return inRange(row.paymentDate || row.date || "");
       }).map(function (row) {
-        const total = Number(row.netAmount ?? (Number(row.salaryAmount || 0) + Number(row.bonus || 0) - Number(row.deduction || 0)));
+        var total = Number(row.netAmount ?? (Number(row.salaryAmount || 0) + Number(row.bonus || 0) - Number(row.deduction || 0)));
         return { date: row.paymentDate || row.date || "-", type: "Expense", source: "Salary Payment", ref: row.employeeName || row.employeeId || "-", amount: total };
       });
-      const allExpenses = expenses.concat(salaryExpenses);
-      const rows = incomes.concat(allExpenses).sort(function (a, b) {
+      var allExpenses = expenses.concat(salaryExpenses);
+      var rows = incomes.concat(allExpenses).sort(function (a, b) {
         return String(b.date || "").localeCompare(String(a.date || ""));
       });
-      const incomeTotal = incomes.reduce(function (sum, row) { return sum + row.amount; }, 0);
-      const expenseTotal = allExpenses.reduce(function (sum, row) { return sum + row.amount; }, 0);
-      return { rows: rows, income: incomeTotal, expense: expenseTotal, net: incomeTotal - expenseTotal };
+      var summaryOptions = {};
+      if (range) { summaryOptions.from = range.from; summaryOptions.to = range.to; }
+      var summary = calculateFinancialSummary(summaryOptions);
+      return { rows: rows, income: summary.revenue, expense: summary.totalExpenses, net: summary.profit };
     }
 
     if (route === "students-report-card") {
@@ -23202,41 +23228,17 @@ ${allContent}
   }
 
   function getDashboardFinanceSeries() {
-    const settings = (database && database.generalSettings) ? database.generalSettings : {};
-    const salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
-    const accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
-    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const today = new Date();
-    const months = [];
-    for (let offset = 5; offset >= 0; offset -= 1) {
-      const date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
-      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
-      months.push({
-        key: key,
-        label: `${monthNames[date.getMonth()]} ${date.getFullYear()}`
-      });
+    var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    var today = new Date();
+    var months = [];
+    for (var offset = 5; offset >= 0; offset -= 1) {
+      var date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
+      var key = date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0");
+      months.push({ key: key, label: monthNames[date.getMonth()] + " " + date.getFullYear() });
     }
     return months.map(function (month) {
-      const ledgerIncome = accountsLedger.filter(function (item) {
-        return String(item.type || "").toLowerCase() === "income" && getMonthKeyFromValue(item.date || item.createdAt) === month.key;
-      }).reduce(function (sum, item) {
-        return sum + Number(item.amount || 0);
-      }, 0);
-      const salaryExpense = salaryPayments.filter(function (item) {
-        return getMonthKeyFromValue(item.paymentDate || item.date || item.salaryMonth || item.createdAt) === month.key;
-      }).reduce(function (sum, item) {
-        return sum + Number(item.netSalary || item.salaryAmount || 0);
-      }, 0);
-      const ledgerExpense = accountsLedger.filter(function (item) {
-        return String(item.type || "").toLowerCase() === "expense" && getMonthKeyFromValue(item.date || item.createdAt) === month.key;
-      }).reduce(function (sum, item) {
-        return sum + Number(item.amount || 0);
-      }, 0);
-      return {
-        label: month.label,
-        income: ledgerIncome,
-        expense: salaryExpense + ledgerExpense
-      };
+      var summary = calculateFinancialSummary({ monthKey: month.key });
+      return { label: month.label, income: summary.revenue, expense: summary.totalExpenses };
     });
   }
 
