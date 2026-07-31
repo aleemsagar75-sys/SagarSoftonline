@@ -1452,7 +1452,8 @@ async function syncCertificatesTable(client, schoolId, database) {
 const GENERAL_SETTINGS_SINGLETON_KEYS = [
   "instituteProfile","accountSettings","themeLanguage","smsGateway",
   "rulesAndRegulations","failCriteria","messageTemplates","marksGrading",
-  "feeParticulars","feeStructures","supabaseConfig","offlineSchoolsRegistry","smsOutbox"
+  "feeParticulars","feeStructures","supabaseConfig","offlineSchoolsRegistry","smsOutbox",
+  "accountsLedger"
 ];
 const GENERAL_SETTINGS_ARRAY_KEYS = [
   "discountPolicies","bankAccounts","certificateTemplates",
@@ -1680,7 +1681,12 @@ async function getSchoolDatabase(schoolId) {
       if (row.setting_key && row.setting_value !== null && row.setting_value !== undefined) {
         var existing = database.generalSettings[row.setting_key];
         var isEmpty = !existing || (typeof existing === "object" && !Array.isArray(existing) && Object.keys(existing).length === 0) || (Array.isArray(existing) && existing.length === 0);
-        if ((row.setting_key === "instituteProfile" || row.setting_key === "licenseSettings" || row.setting_key === "accountSettings") && typeof row.setting_value === "object" && !Array.isArray(row.setting_value)) {
+        if (row.setting_key === "accountsLedger" && Array.isArray(row.setting_value) && row.setting_value.length > 0) {
+          var merged = {};
+          (database.generalSettings.accountsLedger || []).forEach(function(item) { if (item && item.id) merged[item.id] = item; });
+          row.setting_value.forEach(function(item) { if (item && item.id) merged[item.id] = item; });
+          database.generalSettings.accountsLedger = Object.values(merged);
+        } else if ((row.setting_key === "instituteProfile" || row.setting_key === "licenseSettings" || row.setting_key === "accountSettings") && typeof row.setting_value === "object" && !Array.isArray(row.setting_value)) {
           database.generalSettings[row.setting_key] = Object.assign({}, existing || {}, row.setting_value);
         } else if (isEmpty) {
           database.generalSettings[row.setting_key] = row.setting_value;
@@ -2437,13 +2443,19 @@ app.post("/api/check-license", async (req, res) => {
   }
 });
 
-app.post("/api/sync-school-data", requireSuperAdmin, async (req, res) => {
+app.post("/api/sync-school-data", async (req, res) => {
   const schoolId = normalizeSchoolId(req.body.school_id);
+  if (!schoolId) {
+    return res.status(400).json({ success: false, message: "school_id is required." });
+  }
   const schoolName = String(req.body.school_name || "").trim();
   const status = String(req.body.activation_status || "active").trim().toLowerCase();
   const plan = String(req.body.plan || "monthly").trim();
   const email = String(req.body.email || "").trim().toLowerCase();
   const password = String(req.body.password || "").trim();
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required for school sync." });
+  }
   try {
     const hashedPw = password ? await hashPassword(password) : null;
     await pool.query(`
@@ -3353,7 +3365,7 @@ app.post("/api/sms/send", requireSchoolAuth, async function (req, res) {
   }
 });
 
-app.post("/api/setup-sms-tables", requireSuperAdmin, async function (req, res) {
+app.post("/api/setup-sms-tables", requireSchoolAuth, async function (req, res) {
   try {
     if (!_pool) {
       return res.status(500).json({ success: false, message: "Database not connected." });
