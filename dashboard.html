@@ -641,16 +641,24 @@
               </div>
             </div>
 
-            <div class="toolbar toolbar--simple">
-              <div class="search-wrap">
-                <input id="admissionLetterSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap">
-                <div id="admissionLetterSearchDropdown" class="search-dropdown"></div>
+            <div class="admission-search-bar">
+              <div class="admission-search-field">
+                <span class="admission-search-icon">&#x1F50D;</span>
+                <input id="admissionLetterSearchInput" type="search" placeholder="Search Student by Name / Roll No." class="admission-search-input">
               </div>
+              <button class="admission-search-btn" id="admissionLetterSearchBtn" type="button">Search</button>
+            </div>
+            <div id="admissionLetterSearchDropdown" class="search-dropdown" style="display:none;"></div>
+
+            <div id="admissionLetterLoading" class="admission-loading" style="display:none;">
+              <div class="admission-spinner"></div>
+              <p>Searching students...</p>
             </div>
 
             <div id="admissionLetterEmptyVisual" class="admission-empty-visual">
-              <div class="admission-empty-icon">&#x1F4C4;</div>
-              <p class="admission-empty-text">Search a student to generate Admission Letter</p>
+              <div class="admission-empty-icon">&#x1F50D;</div>
+              <p class="admission-empty-title">Search a student to preview</p>
+              <p class="admission-empty-sub">the admission letter.</p>
             </div>
 
             <div class="admission-letter-layout" id="admissionLetterLayout" style="display:none;">
@@ -674,10 +682,10 @@
                 </div>
                 <div id="admissionLetterDetail" class="stacked-copy"></div>
                 <div class="admission-actions-bar" id="admissionActionsBar">
-                  <button class="admission-action-btn admission-action-btn--msg" id="sendAdmissionMessageBtn" type="button">&#x1F4E8; Send Message</button>
-                  <button class="admission-action-btn admission-action-btn--wa" id="sendAdmissionWhatsappBtn" type="button">&#x1F4AC; WhatsApp</button>
-                  <button class="admission-action-btn admission-action-btn--pdf" id="downloadAdmissionPdfBtn" type="button">&#x1F4C5; Download PDF</button>
                   <button class="admission-action-btn admission-action-btn--print" id="printAdmissionLetterBtn" type="button">&#x1F5A8; Print</button>
+                  <button class="admission-action-btn admission-action-btn--pdf" id="downloadAdmissionPdfBtn" type="button">&#x1F4C5; PDF</button>
+                  <button class="admission-action-btn admission-action-btn--msg" id="sendAdmissionMessageBtn" type="button">&#x1F4E8; Message</button>
+                  <button class="admission-action-btn admission-action-btn--wa" id="sendAdmissionWhatsappBtn" type="button">&#x1F4AC; WhatsApp</button>
                 </div>
               </article>
             </div>

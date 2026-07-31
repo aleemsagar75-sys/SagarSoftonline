@@ -1058,16 +1058,16 @@ body {
 
 .class-subjects-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 0.78fr));
+  grid-template-columns: repeat(2, minmax(0, 0.65fr));
   gap: 1rem;
   justify-items: center;
 }
 
 .class-subject-card {
   display: grid;
-  gap: 0.9rem;
-  padding: 1rem;
-  border-radius: 20px;
+  gap: 0.75rem;
+  padding: 0.85rem;
+  border-radius: 18px;
   border: 1px solid rgba(16, 37, 66, 0.08);
   background: linear-gradient(180deg, #ffffff, #f7faff);
   width: 100%;
@@ -1260,6 +1260,80 @@ body {
   border: 1px solid rgba(30, 94, 255, 0.2);
 }
 
+.admission-search-bar {
+  display: flex;
+  gap: 0.6rem;
+  align-items: stretch;
+  margin-bottom: 1rem;
+}
+.admission-search-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0 0.8rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.admission-search-field:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+}
+.admission-search-icon {
+  font-size: 1.1rem;
+  margin-right: 0.5rem;
+  opacity: 0.5;
+}
+.admission-search-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  padding: 0.7rem 0;
+  font-size: 0.88rem;
+  background: transparent;
+  color: #1e293b;
+}
+.admission-search-input::placeholder { color: #94a3b8; }
+.admission-search-btn {
+  padding: 0 1.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #fff;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+.admission-search-btn:hover {
+  box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+  transform: translateY(-1px);
+}
+.admission-search-btn:active { transform: translateY(0); }
+
+.admission-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 2rem;
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+.admission-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: admissionSpin 0.7s linear infinite;
+  margin-bottom: 0.8rem;
+}
+@keyframes admissionSpin { to { transform: rotate(360deg); } }
+
 .admission-empty-visual {
   display: flex;
   flex-direction: column;
@@ -1271,27 +1345,41 @@ body {
 .admission-empty-icon {
   font-size: 3.5rem;
   margin-bottom: 1rem;
-  opacity: 0.45;
+  opacity: 0.35;
 }
-.admission-empty-text {
-  font-size: 1rem;
+.admission-empty-title {
+  font-size: 1.05rem;
+  color: #475569;
+  font-weight: 600;
+  margin-bottom: 0.2rem;
+}
+.admission-empty-sub {
+  font-size: 0.9rem;
   color: #94a3b8;
-  font-weight: 500;
+  font-weight: 400;
+}
+
+.adm-fade-in {
+  animation: admFadeIn 0.3s ease-out;
+}
+@keyframes admFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .admission-actions-bar {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.6rem;
-  padding: 1rem 0 0;
+  gap: 0.5rem;
+  padding: 0.8rem 0 0;
   margin-top: auto;
   border-top: 1px solid #f1f5f9;
 }
 .admission-action-btn {
   flex: 1 1 0;
-  min-width: 120px;
-  padding: 0.65rem 0.8rem;
-  font-size: 0.82rem;
+  min-width: 100px;
+  padding: 0.55rem 0.6rem;
+  font-size: 0.78rem;
   font-weight: 600;
   border: none;
   border-radius: 10px;
@@ -1299,6 +1387,8 @@ body {
   transition: all 0.2s;
   text-align: center;
   white-space: nowrap;
+  min-height: 38px;
+  max-height: 42px;
 }
 .admission-action-btn:disabled {
   opacity: 0.45;
@@ -1339,18 +1429,18 @@ body {
 
 .homework-radio-group {
   display: flex;
-  gap: 1.5rem;
-  padding: 0.5rem 0;
+  gap: 1rem;
+  padding: 0.4rem 0;
 }
 .homework-radio-label {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: #334155;
   cursor: pointer;
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 1rem;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   transition: all 0.2s;
@@ -1367,16 +1457,28 @@ body {
   height: 16px;
 }
 
+.homework-actions-compact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.8rem 0;
+  border-top: 1px solid #f1f5f9;
+  margin-top: 0.5rem;
+}
 .homework-btn {
+  flex: 1 1 0;
+  min-width: 130px;
   padding: 0.5rem 1rem;
   font-size: 0.78rem;
   font-weight: 600;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
-  min-height: 34px;
+  min-height: 38px;
+  max-height: 44px;
+  text-align: center;
 }
 .homework-btn--save {
   background: linear-gradient(135deg, #10b981, #059669);
@@ -1401,6 +1503,14 @@ body {
 .homework-btn--pdf:hover {
   box-shadow: 0 4px 12px rgba(220,38,38,0.35);
   transform: translateY(-1px);
+}
+
+.homework-anim-field {
+  animation: hwSlideIn 0.25s ease-out;
+}
+@keyframes hwSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .admission-profile {
@@ -5056,8 +5166,8 @@ select:focus, input:focus, textarea:focus {
   border: 1px solid rgba(105, 65, 198, 0.25) !important;
   border-left: 6px solid #6941c6 !important;
   box-shadow: 0 4px 16px rgba(15, 43, 63, 0.12), 0 8px 24px rgba(15, 43, 63, 0.06) !important;
-  border-radius: 18px;
-  padding: 1.2rem;
+  border-radius: 16px;
+  padding: 0.85rem;
 }
 .class-subject-card__head h4 {
   color: #0f2b3f;
