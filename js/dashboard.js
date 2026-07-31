@@ -15148,6 +15148,7 @@ ${allContent}
               saveDatabase("Deleting entry...", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               refreshDatabase();
                renderDynamicModuleWorkspace(route, title);
+               renderDashboard();
                (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
                openAppMessageBox("Success", "Account entry deleted successfully.", "success");
              });
@@ -15244,6 +15245,7 @@ ${allContent}
               saveDatabase("Deleting entry...", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: updatedSettings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               refreshDatabase();
                renderDynamicModuleWorkspace(route, title);
+               renderDashboard();
                (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
                openAppMessageBox("Success", "Account entry deleted successfully.", "success");
              });
@@ -15285,6 +15287,7 @@ ${allContent}
                 setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
                 openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} updated successfully.`, "success");
                 renderDynamicModuleWorkspace(route, title);
+                renderDashboard();
                 (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
                 return;
               }
@@ -15307,6 +15310,7 @@ ${allContent}
             setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
             openAppMessageBox("Success", `${isIncome ? "Income" : "Expense"} saved successfully.`, "success");
             renderDynamicModuleWorkspace(route, title);
+            renderDashboard();
             (function(){var g=document.getElementById("moduleGuide"),s=document.getElementById("moduleSummary");if(g&&s&&g.innerHTML.trim()){s.innerHTML+='<div style="margin-top:16px;padding:12px;border:1px solid #dde4ea;border-radius:8px;">'+g.innerHTML+'</div>';g.innerHTML="";var p=g.closest(".panel-card");if(p)p.style.display="none";var l=s.closest(".panel-card");if(l)l.style.gridColumn="1 / -1";}})();
           } catch (_e) {
             window.SagarSoftDB.LoadingManager.update("Save failed");
