@@ -784,6 +784,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const admissionLetterShell = document.getElementById("admissionLetterShell");
   const admissionLetterSearchInput = document.getElementById("admissionLetterSearchInput");
   const admissionLetterSearchBtn = document.getElementById("admissionLetterSearchBtn");
+  const admissionLetterSearchDropdown = document.getElementById("admissionLetterSearchDropdown");
   const admissionLetterPreviewArea = document.getElementById("admissionLetterPreviewArea");
   const admissionLetterDetail = document.getElementById("admissionLetterDetail");
   const admissionLetterLoading = document.getElementById("admissionLetterLoading");
@@ -1614,28 +1615,70 @@ document.addEventListener("DOMContentLoaded", function () {
   var escapeHtml = SU.escapeHtml;
   var escapeAttr = SU.escapeAttr;
 
+  function showConfirmModal(title, message, onConfirm) {
+    var existing = document.getElementById("ssConfirmModal");
+    if (existing) existing.remove();
+
+    var modal = document.createElement("div");
+    modal.id = "ssConfirmModal";
+    modal.className = "ss-modal-overlay";
+    modal.innerHTML = '<div class="ss-modal-box">' +
+      '<div class="ss-modal-header">' +
+        '<h3>' + escapeHtml(title) + '</h3>' +
+        '<button class="ss-modal-close" type="button">&times;</button>' +
+      '</div>' +
+      '<div class="ss-modal-body">' +
+        '<p>' + escapeHtml(message) + '</p>' +
+        '<p class="ss-modal-warning">This action cannot be undone.</p>' +
+      '</div>' +
+      '<div class="ss-modal-footer">' +
+        '<button class="ss-modal-btn ss-modal-btn--cancel" type="button">Cancel</button>' +
+        '<button class="ss-modal-btn ss-modal-btn--delete" type="button">Delete</button>' +
+      '</div>' +
+    '</div>';
+
+    document.body.appendChild(modal);
+    requestAnimationFrame(function() { modal.classList.add("ss-modal-visible"); });
+
+    modal.querySelector(".ss-modal-close").addEventListener("click", function() {
+      modal.classList.remove("ss-modal-visible");
+      setTimeout(function() { modal.remove(); }, 200);
+    });
+    modal.querySelector(".ss-modal-btn--cancel").addEventListener("click", function() {
+      modal.classList.remove("ss-modal-visible");
+      setTimeout(function() { modal.remove(); }, 200);
+    });
+    modal.querySelector(".ss-modal-btn--delete").addEventListener("click", function() {
+      modal.classList.remove("ss-modal-visible");
+      setTimeout(function() { modal.remove(); }, 200);
+      onConfirm();
+    });
+    modal.addEventListener("click", function(e) {
+      if (e.target === modal) {
+        modal.classList.remove("ss-modal-visible");
+        setTimeout(function() { modal.remove(); }, 200);
+      }
+    });
+  }
+
   function renderStudentSearchResult(student) {
-    return `
-      <div style="padding: 0.8rem 1rem; border-bottom: 1px solid rgba(27,95,122,0.1); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; transition: background 0.2s;" data-student-id="${escapeAttr(student.id || "")}" class="search-result-item">
-        <div>
-          <div style="font-weight: 600; color: #0f2b3f;">${escapeHtml(student.name || "-")}</div>
-          <div style="font-size: 0.85rem; color: #888;">${escapeHtml(student.className || "-")}</div>
-        </div>
-        <div style="text-align: right; font-size: 0.85rem; color: #1b5f7a; font-weight: 600;">${escapeHtml(student.admissionNo || "-")}</div>
-      </div>
-    `;
+    return '<div class="gsac-item" data-student-id="' + escapeAttr(student.id || "") + '">' +
+      '<div class="gsac-item-main">' +
+        '<div class="gsac-item-name">' + escapeHtml(student.name || "-") + '</div>' +
+        '<div class="gsac-item-sub">' + escapeHtml(student.className || "-") + '</div>' +
+      '</div>' +
+      '<div class="gsac-item-id">' + escapeHtml(student.admissionNo || "-") + '</div>' +
+    '</div>';
   }
 
   function renderEmployeeSearchResult(employee) {
-    return `
-      <div style="padding: 0.8rem 1rem; border-bottom: 1px solid rgba(27,95,122,0.1); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; transition: background 0.2s;" data-item="${escapeAttr(JSON.stringify(employee))}" class="search-result-item">
-        <div>
-          <div style="font-weight: 600; color: #0f2b3f;">${escapeHtml(employee.name || "-")}</div>
-          <div style="font-size: 0.85rem; color: #888;">${escapeHtml(employee.designation || "-")}</div>
-        </div>
-        <div style="text-align: right; font-size: 0.85rem; color: #1b5f7a; font-weight: 600;">${escapeHtml(employee.id || "-")}</div>
-      </div>
-    `;
+    return '<div class="gsac-item" data-item="' + escapeAttr(JSON.stringify(employee)) + '">' +
+      '<div class="gsac-item-main">' +
+        '<div class="gsac-item-name">' + escapeHtml(employee.name || "-") + '</div>' +
+        '<div class="gsac-item-sub">' + escapeHtml(employee.designation || employee.role || "-") + '</div>' +
+      '</div>' +
+      '<div class="gsac-item-id">' + escapeHtml(employee.id || "-") + '</div>' +
+    '</div>';
   }
 
   function initializeStudentProfessionalSearch(inputId, dropdownId, containerId, onSelect) {
@@ -13482,12 +13525,13 @@ ${allContent}
         <article>
           <strong class="module-center-title">Job Letter</strong>
           <div class="admission-search-center">
-            <div class="admission-search-bar admission-search-bar--narrow">
+            <div class="admission-search-bar admission-search-bar--narrow" style="position:relative;">
               <div class="admission-search-field">
                 <span class="admission-search-icon">&#x1F50D;</span>
-                <input id="jobLetterSearchInput" type="search" placeholder="Search Employee by Name / Role / Mobile." class="admission-search-input">
+                <input id="jobLetterSearchInput" type="search" placeholder="Search Employee by Name / ID." class="admission-search-input" autocomplete="off">
               </div>
               <button class="admission-search-btn" id="jobLetterSearchBtn" type="button">Search</button>
+              <div id="jobLetterSearchDropdown" class="gsac-dropdown" style="display:none;"></div>
             </div>
             <p class="admission-search-hint">Search an employee to generate a job letter.</p>
           </div>
@@ -13686,20 +13730,43 @@ ${allContent}
         renderJobLetterDetail(employees[0]);
       }
 
+      var jobLetterSearchDropdown = document.getElementById("jobLetterSearchDropdown");
+
+      initializeSearchWithDropdown(
+        searchInput,
+        jobLetterSearchDropdown,
+        function(searchTerm) {
+          return getEmployees().filter(function(e) {
+            return String(e.name || "").toLowerCase().includes(searchTerm) ||
+                   String(e.id || "").toLowerCase().includes(searchTerm) ||
+                   String(e.role || "").toLowerCase().includes(searchTerm);
+          }).slice(0, 10);
+        },
+        renderEmployeeSearchResult,
+        function(employee) {
+          searchInput.value = employee.name || "";
+          if (jobLetterPreviewArea) jobLetterPreviewArea.style.display = "";
+          if (jobLetterLoading) {
+            jobLetterLoading.style.display = "";
+            jobLetterLoading.classList.add("adm-fade-in");
+          }
+          setTimeout(function() { renderJobLetterFromSearch(); }, 200);
+        },
+        "jobLetterSearchContainer"
+      );
+
       if (searchBtn) {
         searchBtn.addEventListener("click", function () {
+          if (!searchInput.value.trim()) {
+            showToast("Please type an employee name or ID.", "warning");
+            return;
+          }
           if (jobLetterPreviewArea) jobLetterPreviewArea.style.display = "none";
           if (jobLetterLoading) {
             jobLetterLoading.style.display = "";
             jobLetterLoading.classList.add("adm-fade-in");
           }
-          selectedJobLetterEmployeeId = null;
           setTimeout(function () { renderJobLetterFromSearch(); }, 300);
-        });
-      }
-      if (searchInput) {
-        searchInput.addEventListener("keydown", function (e) {
-          if (e.key === "Enter") { e.preventDefault(); if (searchBtn) searchBtn.click(); }
         });
       }
       return;
@@ -18541,8 +18608,11 @@ ${allContent}
                 </div>
               </div>
               <div class="field-group">
-                <label for="homeworkSubjectInput">Subject*</label>
-                <input id="homeworkSubjectInput" type="text" placeholder="e.g Mathematics">
+                <label for="homeworkSubjectSelect">Subject*</label>
+                <select id="homeworkSubjectSelect">
+                  <option value="">Select Class First</option>
+                </select>
+                <p class="hw-no-subjects" id="hwNoSubjects" style="display:none;font-size:0.78rem;color:#f59e0b;margin-top:0.3rem;">No subjects assigned to this class.</p>
               </div>
               <div class="field-group">
                 <label for="homeworkTitleInput">Homework Title*</label>
@@ -18632,7 +18702,8 @@ ${allContent}
       var studentSearch = document.getElementById("homeworkStudentSearch");
       var studentSearchDropdown = document.getElementById("homeworkSearchDropdown");
       var studentSearchContainer = document.getElementById("homeworkSearchContainer");
-      var subjectInput = document.getElementById("homeworkSubjectInput");
+      var subjectSelect = document.getElementById("homeworkSubjectSelect");
+      var hwNoSubjects = document.getElementById("hwNoSubjects");
       var titleInput = document.getElementById("homeworkTitleInput");
       var dueDateInput = document.getElementById("homeworkDueDateInput");
       var descriptionInput = document.getElementById("homeworkDescriptionInput");
@@ -18758,12 +18829,45 @@ ${allContent}
         });
       }
 
+      function populateHomeworkSubjects() {
+        var className = classSelect.value;
+        if (!className || !subjectSelect) {
+          if (subjectSelect) { subjectSelect.innerHTML = '<option value="">Select Class First</option>'; }
+          if (hwNoSubjects) hwNoSubjects.style.display = "none";
+          return;
+        }
+        var assignedSubjects = (database.subjects || []).filter(function(s) {
+          return String(s.className || "").toLowerCase() === String(className).toLowerCase();
+        });
+        var uniqueSubjects = [];
+        var seen = {};
+        assignedSubjects.forEach(function(s) {
+          var name = s.subject || s.subjectName || "";
+          if (name && !seen[name.toLowerCase()]) {
+            seen[name.toLowerCase()] = true;
+            uniqueSubjects.push({ id: s.id || s.subjectId || "", name: name });
+          }
+        });
+        if (uniqueSubjects.length === 0) {
+          subjectSelect.innerHTML = '<option value="">No Subjects Assigned</option>';
+          if (hwNoSubjects) hwNoSubjects.style.display = "";
+        } else {
+          subjectSelect.innerHTML = '<option value="">Select Subject</option>' + uniqueSubjects.map(function(s) {
+            return '<option value="' + escapeAttr(s.name) + '" data-subject-id="' + escapeAttr(s.id) + '">' + escapeHtml(s.name) + '</option>';
+          }).join("");
+          if (hwNoSubjects) hwNoSubjects.style.display = "none";
+        }
+      }
+
+      classSelect.addEventListener("change", populateHomeworkSubjects);
+      populateHomeworkSubjects();
+
       function resetHomeworkForm() {
         editingHomeworkId = "";
         var classRadio = document.querySelector('input[name="homeworkTargetRadio"][value="class"]');
         if (classRadio) classRadio.checked = true;
         syncTargetFields();
-        subjectInput.value = "";
+        subjectSelect.value = "";
         titleInput.value = "";
         dueDateInput.value = "";
         descriptionInput.value = "";
@@ -18787,7 +18891,7 @@ ${allContent}
       );
 
       document.getElementById("sendHomeworkBtn").addEventListener("click", function () {
-        var subject = subjectInput.value.trim();
+        var subject = subjectSelect ? subjectSelect.value : "";
         var title = titleInput.value.trim();
         var dueDate = dueDateInput.value;
         var details = descriptionInput.value.trim();
@@ -18810,14 +18914,18 @@ ${allContent}
         var existingHomework = editingHomeworkId
           ? settings.homeworkAssignments.find(function (item) { return item.id === editingHomeworkId; })
           : null;
+        var selectedSubjectOption = subjectSelect ? subjectSelect.options[subjectSelect.selectedIndex] : null;
         var homeworkRecord = {
           id: existingHomework ? existingHomework.id : "HW-" + generateId(),
           createdAt: new Date().toLocaleString(),
           targetType: getTargetTypeValue(),
           targetLabel: getTargetTypeValue() === "student" ? (targets[0].name || "-") : "Class: " + classSelect.value,
           className: classSelect.value || "",
+          classId: classSelect.value || "",
           targetStudentId: getTargetTypeValue() === "student" ? targets[0].id : "",
-          subject: subject,
+          subject: subjectSelect ? subjectSelect.value : "",
+          subjectId: selectedSubjectOption ? (selectedSubjectOption.getAttribute("data-subject-id") || "") : "",
+          subjectName: subjectSelect ? subjectSelect.value : "",
           title: title,
           dueDate: dueDate,
           details: details,
@@ -18988,7 +19096,7 @@ ${allContent}
                 });
                 studentSearch.value = student ? student.name + " (" + (student.admissionNo || "-") + ")" : (hw.targetLabel || "");
               }
-              subjectInput.value = hw.subject || "";
+              subjectSelect.value = hw.subject || "";
               titleInput.value = hw.title || "";
               dueDateInput.value = hw.dueDate || "";
               descriptionInput.value = hw.details || "";
@@ -19007,18 +19115,16 @@ ${allContent}
             var hwId = deleteBtn.getAttribute("data-hw-delete");
             var hw = (settings.homeworkAssignments || []).find(function (item) { return item.id === hwId; });
             if (!hw) return;
-            var confirmed = confirm("Are you sure you want to delete this homework?");
-            if (!confirmed) return;
-            var index = settings.homeworkAssignments.findIndex(function (item) { return item.id === hw.id; });
-            if (index >= 0) {
-              var removed = settings.homeworkAssignments[index];
-              settings.homeworkAssignments.splice(index, 1);
-              trackDeletion(hw.id);
-              saveDatabase("Deleting homework...", [{ table: "homework", record: removed, operation: "delete" }]);
-              loadViewHomework();
-              message.textContent = "Homework deleted successfully.";
-              message.className = "form-message success";
-            }
+            showConfirmModal("Delete Homework", "Are you sure you want to permanently delete this homework?", function() {
+              var index = settings.homeworkAssignments.findIndex(function (item) { return item.id === hwId; });
+              if (index >= 0) {
+                var removed = settings.homeworkAssignments[index];
+                settings.homeworkAssignments.splice(index, 1);
+                trackDeletion(hwId);
+                saveDatabase("Deleting homework...", [{ table: "homework", record: removed, operation: "delete" }]);
+                loadViewHomework();
+              }
+            });
           }
         });
       }
@@ -21424,67 +21530,103 @@ ${allContent}
     });
   }
 
-  function initializeSearchWithDropdown(searchInput, dropdownContainer, filterFunction, renderFunction, onSelectFunction, searchContainerId) {
+  function initializeSearchWithDropdown(searchInput, dropdownContainer, filterFunction, renderFunction, onSelectFunction, searchContainerId, onInputCallback) {
     if (!searchInput || !dropdownContainer) return;
-    let searchTimer = null;
+    var searchTimer = null;
+    var activeIndex = -1;
+
+    function closeDropdown() {
+      dropdownContainer.style.display = "none";
+      dropdownContainer.innerHTML = "";
+      activeIndex = -1;
+    }
+
+    function highlightItem(items, index) {
+      items.forEach(function(el) { el.classList.remove("gsac-active"); });
+      if (index >= 0 && index < items.length) {
+        items[index].classList.add("gsac-active");
+        items[index].scrollIntoView({ block: "nearest" });
+      }
+    }
+
+    function bindItemEvents(items) {
+      items.forEach(function(item, idx) {
+        item.addEventListener("mouseenter", function() {
+          activeIndex = idx;
+          highlightItem(items, activeIndex);
+        });
+        item.addEventListener("mouseleave", function() {
+          activeIndex = -1;
+          highlightItem(items, activeIndex);
+        });
+        item.addEventListener("click", function() {
+          var studentId = this.dataset.studentId || "";
+          var itemData = studentId
+            ? ((database.students || []).find(function(s) { return s.id === studentId; }) || {})
+            : JSON.parse(this.dataset.item || "{}");
+          searchInput.value = "";
+          closeDropdown();
+          onSelectFunction(itemData);
+        });
+      });
+    }
 
     searchInput.addEventListener("input", function() {
-      const searchTerm = this.value.toLowerCase().trim();
-      if (searchTimer) {
-        clearTimeout(searchTimer);
-      }
-      
+      var searchTerm = this.value.toLowerCase().trim();
+      if (searchTimer) clearTimeout(searchTimer);
+      if (typeof onInputCallback === "function") onInputCallback(this.value);
+
       if (!searchTerm) {
-        dropdownContainer.style.display = "none";
-        dropdownContainer.innerHTML = "";
+        closeDropdown();
         return;
       }
 
-      searchTimer = setTimeout(function () {
-        if (searchInput.value.toLowerCase().trim() !== searchTerm) {
-          return;
-        }
-        const results = filterFunction(searchTerm).slice(0, 10);
-
+      searchTimer = setTimeout(function() {
+        if (searchInput.value.toLowerCase().trim() !== searchTerm) return;
+        var results = filterFunction(searchTerm).slice(0, 10);
         if (results.length === 0) {
-          dropdownContainer.innerHTML = `<div style="padding: 1rem; color: #888; text-align: center; font-size: 0.9rem;">No results found</div>`;
+          dropdownContainer.innerHTML = '<div class="gsac-empty">No results found</div>';
           dropdownContainer.style.display = "block";
+          activeIndex = -1;
           return;
         }
-
         dropdownContainer.innerHTML = results.map(renderFunction).join("");
         dropdownContainer.style.display = "block";
+        activeIndex = -1;
+        var items = dropdownContainer.querySelectorAll(".gsac-item");
+        bindItemEvents(items);
+      }, 300);
+    });
 
-        const items = dropdownContainer.querySelectorAll(".search-result-item");
-        items.forEach(function(item) {
-          item.addEventListener("mouseenter", function() {
-            this.style.background = "rgba(27,95,122,0.08)";
-          });
-          item.addEventListener("mouseleave", function() {
-            this.style.background = "transparent";
-          });
-          item.addEventListener("click", function() {
-            const studentId = this.dataset.studentId || "";
-            const itemData = studentId
-              ? ((database.students || []).find(function (student) { return student.id === studentId; }) || {})
-              : JSON.parse(this.dataset.item || "{}");
-            searchInput.value = "";
-            dropdownContainer.style.display = "none";
-            onSelectFunction(itemData);
-          });
-        });
-      }, 120);
+    searchInput.addEventListener("keydown", function(e) {
+      var items = dropdownContainer.querySelectorAll(".gsac-item");
+      if (dropdownContainer.style.display === "none" || !items.length) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        activeIndex = Math.min(activeIndex + 1, items.length - 1);
+        highlightItem(items, activeIndex);
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        activeIndex = Math.max(activeIndex - 1, 0);
+        highlightItem(items, activeIndex);
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (activeIndex >= 0 && activeIndex < items.length) {
+          items[activeIndex].click();
+        }
+      } else if (e.key === "Escape") {
+        closeDropdown();
+      }
     });
 
     document.addEventListener("click", function(event) {
-      const container = document.getElementById(searchContainerId);
       if (!event.target.closest(searchContainerId ? "#" + searchContainerId : "input")) {
-        dropdownContainer.style.display = "none";
+        closeDropdown();
       }
     });
 
     searchInput.addEventListener("focus", function() {
-      if (this.value.trim()) {
+      if (this.value.trim() && dropdownContainer.innerHTML.trim()) {
         dropdownContainer.style.display = "block";
       }
     });
@@ -24703,8 +24845,42 @@ ${allContent}
   });
   studentStatusSearchInput.addEventListener("input", renderStudentStatusDirectory);
   studentStatusClassFilter.addEventListener("change", renderStudentStatusDirectory);
+  // Initialize admission autocomplete
+  initializeSearchWithDropdown(
+    admissionLetterSearchInput,
+    admissionLetterSearchDropdown,
+    function(searchTerm) {
+      return getNormalizedStudentsDataset().filter(function(s) {
+        return String(s.name || "").toLowerCase().includes(searchTerm) ||
+               String(s.admissionNo || "").toLowerCase().includes(searchTerm);
+      }).slice(0, 10);
+    },
+    renderStudentSearchResult,
+    function(student) {
+      admissionLetterSearchInput.value = student.name || "";
+      selectedAdmissionStudentId = student.id || null;
+      if (admissionLetterPreviewArea) admissionLetterPreviewArea.style.display = "";
+      if (admissionLetterLoading) {
+        admissionLetterLoading.style.display = "";
+        admissionLetterLoading.classList.add("adm-fade-in");
+      }
+      setTimeout(function() { renderAdmissionLetterStudents(); }, 200);
+    },
+    "admissionLetterSearchContainer",
+    function(searchValue) {
+      if (!searchValue.trim()) {
+        if (admissionLetterPreviewArea) admissionLetterPreviewArea.style.display = "none";
+        selectedAdmissionStudentId = null;
+      }
+    }
+  );
+
   if (admissionLetterSearchBtn) {
     admissionLetterSearchBtn.addEventListener("click", function () {
+      if (!admissionLetterSearchInput.value.trim()) {
+        showToast("Please type a student name or roll number.", "warning");
+        return;
+      }
       if (admissionLetterPreviewArea) admissionLetterPreviewArea.style.display = "none";
       if (admissionLetterLoading) {
         admissionLetterLoading.style.display = "";
@@ -24714,14 +24890,6 @@ ${allContent}
       setTimeout(function () {
         renderAdmissionLetterStudents();
       }, 300);
-    });
-  }
-  if (admissionLetterSearchInput) {
-    admissionLetterSearchInput.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (admissionLetterSearchBtn) admissionLetterSearchBtn.click();
-      }
     });
   }
   if (sendAdmissionMessageBtn) {
