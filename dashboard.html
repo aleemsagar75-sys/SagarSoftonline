@@ -985,8 +985,14 @@
                       <select id="studentClassName" required></select>
                     </div>
                     <div class="field-group">
-                      <label for="discountInFee">Discount In Fee (%)*</label>
-                      <input id="discountInFee" type="number" min="0" max="100" placeholder="Auto-assigned" readonly style="background:#f1f5fc;color:#4e678f;cursor:default;">
+                      <label for="discountTypeSelect">Discount Type*</label>
+                      <select id="discountTypeSelect" style="background:#f1f5fc;color:#4e678f;cursor:default;">
+                        <option value="">No Discount</option>
+                      </select>
+                    </div>
+                    <div class="field-group">
+                      <label for="discountInFee">Discount %</label>
+                      <input id="discountInFee" type="text" readonly style="background:#f1f5fc;color:#4e678f;cursor:default;" placeholder="Auto from type">
                     </div>
                     <div class="field-group">
                       <label for="studentPhone">Mobile No. for SMS/WhatsApp</label>
