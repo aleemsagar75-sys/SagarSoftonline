@@ -238,7 +238,6 @@ document.addEventListener("DOMContentLoaded", function () {
       '#sendResultMessageBtn',
       '#sendEmployeeAbsenteesBtn',
       '#sendTestResultSmsBtn',
-      '#sendHomeworkSmsBatchBtn',
       '#sendWhatsappCustomBtn',
       '#sendSmsNowBtn',
       '#sendNotifBtn',
@@ -282,7 +281,6 @@ document.addEventListener("DOMContentLoaded", function () {
       .role-messaging-disabled #sendResultMessageBtn,
       .role-messaging-disabled #sendEmployeeAbsenteesBtn,
       .role-messaging-disabled #sendTestResultSmsBtn,
-      .role-messaging-disabled #sendHomeworkSmsBatchBtn,
       .role-messaging-disabled #sendWhatsappCustomBtn,
       .role-messaging-disabled #sendSmsNowBtn,
       .role-messaging-disabled #sendNotifBtn,
@@ -786,12 +784,8 @@ document.addEventListener("DOMContentLoaded", function () {
   const admissionLetterShell = document.getElementById("admissionLetterShell");
   const admissionLetterSearchInput = document.getElementById("admissionLetterSearchInput");
   const admissionLetterSearchBtn = document.getElementById("admissionLetterSearchBtn");
-  const admissionLetterSearchDropdown = document.getElementById("admissionLetterSearchDropdown");
-  const admissionLetterStudentList = document.getElementById("admissionLetterStudentList");
-  const admissionLetterEmptyState = document.getElementById("admissionLetterEmptyState");
+  const admissionLetterPreviewArea = document.getElementById("admissionLetterPreviewArea");
   const admissionLetterDetail = document.getElementById("admissionLetterDetail");
-  const admissionLetterLayout = document.getElementById("admissionLetterLayout");
-  const admissionLetterEmptyVisual = document.getElementById("admissionLetterEmptyVisual");
   const admissionLetterLoading = document.getElementById("admissionLetterLoading");
   const admissionDetailCard = document.getElementById("admissionDetailCard");
   const admissionActionsBar = document.getElementById("admissionActionsBar");
@@ -13487,30 +13481,24 @@ ${allContent}
       moduleSummary.innerHTML = `
         <article>
           <strong class="module-center-title">Job Letter</strong>
-          <div class="admission-search-bar">
-            <div class="admission-search-field">
-              <span class="admission-search-icon">&#x1F50D;</span>
-              <input id="jobLetterSearchInput" type="search" placeholder="Search Employee by Name / Role / Mobile." class="admission-search-input">
+          <div class="admission-search-center">
+            <div class="admission-search-bar admission-search-bar--narrow">
+              <div class="admission-search-field">
+                <span class="admission-search-icon">&#x1F50D;</span>
+                <input id="jobLetterSearchInput" type="search" placeholder="Search Employee by Name / Role / Mobile." class="admission-search-input">
+              </div>
+              <button class="admission-search-btn" id="jobLetterSearchBtn" type="button">Search</button>
             </div>
-            <button class="admission-search-btn" id="jobLetterSearchBtn" type="button">Search</button>
+            <p class="admission-search-hint">Search an employee to generate a job letter.</p>
           </div>
-          <div id="jobLetterSearchDropdown" class="search-dropdown" style="display:none;"></div>
 
           <div id="jobLetterLoading" class="admission-loading" style="display:none;">
             <div class="admission-spinner"></div>
             <p>Searching employees...</p>
           </div>
 
-          <div id="jobLetterEmptyVisual" class="admission-empty-visual">
-            <div class="admission-empty-icon">&#x1F50D;</div>
-            <p class="admission-empty-title">Search an employee to preview</p>
-            <p class="admission-empty-sub">the job letter.</p>
-          </div>
-
-          <div id="jobLetterLayout" style="display:none;">
-            <div id="jobLetterList" class="compact-list"></div>
-            <p class="empty-state" id="jobLetterEmptyState" hidden>No employee found.</p>
-            <div id="jobLetterDetailCard" class="panel-card" style="display:none;margin-top:1rem;">
+          <div id="jobLetterPreviewArea" style="display:none;">
+            <div id="jobLetterDetailCard" class="panel-card" style="margin-top:1rem;">
               <div class="panel-card__header">
                 <div>
                   <p class="panel-label">Selected Employee</p>
@@ -13521,8 +13509,8 @@ ${allContent}
               <div class="admission-actions-bar" id="jobLetterActionsBar">
                 <button class="admission-action-btn admission-action-btn--print" id="jobLetterPrintBtn" type="button">&#x1F5A8; Print</button>
                 <button class="admission-action-btn admission-action-btn--pdf" id="jobLetterPdfBtn" type="button">&#x1F4C5; PDF</button>
-                <button class="admission-action-btn admission-action-btn--msg" id="jobLetterSmsBtn" type="button">&#x1F4E8; SMS</button>
                 <button class="admission-action-btn admission-action-btn--wa" id="jobLetterWhatsappBtn" type="button">&#x1F4AC; WhatsApp</button>
+                <button class="admission-action-btn admission-action-btn--msg" id="jobLetterSmsBtn" type="button">&#x1F4E8; SMS</button>
               </div>
             </div>
           </div>
@@ -13533,12 +13521,7 @@ ${allContent}
 
       const searchInput = document.getElementById("jobLetterSearchInput");
       const searchBtn = document.getElementById("jobLetterSearchBtn");
-      const searchDropdown = document.getElementById("jobLetterSearchDropdown");
-      const searchContainer = document.getElementById("jobLetterSearchContainer");
-      const list = document.getElementById("jobLetterList");
-      const emptyState = document.getElementById("jobLetterEmptyState");
-      const jobLetterLayout = document.getElementById("jobLetterLayout");
-      const jobLetterEmptyVisual = document.getElementById("jobLetterEmptyVisual");
+      const jobLetterPreviewArea = document.getElementById("jobLetterPreviewArea");
       const jobLetterLoading = document.getElementById("jobLetterLoading");
       const jobLetterDetailCard = document.getElementById("jobLetterDetailCard");
       const jobLetterDetailContent = document.getElementById("jobLetterDetailContent");
@@ -13646,9 +13629,10 @@ ${allContent}
 
       function renderJobLetterDetail(employee) {
         if (!employee) {
-          if (jobLetterDetailCard) jobLetterDetailCard.style.display = "none";
+          if (jobLetterPreviewArea) jobLetterPreviewArea.style.display = "none";
           return;
         }
+        selectedJobLetterEmployeeId = employee.id;
         jobLetterDetailContent.innerHTML = `
           <article>
             <div class="admission-profile">
@@ -13668,9 +13652,9 @@ ${allContent}
             </div>
           </article>
         `;
-        if (jobLetterDetailCard) {
-          jobLetterDetailCard.style.display = "";
-          jobLetterDetailCard.classList.add("adm-fade-in");
+        if (jobLetterPreviewArea) {
+          jobLetterPreviewArea.style.display = "";
+          jobLetterPreviewArea.classList.add("adm-fade-in");
         }
         if (jobLetterPrintBtn) jobLetterPrintBtn.onclick = function () { printJobLetter(employee); };
         if (jobLetterSmsBtn) jobLetterSmsBtn.onclick = function () { sendJobLetterSms(employee); };
@@ -13690,65 +13674,26 @@ ${allContent}
         }
       }
 
-      function renderList() {
-        const employees = getFilteredEmployees();
-        list.innerHTML = employees.map(function (employee) {
-          return `
-            <article>
-              <div>
-                <strong>${escapeHtml(employee.name || "-")}</strong>
-                <span>${escapeHtml(employee.role || "-")} | ${escapeHtml(getEmployeeDisplayPhone(employee))}</span>
-              </div>
-              <div>
-                <button class="admission-student-select" type="button" data-emp-action="select-job-letter" data-id="${employee.id}">
-                  ${selectedJobLetterEmployeeId === employee.id ? "Selected" : "Select"}
-                </button>
-              </div>
-            </article>
-          `;
-        }).join("");
-        emptyState.hidden = employees.length !== 0;
-
-        if (employees.length > 0) {
-          if (jobLetterEmptyVisual) jobLetterEmptyVisual.style.display = "none";
-          if (jobLetterLoading) jobLetterLoading.style.display = "none";
-          if (jobLetterLayout) {
-            jobLetterLayout.style.display = "";
-            jobLetterLayout.classList.add("adm-fade-in");
-          }
-        }
-
-        const selected = employees.find(function (e) { return e.id === selectedJobLetterEmployeeId; }) || null;
-        renderJobLetterDetail(selected);
-      }
-
-      list.addEventListener("click", function (event) {
-        const btn = event.target.closest("[data-emp-action]");
-        if (!btn) return;
-        const action = btn.dataset.empAction;
-        const employee = getEmployeeById(btn.dataset.id);
-        if (!employee) return;
-        if (action === "select-job-letter") {
-          selectedJobLetterEmployeeId = employee.id;
-          renderList();
+      function renderJobLetterFromSearch() {
+        var employees = getFilteredEmployees();
+        if (jobLetterLoading) jobLetterLoading.style.display = "none";
+        if (employees.length === 0) {
+          if (jobLetterPreviewArea) jobLetterPreviewArea.style.display = "none";
+          showToast("No employee found for this search.", "error");
           return;
         }
-        if (action === "print-job-letter") { printJobLetter(employee); return; }
-        if (action === "sms-job-letter") { sendJobLetterSms(employee); return; }
-        if (action === "whatsapp") { sendJobLetterWhatsapp(employee); }
-      });
+        renderJobLetterDetail(employees[0]);
+      }
 
       if (searchBtn) {
         searchBtn.addEventListener("click", function () {
-          if (jobLetterEmptyVisual) jobLetterEmptyVisual.style.display = "none";
-          if (jobLetterLayout) jobLetterLayout.style.display = "none";
-          if (jobLetterDetailCard) jobLetterDetailCard.style.display = "none";
+          if (jobLetterPreviewArea) jobLetterPreviewArea.style.display = "none";
           if (jobLetterLoading) {
             jobLetterLoading.style.display = "";
             jobLetterLoading.classList.add("adm-fade-in");
           }
           selectedJobLetterEmployeeId = null;
-          setTimeout(function () { renderList(); }, 300);
+          setTimeout(function () { renderJobLetterFromSearch(); }, 300);
         });
       }
       if (searchInput) {
@@ -13756,7 +13701,6 @@ ${allContent}
           if (e.key === "Enter") { e.preventDefault(); if (searchBtn) searchBtn.click(); }
         });
       }
-      renderList();
       return;
     }
 
@@ -18558,83 +18502,111 @@ ${allContent}
       const students = (database.students || []).filter(function (student) {
         return String(student.status || "").toLowerCase() === "active";
       });
-      const studentSuggestions = students.map(function (student) {
-        return `<option value="${escapeAttr(student.name || "")} (${escapeAttr(student.admissionNo || "-")})"></option>`;
-      }).join("");
 
       moduleSectionLabel.textContent = "Homework Module";
       moduleSummary.innerHTML = `
         <article>
-          <strong class="module-center-title">Assign Homework</strong>
-          <div class="form-grid">
-            <div class="field-group field-group--full">
-              <label>Send Homework To *</label>
-              <div class="homework-radio-group">
-                <label class="homework-radio-label">
-                  <input type="radio" name="homeworkTargetRadio" value="class" checked> Class Wise
-                </label>
-                <label class="homework-radio-label">
-                  <input type="radio" name="homeworkTargetRadio" value="student"> Student Wise
-                </label>
+          <strong class="module-center-title">Homework</strong>
+          <div class="homework-tabs">
+            <button class="homework-tab-btn homework-tab-btn--active" type="button" data-hw-tab="create">&#x270F; Create Homework</button>
+            <button class="homework-tab-btn" type="button" data-hw-tab="view">&#x1F50E; View Homework</button>
+          </div>
+
+          <div id="homeworkCreateTab">
+            <div class="form-grid">
+              <div class="field-group field-group--full">
+                <label>Send Homework To *</label>
+                <div class="homework-radio-group">
+                  <label class="homework-radio-label">
+                    <input type="radio" name="homeworkTargetRadio" value="class" checked> Class Wise
+                  </label>
+                  <label class="homework-radio-label">
+                    <input type="radio" name="homeworkTargetRadio" value="student"> Student Wise
+                  </label>
+                </div>
+              </div>
+              <div class="field-group homework-anim-field" id="homeworkClassField">
+                <label for="homeworkClassSelect">Select Class*</label>
+                <select id="homeworkClassSelect">
+                  <option value="">Select Class</option>
+                  ${classOptionsMarkup}
+                </select>
+              </div>
+              <div class="field-group homework-anim-field" id="homeworkStudentField" style="display:none">
+                <label for="homeworkStudentSearch">Search Student*</label>
+                <div id="homeworkSearchContainer" style="position:relative;">
+                  <input id="homeworkStudentSearch" type="search" placeholder="Search by roll no / name" style="width:100%;">
+                  <div id="homeworkSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
+                </div>
+              </div>
+              <div class="field-group">
+                <label for="homeworkSubjectInput">Subject*</label>
+                <input id="homeworkSubjectInput" type="text" placeholder="e.g Mathematics">
+              </div>
+              <div class="field-group">
+                <label for="homeworkTitleInput">Homework Title*</label>
+                <input id="homeworkTitleInput" type="text" placeholder="e.g Chapter 4 Practice">
+              </div>
+              <div class="field-group">
+                <label for="homeworkDueDateInput">Due Date*</label>
+                <input id="homeworkDueDateInput" type="date">
+              </div>
+              <div class="field-group field-group--full">
+                <label for="homeworkDescriptionInput">Homework Details*</label>
+                <textarea id="homeworkDescriptionInput" rows="4" placeholder="Write homework instructions..."></textarea>
               </div>
             </div>
-            <div class="field-group homework-anim-field" id="homeworkClassField">
-              <label for="homeworkClassSelect">Select Class*</label>
-              <select id="homeworkClassSelect">
-                <option value="">Select Class</option>
-                ${classOptionsMarkup}
-              </select>
+            <div class="homework-actions-compact">
+              <button class="homework-btn homework-btn--save" id="sendHomeworkBtn" type="button">&#x1F4BE; Save Homework</button>
             </div>
-            <div class="field-group homework-anim-field" id="homeworkStudentField" style="display:none">
-              <label for="homeworkStudentSearch">Search Student*</label>
-              <div id="homeworkSearchContainer" style="position: relative;">
-                <input id="homeworkStudentSearch" type="search" placeholder="Search by roll no / name" style="width: 100%;">
-                <div id="homeworkSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
+            <p class="form-message" id="homeworkMessage"></p>
+          </div>
+
+          <div id="homeworkViewTab" style="display:none;">
+            <div class="homework-view-controls">
+              <div class="field-group">
+                <label for="hwViewDate">Date</label>
+                <input id="hwViewDate" type="date">
+              </div>
+              <div class="field-group" id="hwViewClassField">
+                <label for="hwViewClassSelect">Class</label>
+                <select id="hwViewClassSelect">
+                  <option value="">All Classes</option>
+                  ${classOptionsMarkup}
+                </select>
+              </div>
+              <div class="field-group" id="hwViewStudentField" style="display:none;">
+                <label for="hwViewStudentSearch">Student</label>
+                <input id="hwViewStudentSearch" type="search" placeholder="Search student...">
+              </div>
+              <div class="homework-view-actions">
+                <button class="homework-btn homework-btn--load" id="hwLoadBtn" type="button">&#x1F50D; Load Homework</button>
               </div>
             </div>
-            <div class="field-group">
-              <label for="homeworkSubjectInput">Subject*</label>
-              <input id="homeworkSubjectInput" type="text" placeholder="e.g Mathematics">
+            <div id="homeworkViewResults" style="display:none;">
+              <div class="homework-view-header">
+                <label class="homework-check-all-label">
+                  <input type="checkbox" id="homeworkCheckAll"> Select All
+                </label>
+                <span id="homeworkSelectedCount" class="homework-selected-count">0 selected</span>
+              </div>
+              <div id="homeworkStudentChecklist" class="homework-student-checklist"></div>
+              <div id="homeworkPreviewSection" style="display:none;">
+                <div class="homework-preview-card" id="homeworkPreviewCard"></div>
+                <div class="homework-actions-compact">
+                  <button class="homework-btn homework-btn--pdf" id="hwPdfBtn" type="button">&#x1F4C4; PDF</button>
+                  <button class="homework-btn homework-btn--whatsapp" id="hwWhatsAppBtn" type="button">&#x1F4AC; WhatsApp</button>
+                  <button class="homework-btn homework-btn--sms" id="hwSmsBtn" type="button">&#x1F4E8; SMS</button>
+                </div>
+              </div>
             </div>
-            <div class="field-group">
-              <label for="homeworkTitleInput">Homework Title*</label>
-              <input id="homeworkTitleInput" type="text" placeholder="e.g Chapter 4 Practice">
+            <p class="empty-state" id="homeworkViewEmpty">Load homework to view and send.</p>
+            <div id="homeworkEditDeleteArea" style="display:none;">
+              <div class="homework-actions-compact">
+                <button class="homework-btn homework-btn--edit" id="hwEditBtn" type="button">&#x270F; Edit</button>
+                <button class="homework-btn homework-btn--delete" id="hwDeleteBtn" type="button">&#x1F5D1; Delete</button>
+              </div>
             </div>
-            <div class="field-group">
-              <label for="homeworkDueDateInput">Due Date*</label>
-              <input id="homeworkDueDateInput" type="date">
-            </div>
-            <div class="field-group field-group--full">
-              <label for="homeworkDescriptionInput">Homework Details*</label>
-              <textarea id="homeworkDescriptionInput" rows="4" placeholder="Write homework instructions..."></textarea>
-            </div>
-          </div>
-          <div class="homework-actions-compact">
-            <button class="homework-btn homework-btn--save" id="sendHomeworkBtn" type="button">&#x1F4BE; Save Homework</button>
-            <button class="homework-btn homework-btn--sms" id="sendHomeworkSmsBatchBtn" type="button">&#x1F4E8; Send SMS</button>
-            <button class="homework-btn homework-btn--pdf" id="downloadHomeworkPdfBtn" type="button">&#x1F4C4; Download PDF</button>
-          </div>
-          <p class="form-message" id="homeworkMessage"></p>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Target</th>
-                  <th>Subject</th>
-                  <th>Title</th>
-                  <th>Due Date</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="homeworkHistoryBody"></tbody>
-            </table>
-          </div>
-          <p class="empty-state" id="homeworkHistoryEmptyState" hidden>No homework sent yet.</p>
-          <div id="homeworkSelectionPreview">
-            <strong>Selection Details</strong>
-            <p>Select class or student to preview details here.</p>
           </div>
         </article>
       `;
@@ -18645,126 +18617,60 @@ ${allContent}
       var _ps = moduleSummary.closest(".panel-card");
       if (_ps) _ps.style.gridColumn = "1 / -1";
 
-      const targetTypeRadio = document.querySelector('input[name="homeworkTargetRadio"]');
-      const classField = document.getElementById("homeworkClassField");
-      const classSelect = document.getElementById("homeworkClassSelect");
-      const studentField = document.getElementById("homeworkStudentField");
-      const studentSearch = document.getElementById("homeworkStudentSearch");
-      const studentSearchDropdown = document.getElementById("homeworkSearchDropdown");
-      const studentSearchContainer = document.getElementById("homeworkSearchContainer");
-      const selectionPreview = document.getElementById("homeworkSelectionPreview");
+      var hwTabBtns = document.querySelectorAll("[data-hw-tab]");
+      var hwCreateTab = document.getElementById("homeworkCreateTab");
+      var hwViewTab = document.getElementById("homeworkViewTab");
+      var targetTypeRadio = document.querySelector('input[name="homeworkTargetRadio"]');
+      var classField = document.getElementById("homeworkClassField");
+      var classSelect = document.getElementById("homeworkClassSelect");
+      var studentField = document.getElementById("homeworkStudentField");
+      var studentSearch = document.getElementById("homeworkStudentSearch");
+      var studentSearchDropdown = document.getElementById("homeworkSearchDropdown");
+      var studentSearchContainer = document.getElementById("homeworkSearchContainer");
+      var subjectInput = document.getElementById("homeworkSubjectInput");
+      var titleInput = document.getElementById("homeworkTitleInput");
+      var dueDateInput = document.getElementById("homeworkDueDateInput");
+      var descriptionInput = document.getElementById("homeworkDescriptionInput");
+      var message = document.getElementById("homeworkMessage");
+      var editingHomeworkId = "";
 
-      initializeStudentProfessionalSearch(
-        "homeworkStudentSearch",
-        "homeworkSearchDropdown",
-        "homeworkSearchContainer",
-        function(student) {
-          studentSearch.value = student.name + " (" + (student.admissionNo || "-") + ")";
-          renderHomeworkSelectionPreview();
-        }
-      );
-      const subjectInput = document.getElementById("homeworkSubjectInput");
-      const titleInput = document.getElementById("homeworkTitleInput");
-      const dueDateInput = document.getElementById("homeworkDueDateInput");
-      const descriptionInput = document.getElementById("homeworkDescriptionInput");
-      const message = document.getElementById("homeworkMessage");
-      const historyBody = document.getElementById("homeworkHistoryBody");
-      const historyEmpty = document.getElementById("homeworkHistoryEmptyState");
-      let editingHomeworkId = "";
-      let selectedHomeworkPreviewId = "";
+      var hwViewDate = document.getElementById("hwViewDate");
+      var hwViewClassSelect = document.getElementById("hwViewClassSelect");
+      var hwViewStudentSearch = document.getElementById("hwViewStudentSearch");
+      var hwViewClassField = document.getElementById("hwViewClassField");
+      var hwViewStudentField = document.getElementById("hwViewStudentField");
+      var hwLoadBtn = document.getElementById("hwLoadBtn");
+      var homeworkViewResults = document.getElementById("homeworkViewResults");
+      var homeworkCheckAll = document.getElementById("homeworkCheckAll");
+      var homeworkSelectedCount = document.getElementById("homeworkSelectedCount");
+      var homeworkStudentChecklist = document.getElementById("homeworkStudentChecklist");
+      var homeworkPreviewSection = document.getElementById("homeworkPreviewSection");
+      var homeworkPreviewCard = document.getElementById("homeworkPreviewCard");
+      var hwPdfBtn = document.getElementById("hwPdfBtn");
+      var hwWhatsAppBtn = document.getElementById("hwWhatsAppBtn");
+      var hwSmsBtn = document.getElementById("hwSmsBtn");
+      var hwEditBtn = document.getElementById("hwEditBtn");
+      var hwDeleteBtn = document.getElementById("hwDeleteBtn");
+      var homeworkViewEmpty = document.getElementById("homeworkViewEmpty");
+      var homeworkEditDeleteArea = document.getElementById("homeworkEditDeleteArea");
 
-      function findStudentFromSearch() {
-        const typed = String(studentSearch.value || "").trim().toLowerCase();
-        if (!typed) {
-          return null;
-        }
-        return students.find(function (student) {
-          const name = String(student.name || "").toLowerCase();
-          const roll = String(student.admissionNo || "-").toLowerCase();
-          return typed === `${name} (${roll})` || typed === name || typed === roll || name.includes(typed) || roll.includes(typed);
-        }) || null;
-      }
+      var selectedHomeworkIds = [];
+      var selectedHomeworkRecord = null;
 
-      function getTargets() {
-        if (getTargetTypeValue() === "student") {
-          const student = findStudentFromSearch();
-          return student ? [student] : [];
-        }
-        return students.filter(function (student) {
-          return student.className === classSelect.value;
+      hwTabBtns.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          hwTabBtns.forEach(function (b) { b.classList.remove("homework-tab-btn--active"); });
+          btn.classList.add("homework-tab-btn--active");
+          var tab = btn.getAttribute("data-hw-tab");
+          if (tab === "create") {
+            hwCreateTab.style.display = "";
+            hwViewTab.style.display = "none";
+          } else {
+            hwCreateTab.style.display = "none";
+            hwViewTab.style.display = "";
+          }
         });
-      }
-
-      function getFilteredHomeworkRecords() {
-        return (settings.homeworkAssignments || []).slice();
-      }
-
-      function getHomeworkRecordTargets(homework) {
-        if (!homework) {
-          return [];
-        }
-        if (homework.targetType === "student") {
-          const student = students.find(function (item) {
-            return item.id === homework.targetStudentId || item.name === homework.targetLabel;
-          });
-          return student ? [student] : [];
-        }
-        return students.filter(function (student) {
-          return student.className === homework.className;
-        });
-      }
-
-      function buildHomeworkMessageForStudent(homework, student) {
-        const normalized = normalizeStudentForPrint(student || {});
-        const template = getSavedMessageTemplate("homeworkWhatsapp", "Dear {prefix} {name} (Roll No: {roll}),\nHomework: {subject} - {title}\nDue Date: {dueDate}\nDetails: {details}\nRegards,\n{school}");
-        return interpolateTemplate(template, {
-          prefix: getGenderPrefix(normalized.gender || student.gender),
-          name: normalized.name || "-",
-          roll: normalized.admissionNo || "-",
-          rollNo: normalized.admissionNo || "-",
-          class: normalized.className || "-",
-          subject: homework.subject || "-",
-          title: homework.title || "-",
-          dueDate: homework.dueDate || "-",
-          details: homework.details || "-",
-          school: database.school.name || "School"
-        });
-      }
-
-      function renderHomeworkHistory() {
-        const rows = getFilteredHomeworkRecords().slice(0, 80);
-        historyBody.innerHTML = rows.map(function (row) {
-          return `
-            <tr>
-              <td>${escapeHtml(row.createdAt || "-")}</td>
-              <td>${escapeHtml(row.targetLabel || "-")}</td>
-              <td>${escapeHtml(row.subject || "-")}</td>
-              <td>${escapeHtml(row.title || "-")}</td>
-              <td>${escapeHtml(row.dueDate || "-")}</td>
-              <td>${escapeHtml(row.smsSent ? "Sent" : "Unsent")}</td>
-              <td>
-                <button class="table-action-btn" type="button" data-homework-select="${escapeAttr(row.id || "")}">Select</button>
-                <button class="table-action-btn" type="button" data-homework-edit="${escapeAttr(row.id || "")}">Edit</button>
-                <button class="table-action-btn danger" type="button" data-homework-delete="${escapeAttr(row.id || "")}">Delete</button>
-              </td>
-            </tr>
-          `;
-        }).join("");
-        historyEmpty.hidden = rows.length !== 0;
-      }
-
-      function resetHomeworkForm() {
-        editingHomeworkId = "";
-        selectedHomeworkPreviewId = "";
-        var _hwBtn = document.getElementById("sendHomeworkBtn"); if (_hwBtn) _hwBtn.innerHTML = "&#x1F4BE; Save";
-        var _classRadio = document.querySelector('input[name="homeworkTargetRadio"][value="class"]');
-        if (_classRadio) _classRadio.checked = true;
-        syncTargetFields();
-        subjectInput.value = "";
-        titleInput.value = "";
-        dueDateInput.value = "";
-        descriptionInput.value = "";
-      }
+      });
 
       function getTargetTypeValue() {
         var checked = document.querySelector('input[name="homeworkTargetRadio"]:checked');
@@ -18772,7 +18678,7 @@ ${allContent}
       }
 
       function syncTargetFields() {
-        const isStudent = getTargetTypeValue() === "student";
+        var isStudent = getTargetTypeValue() === "student";
         if (isStudent) {
           classField.style.display = "none";
           studentField.style.display = "";
@@ -18788,81 +18694,93 @@ ${allContent}
         }
       }
 
+      function getTargetTypeViewValue() {
+        return hwViewStudentField.style.display === "none" ? "class" : "student";
+      }
+
+      function findStudentFromSearch(searchEl) {
+        var typed = String((searchEl || studentSearch).value || "").trim().toLowerCase();
+        if (!typed) return null;
+        return students.find(function (student) {
+          var name = String(student.name || "").toLowerCase();
+          var roll = String(student.admissionNo || "-").toLowerCase();
+          return name.includes(typed) || roll.includes(typed);
+        }) || null;
+      }
+
+      function getTargets() {
+        if (getTargetTypeValue() === "student") {
+          var student = findStudentFromSearch(studentSearch);
+          return student ? [student] : [];
+        }
+        return students.filter(function (student) {
+          return student.className === classSelect.value;
+        });
+      }
+
+      function getHomeworkRecordTargets(homework) {
+        if (!homework) return [];
+        if (homework.targetType === "student") {
+          var student = students.find(function (item) {
+            return item.id === homework.targetStudentId || item.name === homework.targetLabel;
+          });
+          return student ? [student] : [];
+        }
+        return students.filter(function (student) {
+          return student.className === homework.className;
+        });
+      }
+
+      function buildHomeworkMessageForStudent(homework, student) {
+        var normalized = normalizeStudentForPrint(student || {});
+        var template = getSavedMessageTemplate("homeworkWhatsapp", "Dear {prefix} {name} (Roll No: {roll}),\nHomework: {subject} - {title}\nDue Date: {dueDate}\nDetails: {details}\nRegards,\n{school}");
+        return interpolateTemplate(template, {
+          prefix: getGenderPrefix(normalized.gender || student.gender),
+          name: normalized.name || "-",
+          roll: normalized.admissionNo || "-",
+          rollNo: normalized.admissionNo || "-",
+          class: normalized.className || "-",
+          subject: homework.subject || "-",
+          title: homework.title || "-",
+          dueDate: homework.dueDate || "-",
+          details: homework.details || "-",
+          school: database.school.name || "School"
+        });
+      }
+
+      function resetHomeworkForm() {
+        editingHomeworkId = "";
+        var classRadio = document.querySelector('input[name="homeworkTargetRadio"][value="class"]');
+        if (classRadio) classRadio.checked = true;
+        syncTargetFields();
+        subjectInput.value = "";
+        titleInput.value = "";
+        dueDateInput.value = "";
+        descriptionInput.value = "";
+        message.textContent = "";
+        message.className = "form-message";
+        var _hwBtn = document.getElementById("sendHomeworkBtn");
+        if (_hwBtn) _hwBtn.innerHTML = "&#x1F4BE; Save Homework";
+      }
+
       document.querySelectorAll('input[name="homeworkTargetRadio"]').forEach(function (radio) {
         radio.addEventListener("change", syncTargetFields);
       });
 
-      function renderHomeworkSelectionPreview() {
-        if (!selectionPreview) {
-          return;
+      initializeStudentProfessionalSearch(
+        "homeworkStudentSearch",
+        "homeworkSearchDropdown",
+        "homeworkSearchContainer",
+        function (student) {
+          studentSearch.value = student.name + " (" + (student.admissionNo || "-") + ")";
         }
-        const selectedHomework = selectedHomeworkPreviewId
-          ? (settings.homeworkAssignments || []).find(function (item) { return item.id === selectedHomeworkPreviewId; })
-          : null;
-        const targets = selectedHomework ? getHomeworkRecordTargets(selectedHomework) : getTargets();
-        if (!targets.length) {
-          if (getTargetTypeValue() === "student") {
-            selectionPreview.innerHTML = `<strong>Selection Details</strong><p>Select one student to view details.</p>`;
-          } else {
-            selectionPreview.innerHTML = `<strong>Selection Details</strong><p>Select a class to preview target students.</p>`;
-          }
-          return;
-        }
-        const studentsList = targets.map(function (student) {
-          return `
-            <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px; background: #f5f5f5; border-radius: 6px; margin-bottom: 6px;">
-              <div>
-                <p style="margin: 0; font-weight: 600;">${escapeHtml(student.name || "-")}</p>
-                <p style="margin: 2px 0 0; font-size: 0.9rem; color: #666;">${escapeHtml(student.admissionNo || "-")} | ${escapeHtml(student.className || "-")}</p>
-              </div>
-              <button class="table-action-btn" type="button" data-homework-wa-student="${student.id}">WhatsApp</button>
-            </div>
-          `;
-        }).join("");
-        const homeworkInfo = selectedHomework ? `
-            <p><strong>Subject:</strong> ${escapeHtml(selectedHomework.subject || "-")}</p>
-            <p><strong>Title:</strong> ${escapeHtml(selectedHomework.title || "-")}</p>
-            <p><strong>Due Date:</strong> ${escapeHtml(selectedHomework.dueDate || "-")}</p>
-            <p><strong>Homework Details:</strong></p>
-            <p style="white-space: pre-wrap; margin-top: 0;">${escapeHtml(selectedHomework.details || "-")}</p>
-          ` : "";
-        selectionPreview.innerHTML = `
-          <strong>Selection Details</strong>
-          <div style="margin-top: 8px;">
-            <p><strong>Type:</strong> ${selectedHomework ? escapeHtml(selectedHomework.targetLabel || "-") : (getTargetTypeValue() === "student" ? "Single Student" : `Class: ${classSelect.value}`)}</p>
-            <p><strong>Total Students:</strong> ${targets.length}</p>
-            ${homeworkInfo}
-            <strong style="display: block; margin-top: 12px; margin-bottom: 8px;">Selected Students</strong>
-            ${studentsList}
-          </div>
-        `;
-        document.querySelectorAll("[data-homework-wa-student]").forEach(function (btn) {
-          btn.addEventListener("click", function () {
-            const studentId = this.getAttribute("data-homework-wa-student");
-            const student = students.find(function (s) { return s.id === studentId; });
-            if (student) {
-              const homeworkForMessage = selectedHomework || {
-                subject: subjectInput.value.trim() || "-",
-                title: titleInput.value.trim() || "-",
-                dueDate: dueDateInput.value || "-",
-                details: descriptionInput.value.trim() || "-"
-              };
-              const text = buildHomeworkMessageForStudent(homeworkForMessage, student);
-              if (!text) {
-                openAppMessageBox("Error", "Please set WhatsApp template first.", "error");
-                return;
-              }
-              sendDirectWhatsappToStudent(student, student.name || "student", text);
-            }
-          });
-        });
-      }
+      );
 
       document.getElementById("sendHomeworkBtn").addEventListener("click", function () {
-        const subject = subjectInput.value.trim();
-        const title = titleInput.value.trim();
-        const dueDate = dueDateInput.value;
-        const details = descriptionInput.value.trim();
+        var subject = subjectInput.value.trim();
+        var title = titleInput.value.trim();
+        var dueDate = dueDateInput.value;
+        var details = descriptionInput.value.trim();
         if (!subject || !title || !dueDate || !details) {
           message.textContent = "Please complete all required fields.";
           message.className = "form-message error";
@@ -18873,36 +18791,20 @@ ${allContent}
           message.className = "form-message error";
           return;
         }
-        const targets = getTargets();
+        var targets = getTargets();
         if (!targets.length) {
           message.textContent = getTargetTypeValue() === "student" ? "Please select a valid student." : "No students found in selected class.";
           message.className = "form-message warning";
           return;
         }
-
-        const existingHomework = editingHomeworkId
+        var existingHomework = editingHomeworkId
           ? settings.homeworkAssignments.find(function (item) { return item.id === editingHomeworkId; })
           : null;
-        const duplicateHomework = (settings.homeworkAssignments || []).find(function (item) {
-          return item.id !== editingHomeworkId
-            && String(item.targetType || "") === String(getTargetTypeValue() || "")
-            && String(item.className || "") === String(classSelect.value || "")
-            && String(item.targetStudentId || "") === String(getTargetTypeValue() === "student" ? targets[0].id : "")
-            && String(item.subject || "").trim().toLowerCase() === subject.toLowerCase()
-            && String(item.title || "").trim().toLowerCase() === title.toLowerCase()
-            && String(item.dueDate || "") === dueDate
-            && String(item.details || "").trim().toLowerCase() === details.toLowerCase();
-        });
-        if (duplicateHomework) {
-          message.textContent = "Same homework details already saved.";
-          message.className = "form-message warning";
-          return;
-        }
-        const homeworkRecord = {
-          id: existingHomework ? existingHomework.id : `HW-${generateId()}`,
+        var homeworkRecord = {
+          id: existingHomework ? existingHomework.id : "HW-" + generateId(),
           createdAt: new Date().toLocaleString(),
           targetType: getTargetTypeValue(),
-          targetLabel: getTargetTypeValue() === "student" ? (targets[0].name || "-") : `Class: ${classSelect.value}`,
+          targetLabel: getTargetTypeValue() === "student" ? (targets[0].name || "-") : "Class: " + classSelect.value,
           className: classSelect.value || "",
           targetStudentId: getTargetTypeValue() === "student" ? targets[0].id : "",
           subject: subject,
@@ -18918,127 +18820,177 @@ ${allContent}
           settings.homeworkAssignments.unshift(homeworkRecord);
         }
         saveDatabase("Saving homework...", [{ table: "homework", record: homeworkRecord, operation: existingHomework ? "update" : "create" }]);
-        renderHomeworkHistory();
-        const summary = `Homework ${existingHomework ? "updated" : "saved"} successfully for ${targets.length} student${targets.length === 1 ? "" : "s"}.`;
+        var summary = "Homework " + (existingHomework ? "updated" : "saved") + " successfully for " + targets.length + " student" + (targets.length === 1 ? "" : "s") + ".";
         message.textContent = summary;
         message.className = "form-message success";
         openAppMessageBox("Success", summary, "success");
-        if (existingHomework) {
-          resetHomeworkForm();
-        }
+        if (existingHomework) resetHomeworkForm();
       });
 
-      historyBody.addEventListener("click", function (event) {
-        const selectButton = event.target.closest("[data-homework-select]");
-        const editButton = event.target.closest("[data-homework-edit]");
-        const deleteButton = event.target.closest("[data-homework-delete]");
-        if (!selectButton && !editButton && !deleteButton) {
-          return;
-        }
-        const homeworkId = (selectButton || editButton || deleteButton).getAttribute(selectButton ? "data-homework-select" : (editButton ? "data-homework-edit" : "data-homework-delete"));
-        const index = settings.homeworkAssignments.findIndex(function (item) {
-          return item.id === homeworkId;
-        });
-        if (index < 0) {
-          return;
-        }
-        if (deleteButton) {
-          if (selectedHomeworkPreviewId === homeworkId) {
-            selectedHomeworkPreviewId = "";
-          }
-          var _removedHomework = settings.homeworkAssignments[index];
-          settings.homeworkAssignments.splice(index, 1); trackDeletion(homeworkId);
-        saveDatabase("Deleting homework...", [{ table: "homework", record: _removedHomework, operation: "delete" }]);
-        renderHomeworkHistory();
-          renderHomeworkSelectionPreview();
-          message.textContent = "Homework deleted successfully.";
-          message.className = "form-message success";
-          return;
-        }
-        const homework = settings.homeworkAssignments[index];
-        if (selectButton) {
-          selectedHomeworkPreviewId = homework.id;
-          renderHomeworkSelectionPreview();
-          message.textContent = "Saved homework selected.";
-          message.className = "form-message success";
-          return;
-        }
-        editingHomeworkId = homework.id;
-        selectedHomeworkPreviewId = homework.id;
-        var targetTypeVal = homework.targetType || "class";
-        var targetRadio = document.querySelector('input[name="homeworkTargetRadio"][value="' + targetTypeVal + '"]');
-        if (targetRadio) { targetRadio.checked = true; }
-        syncTargetFields();
-        classSelect.value = homework.className || "";
-        if (getTargetTypeValue() === "student") {
-          const student = students.find(function (item) {
-            return item.id === homework.targetStudentId || item.name === homework.targetLabel;
+      function getViewTargetTypeValue() {
+        return hwViewStudentField && hwViewStudentField.style.display === "none" ? "class" : "student";
+      }
+
+      function loadViewHomework() {
+        var records = (settings.homeworkAssignments || []).slice();
+        var viewDate = hwViewDate ? hwViewDate.value : "";
+        var viewClass = hwViewClassSelect ? hwViewClassSelect.value : "";
+        var viewStudentSearch = hwViewStudentSearch ? hwViewStudentSearch.value.trim().toLowerCase() : "";
+
+        if (viewDate) {
+          records = records.filter(function (r) {
+            return String(r.createdAt || "").includes(viewDate) || String(r.dueDate || "") === viewDate;
           });
-          studentSearch.value = student ? `${student.name || ""} (${student.admissionNo || "-"})` : (homework.targetLabel || "");
         }
-        subjectInput.value = homework.subject || "";
-        titleInput.value = homework.title || "";
-        dueDateInput.value = homework.dueDate || "";
-        descriptionInput.value = homework.details || "";
-        var _hwBtn = document.getElementById("sendHomeworkBtn"); if (_hwBtn) _hwBtn.innerHTML = "&#x1F4BE; Update";
-        renderHomeworkSelectionPreview();
-        message.textContent = "Homework loaded for editing.";
-        message.className = "form-message success";
-      });
+        if (viewClass) {
+          records = records.filter(function (r) {
+            return String(r.className || "") === viewClass;
+          });
+        }
+        if (viewStudentSearch) {
+          records = records.filter(function (r) {
+            return String(r.targetLabel || "").toLowerCase().includes(viewStudentSearch);
+          });
+        }
 
-      document.getElementById("downloadHomeworkPdfBtn").addEventListener("click", async function () {
-        const homeworkRows = getFilteredHomeworkRecords();
-        if (!homeworkRows.length) {
-          message.textContent = "No saved homework found.";
-          message.className = "form-message warning";
+        selectedHomeworkRecord = records.length > 0 ? records[0] : null;
+        selectedHomeworkIds = records.map(function (r) { return r.id; });
+
+        if (!records.length) {
+          homeworkViewResults.style.display = "none";
+          homeworkViewEmpty.style.display = "";
+          homeworkEditDeleteArea.style.display = "none";
           return;
         }
-        const contentHtml = homeworkRows.map(function (homework, index) {
-          return `<article class="report-card">
-            <p><strong>${index + 1}. ${escapeHtml(homework.title || "-")}</strong></p>
-            <p><strong>Subject:</strong> ${escapeHtml(homework.subject || "-")} | <strong>Due Date:</strong> ${escapeHtml(homework.dueDate || "-")} | <strong>Target:</strong> ${escapeHtml(homework.targetLabel || "-")}</p>
-            <p style="white-space:pre-wrap;line-height:1.55;">${escapeHtml(homework.details || "-")}</p>
-          </article>`;
+
+        homeworkViewEmpty.style.display = "none";
+        homeworkViewResults.style.display = "";
+        homeworkEditDeleteArea.style.display = "";
+
+        var targets = getHomeworkRecordTargets(records[0]);
+        homeworkStudentChecklist.innerHTML = targets.map(function (student) {
+          var normalized = normalizeStudentForPrint(student);
+          return '<div class="homework-student-row" data-student-id="' + student.id + '">' +
+            '<label class="homework-check-label">' +
+              '<input type="checkbox" class="homework-student-check" value="' + student.id + '">' +
+              '<span class="homework-student-info">' +
+                '<strong>' + escapeHtml(normalized.name || "-") + '</strong>' +
+                '<span>' + escapeHtml(normalized.admissionNo || "-") + " | " + escapeHtml(normalized.className || "-") + " | " + escapeHtml(normalized.phone || normalized.fatherPhone || "-") + '</span>' +
+              '</span>' +
+            '</label>' +
+            '<div class="homework-student-actions">' +
+              '<button class="homework-student-wa" type="button" data-hw-wa="' + student.id + '">&#x1F4AC; WhatsApp</button>' +
+              '<button class="homework-student-sms" type="button" data-hw-sms="' + student.id + '">&#x1F4E8; SMS</button>' +
+            '</div>' +
+          '</div>';
         }).join("");
-        await openPrintReport({
-          title: "Homework Sheet",
-          subtitle: `Total Homework: ${homeworkRows.length}`,
-          contentHtml: contentHtml
-        });
-      });
 
-      document.getElementById("sendHomeworkSmsBatchBtn").addEventListener("click", async function () {
-        var unsent = [];
-        const targets = getTargets();
-        if (!targets.length) {
-          message.textContent = getTargetTypeValue() === "student" ? "Please select a valid student." : "No students found in selected class.";
-          message.className = "form-message warning";
+        renderHomeworkPreview(records[0]);
+      }
+
+      function renderHomeworkPreview(homework) {
+        if (!homework) {
+          homeworkPreviewSection.style.display = "none";
           return;
         }
-        const subj = subjectInput.value.trim();
-        const due = dueDateInput.value;
-        if (!subj || !due) {
-          message.textContent = "Please fill subject and due date.";
-          message.className = "form-message warning";
-          return;
-        }
-        unsent = [{ _isUnsaved: true, subject: subj, title: titleInput.value.trim(), dueDate: due, details: descriptionInput.value.trim(), _targets: targets, targetLabel: getTargetTypeValue() === "student" ? (targets[0] ? targets[0].name : "Student") : `Class: ${classSelect.value}` }];
-        const template = getSavedMessageTemplate("homeworkWhatsapp", "Dear {prefix} {name} (Roll No: {roll}),\nHomework: {subject} - {title}\nDue Date: {dueDate}\nDetails: {details}\nRegards,\n{school}");
-        let totalSuccess = 0;
-        let totalFailed = 0;
-        window.SagarSoftDB.LoadingManager.show("Sending homework SMS...");
-        window.SagarSoftDB.LoadingManager.updateSubtext("Processing assignments...");
-        for (let i = 0; i < unsent.length; i += 1) {
-          const homework = unsent[i];
-          if (i % 3 === 0 || i === unsent.length - 1) {
-            window.SagarSoftDB.LoadingManager.update("Sending homework SMS... (" + (i + 1) + "/" + unsent.length + ")");
+        selectedHomeworkRecord = homework;
+        homeworkPreviewSection.style.display = "";
+        homeworkPreviewCard.innerHTML =
+          '<div class="homework-preview-header">' +
+            '<h4>' + escapeHtml(homework.subject || "-") + " - " + escapeHtml(homework.title || "-") + '</h4>' +
+            '<p><strong>Due:</strong> ' + escapeHtml(homework.dueDate || "-") + " | <strong>Target:</strong> " + escapeHtml(homework.targetLabel || "-") + '</p>' +
+          '</div>' +
+          '<div class="homework-preview-body">' +
+            '<p style="white-space:pre-wrap;line-height:1.6;">' + escapeHtml(homework.details || "-") + '</p>' +
+          '</div>';
+      }
+
+      if (hwLoadBtn) {
+        hwLoadBtn.addEventListener("click", loadViewHomework);
+      }
+
+      if (homeworkCheckAll) {
+        homeworkCheckAll.addEventListener("change", function () {
+          var checked = homeworkCheckAll.checked;
+          document.querySelectorAll(".homework-student-check").forEach(function (cb) {
+            cb.checked = checked;
+          });
+          updateSelectedCount();
+        });
+      }
+
+      function updateSelectedCount() {
+        var total = document.querySelectorAll(".homework-student-check").length;
+        var checked = document.querySelectorAll(".homework-student-check:checked").length;
+        if (homeworkSelectedCount) homeworkSelectedCount.textContent = checked + "/" + total + " selected";
+      }
+
+      if (homeworkStudentChecklist) {
+        homeworkStudentChecklist.addEventListener("change", function (e) {
+          if (e.target.classList.contains("homework-student-check")) {
+            updateSelectedCount();
           }
-          const targets = homework._targets || getHomeworkRecordTargets(homework);
-          if (!targets.length) { continue; }
-          for (let j = 0; j < targets.length; j += 1) {
-            const student = targets[j];
-            const normalized = normalizeStudentForPrint(student);
-            const result = await sendSmsSmart({
+        });
+        homeworkStudentChecklist.addEventListener("click", function (e) {
+          var waBtn = e.target.closest("[data-hw-wa]");
+          if (waBtn) {
+            var studentId = waBtn.getAttribute("data-hw-wa");
+            var student = students.find(function (s) { return s.id === studentId; });
+            if (student && selectedHomeworkRecord) {
+              var text = buildHomeworkMessageForStudent(selectedHomeworkRecord, student);
+              sendDirectWhatsappToStudent(student, student.name || "student", text);
+            }
+            return;
+          }
+          var smsBtn = e.target.closest("[data-hw-sms]");
+          if (smsBtn) {
+            var studentId = smsBtn.getAttribute("data-hw-sms");
+            var student = students.find(function (s) { return s.id === studentId; });
+            if (student && selectedHomeworkRecord) {
+              var text = buildHomeworkMessageForStudent(selectedHomeworkRecord, student);
+              sendDirectWhatsappToStudent(student, student.name || "student", text);
+            }
+          }
+        });
+      }
+
+      if (hwWhatsAppBtn) {
+        hwWhatsAppBtn.addEventListener("click", function () {
+          if (!selectedHomeworkRecord) return;
+          var targets = getHomeworkRecordTargets(selectedHomeworkRecord);
+          var checked = document.querySelectorAll(".homework-student-check:checked");
+          var targetStudents = [];
+          checked.forEach(function (cb) {
+            var s = students.find(function (st) { return st.id === cb.value; });
+            if (s) targetStudents.push(s);
+          });
+          if (!targetStudents.length) targetStudents = targets;
+          targetStudents.forEach(function (student) {
+            var text = buildHomeworkMessageForStudent(selectedHomeworkRecord, student);
+            sendDirectWhatsappToStudent(student, student.name || "student", text);
+          });
+          openAppMessageBox("Success", "WhatsApp messages opened for " + targetStudents.length + " student(s).", "success");
+        });
+      }
+
+      if (hwSmsBtn) {
+        hwSmsBtn.addEventListener("click", async function () {
+          if (!selectedHomeworkRecord) return;
+          var targets = getHomeworkRecordTargets(selectedHomeworkRecord);
+          var checked = document.querySelectorAll(".homework-student-check:checked");
+          var targetStudents = [];
+          checked.forEach(function (cb) {
+            var s = students.find(function (st) { return st.id === cb.value; });
+            if (s) targetStudents.push(s);
+          });
+          if (!targetStudents.length) targetStudents = targets;
+          var template = getSavedMessageTemplate("homeworkWhatsapp", "Dear {prefix} {name} (Roll No: {roll}),\nHomework: {subject} - {title}\nDue Date: {dueDate}\nDetails: {details}\nRegards,\n{school}");
+          var totalSuccess = 0, totalFailed = 0;
+          window.SagarSoftDB.LoadingManager.show("Sending homework SMS...");
+          for (var i = 0; i < targetStudents.length; i++) {
+            var student = targetStudents[i];
+            var normalized = normalizeStudentForPrint(student);
+            var result = await sendSmsSmart({
               recipientName: normalized.name || "-",
               recipientPhone: normalizeSmsPhone(normalized.phone || normalized.fatherPhone || ""),
               message: interpolateTemplate(template, {
@@ -19047,47 +18999,102 @@ ${allContent}
                 roll: normalized.admissionNo || "-",
                 rollNo: normalized.admissionNo || "-",
                 class: normalized.className || "-",
-                subject: homework.subject || "-",
-                title: homework.title || "-",
-                dueDate: homework.dueDate || "-",
-                details: homework.details || "-",
+                subject: selectedHomeworkRecord.subject || "-",
+                title: selectedHomeworkRecord.title || "-",
+                dueDate: selectedHomeworkRecord.dueDate || "-",
+                details: selectedHomeworkRecord.details || "-",
                 school: database.school.name || "School"
               }),
               source: "Homework SMS",
               recipientType: "student",
               campaignType: "homework"
             });
-            if (result.success) { totalSuccess += 1; } else { totalFailed += 1; }
+            if (result.success) totalSuccess++; else totalFailed++;
           }
-          if (!homework._isUnsaved) {
-            homework.smsSent = true;
-          }
-        }
-        saveDatabase("", [{ table: "school_settings", record: { id: "homeworkAssignments", source_id: "homeworkAssignments", data: settings.homeworkAssignments, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-        renderHomeworkHistory();
-        renderHomeworkSelectionPreview();
-        window.SagarSoftDB.LoadingManager.update("Sent: " + totalSuccess + " OK, " + totalFailed + " failed");
-        window.SagarSoftDB.LoadingManager.updateSubtext("Done");
-        setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
-        message.textContent = `SMS sent. Success: ${totalSuccess}, Failed: ${totalFailed}.`;
-        message.className = "form-message " + (totalFailed ? "warning" : "success");
-      });
-
-      function refreshHomeworkSelectionAndHistory() {
-        selectedHomeworkPreviewId = "";
-        renderHomeworkHistory();
-        renderHomeworkSelectionPreview();
+          window.SagarSoftDB.LoadingManager.hide();
+          openAppMessageBox("SMS Sent", "Success: " + totalSuccess + ", Failed: " + totalFailed, totalFailed ? "warning" : "success");
+        });
       }
 
-      syncTargetFields();
-      renderHomeworkSelectionPreview();
-      document.querySelectorAll('input[name="homeworkTargetRadio"]').forEach(function (radio) {
-        radio.addEventListener("change", renderHomeworkSelectionPreview);
+      if (hwPdfBtn) {
+        hwPdfBtn.addEventListener("click", async function () {
+          if (!selectedHomeworkRecord) return;
+          var html = '<article class="report-card"><h3 class="report-title">' + escapeHtml(selectedHomeworkRecord.subject || "-") + " - " + escapeHtml(selectedHomeworkRecord.title || "-") + '</h3>' +
+            '<p><strong>Due Date:</strong> ' + escapeHtml(selectedHomeworkRecord.dueDate || "-") + " | <strong>Target:</strong> " + escapeHtml(selectedHomeworkRecord.targetLabel || "-") + '</p>' +
+            '<p style="white-space:pre-wrap;line-height:1.55;">' + escapeHtml(selectedHomeworkRecord.details || "-") + '</p></article>';
+          await openPrintReport({ title: "Homework Sheet", subtitle: escapeHtml(selectedHomeworkRecord.title || "-"), contentHtml: html });
+        });
+      }
+
+      if (hwEditBtn) {
+        hwEditBtn.addEventListener("click", function () {
+          if (!selectedHomeworkRecord) return;
+          var hw = selectedHomeworkRecord;
+          editingHomeworkId = hw.id;
+          var targetTypeVal = hw.targetType || "class";
+          var targetRadio = document.querySelector('input[name="homeworkTargetRadio"][value="' + targetTypeVal + '"]');
+          if (targetRadio) targetRadio.checked = true;
+          syncTargetFields();
+          classSelect.value = hw.className || "";
+          if (targetTypeVal === "student") {
+            var student = students.find(function (item) {
+              return item.id === hw.targetStudentId || item.name === hw.targetLabel;
+            });
+            studentSearch.value = student ? student.name + " (" + (student.admissionNo || "-") + ")" : (hw.targetLabel || "");
+          }
+          subjectInput.value = hw.subject || "";
+          titleInput.value = hw.title || "";
+          dueDateInput.value = hw.dueDate || "";
+          descriptionInput.value = hw.details || "";
+          document.getElementById("sendHomeworkBtn").innerHTML = "&#x1F4BE; Update Homework";
+          hwTabBtns.forEach(function (b) { b.classList.remove("homework-tab-btn--active"); });
+          document.querySelector('[data-hw-tab="create"]').classList.add("homework-tab-btn--active");
+          hwCreateTab.style.display = "";
+          hwViewTab.style.display = "none";
+          message.textContent = "Homework loaded for editing.";
+          message.className = "form-message success";
+        });
+      }
+
+      if (hwDeleteBtn) {
+        hwDeleteBtn.addEventListener("click", function () {
+          if (!selectedHomeworkRecord) return;
+          var confirmed = confirm("Are you sure you want to delete this homework?");
+          if (!confirmed) return;
+          var index = settings.homeworkAssignments.findIndex(function (item) { return item.id === selectedHomeworkRecord.id; });
+          if (index >= 0) {
+            var removed = settings.homeworkAssignments[index];
+            settings.homeworkAssignments.splice(index, 1);
+            trackDeletion(selectedHomeworkRecord.id);
+            saveDatabase("Deleting homework...", [{ table: "homework", record: removed, operation: "delete" }]);
+            selectedHomeworkRecord = null;
+            loadViewHomework();
+            message.textContent = "Homework deleted successfully.";
+            message.className = "form-message success";
+          }
+        });
+      }
+
+      function syncViewFields() {
+        var type = getTargetTypeViewValue();
+        if (type === "student") {
+          hwViewClassField.style.display = "none";
+          hwViewStudentField.style.display = "";
+        } else {
+          hwViewStudentField.style.display = "none";
+          hwViewClassField.style.display = "";
+        }
+      }
+
+      var viewRadioBtns = document.querySelectorAll('input[name="homeworkTargetRadio"]');
+      viewRadioBtns.forEach(function (radio) {
+        radio.addEventListener("change", function () {
+          syncTargetFields();
+          syncViewFields();
+        });
       });
-      classSelect.addEventListener("change", renderHomeworkSelectionPreview);
-      studentSearch.addEventListener("input", renderHomeworkSelectionPreview);
-      studentSearch.addEventListener("change", renderHomeworkSelectionPreview);
-      renderHomeworkHistory();
+
+      syncTargetFields();
       return;
     }
 
@@ -21718,45 +21725,21 @@ ${allContent}
   }
 
   function renderAdmissionLetterStudents() {
-    const students = getAdmissionSearchStudents();
+    var students = getAdmissionSearchStudents();
+    if (admissionLetterLoading) admissionLetterLoading.style.display = "none";
 
-    if (!selectedAdmissionStudentId && students.length > 0) {
-      selectedAdmissionStudentId = students[0].id;
+    if (students.length === 0) {
+      if (admissionLetterPreviewArea) admissionLetterPreviewArea.style.display = "none";
+      showToast("No student found for this search.", "error");
+      return;
     }
 
-    if (selectedAdmissionStudentId && !students.some(function (student) { return student.id === selectedAdmissionStudentId; })) {
-      selectedAdmissionStudentId = students[0] ? students[0].id : null;
+    selectedAdmissionStudentId = students[0].id;
+    if (admissionLetterPreviewArea) {
+      admissionLetterPreviewArea.style.display = "";
+      admissionLetterPreviewArea.classList.add("adm-fade-in");
     }
-
-    admissionLetterStudentList.innerHTML = students.map(function (student) {
-      return `
-        <article>
-          <div>
-            <strong>${student.name}</strong>
-            <span>${student.admissionNo || "-"}</span>
-          </div>
-          <div>
-            <button class="admission-student-select" type="button" data-action="select-admission-student" data-id="${student.id}">
-              ${selectedAdmissionStudentId === student.id ? "Selected" : "Select"}
-            </button>
-          </div>
-        </article>
-      `;
-    }).join("");
-
-    admissionLetterEmptyState.hidden = students.length !== 0;
-
-    if (students.length > 0) {
-      if (admissionLetterEmptyVisual) admissionLetterEmptyVisual.style.display = "none";
-      if (admissionLetterLoading) admissionLetterLoading.style.display = "none";
-      if (admissionLetterLayout) {
-        admissionLetterLayout.style.display = "";
-        admissionLetterLayout.classList.add("adm-fade-in");
-      }
-    }
-
-    const selectedStudent = students.find(function (student) { return student.id === selectedAdmissionStudentId; }) || null;
-    renderAdmissionLetterDetail(selectedStudent);
+    renderAdmissionLetterDetail(students[0]);
   }
 
   function renderStudentIdCards() {
@@ -23245,9 +23228,7 @@ ${allContent}
     if (route === "admission-letter") {
       admissionLetterSearchInput.value = "";
       selectedAdmissionStudentId = null;
-      if (admissionLetterEmptyVisual) admissionLetterEmptyVisual.style.display = "";
-      if (admissionLetterLayout) admissionLetterLayout.style.display = "none";
-      if (admissionDetailCard) admissionDetailCard.style.display = "none";
+      if (admissionLetterPreviewArea) admissionLetterPreviewArea.style.display = "none";
       if (admissionLetterLoading) admissionLetterLoading.style.display = "none";
     }
 
@@ -24106,12 +24087,6 @@ ${allContent}
       return;
     }
 
-    if (action === "select-admission-student") {
-      selectedAdmissionStudentId = studentId;
-      renderAdmissionLetterStudents();
-      return;
-    }
-
     if (action === "toggle-promote-selection") {
       const checkbox = actionButton;
       promoteSelectionState[studentId] = checkbox.checked;
@@ -24578,7 +24553,6 @@ ${allContent}
   studentDirectoryGrid.addEventListener("click", handleTableActionClick);
   studentDirectoryGrid.__listenerAttached = true;
   studentStatusGrid.addEventListener("click", handleTableActionClick);
-  admissionLetterStudentList.addEventListener("click", handleTableActionClick);
   studentIdCardsGrid.addEventListener("click", handleTableActionClick);
   allClassesContainer.addEventListener("click", handleAllClassesTableClick);
   classesWithSubjectsGrid.addEventListener("click", handleClassesWithSubjectsClick);
@@ -24650,35 +24624,6 @@ ${allContent}
     );
   }
 
-  // Initialize admission letter search with dropdown
-  if (admissionLetterSearchInput && admissionLetterSearchDropdown) {
-    initializeSearchWithDropdown(
-      admissionLetterSearchInput,
-      admissionLetterSearchDropdown,
-      function(searchTerm) {
-        return database.students.filter(function(student) {
-          const name = (student.name || "").toLowerCase();
-          const rollNo = (student.admissionNo || "").toLowerCase();
-          return name.includes(searchTerm) || rollNo.includes(searchTerm);
-        });
-      },
-      function(student) {
-        return `
-          <div style="padding: 0.8rem 1rem; border-bottom: 1px solid rgba(27,95,122,0.1); cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 1rem; align-items: center; transition: background 0.2s;" data-item="${escapeAttr(JSON.stringify(student))}" class="search-result-item">
-            <div>
-              <div style="font-weight: 600; color: #0f2b3f;">${escapeHtml(student.name || "-")}</div>
-              <div style="font-size: 0.85rem; color: #888;">${escapeHtml(student.className || "-")}</div>
-            </div>
-            <div style="text-align: right; font-size: 0.85rem; color: #1b5f7a; font-weight: 600;">${escapeHtml(student.admissionNo || "-")}</div>
-          </div>
-        `;
-      },
-      function(student) {
-        openStudentModal(student);
-      }
-    );
-  }
-
   allStudentsSearchInput.addEventListener("input", renderAllStudentsDirectory);
   allStudentsClassFilter.addEventListener("change", renderAllStudentsDirectory);
   allStudentsGenderFilter.addEventListener("change", renderAllStudentsDirectory);
@@ -24689,9 +24634,7 @@ ${allContent}
   studentStatusClassFilter.addEventListener("change", renderStudentStatusDirectory);
   if (admissionLetterSearchBtn) {
     admissionLetterSearchBtn.addEventListener("click", function () {
-      if (admissionLetterEmptyVisual) admissionLetterEmptyVisual.style.display = "none";
-      if (admissionLetterLayout) admissionLetterLayout.style.display = "none";
-      if (admissionDetailCard) admissionDetailCard.style.display = "none";
+      if (admissionLetterPreviewArea) admissionLetterPreviewArea.style.display = "none";
       if (admissionLetterLoading) {
         admissionLetterLoading.style.display = "";
         admissionLetterLoading.classList.add("adm-fade-in");
