@@ -13537,6 +13537,7 @@ ${allContent}
         return getEmployees().filter(function (employee) {
           return !search ||
             String(employee.name || "").toLowerCase().includes(search) ||
+            String(employee.id || "").toLowerCase().includes(search) ||
             String(employee.role || "").toLowerCase().includes(search) ||
             String(getEmployeeDisplayPhone(employee) || "").toLowerCase().includes(search);
         });
@@ -18564,9 +18565,16 @@ ${allContent}
 
           <div id="homeworkViewTab" style="display:none;">
             <div class="homework-view-controls">
-              <div class="field-group">
-                <label for="hwViewDate">Date</label>
-                <input id="hwViewDate" type="date">
+              <div class="field-group field-group--full">
+                <label>View *</label>
+                <div class="homework-radio-group">
+                  <label class="homework-radio-label">
+                    <input type="radio" name="homeworkViewRadio" value="class" checked> Class Wise
+                  </label>
+                  <label class="homework-radio-label">
+                    <input type="radio" name="homeworkViewRadio" value="student"> Student Wise
+                  </label>
+                </div>
               </div>
               <div class="field-group" id="hwViewClassField">
                 <label for="hwViewClassSelect">Class</label>
@@ -18579,34 +18587,32 @@ ${allContent}
                 <label for="hwViewStudentSearch">Student</label>
                 <input id="hwViewStudentSearch" type="search" placeholder="Search student...">
               </div>
+              <div class="field-group">
+                <label for="hwViewDate">Date</label>
+                <input id="hwViewDate" type="date">
+              </div>
               <div class="homework-view-actions">
                 <button class="homework-btn homework-btn--load" id="hwLoadBtn" type="button">&#x1F50D; Load Homework</button>
               </div>
             </div>
-            <div id="homeworkViewResults" style="display:none;">
-              <div class="homework-view-header">
-                <label class="homework-check-all-label">
-                  <input type="checkbox" id="homeworkCheckAll"> Select All
-                </label>
+            <p class="form-message" id="homeworkViewMessage"></p>
+            <div id="homeworkCardsList" class="homework-cards-list"></div>
+            <div id="homeworkBulkActions" style="display:none;">
+              <div class="homework-actions-compact">
                 <span id="homeworkSelectedCount" class="homework-selected-count">0 selected</span>
+                <button class="homework-btn homework-btn--pdf" id="hwBulkPdfBtn" type="button">&#x1F4C4; PDF</button>
+                <button class="homework-btn homework-btn--whatsapp" id="hwBulkWhatsAppBtn" type="button">&#x1F4AC; WhatsApp</button>
+                <button class="homework-btn homework-btn--sms" id="hwBulkSmsBtn" type="button">&#x1F4E8; SMS</button>
+                <button class="homework-btn homework-btn--print" id="hwBulkPrintBtn" type="button">&#x1F5A8; Print</button>
               </div>
-              <div id="homeworkStudentChecklist" class="homework-student-checklist"></div>
-              <div id="homeworkPreviewSection" style="display:none;">
-                <div class="homework-preview-card" id="homeworkPreviewCard"></div>
-                <div class="homework-actions-compact">
-                  <button class="homework-btn homework-btn--pdf" id="hwPdfBtn" type="button">&#x1F4C4; PDF</button>
-                  <button class="homework-btn homework-btn--whatsapp" id="hwWhatsAppBtn" type="button">&#x1F4AC; WhatsApp</button>
-                  <button class="homework-btn homework-btn--sms" id="hwSmsBtn" type="button">&#x1F4E8; SMS</button>
-                </div>
+            </div>
+            <div id="homeworkStudentListSection" style="display:none;">
+              <div class="homework-view-header">
+                <strong>Student List</strong>
               </div>
+              <div id="homeworkStudentList" class="homework-student-checklist"></div>
             </div>
             <p class="empty-state" id="homeworkViewEmpty">Load homework to view and send.</p>
-            <div id="homeworkEditDeleteArea" style="display:none;">
-              <div class="homework-actions-compact">
-                <button class="homework-btn homework-btn--edit" id="hwEditBtn" type="button">&#x270F; Edit</button>
-                <button class="homework-btn homework-btn--delete" id="hwDeleteBtn" type="button">&#x1F5D1; Delete</button>
-              </div>
-            </div>
           </div>
         </article>
       `;
@@ -18620,7 +18626,6 @@ ${allContent}
       var hwTabBtns = document.querySelectorAll("[data-hw-tab]");
       var hwCreateTab = document.getElementById("homeworkCreateTab");
       var hwViewTab = document.getElementById("homeworkViewTab");
-      var targetTypeRadio = document.querySelector('input[name="homeworkTargetRadio"]');
       var classField = document.getElementById("homeworkClassField");
       var classSelect = document.getElementById("homeworkClassSelect");
       var studentField = document.getElementById("homeworkStudentField");
@@ -18640,22 +18645,15 @@ ${allContent}
       var hwViewClassField = document.getElementById("hwViewClassField");
       var hwViewStudentField = document.getElementById("hwViewStudentField");
       var hwLoadBtn = document.getElementById("hwLoadBtn");
-      var homeworkViewResults = document.getElementById("homeworkViewResults");
-      var homeworkCheckAll = document.getElementById("homeworkCheckAll");
+      var homeworkCardsList = document.getElementById("homeworkCardsList");
+      var homeworkBulkActions = document.getElementById("homeworkBulkActions");
       var homeworkSelectedCount = document.getElementById("homeworkSelectedCount");
-      var homeworkStudentChecklist = document.getElementById("homeworkStudentChecklist");
-      var homeworkPreviewSection = document.getElementById("homeworkPreviewSection");
-      var homeworkPreviewCard = document.getElementById("homeworkPreviewCard");
-      var hwPdfBtn = document.getElementById("hwPdfBtn");
-      var hwWhatsAppBtn = document.getElementById("hwWhatsAppBtn");
-      var hwSmsBtn = document.getElementById("hwSmsBtn");
-      var hwEditBtn = document.getElementById("hwEditBtn");
-      var hwDeleteBtn = document.getElementById("hwDeleteBtn");
+      var homeworkStudentListSection = document.getElementById("homeworkStudentListSection");
+      var homeworkStudentList = document.getElementById("homeworkStudentList");
       var homeworkViewEmpty = document.getElementById("homeworkViewEmpty");
-      var homeworkEditDeleteArea = document.getElementById("homeworkEditDeleteArea");
+      var homeworkViewMessage = document.getElementById("homeworkViewMessage");
 
       var selectedHomeworkIds = [];
-      var selectedHomeworkRecord = null;
 
       hwTabBtns.forEach(function (btn) {
         btn.addEventListener("click", function () {
@@ -18694,8 +18692,20 @@ ${allContent}
         }
       }
 
-      function getTargetTypeViewValue() {
-        return hwViewStudentField.style.display === "none" ? "class" : "student";
+      function getViewTargetTypeValue() {
+        var checked = document.querySelector('input[name="homeworkViewRadio"]:checked');
+        return checked ? checked.value : "class";
+      }
+
+      function syncViewFields() {
+        var type = getViewTargetTypeValue();
+        if (type === "student") {
+          hwViewClassField.style.display = "none";
+          hwViewStudentField.style.display = "";
+        } else {
+          hwViewStudentField.style.display = "none";
+          hwViewClassField.style.display = "";
+        }
       }
 
       function findStudentFromSearch(searchEl) {
@@ -18827,163 +18837,283 @@ ${allContent}
         if (existingHomework) resetHomeworkForm();
       });
 
-      function getViewTargetTypeValue() {
-        return hwViewStudentField && hwViewStudentField.style.display === "none" ? "class" : "student";
+      function getHomeworkStatusBadge(hw) {
+        if (hw.smsSent) {
+          return '<span class="hw-badge hw-badge--sent">Sent</span>';
+        }
+        return '<span class="hw-badge hw-badge--draft">Draft</span>';
       }
 
       function loadViewHomework() {
         var records = (settings.homeworkAssignments || []).slice();
+        var targetType = getViewTargetTypeValue();
         var viewDate = hwViewDate ? hwViewDate.value : "";
         var viewClass = hwViewClassSelect ? hwViewClassSelect.value : "";
         var viewStudentSearch = hwViewStudentSearch ? hwViewStudentSearch.value.trim().toLowerCase() : "";
 
+        records = records.filter(function (r) {
+          return r.targetType === targetType;
+        });
+
+        if (targetType === "class" && viewClass) {
+          records = records.filter(function (r) {
+            return String(r.className || "") === viewClass;
+          });
+        }
+        if (targetType === "student" && viewStudentSearch) {
+          records = records.filter(function (r) {
+            return String(r.targetLabel || "").toLowerCase().includes(viewStudentSearch);
+          });
+        }
         if (viewDate) {
           records = records.filter(function (r) {
             return String(r.createdAt || "").includes(viewDate) || String(r.dueDate || "") === viewDate;
           });
         }
-        if (viewClass) {
-          records = records.filter(function (r) {
-            return String(r.className || "") === viewClass;
-          });
-        }
-        if (viewStudentSearch) {
-          records = records.filter(function (r) {
-            return String(r.targetLabel || "").toLowerCase().includes(viewStudentSearch);
-          });
-        }
 
-        selectedHomeworkRecord = records.length > 0 ? records[0] : null;
-        selectedHomeworkIds = records.map(function (r) { return r.id; });
+        selectedHomeworkIds = [];
 
         if (!records.length) {
-          homeworkViewResults.style.display = "none";
+          homeworkCardsList.innerHTML = "";
+          homeworkBulkActions.style.display = "none";
+          homeworkStudentListSection.style.display = "none";
           homeworkViewEmpty.style.display = "";
-          homeworkEditDeleteArea.style.display = "none";
+          homeworkViewMessage.textContent = "";
           return;
         }
 
         homeworkViewEmpty.style.display = "none";
-        homeworkViewResults.style.display = "";
-        homeworkEditDeleteArea.style.display = "";
+        homeworkViewMessage.textContent = records.length + " homework record(s) found.";
+        homeworkViewMessage.className = "form-message success";
 
-        var targets = getHomeworkRecordTargets(records[0]);
-        homeworkStudentChecklist.innerHTML = targets.map(function (student) {
+        renderHomeworkCards(records);
+        renderStudentListForView(records);
+        updateSelectedCount();
+      }
+
+      function renderHomeworkCards(records) {
+        homeworkCardsList.innerHTML = records.map(function (hw) {
+          return '<div class="hw-card" data-hw-id="' + hw.id + '">' +
+            '<div class="hw-card-check">' +
+              '<input type="checkbox" class="hw-card-checkbox" value="' + hw.id + '">' +
+            '</div>' +
+            '<div class="hw-card-body">' +
+              '<div class="hw-card-top">' +
+                '<span class="hw-card-subject">' + escapeHtml(hw.subject || "-") + '</span>' +
+                '<span class="hw-card-title">' + escapeHtml(hw.title || "-") + '</span>' +
+                getHomeworkStatusBadge(hw) +
+              '</div>' +
+              '<div class="hw-card-meta">' +
+                '<span>Due: ' + escapeHtml(hw.dueDate || "-") + '</span>' +
+                '<span>' + escapeHtml(hw.targetLabel || "-") + '</span>' +
+              '</div>' +
+              '<div class="hw-card-desc">' + escapeHtml(hw.details || "-") + '</div>' +
+              '<div class="hw-card-actions">' +
+                '<button class="hw-card-btn hw-card-btn--edit" type="button" data-hw-edit="' + hw.id + '">&#x270F; Edit</button>' +
+                '<button class="hw-card-btn hw-card-btn--delete" type="button" data-hw-delete="' + hw.id + '">&#x1F5D1; Delete</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+        }).join("");
+      }
+
+      function renderStudentListForView(records) {
+        var allStudents = [];
+        records.forEach(function (hw) {
+          var targets = getHomeworkRecordTargets(hw);
+          targets.forEach(function (s) {
+            if (!allStudents.find(function (x) { return x.id === s.id; })) {
+              allStudents.push(s);
+            }
+          });
+        });
+
+        if (!allStudents.length) {
+          homeworkStudentListSection.style.display = "none";
+          return;
+        }
+
+        homeworkStudentListSection.style.display = "";
+        var firstHw = records[0];
+        homeworkStudentList.innerHTML = allStudents.map(function (student) {
           var normalized = normalizeStudentForPrint(student);
+          var phone = normalized.phone || normalized.fatherPhone || "";
           return '<div class="homework-student-row" data-student-id="' + student.id + '">' +
             '<label class="homework-check-label">' +
-              '<input type="checkbox" class="homework-student-check" value="' + student.id + '">' +
               '<span class="homework-student-info">' +
                 '<strong>' + escapeHtml(normalized.name || "-") + '</strong>' +
-                '<span>' + escapeHtml(normalized.admissionNo || "-") + " | " + escapeHtml(normalized.className || "-") + " | " + escapeHtml(normalized.phone || normalized.fatherPhone || "-") + '</span>' +
+                '<span>' + escapeHtml(normalized.admissionNo || "-") + " | " + escapeHtml(normalized.className || "-") + " | " + escapeHtml(phone || "-") + '</span>' +
               '</span>' +
             '</label>' +
             '<div class="homework-student-actions">' +
-              '<button class="homework-student-wa" type="button" data-hw-wa="' + student.id + '">&#x1F4AC; WhatsApp</button>' +
-              '<button class="homework-student-sms" type="button" data-hw-sms="' + student.id + '">&#x1F4E8; SMS</button>' +
+              '<button class="homework-student-wa" type="button" data-hw-student-wa="' + student.id + '">&#x1F4AC; WhatsApp</button>' +
             '</div>' +
           '</div>';
         }).join("");
 
-        renderHomeworkPreview(records[0]);
+        homeworkStudentList.setAttribute("data-first-hw-id", firstHw.id);
       }
 
-      function renderHomeworkPreview(homework) {
-        if (!homework) {
-          homeworkPreviewSection.style.display = "none";
-          return;
-        }
-        selectedHomeworkRecord = homework;
-        homeworkPreviewSection.style.display = "";
-        homeworkPreviewCard.innerHTML =
-          '<div class="homework-preview-header">' +
-            '<h4>' + escapeHtml(homework.subject || "-") + " - " + escapeHtml(homework.title || "-") + '</h4>' +
-            '<p><strong>Due:</strong> ' + escapeHtml(homework.dueDate || "-") + " | <strong>Target:</strong> " + escapeHtml(homework.targetLabel || "-") + '</p>' +
-          '</div>' +
-          '<div class="homework-preview-body">' +
-            '<p style="white-space:pre-wrap;line-height:1.6;">' + escapeHtml(homework.details || "-") + '</p>' +
-          '</div>';
+      function updateSelectedCount() {
+        var checkboxes = document.querySelectorAll(".hw-card-checkbox");
+        var checked = document.querySelectorAll(".hw-card-checkbox:checked");
+        var count = checked.length;
+        selectedHomeworkIds = [];
+        checked.forEach(function (cb) { selectedHomeworkIds.push(cb.value); });
+        if (homeworkSelectedCount) homeworkSelectedCount.textContent = count + " selected";
+        homeworkBulkActions.style.display = count > 0 ? "" : "none";
+      }
+
+      if (homeworkCardsList) {
+        homeworkCardsList.addEventListener("change", function (e) {
+          if (e.target.classList.contains("hw-card-checkbox")) {
+            updateSelectedCount();
+          }
+        });
+        homeworkCardsList.addEventListener("click", function (e) {
+          var editBtn = e.target.closest("[data-hw-edit]");
+          if (editBtn) {
+            var hwId = editBtn.getAttribute("data-hw-edit");
+            var hw = (settings.homeworkAssignments || []).find(function (item) { return item.id === hwId; });
+            if (hw) {
+              editingHomeworkId = hw.id;
+              var targetTypeVal = hw.targetType || "class";
+              var targetRadio = document.querySelector('input[name="homeworkTargetRadio"][value="' + targetTypeVal + '"]');
+              if (targetRadio) targetRadio.checked = true;
+              syncTargetFields();
+              classSelect.value = hw.className || "";
+              if (targetTypeVal === "student") {
+                var student = students.find(function (item) {
+                  return item.id === hw.targetStudentId || item.name === hw.targetLabel;
+                });
+                studentSearch.value = student ? student.name + " (" + (student.admissionNo || "-") + ")" : (hw.targetLabel || "");
+              }
+              subjectInput.value = hw.subject || "";
+              titleInput.value = hw.title || "";
+              dueDateInput.value = hw.dueDate || "";
+              descriptionInput.value = hw.details || "";
+              document.getElementById("sendHomeworkBtn").innerHTML = "&#x1F4BE; Update Homework";
+              hwTabBtns.forEach(function (b) { b.classList.remove("homework-tab-btn--active"); });
+              document.querySelector('[data-hw-tab="create"]').classList.add("homework-tab-btn--active");
+              hwCreateTab.style.display = "";
+              hwViewTab.style.display = "none";
+              message.textContent = "Homework loaded for editing.";
+              message.className = "form-message success";
+            }
+            return;
+          }
+          var deleteBtn = e.target.closest("[data-hw-delete]");
+          if (deleteBtn) {
+            var hwId = deleteBtn.getAttribute("data-hw-delete");
+            var hw = (settings.homeworkAssignments || []).find(function (item) { return item.id === hwId; });
+            if (!hw) return;
+            var confirmed = confirm("Are you sure you want to delete this homework?");
+            if (!confirmed) return;
+            var index = settings.homeworkAssignments.findIndex(function (item) { return item.id === hw.id; });
+            if (index >= 0) {
+              var removed = settings.homeworkAssignments[index];
+              settings.homeworkAssignments.splice(index, 1);
+              trackDeletion(hw.id);
+              saveDatabase("Deleting homework...", [{ table: "homework", record: removed, operation: "delete" }]);
+              loadViewHomework();
+              message.textContent = "Homework deleted successfully.";
+              message.className = "form-message success";
+            }
+          }
+        });
+      }
+
+      if (homeworkStudentList) {
+        homeworkStudentList.addEventListener("click", function (e) {
+          var waBtn = e.target.closest("[data-hw-student-wa]");
+          if (waBtn) {
+            var studentId = waBtn.getAttribute("data-hw-student-wa");
+            var student = students.find(function (s) { return s.id === studentId; });
+            if (student && selectedHomeworkIds.length > 0) {
+              var hw = (settings.homeworkAssignments || []).find(function (item) { return item.id === selectedHomeworkIds[0]; });
+              if (hw) {
+                var text = buildHomeworkMessageForStudent(hw, student);
+                sendDirectWhatsappToStudent(student, student.name || "student", text);
+              }
+            }
+          }
+        });
       }
 
       if (hwLoadBtn) {
         hwLoadBtn.addEventListener("click", loadViewHomework);
       }
 
-      if (homeworkCheckAll) {
-        homeworkCheckAll.addEventListener("change", function () {
-          var checked = homeworkCheckAll.checked;
-          document.querySelectorAll(".homework-student-check").forEach(function (cb) {
-            cb.checked = checked;
+      var hwBulkPdfBtn = document.getElementById("hwBulkPdfBtn");
+      var hwBulkWhatsAppBtn = document.getElementById("hwBulkWhatsAppBtn");
+      var hwBulkSmsBtn = document.getElementById("hwBulkSmsBtn");
+      var hwBulkPrintBtn = document.getElementById("hwBulkPrintBtn");
+
+      if (hwBulkPdfBtn) {
+        hwBulkPdfBtn.addEventListener("click", async function () {
+          if (!selectedHomeworkIds.length) return;
+          var records = (settings.homeworkAssignments || []).filter(function (r) {
+            return selectedHomeworkIds.indexOf(r.id) !== -1;
           });
-          updateSelectedCount();
+          var html = records.map(function (hw) {
+            return '<article class="report-card"><h3 class="report-title">' + escapeHtml(hw.subject || "-") + " - " + escapeHtml(hw.title || "-") + '</h3>' +
+              '<p><strong>Due Date:</strong> ' + escapeHtml(hw.dueDate || "-") + " | <strong>Target:</strong> " + escapeHtml(hw.targetLabel || "-") + '</p>' +
+              '<p style="white-space:pre-wrap;line-height:1.55;">' + escapeHtml(hw.details || "-") + '</p></article>';
+          }).join('<hr style="margin:1rem 0;">');
+          await openPrintReport({ title: "Homework Sheet", subtitle: records.length + " assignment(s)", contentHtml: html });
         });
       }
 
-      function updateSelectedCount() {
-        var total = document.querySelectorAll(".homework-student-check").length;
-        var checked = document.querySelectorAll(".homework-student-check:checked").length;
-        if (homeworkSelectedCount) homeworkSelectedCount.textContent = checked + "/" + total + " selected";
-      }
-
-      if (homeworkStudentChecklist) {
-        homeworkStudentChecklist.addEventListener("change", function (e) {
-          if (e.target.classList.contains("homework-student-check")) {
-            updateSelectedCount();
-          }
-        });
-        homeworkStudentChecklist.addEventListener("click", function (e) {
-          var waBtn = e.target.closest("[data-hw-wa]");
-          if (waBtn) {
-            var studentId = waBtn.getAttribute("data-hw-wa");
-            var student = students.find(function (s) { return s.id === studentId; });
-            if (student && selectedHomeworkRecord) {
-              var text = buildHomeworkMessageForStudent(selectedHomeworkRecord, student);
-              sendDirectWhatsappToStudent(student, student.name || "student", text);
-            }
-            return;
-          }
-          var smsBtn = e.target.closest("[data-hw-sms]");
-          if (smsBtn) {
-            var studentId = smsBtn.getAttribute("data-hw-sms");
-            var student = students.find(function (s) { return s.id === studentId; });
-            if (student && selectedHomeworkRecord) {
-              var text = buildHomeworkMessageForStudent(selectedHomeworkRecord, student);
-              sendDirectWhatsappToStudent(student, student.name || "student", text);
-            }
-          }
-        });
-      }
-
-      if (hwWhatsAppBtn) {
-        hwWhatsAppBtn.addEventListener("click", function () {
-          if (!selectedHomeworkRecord) return;
-          var targets = getHomeworkRecordTargets(selectedHomeworkRecord);
+      if (hwBulkWhatsAppBtn) {
+        hwBulkWhatsAppBtn.addEventListener("click", function () {
+          if (!selectedHomeworkIds.length) return;
+          var records = (settings.homeworkAssignments || []).filter(function (r) {
+            return selectedHomeworkIds.indexOf(r.id) !== -1;
+          });
+          var firstHw = records[0];
+          var allTargets = [];
+          records.forEach(function (hw) {
+            var targets = getHomeworkRecordTargets(hw);
+            targets.forEach(function (s) {
+              if (!allTargets.find(function (x) { return x.id === s.id; })) allTargets.push(s);
+            });
+          });
           var checked = document.querySelectorAll(".homework-student-check:checked");
           var targetStudents = [];
           checked.forEach(function (cb) {
             var s = students.find(function (st) { return st.id === cb.value; });
             if (s) targetStudents.push(s);
           });
-          if (!targetStudents.length) targetStudents = targets;
+          if (!targetStudents.length) targetStudents = allTargets;
           targetStudents.forEach(function (student) {
-            var text = buildHomeworkMessageForStudent(selectedHomeworkRecord, student);
+            var text = buildHomeworkMessageForStudent(firstHw, student);
             sendDirectWhatsappToStudent(student, student.name || "student", text);
           });
           openAppMessageBox("Success", "WhatsApp messages opened for " + targetStudents.length + " student(s).", "success");
         });
       }
 
-      if (hwSmsBtn) {
-        hwSmsBtn.addEventListener("click", async function () {
-          if (!selectedHomeworkRecord) return;
-          var targets = getHomeworkRecordTargets(selectedHomeworkRecord);
+      if (hwBulkSmsBtn) {
+        hwBulkSmsBtn.addEventListener("click", async function () {
+          if (!selectedHomeworkIds.length) return;
+          var records = (settings.homeworkAssignments || []).filter(function (r) {
+            return selectedHomeworkIds.indexOf(r.id) !== -1;
+          });
+          var firstHw = records[0];
+          var allTargets = [];
+          records.forEach(function (hw) {
+            var targets = getHomeworkRecordTargets(hw);
+            targets.forEach(function (s) {
+              if (!allTargets.find(function (x) { return x.id === s.id; })) allTargets.push(s);
+            });
+          });
           var checked = document.querySelectorAll(".homework-student-check:checked");
           var targetStudents = [];
           checked.forEach(function (cb) {
             var s = students.find(function (st) { return st.id === cb.value; });
             if (s) targetStudents.push(s);
           });
-          if (!targetStudents.length) targetStudents = targets;
+          if (!targetStudents.length) targetStudents = allTargets;
           var template = getSavedMessageTemplate("homeworkWhatsapp", "Dear {prefix} {name} (Roll No: {roll}),\nHomework: {subject} - {title}\nDue Date: {dueDate}\nDetails: {details}\nRegards,\n{school}");
           var totalSuccess = 0, totalFailed = 0;
           window.SagarSoftDB.LoadingManager.show("Sending homework SMS...");
@@ -18999,10 +19129,10 @@ ${allContent}
                 roll: normalized.admissionNo || "-",
                 rollNo: normalized.admissionNo || "-",
                 class: normalized.className || "-",
-                subject: selectedHomeworkRecord.subject || "-",
-                title: selectedHomeworkRecord.title || "-",
-                dueDate: selectedHomeworkRecord.dueDate || "-",
-                details: selectedHomeworkRecord.details || "-",
+                subject: firstHw.subject || "-",
+                title: firstHw.title || "-",
+                dueDate: firstHw.dueDate || "-",
+                details: firstHw.details || "-",
                 school: database.school.name || "School"
               }),
               source: "Homework SMS",
@@ -19016,82 +19146,23 @@ ${allContent}
         });
       }
 
-      if (hwPdfBtn) {
-        hwPdfBtn.addEventListener("click", async function () {
-          if (!selectedHomeworkRecord) return;
-          var html = '<article class="report-card"><h3 class="report-title">' + escapeHtml(selectedHomeworkRecord.subject || "-") + " - " + escapeHtml(selectedHomeworkRecord.title || "-") + '</h3>' +
-            '<p><strong>Due Date:</strong> ' + escapeHtml(selectedHomeworkRecord.dueDate || "-") + " | <strong>Target:</strong> " + escapeHtml(selectedHomeworkRecord.targetLabel || "-") + '</p>' +
-            '<p style="white-space:pre-wrap;line-height:1.55;">' + escapeHtml(selectedHomeworkRecord.details || "-") + '</p></article>';
-          await openPrintReport({ title: "Homework Sheet", subtitle: escapeHtml(selectedHomeworkRecord.title || "-"), contentHtml: html });
+      if (hwBulkPrintBtn) {
+        hwBulkPrintBtn.addEventListener("click", async function () {
+          if (!selectedHomeworkIds.length) return;
+          var records = (settings.homeworkAssignments || []).filter(function (r) {
+            return selectedHomeworkIds.indexOf(r.id) !== -1;
+          });
+          var html = records.map(function (hw) {
+            return '<article class="report-card"><h3 class="report-title">' + escapeHtml(hw.subject || "-") + " - " + escapeHtml(hw.title || "-") + '</h3>' +
+              '<p><strong>Due Date:</strong> ' + escapeHtml(hw.dueDate || "-") + " | <strong>Target:</strong> " + escapeHtml(hw.targetLabel || "-") + '</p>' +
+              '<p style="white-space:pre-wrap;line-height:1.55;">' + escapeHtml(hw.details || "-") + '</p></article>';
+          }).join('<hr style="margin:1rem 0;">');
+          await openPrintReport({ title: "Homework Print", subtitle: records.length + " assignment(s)", contentHtml: html });
         });
       }
 
-      if (hwEditBtn) {
-        hwEditBtn.addEventListener("click", function () {
-          if (!selectedHomeworkRecord) return;
-          var hw = selectedHomeworkRecord;
-          editingHomeworkId = hw.id;
-          var targetTypeVal = hw.targetType || "class";
-          var targetRadio = document.querySelector('input[name="homeworkTargetRadio"][value="' + targetTypeVal + '"]');
-          if (targetRadio) targetRadio.checked = true;
-          syncTargetFields();
-          classSelect.value = hw.className || "";
-          if (targetTypeVal === "student") {
-            var student = students.find(function (item) {
-              return item.id === hw.targetStudentId || item.name === hw.targetLabel;
-            });
-            studentSearch.value = student ? student.name + " (" + (student.admissionNo || "-") + ")" : (hw.targetLabel || "");
-          }
-          subjectInput.value = hw.subject || "";
-          titleInput.value = hw.title || "";
-          dueDateInput.value = hw.dueDate || "";
-          descriptionInput.value = hw.details || "";
-          document.getElementById("sendHomeworkBtn").innerHTML = "&#x1F4BE; Update Homework";
-          hwTabBtns.forEach(function (b) { b.classList.remove("homework-tab-btn--active"); });
-          document.querySelector('[data-hw-tab="create"]').classList.add("homework-tab-btn--active");
-          hwCreateTab.style.display = "";
-          hwViewTab.style.display = "none";
-          message.textContent = "Homework loaded for editing.";
-          message.className = "form-message success";
-        });
-      }
-
-      if (hwDeleteBtn) {
-        hwDeleteBtn.addEventListener("click", function () {
-          if (!selectedHomeworkRecord) return;
-          var confirmed = confirm("Are you sure you want to delete this homework?");
-          if (!confirmed) return;
-          var index = settings.homeworkAssignments.findIndex(function (item) { return item.id === selectedHomeworkRecord.id; });
-          if (index >= 0) {
-            var removed = settings.homeworkAssignments[index];
-            settings.homeworkAssignments.splice(index, 1);
-            trackDeletion(selectedHomeworkRecord.id);
-            saveDatabase("Deleting homework...", [{ table: "homework", record: removed, operation: "delete" }]);
-            selectedHomeworkRecord = null;
-            loadViewHomework();
-            message.textContent = "Homework deleted successfully.";
-            message.className = "form-message success";
-          }
-        });
-      }
-
-      function syncViewFields() {
-        var type = getTargetTypeViewValue();
-        if (type === "student") {
-          hwViewClassField.style.display = "none";
-          hwViewStudentField.style.display = "";
-        } else {
-          hwViewStudentField.style.display = "none";
-          hwViewClassField.style.display = "";
-        }
-      }
-
-      var viewRadioBtns = document.querySelectorAll('input[name="homeworkTargetRadio"]');
-      viewRadioBtns.forEach(function (radio) {
-        radio.addEventListener("change", function () {
-          syncTargetFields();
-          syncViewFields();
-        });
+      document.querySelectorAll('input[name="homeworkViewRadio"]').forEach(function (radio) {
+        radio.addEventListener("change", syncViewFields);
       });
 
       syncTargetFields();
@@ -21680,8 +21751,8 @@ ${allContent}
     if (!student) {
       admissionLetterDetail.innerHTML = `
         <article>
-          <strong>Select a student</strong>
-          <p>Search by roll number or name and click Select to load admission details.</p>
+          <strong>No student found</strong>
+          <p>Try a different name or roll number.</p>
         </article>
       `;
       if (admissionDetailCard) admissionDetailCard.style.display = "none";
