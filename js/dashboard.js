@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
@@ -3891,7 +3891,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     addActivity("Subjects assigned", `${rows.length} subjects assigned to ${selectedClass}.`);
     saveDatabase("", database.subjects.filter(function(s) { return s.className === selectedClass; }).map(function(s) { return { table: "subjects", record: s, operation: "create" }; }));
-    refreshDatabase();
     renderDashboard();
     setAssignSubjectsMessage("Subjects assigned successfully.", "success");
     setClassesWithSubjectsMessage("Subjects updated successfully.", "success");
@@ -18564,6 +18563,7 @@ ${allContent}
     }
 
     if (route === "homework") {
+      refreshDatabase();
       const classOptionsMarkup = classOptions.map(function (name) {
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
       }).join("");
@@ -18603,8 +18603,8 @@ ${allContent}
               <div class="field-group homework-anim-field" id="homeworkStudentField" style="display:none">
                 <label for="homeworkStudentSearch">Search Student*</label>
                 <div id="homeworkSearchContainer" style="position:relative;">
-                  <input id="homeworkStudentSearch" type="search" placeholder="Search by roll no / name" style="width:100%;">
-                  <div id="homeworkSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
+                  <input id="homeworkStudentSearch" type="search" placeholder="Search by roll no / name" autocomplete="off" style="width:100%;">
+                  <div id="homeworkSearchDropdown" class="gsac-dropdown" style="display:none;"></div>
                 </div>
               </div>
               <div class="field-group">
@@ -18655,7 +18655,10 @@ ${allContent}
               </div>
               <div class="field-group" id="hwViewStudentField" style="display:none;">
                 <label for="hwViewStudentSearch">Student</label>
-                <input id="hwViewStudentSearch" type="search" placeholder="Search student...">
+                <div id="hwViewStudentSearchContainer" style="position:relative;">
+                  <input id="hwViewStudentSearch" type="search" placeholder="Search by roll no / name" autocomplete="off" style="width:100%;">
+                  <div id="hwViewStudentSearchDropdown" class="gsac-dropdown" style="display:none;"></div>
+                </div>
               </div>
               <div class="field-group">
                 <label for="hwViewDate">Date</label>
@@ -18725,6 +18728,8 @@ ${allContent}
       var homeworkViewMessage = document.getElementById("homeworkViewMessage");
 
       var selectedHomeworkIds = [];
+      var selectedViewStudentId = "";
+      var selectedCreateStudentId = "";
 
       hwTabBtns.forEach(function (btn) {
         btn.addEventListener("click", function () {
@@ -18791,6 +18796,12 @@ ${allContent}
 
       function getTargets() {
         if (getTargetTypeValue() === "student") {
+          if (selectedCreateStudentId) {
+            var found = students.find(function (s) {
+              return String(s.id || s.admissionNo || "") === String(selectedCreateStudentId);
+            });
+            return found ? [found] : [];
+          }
           var student = findStudentFromSearch(studentSearch);
           return student ? [student] : [];
         }
@@ -18836,13 +18847,14 @@ ${allContent}
           if (hwNoSubjects) hwNoSubjects.style.display = "none";
           return;
         }
+        try { database = window.SagarSoftDB.getDatabase(); } catch (_e) {}
         var assignedSubjects = (database.subjects || []).filter(function(s) {
           return String(s.className || "").toLowerCase() === String(className).toLowerCase();
         });
         var uniqueSubjects = [];
         var seen = {};
         assignedSubjects.forEach(function(s) {
-          var name = s.subject || s.subjectName || "";
+          var name = s.name || s.subject || s.subjectName || "";
           if (name && !seen[name.toLowerCase()]) {
             seen[name.toLowerCase()] = true;
             uniqueSubjects.push({ id: s.id || s.subjectId || "", name: name });
@@ -18887,8 +18899,29 @@ ${allContent}
         "homeworkSearchContainer",
         function (student) {
           studentSearch.value = student.name + " (" + (student.admissionNo || "-") + ")";
+          selectedCreateStudentId = student.id || student.admissionNo || "";
         }
       );
+      if (studentSearch) {
+        studentSearch.addEventListener("input", function () {
+          if (!studentSearch.value.trim()) selectedCreateStudentId = "";
+        });
+      }
+
+      initializeStudentProfessionalSearch(
+        "hwViewStudentSearch",
+        "hwViewStudentSearchDropdown",
+        "hwViewStudentSearchContainer",
+        function (student) {
+          hwViewStudentSearch.value = student.name + " (" + (student.admissionNo || "-") + ")";
+          selectedViewStudentId = student.id || student.admissionNo || "";
+        }
+      );
+      if (hwViewStudentSearch) {
+        hwViewStudentSearch.addEventListener("input", function () {
+          if (!hwViewStudentSearch.value.trim()) selectedViewStudentId = "";
+        });
+      }
 
       document.getElementById("sendHomeworkBtn").addEventListener("click", function () {
         var subject = subjectSelect ? subjectSelect.value : "";
@@ -18968,8 +19001,9 @@ ${allContent}
             return String(r.className || "") === viewClass;
           });
         }
-        if (targetType === "student" && viewStudentSearch) {
+        if (targetType === "student" && (selectedViewStudentId || viewStudentSearch)) {
           records = records.filter(function (r) {
+            if (selectedViewStudentId && r.targetStudentId) return String(r.targetStudentId) === String(selectedViewStudentId);
             return String(r.targetLabel || "").toLowerCase().includes(viewStudentSearch);
           });
         }
@@ -19090,13 +19124,14 @@ ${allContent}
               if (targetRadio) targetRadio.checked = true;
               syncTargetFields();
               classSelect.value = hw.className || "";
+              populateHomeworkSubjects();
               if (targetTypeVal === "student") {
                 var student = students.find(function (item) {
                   return item.id === hw.targetStudentId || item.name === hw.targetLabel;
                 });
                 studentSearch.value = student ? student.name + " (" + (student.admissionNo || "-") + ")" : (hw.targetLabel || "");
               }
-              subjectSelect.value = hw.subject || "";
+              subjectSelect.value = hw.subject || hw.subjectName || "";
               titleInput.value = hw.title || "";
               dueDateInput.value = hw.dueDate || "";
               descriptionInput.value = hw.details || "";
@@ -21938,6 +21973,13 @@ ${allContent}
   }
 
   function renderAdmissionLetterStudents() {
+    var searchVal = (admissionLetterSearchInput.value || "").trim();
+    if (!searchVal) {
+      if (admissionLetterLoading) admissionLetterLoading.style.display = "none";
+      if (admissionLetterPreviewArea) admissionLetterPreviewArea.style.display = "none";
+      if (admissionDetailCard) admissionDetailCard.style.display = "none";
+      return;
+    }
     var students = getAdmissionSearchStudents();
     if (admissionLetterLoading) admissionLetterLoading.style.display = "none";
 
@@ -23443,6 +23485,7 @@ ${allContent}
       selectedAdmissionStudentId = null;
       if (admissionLetterPreviewArea) admissionLetterPreviewArea.style.display = "none";
       if (admissionLetterLoading) admissionLetterLoading.style.display = "none";
+      if (admissionDetailCard) admissionDetailCard.style.display = "none";
     }
 
     if (route === "student-id-cards") {
@@ -24870,6 +24913,8 @@ ${allContent}
     function(searchValue) {
       if (!searchValue.trim()) {
         if (admissionLetterPreviewArea) admissionLetterPreviewArea.style.display = "none";
+        if (admissionLetterLoading) admissionLetterLoading.style.display = "none";
+        if (admissionDetailCard) admissionDetailCard.style.display = "none";
         selectedAdmissionStudentId = null;
       }
     }
