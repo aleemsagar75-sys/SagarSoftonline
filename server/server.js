@@ -2142,6 +2142,16 @@ app.post("/api/activate-school", async (req, res) => {
       row = _r.rows[0];
     }
     if (!row) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+    if (String(row.status || "").toLowerCase() !== "active") {
+      return res.status(403).json({ success: false, message: "Your school account has not been activated yet. Please contact SagarSoft Administration." });
+    }
+    if (row.modules_locked) {
+      return res.status(403).json({ success: false, message: "Account is locked. Please contact Super Admin." });
+    }
+    var _actNow = new Date().toISOString().slice(0, 10);
+    if (row.expiry_date && row.expiry_date <= _actNow) {
+      return res.status(403).json({ success: false, message: "Account license has expired. Please contact Super Admin to renew." });
+    }
     await pool.query("update public.license_accounts set last_seen = now() where school_id = $1", [row.school_id]);
     const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
     return res.json(toLicensePayload(row, notes.rows));

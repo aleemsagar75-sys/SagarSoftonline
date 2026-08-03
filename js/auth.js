@@ -1,7 +1,6 @@
 /* Major section: Authentication helpers and session management */
 (function () {
   const SESSION_KEY = "sagarsoft_session";
-  const DEFAULT_PORTAL_URL = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) || "https://sagarsoftonline.onrender.com";
 
   const DEMO_SNAPSHOT_KEY = "sagarsoft_demo_snapshot";
   const DEMO_EMAIL_SET = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"]);
@@ -41,188 +40,6 @@
     }
   }
 
-  function normalizePortalEndpoint(value) {
-    let endpoint = String(value || DEFAULT_PORTAL_URL).trim().replace(/\/+$/, "");
-    if (!endpoint) {
-      return DEFAULT_PORTAL_URL;
-    }
-    endpoint = endpoint
-      .replace(/\/api\/activate-school$/i, "")
-      .replace(/\/api\/check-license$/i, "")
-      .replace(/\/api\/sync-school-data$/i, "")
-      .replace(/\/api$/i, "");
-    return endpoint || DEFAULT_PORTAL_URL;
-  }
-
-  function getDeviceId() {
-    const key = "sagarsoft_device_id";
-    let deviceId = sessionStorage.getItem(key);
-    if (!deviceId) {
-      deviceId = `SSMS-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      sessionStorage.setItem(key, deviceId);
-    }
-    return deviceId;
-  }
-
-  function formatDateInput(value) {
-    const date = value ? new Date(value) : new Date();
-    return Number.isNaN(date.getTime()) ? new Date().toISOString().slice(0, 10) : date.toISOString().slice(0, 10);
-  }
-
-  function normalizePortalPlan(plan) {
-    const raw = String(plan || "monthly").toLowerCase();
-    if (raw === "3months") { return "3-months"; }
-    if (raw === "5months") { return "5-months"; }
-    if (raw === "1year") { return "1-year"; }
-    return raw || "monthly";
-  }
-
-  function ensurePortalSyncData(database) {
-    if (!Array.isArray(database.notifications)) {
-      database.notifications = [];
-    }
-    if (!database.portalSync) {
-      database.portalSync = { appliedNotificationIds: [], appliedActivationIds: [] };
-    }
-    if (!Array.isArray(database.portalSync.appliedNotificationIds)) {
-      database.portalSync.appliedNotificationIds = [];
-    }
-  }
-
-  function mergePortalNotifications(database, rows) {
-    ensurePortalSyncData(database);
-    (Array.isArray(rows) ? rows : []).forEach(function (note) {
-      const noteId = `PORTAL-${String(note.id || "")}`;
-      if (!note.id || database.portalSync.appliedNotificationIds.includes(noteId)) {
-        return;
-      }
-      database.notifications.unshift({
-        id: noteId,
-        title: note.title || "Portal Notification",
-        message: note.message || "-",
-        createdAt: note.created_at || new Date().toISOString(),
-        read: false,
-        source: "portal"
-      });
-      database.portalSync.appliedNotificationIds.push(noteId);
-    });
-    database.notifications = database.notifications.slice(0, 100);
-  }
-
-  function applyPortalLicense(database, payload, email, password) {
-    if (!database.generalSettings) {
-      database.generalSettings = {};
-    }
-    if (!database.generalSettings.accountSettings) {
-      database.generalSettings.accountSettings = {};
-    }
-    if (!database.generalSettings.licenseSettings) {
-      database.generalSettings.licenseSettings = {};
-    }
-    if (!database.generalSettings.instituteProfile) {
-      database.generalSettings.instituteProfile = {};
-    }
-
-    const license = database.generalSettings.licenseSettings;
-    const account = database.generalSettings.accountSettings;
-    const status = String(payload.activation_status || payload.status || "").toLowerCase();
-
-    license.schoolId = String(payload.school_id || license.schoolId || "").trim();
-    license.schoolName = String(payload.school_name || license.schoolName || "School Admin").trim();
-    license.activated = status === "active" && !payload.modules_locked;
-    license.subscriptionPlan = normalizePortalPlan(payload.plan || license.subscriptionPlan);
-    license.startDate = formatDateInput(payload.start_date || license.startDate || new Date().toISOString().slice(0, 10));
-    license.expiryDate = formatDateInput(payload.expiry_date || license.expiryDate || new Date().toISOString().slice(0, 10));
-    license.status = status || (license.activated ? "active" : "inactive");
-    license.lastVerifiedAt = new Date().toISOString();
-    license.websiteEndpoint = normalizePortalEndpoint(license.websiteEndpoint);
-    license.licenseToken = String(payload.license_token || license.licenseToken || "").trim();
-    license.lastServerResponse = JSON.stringify(payload);
-
-    account.username = String(email || payload.email || "").trim().toLowerCase();
-    account.password = "";
-    account.subscription = license.subscriptionPlan;
-    account.expiry = license.expiryDate;
-
-    database.school = database.school || {};
-    database.school.name = license.schoolName || database.school.name || "School Admin";
-    database.generalSettings.instituteProfile.name = license.schoolName || database.generalSettings.instituteProfile.name || database.school.name;
-    mergePortalNotifications(database, payload.notifications || []);
-  }
-
-  async function activateSchoolOnline(email, password) {
-    const database = window.SagarSoftDB.getDatabase();
-    const endpoint = normalizePortalEndpoint(database.generalSettings && database.generalSettings.licenseSettings
-      ? database.generalSettings.licenseSettings.websiteEndpoint
-      : DEFAULT_PORTAL_URL);
-    const response = await fetch(`${endpoint}/api/activate-school`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        email: String(email || "").trim().toLowerCase(),
-        password: String(password || ""),
-        device_id: getDeviceId()
-      })
-    });
-    const payload = await response.json().catch(function () { return {}; });
-    if (!response.ok || !payload.success) {
-      return {
-        success: false,
-        message: payload.message || "Invalid login details. Please check role, email, and password."
-      };
-    }
-
-    applyPortalLicense(database, payload, email, password);
-    var portalLicenseToken = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.licenseToken) || "";
-    var portalSchoolId = (database.generalSettings && database.generalSettings.licenseSettings && database.generalSettings.licenseSettings.schoolId) || "";
-    if (portalSchoolId) window.SagarSoftDB.setSchoolId(portalSchoolId);
-    if (portalLicenseToken) window.SagarSoftDB.setAuthToken(portalLicenseToken);
-    const adminRecord = {
-      id: "USR-ADMIN-001",
-      name: payload.school_name || "School Admin",
-      email: String(email || "").trim().toLowerCase(),
-      password: String(password || ""),
-      role: "admin",
-      phone: "+92 300 0000000",
-      active: true
-    };
-    if (!Array.isArray(database.users)) {
-      database.users = [];
-    }
-    const existingAdminIndex = database.users.findIndex(function (entry) {
-      return entry && (entry.id === adminRecord.id || String(entry.role || "").toLowerCase() === "admin");
-    });
-    if (existingAdminIndex >= 0) {
-      database.users[existingAdminIndex] = { ...database.users[existingAdminIndex], ...adminRecord };
-    } else {
-      database.users.push(adminRecord);
-    }
-    database.activityLogs = Array.isArray(database.activityLogs) ? database.activityLogs : [];
-    database.activityLogs.unshift({
-      id: `ACT-${Date.now()}`,
-      title: "online school login",
-      description: `${adminRecord.name} signed in with website credentials.`,
-      createdAt: new Date().toISOString()
-    });
-    window.SagarSoftDB.saveDatabase(database);
-
-    const session = {
-      id: adminRecord.id,
-      name: adminRecord.name,
-      email: adminRecord.email,
-      role: adminRecord.role,
-      rememberMe: true,
-      loginAt: new Date().toISOString(),
-      serverToken: portalLicenseToken || ""
-    };
-    saveSession(session);
-
-    return {
-      success: true,
-      message: "Login successful.",
-      user: session
-    };
-  }
 
   var SUPER_ADMIN_SESSION_TOKEN = null;
 
@@ -459,62 +276,10 @@
         window.__sagarSoftSession = session;
         return { success: true, message: "Login successful.", user: session };
       }
-      return await registerSchoolOnServer(email, password, rememberMe);
-    } catch (e) {
-      return await registerSchoolOnServer(email, password, rememberMe);
-    }
-  }
-
-  async function registerSchoolOnServer(email, password, rememberMe) {
-    try {
-      var apiBase = getApiBaseUrl();
-      var localDb = window.SagarSoftDB ? window.SagarSoftDB.getDatabase() : {};
-      var schoolName = (localDb.school && localDb.school.name) || "School Admin";
-      var regResp = await fetch(apiBase + "/api/school/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email, password: password, school_name: schoolName })
-      });
-      var regData = await regResp.json().catch(function () { return {}; });
-      if (!regData.success || !regData.school_id || !regData.license_token) return null;
-      var schoolId = regData.school_id;
-      var token = regData.license_token;
-      var database = regData.database || null;
-      if (!database) {
-        try {
-          var dbResp = await fetch(apiBase + "/api/database/" + encodeURIComponent(schoolId), {
-            method: "GET",
-            headers: { "Content-Type": "application/json", "Authorization": "Bearer " + token }
-          });
-          var dbPayload = await dbResp.json().catch(function () { return {}; });
-          if (dbResp.ok && dbPayload.success && dbPayload.database) {
-            database = dbPayload.database;
-          }
-        } catch (_e) {}
+      if (!resp.ok && data.message) {
+        return { success: false, message: data.message };
       }
-      if (!database) {
-        return null;
-      }
-      database.generalSettings = database.generalSettings || {};
-      database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
-      database.generalSettings.licenseSettings.schoolId = schoolId;
-      database.generalSettings.licenseSettings.licenseToken = token;
-      database.generalSettings.licenseSettings.activated = true;
-      database.generalSettings.licenseSettings.status = "active";
-      database.generalSettings.accountSettings = database.generalSettings.accountSettings || {};
-      database.generalSettings.accountSettings.username = email;
-      database.generalSettings.accountSettings.password = "";
-      database.school = database.school || {};
-      database.school.name = schoolName;
-      database.users = database.users || [];
-      window.SagarSoftDB.setSchoolId(schoolId);
-      if (token) window.SagarSoftDB.setAuthToken(token);
-      window.SagarSoftDB.saveDatabase(database);
-      var session = { id: "USR-ADMIN-001", name: schoolName, email: email, role: "admin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: token };
-      if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
-      else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
-      window.__sagarSoftSession = session;
-      return { success: true, message: "Login successful.", user: session };
+      return null;
     } catch (e) {
       return null;
     }
@@ -524,35 +289,35 @@
     var normalizedRole = String(role || "").toLowerCase();
     var normalizedEmail = String(email || "").trim().toLowerCase();
     
-    if (normalizedRole === "admin" || normalizedRole === "superadmin") {
+    if (normalizedRole === "superadmin") {
       if (normalizedEmail === SA_EMAIL) {
         try {
           var superServerResult = await tryServerSuperAdminLogin(email, password, rememberMe);
           if (superServerResult.success) return superServerResult;
-        } catch (e) { /* continue to normal flow */ }
+        } catch (e) {}
       }
-      if (normalizedRole === "admin" && !DEMO_EMAIL_SET.has(normalizedEmail)) {
+      return await login(email, password, role, rememberMe);
+    }
+
+    if (normalizedRole === "admin") {
+      if (normalizedEmail === SA_EMAIL) {
+        try {
+          var superServerResult = await tryServerSuperAdminLogin(email, password, rememberMe);
+          if (superServerResult.success) return superServerResult;
+        } catch (e) {}
+      }
+      if (!DEMO_EMAIL_SET.has(normalizedEmail)) {
         var serverResult = await tryServerAdminLogin(email, password, "admin", rememberMe);
-        if (serverResult) return serverResult;
+        if (serverResult) {
+          if (serverResult.success) return serverResult;
+          return serverResult;
+        }
       }
       var result = await login(email, password, role, rememberMe);
       if (result.success) return result;
-      if (normalizedRole === "admin") {
-        var superResult = await login(email, password, "superadmin", rememberMe);
-        if (superResult.success) return superResult;
-        try {
-          var superServerResult2 = await tryServerSuperAdminLogin(email, password, rememberMe);
-          if (superServerResult2.success) return superServerResult2;
-        } catch (e) { /* continue to activate */ }
-        try {
-          return await activateSchoolOnline(email, password);
-        } catch (error) {
-          console.error("activateSchoolOnline error:", error);
-          return { success: false, message: "Unable to connect to server. Make sure the server is running on localhost:10000 or check your internet connection." };
-        }
-      }
       return result;
     }
+
     return await login(email, password, role, rememberMe);
   }
 
