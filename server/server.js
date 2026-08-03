@@ -2652,7 +2652,12 @@ app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, 
     var vals = [];
     var idx = 1;
     if (body.school_name !== undefined) { sets.push("school_name = $" + idx); vals.push(String(body.school_name)); idx++; }
-    if (body.email !== undefined) { sets.push("email = $" + idx); vals.push(String(body.email).trim().toLowerCase()); idx++; }
+    if (body.email !== undefined) {
+      var _newEmail = String(body.email).trim().toLowerCase();
+      var _dupCheck = await pool.query("select school_id from public.license_accounts where email = $1 and school_id != $2", [_newEmail, schoolId]);
+      if (_dupCheck.rows.length > 0) { return res.status(409).json({ success: false, message: "This email is already used by school: " + _dupCheck.rows[0].school_id + "." }); }
+      sets.push("email = $" + idx); vals.push(_newEmail); idx++;
+    }
     if (body.password !== undefined) { sets.push("password = $" + idx); vals.push(await hashPassword(String(body.password))); idx++; }
     if (body.status !== undefined) { sets.push("status = $" + idx); vals.push(String(body.status).trim().toLowerCase()); idx++; }
     if (body.plan !== undefined) { sets.push("plan = $" + idx); vals.push(String(body.plan).trim()); idx++; }
@@ -2673,6 +2678,32 @@ app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, 
     sets.push("updated_at = now()");
     vals.push(schoolId);
     await pool.query("update public.license_accounts set " + sets.join(", ") + " where school_id = $" + idx, vals);
+
+    if (body.email !== undefined || body.password !== undefined || body.school_name !== undefined) {
+      var supabaseUrl = process.env.SUPABASE_URL;
+      var supabaseKey = process.env.SUPABASE_SECRET_KEY;
+      if (supabaseUrl && supabaseKey) {
+        try {
+          var _oldRow = await pool.query("select email from public.license_accounts where school_id = $1", [schoolId]);
+          var _oldEmail = _oldRow.rows.length > 0 ? _oldRow.rows[0].email : null;
+          var _targetEmail = body.email !== undefined ? String(body.email).trim().toLowerCase() : _oldEmail;
+          var _listResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(_oldEmail || _targetEmail), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
+          if (_listResp.ok) {
+            var _listData = await _listResp.json();
+            if (_listData.users && _listData.users.length > 0) {
+              var _uid = _listData.users[0].id;
+              var _updateBody = { user_metadata: { school_id: schoolId, school_name: body.school_name || _listData.users[0].user_metadata.school_name || "" } };
+              if (body.email !== undefined) _updateBody.email = _targetEmail;
+              if (body.password !== undefined) _updateBody.password = String(body.password);
+              _updateBody.email_confirm = true;
+              await fetch(supabaseUrl + "/auth/v1/admin/users/" + _uid, { method: "PUT", headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: "Bearer " + supabaseKey }, body: JSON.stringify(_updateBody) });
+              console.log("Supabase Auth user updated for school:", schoolId);
+            }
+          }
+        } catch (_sbErr) { console.error("Supabase Auth update error:", _sbErr.message); }
+      }
+    }
+
     var _finalRow = await pool.query("SELECT status, expiry_date, modules_locked FROM public.license_accounts WHERE school_id = $1", [schoolId]);
     if (_finalRow.rowCount) {
       var _fr = _finalRow.rows[0];
@@ -2683,6 +2714,7 @@ app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, 
     }
     return res.json({ success: true, school_id: schoolId });
   } catch (error) {
+    console.error("PUT /api/admin/schools error:", error.message);
     return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });

@@ -1838,115 +1838,6 @@ document.addEventListener("DOMContentLoaded", function () {
     return { ok: true, message: "Backup restored successfully. The app will reload now." };
   }
 
-  function exportSchoolControlSnapshot() {
-    const license = ensureLicenseSettings();
-    const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-    const snapshot = {
-      exportType: "school-control-summary",
-      exportedAt: new Date().toISOString(),
-      school: {
-        schoolId: String(license.schoolId || "").trim(),
-        schoolName: String(license.schoolName || profile.name || database.school.name || "").trim(),
-        logo: String(profile.logo || ""),
-        activated: Boolean(license.activated),
-        status: String(license.status || (license.activated ? "active" : "inactive")),
-        plan: String(license.subscriptionPlan || "monthly"),
-        startDate: String(license.startDate || ""),
-        expiryDate: String(license.expiryDate || "")
-      },
-      metrics: {
-        totalStudents: Array.isArray(database.students) ? database.students.length : 0
-      }
-    };
-    const payload = JSON.stringify(snapshot, null, 2);
-    const blob = new Blob([payload], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `sagarsoft-school-summary-${(snapshot.school.schoolId || "school").replace(/[^a-z0-9-_]/gi, "")}-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function exportOfflineUpdatePackage() {
-    const safeClone = function (value, fallback) {
-      try {
-        return JSON.parse(JSON.stringify(value));
-      } catch (error) {
-        return fallback;
-      }
-    };
-    const packageBody = {
-      packageType: "sagarsoft-offline-update",
-      packageVersion: "1.0.0",
-      generatedAt: new Date().toISOString(),
-      generatedBy: {
-        userId: currentUser.id,
-        name: currentUser.name,
-        role: currentUser.role
-      },
-      updateData: {
-        generalSettings: safeClone(database.generalSettings || {}, {}),
-        school: safeClone(database.school || {}, {}),
-        classSubjects: safeClone(database.classSubjects || {}, {}),
-        classes: safeClone(database.classes || [], []),
-        versionTag: `UPDATE-${new Date().toISOString().slice(0, 10)}`
-      }
-    };
-    const payload = JSON.stringify(packageBody, null, 2);
-    const blob = new Blob([payload], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `sagarsoft-update-package-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    anchor.remove();
-    URL.revokeObjectURL(url);
-  }
-
-  function applyOfflineUpdatePackage(pkg) {
-    if (!pkg || pkg.packageType !== "sagarsoft-offline-update" || !pkg.updateData) {
-      return { ok: false, message: "Invalid update package format." };
-    }
-    const data = pkg.updateData || {};
-    if (data.generalSettings && typeof data.generalSettings === "object") {
-      const currentLicense = ensureLicenseSettings();
-      const nextSettings = JSON.parse(JSON.stringify(data.generalSettings));
-      // Keep local license status to avoid unintended lock.
-      if (!nextSettings.licenseSettings) {
-        nextSettings.licenseSettings = {};
-      }
-      nextSettings.licenseSettings = {
-        ...nextSettings.licenseSettings,
-        activated: currentLicense.activated,
-        status: currentLicense.status,
-        schoolId: currentLicense.schoolId,
-        schoolName: currentLicense.schoolName,
-        startDate: currentLicense.startDate,
-        expiryDate: currentLicense.expiryDate
-      };
-      database.generalSettings = nextSettings;
-    }
-    if (data.school && typeof data.school === "object") {
-      database.school = { ...database.school, ...data.school };
-    }
-    if (data.classSubjects && typeof data.classSubjects === "object") {
-      database.classSubjects = data.classSubjects;
-    }
-    if (Array.isArray(data.classes)) {
-      database.classes = data.classes;
-    }
-    addActivity("Update imported", `Update package applied (${data.versionTag || "latest"}).`);
-    window.SagarSoftDB.saveDatabase(database);
-    refreshDatabase();
-    applySavedThemeSettings();
-    applyRouteAccessVisibility();
-    return { ok: true, message: "Update package imported successfully." };
-  }
-
   function ensureOfflineSchoolsRegistry() {
     if (!database.generalSettings) {
       database.generalSettings = {};
@@ -20601,16 +20492,10 @@ ${allContent}
       var schoolNameInput = document.getElementById("schoolNameInput");
       var licenseMessage = document.getElementById("licenseMessage");
       var activateAccountBtn = document.getElementById("activateAccountBtn");
-      var exportSchoolSummaryBtn = null;
       var exportSecureBackupBtn = document.getElementById("exportSecureBackupBtn");
       var importSecureBackupBtn = document.getElementById("importSecureBackupBtn");
       var importSecureBackupInput = document.getElementById("importSecureBackupInput");
       var secureBackupMessage = document.getElementById("secureBackupMessage");
-      var applyOfflineLicenseBtnMain = null;
-      var generateOfflineLicenseBtn = null;
-      var exportOfflineUpdatePackageBtn = null;
-      var importOfflineUpdatePackageBtn = null;
-      var importOfflineUpdatePackageInput = null;
 
       if (!isSuperAdmin) {
         [planInput, customDaysInput, startInput, expiryInput, schoolNameInput].forEach(function (el) {
@@ -20647,10 +20532,14 @@ ${allContent}
       if (planInput) updateExpiryPreview();
 
       function clearSchoolForm() {
-        var _els = ["schoolNameInput","accountUsernameInput","accountPasswordInput","schoolIdInput"];
+        var _els = ["schoolNameInput","accountUsernameInput","accountPasswordInput","schoolIdInput","customDaysInput","subscriptionStartInput","subscriptionExpiryInput"];
         _els.forEach(function (_id) { var _e = document.getElementById(_id); if (_e) _e.value = ""; });
-        var _msg = document.getElementById("manageSchoolsMessage");
+        var _planEl = document.getElementById("subscriptionPlanInput");
+        if (_planEl) _planEl.value = "monthly";
+        var _msg = document.getElementById("manageSchoolsMessage") || document.getElementById("licenseMessage");
         if (_msg) { _msg.textContent = ""; _msg.className = "form-message"; }
+        var _actBtn = document.getElementById("activateAccountBtn");
+        if (_actBtn) { _actBtn.textContent = "Add School"; _actBtn.removeAttribute("data-edit-school-id"); _actBtn.disabled = false; }
       }
 
       if (activateAccountBtn) {
@@ -20687,7 +20576,6 @@ ${allContent}
             if (data.success) {
               var savedSchoolId = data.school_id || editSchoolId || "";
               if (savedSchoolId) {
-                if (_overlayText) { _overlayText.textContent = "Verifying saved data..."; }
                 try {
                   var verifyResp = await fetch(apiBase + "/api/admin/schools", { method: "GET", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } });
                   var verifyData = await verifyResp.json().catch(function () { return {}; });
@@ -20702,15 +20590,20 @@ ${allContent}
                   // non-critical verification failure
                 }
               }
-              var successMsg = isNew ? "School activated successfully! ID: " + (savedSchoolId) : "School saved successfully!";
+              var successMsg = isNew ? "School activated successfully! ID: " + (savedSchoolId) : "School account updated successfully.";
               if (msgEl) { msgEl.textContent = successMsg; msgEl.className = "form-message success"; }
               window.SagarSoftDB.LoadingManager.hide(); _setButtonLoading(activateAccountBtn, false);
               openAppMessageBox("Success", successMsg, "success");
-              activateAccountBtn.textContent = "Add School";
-              activateAccountBtn.removeAttribute("data-edit-school-id");
-              if (isNew) clearSchoolForm();
-              var _refreshList = (typeof loadSchools === "function") ? loadSchools : (typeof window._loadSchools === "function") ? window._loadSchools : null;
-              if (_refreshList) { _refreshList(); } else { setTimeout(function(){ var _r = typeof window._loadSchools === "function" ? window._loadSchools : null; if (_r) _r(); }, 500); }
+              if (isNew) {
+                clearSchoolForm();
+              } else {
+                activateAccountBtn.textContent = "Add School";
+                activateAccountBtn.removeAttribute("data-edit-school-id");
+              }
+              var _refreshList = (typeof window._loadSchools === "function") ? window._loadSchools : null;
+              if (_refreshList) _refreshList();
+              try { renderSuperAdminDashboard(); } catch (_e) {}
+              try { renderDashboard(); } catch (_e) {}
             } else {
               var errMsg = data.message || "Save failed. Check console for details.";
               if (msgEl) { msgEl.textContent = errMsg; msgEl.className = "form-message error"; }
@@ -20725,17 +20618,7 @@ ${allContent}
             openAppMessageBox("Error", diagMsg, "error");
           } finally {
             window.SagarSoftDB.LoadingManager.hide(); _setButtonLoading(activateAccountBtn, false);
-            if (activateAccountBtn) { activateAccountBtn.disabled = false; activateAccountBtn.textContent = isNew ? "Add School" : "Update School"; }
           }
-        });
-      }
-
-      if (exportSchoolSummaryBtn) {
-        exportSchoolSummaryBtn.addEventListener("click", function () {
-          exportSchoolControlSnapshot();
-          licenseMessage.textContent = "School summary file exported successfully.";
-          licenseMessage.className = "form-message success";
-          openAppMessageBox("Success", "School summary file exported successfully.", "success");
         });
       }
 
@@ -20798,63 +20681,7 @@ ${allContent}
         });
       }
 
-      if (applyOfflineLicenseBtnMain) {
-        applyOfflineLicenseBtnMain.addEventListener("click", function () {
-          licenseMessage.textContent = "Offline license activation is not supported. Use online activation.";
-          licenseMessage.className = "form-message error";
-          openAppMessageBox("Error", "Offline license activation is not supported. Use online activation.", "error");
-        });
-      }
 
-      if (generateOfflineLicenseBtn && isSuperAdmin) {
-        generateOfflineLicenseBtn.addEventListener("click", function () {
-          licenseMessage.textContent = "Offline license generation is not supported. Use online activation.";
-          licenseMessage.className = "form-message error";
-          openAppMessageBox("Error", "Offline license generation is not supported. Use online activation.", "error");
-        });
-      }
-
-      if (exportOfflineUpdatePackageBtn && isSuperAdmin) {
-        exportOfflineUpdatePackageBtn.addEventListener("click", function () {
-          exportOfflineUpdatePackage();
-          licenseMessage.textContent = "Update file exported successfully.";
-          licenseMessage.className = "form-message success";
-          openAppMessageBox("Success", "Update file exported successfully.", "success");
-        });
-      }
-
-      if (importOfflineUpdatePackageBtn && importOfflineUpdatePackageInput) {
-        importOfflineUpdatePackageBtn.addEventListener("click", function () {
-          importOfflineUpdatePackageInput.click();
-        });
-        importOfflineUpdatePackageInput.addEventListener("change", function () {
-          const file = importOfflineUpdatePackageInput.files && importOfflineUpdatePackageInput.files[0];
-          if (!file) {
-            return;
-          }
-          const reader = new FileReader();
-          reader.onload = function () {
-            try {
-              const parsed = JSON.parse(String(reader.result || "{}"));
-              const applied = applyOfflineUpdatePackage(parsed);
-              licenseMessage.textContent = applied.message;
-              licenseMessage.className = `form-message ${applied.ok ? "success" : "error"}`;
-              openAppMessageBox(applied.ok ? "Success" : "Error", applied.message, applied.ok ? "success" : "error");
-              if (applied.ok) {
-                setRoute("account-settings");
-              }
-            } catch (error) {
-              const msg = "Invalid update file. Please import a valid JSON package.";
-              licenseMessage.textContent = msg;
-              licenseMessage.className = "form-message error";
-              openAppMessageBox("Error", msg, "error");
-            } finally {
-              importOfflineUpdatePackageInput.value = "";
-            }
-          };
-          reader.readAsText(file);
-        });
-      }
 
       document.getElementById("deleteAccountBtn").addEventListener("click", function () {
         const currentUserRecord = database.users.find(function (user) {
@@ -20992,6 +20819,7 @@ ${allContent}
                   msgEl.textContent = "School deleted.";
                   msgEl.className = "form-message success";
                   loadSchools();
+                  try { renderSuperAdminDashboard(); } catch (_e) {}
                 } else {
                   msgEl.textContent = data.message || "Delete failed.";
                   msgEl.className = "form-message error";
@@ -21013,6 +20841,7 @@ ${allContent}
                   msgEl.textContent = "Status updated.";
                   msgEl.className = "form-message success";
                   loadSchools();
+                  try { renderSuperAdminDashboard(); } catch (_e) {}
                 } else {
                   msgEl.textContent = data.message || "Update failed.";
                   msgEl.className = "form-message error";
@@ -21101,7 +20930,7 @@ ${allContent}
             try {
               var resp = await fetch(apiBase + "/api/admin/notifications", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") },
                 body: JSON.stringify({
                   school_id: target ? target.value : "",
                   title: title ? title.value : "Notification from SagarSoft",
@@ -21140,7 +20969,7 @@ ${allContent}
     var tbody = document.getElementById("notifHistoryBody");
     if (!tbody) return;
     try {
-      var resp = await fetch(apiBase + "/api/admin/notifications");
+      var resp = await fetch(apiBase + "/api/admin/notifications", { headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } });
       var data = await resp.json().catch(function () { return {}; });
       if (!data.success || !Array.isArray(data.notifications)) {
         tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notifications found.</td></tr>';
@@ -21160,10 +20989,10 @@ ${allContent}
 
   var clearNotifBtn = document.getElementById("clearNotifHistoryBtn");
   if (clearNotifBtn) {
-    clearNotifBtn.addEventListener("click", function () {
-      if (!confirm("Clear all notification history?")) return;
+    clearNotifBtn.addEventListener("click", async function () {
+      if (!(await brandedConfirm("Clear all notification history?"))) return;
       var msgEl = document.getElementById("notifHistoryMessage");
-      fetch(apiBase + "/api/admin/notifications", { method: "DELETE" }).then(function (resp) {
+      fetch(apiBase + "/api/admin/notifications", { method: "DELETE", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } }).then(function (resp) {
         return resp.json().catch(function () { return {}; });
       }).then(function (data) {
         if (data.success) {
