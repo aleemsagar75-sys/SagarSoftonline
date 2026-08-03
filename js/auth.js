@@ -41,8 +41,6 @@
   }
 
 
-  var SUPER_ADMIN_SESSION_TOKEN = null;
-
   async function migratePassword(user) {
     if (user && user.password && window.SagarSoftCrypto && !window.SagarSoftCrypto.isHash(user.password)) {
       try {
@@ -215,7 +213,10 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email, password: password })
       });
-      var data = await response.json();
+      var data = await response.json().catch(function () { return {}; });
+      if (!response.ok) {
+        return { success: false, message: data.message || "Invalid super admin credentials" };
+      }
       if (data.success && data.user) {
         var session = { id: data.user.id || "USR-SUPER-001", name: data.user.name || "SagarSoft Super Admin", email: data.user.email || email, role: data.user.role || "superadmin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: data.token || "" };
         if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
@@ -225,6 +226,7 @@
       }
       return { success: false, message: data.message || "Invalid super admin credentials" };
     } catch (e) {
+      console.error("Super admin login error:", e);
       return { success: false, message: "Server unreachable" };
     }
   }
@@ -279,9 +281,10 @@
       if (!resp.ok && data.message) {
         return { success: false, message: data.message };
       }
-      return null;
+      return { success: false, message: data.message || "Login failed. Please try again." };
     } catch (e) {
-      return null;
+      console.error("School login error:", e);
+      return { success: false, message: "Server unreachable. Please try again." };
     }
   }
 
@@ -308,14 +311,9 @@
       }
       if (!DEMO_EMAIL_SET.has(normalizedEmail)) {
         var serverResult = await tryServerAdminLogin(email, password, "admin", rememberMe);
-        if (serverResult) {
-          if (serverResult.success) return serverResult;
-          return serverResult;
-        }
+        if (serverResult) return serverResult;
       }
-      var result = await login(email, password, role, rememberMe);
-      if (result.success) return result;
-      return result;
+      return await login(email, password, role, rememberMe);
     }
 
     return await login(email, password, role, rememberMe);
@@ -353,7 +351,7 @@
 
   function getServerToken() {
     var session = getCurrentUser();
-    return (session && session.serverToken) || SUPER_ADMIN_SESSION_TOKEN || null;
+    return (session && session.serverToken) || null;
   }
 
   window.SagarSoftAuth = {

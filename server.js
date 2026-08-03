@@ -2102,26 +2102,6 @@ async function verifySupabaseAuth(email, password) {
   }
 }
 
-async function createSupabaseUser(email, password) {
-  var supaUrl = process.env.SUPABASE_URL;
-  var supaKey = process.env.SUPABASE_SECRET_KEY;
-  if (!supaUrl || !supaKey) return null;
-  try {
-    var resp = await fetch(supaUrl + "/auth/v1/admin/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": supaKey, "Authorization": "Bearer " + supaKey },
-      body: JSON.stringify({ email: email, password: password, email_confirm: true })
-    });
-    if (resp.ok) return true;
-    var data = await resp.json().catch(function () { return {}; });
-    if (data.msg && data.msg.includes("already")) return true;
-    return false;
-  } catch (_e) {
-    return null;
-  }
-}
-
-
 app.post("/api/activate-school", async (req, res) => {
   try {
     var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
@@ -2453,7 +2433,7 @@ app.post("/api/check-license", async (req, res) => {
   }
 });
 
-app.post("/api/sync-school-data", async (req, res) => {
+app.post("/api/sync-school-data", requireSuperAdmin, async (req, res) => {
   const schoolId = normalizeSchoolId(req.body.school_id);
   if (!schoolId) {
     return res.status(400).json({ success: false, message: "school_id is required." });
@@ -3621,10 +3601,7 @@ function startBackupCron() {
 }
 
 app.get("/api/monitor", requireSchoolAuth, async function (req, res) {
-  var schoolId = normalizeSchoolId(req.params.schoolId);
-  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
-    return res.status(403).json({ success: false, message: "Access denied." });
-  }
+  var schoolId = req.authSchoolId;
   var dbLatencyMs = 0;
   try {
     var t0 = Date.now();
