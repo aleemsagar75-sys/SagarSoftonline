@@ -1216,7 +1216,8 @@
   <script src="./js/storage.js?v=20260729" defer></script>
   <script src="./js/enterprise.js?v=20260729" defer></script>
   <script src="./js/auth.js?v=20260729" defer></script>
-  <script src="./js/dashboard.js?v=20260729" defer></script>
+  <script src="./js/cache-manager.js?v=20260805" defer></script>
+  <script src="./js/dashboard.js?v=20260805" defer></script>
   <script>
     var _origFetch = window.fetch;
     window.fetch = function () {
@@ -1240,19 +1241,44 @@
           delete body.school_id;
           opts.body = JSON.stringify(body);
         }
+        opts._ssoptBody = body;
       }
       args[1] = opts;
       return _origFetch.apply(window, args).then(function (r) {
         if (url.indexOf("/api/admin/schools") > -1 && method === "POST") {
+          var postBody = opts._ssoptBody || {};
           var clone = r.clone();
           clone.json().then(function (d) {
             if (d && d.success && d.school_id) {
+              var cache = window.SagarSoftCache;
+              if (cache) {
+                var newSchool = {
+                  school_id: d.school_id,
+                  school_name: postBody.school_name || "",
+                  email: postBody.email || "",
+                  plan: postBody.plan || "Basic",
+                  start_date: postBody.start_date || new Date().toISOString().slice(0, 10),
+                  expiry_date: postBody.expiry_date || "",
+                  status: "active",
+                  modules_locked: false,
+                  last_seen: null
+                };
+                cache.addSchoolOptimistic(newSchool);
+              }
               ["schoolIdInput","schoolNameInput","accountUsernameInput","accountPasswordInput"].forEach(function (id) {
                 var el = document.getElementById(id); if (el) el.value = "";
               });
             } else if (d && !d.success && d.message) {
               var msg = document.getElementById("manageSchoolsMessage");
               if (msg) { msg.textContent = d.message; msg.className = "form-message error"; }
+            }
+          }).catch(function () {});
+        }
+        if (url.indexOf("/api/admin/schools") > -1 && (method === "PUT" || method === "DELETE")) {
+          var clone2 = r.clone();
+          clone2.json().then(function (d) {
+            if (d && d.success && window.SagarSoftCache) {
+              window.SagarSoftCache.fetchSchools();
             }
           }).catch(function () {});
         }
