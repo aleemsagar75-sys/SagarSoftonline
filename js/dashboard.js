@@ -13239,8 +13239,10 @@ ${allContent}
             <article class="pvc-card pvc-card--employee">
               <div class="pvc-card__topband"></div>
               <header class="pvc-card__header">
-                ${printableLogo ? `<img src="${printableLogo}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
-                <div>
+                <div class="pvc-card__logo-wrap">
+                  ${printableLogo ? `<img src="${printableLogo}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
+                </div>
+                <div class="pvc-card__header-text">
                   <strong class="pvc-card__school">${escapeHtml(profile.name || database.school.name || "School")}</strong>
                   <span class="pvc-card__type">EMPLOYEE ID CARD</span>
                 </div>
@@ -13251,12 +13253,12 @@ ${allContent}
                   <strong class="pvc-card__name">${escapeHtml(employee.name || "-")}</strong>
                   <span class="pvc-card__line">${escapeHtml(employee.role || "-")}</span>
                   <span class="pvc-card__line">Phone: ${escapeHtml(getEmployeeDisplayPhone(employee))}</span>
-                  <span class="pvc-card__line">Join: ${escapeHtml(employee.dateOfJoining || "-")}</span>
+                  <span class="pvc-card__line">Joined: ${escapeHtml(employee.dateOfJoining || "-")}</span>
                 </div>
               </section>
               <footer class="pvc-card__footer">
-                <span>ID: ${escapeHtml(employee.id || "-")}</span>
-                <span>${escapeHtml((profile.phone || database.school.phone || "-"))}</span>
+                <span class="pvc-card__footer-id">ID: ${escapeHtml(employee.id || "-")}</span>
+                <span class="pvc-card__footer-contact">${escapeHtml((profile.phone || database.school.phone || "-"))}</span>
               </footer>
               <img src="${employeeQrUrl}" alt="QR" class="pvc-card__qr">
             </article>
@@ -13267,104 +13269,200 @@ ${allContent}
           <!DOCTYPE html>
           <html><head><meta charset="utf-8"><title></title>
             <style>
-              * { box-sizing: border-box; }
-              body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #fff; color: #102542; padding: 10mm; }
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body { font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif; background: #fff; color: #102542; padding: 10mm; -webkit-font-smoothing: antialiased; }
               .pvc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(85.6mm, 1fr)); gap: 8mm; justify-items: center; }
+
               .pvc-card {
                 position: relative;
                 width: 85.6mm;
                 height: 54mm;
-                border-radius: 3mm;
-                border: 0.35mm solid #000;
+                border-radius: 3.5mm;
+                border: 0.3mm solid rgba(16,37,66,0.12);
                 overflow: hidden;
                 background: #fff;
                 color: #102542;
                 break-inside: avoid;
+                box-shadow: 0 0.5mm 2mm rgba(16,37,66,0.08), 0 1mm 4mm rgba(16,37,66,0.04);
               }
+
               .pvc-card__topband {
-                height: 9mm;
-                background: linear-gradient(120deg, #0f2f58, #1e5eff 68%, #1d9c61);
+                height: 15mm;
+                background: linear-gradient(135deg, #0f2f58 0%, #14457a 40%, #1b5f7a 70%, #1d9c61 100%);
+                position: relative;
               }
+              .pvc-card__topband::after {
+                content: "";
+                position: absolute;
+                inset: 0;
+                background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 60%);
+              }
+
               .pvc-card__header {
                 position: absolute;
-                left: 3mm;
-                right: 3mm;
-                top: 1.5mm;
-                display: grid;
-                grid-template-columns: 10mm 1fr;
-                gap: 2.2mm;
+                left: 3.5mm;
+                right: 3.5mm;
+                top: 2.5mm;
+                display: flex;
                 align-items: center;
+                gap: 3mm;
                 color: #fff;
+                z-index: 1;
+              }
+
+              .pvc-card__logo-wrap {
+                flex-shrink: 0;
+                width: 10.5mm;
+                height: 10.5mm;
+                background: #fff;
+                border: 0.3mm solid rgba(0,0,0,0.1);
+                border-radius: 2.5mm;
+                padding: 1.2mm;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 0 0.8mm 2.5mm rgba(0,0,0,0.12);
               }
               .pvc-card__logo {
-                width: 9.5mm;
-                height: 9.5mm;
-                border-radius: 2mm;
-                border: 0.25mm solid rgba(255,255,255,.9);
+                width: 100%;
+                height: 100%;
                 object-fit: contain;
-                background: #fff;
+                display: block;
               }
               .pvc-card__logo--fallback {
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 2.7mm;
+                font-size: 3mm;
                 font-weight: 700;
-                background: rgba(255,255,255,.18);
+                color: #0f2f58;
+                background: transparent;
+                border: none;
+                box-shadow: none;
+                width: 100%;
+                height: 100%;
               }
-              .pvc-card__school { display: block; font-size: 2.8mm; line-height: 1.1; font-weight: 700; }
-              .pvc-card__type { display: block; font-size: 2.1mm; opacity: .96; letter-spacing: .08mm; }
+
+              .pvc-card__header-text {
+                flex: 1;
+                min-width: 0;
+                display: flex;
+                flex-direction: column;
+                gap: 0.3mm;
+              }
+              .pvc-card__school {
+                display: block;
+                font-size: 3mm;
+                line-height: 1.15;
+                font-weight: 700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                letter-spacing: 0.02mm;
+              }
+              .pvc-card__type {
+                display: block;
+                font-size: 2mm;
+                font-weight: 400;
+                opacity: 0.88;
+                letter-spacing: 0.15mm;
+                text-transform: uppercase;
+              }
+
               .pvc-card__body {
                 position: absolute;
                 left: 4mm;
                 right: 4mm;
-                top: 13mm;
+                top: 17mm;
                 display: grid;
                 justify-items: center;
-                gap: 1.5mm;
+                gap: 1.8mm;
                 text-align: center;
               }
               .pvc-card__photo {
-                width: 19mm;
-                height: 19mm;
+                width: 20mm;
+                height: 20mm;
                 border-radius: 50%;
-                border: 0.25mm solid #000;
+                border: 0.4mm solid rgba(16,37,66,0.15);
                 object-fit: cover;
-                background: #fff;
+                background: #f0f4f8;
+                box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
               }
               .pvc-card__photo--fallback {
                 display: inline-flex;
                 align-items: center;
                 justify-content: center;
-                font-size: 4.6mm;
+                font-size: 5mm;
                 font-weight: 700;
                 color: #17335b;
+                background: linear-gradient(135deg, #e8f0fe, #d2e3fc);
+                border: 0.4mm solid rgba(16,37,66,0.15);
+                box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
               }
-              .pvc-card__meta { display: grid; gap: .65mm; justify-items: center; }
-              .pvc-card__name { font-size: 3.2mm; line-height: 1.1; }
-              .pvc-card__line { font-size: 2.35mm; line-height: 1.05; color: #274669; }
+
+              .pvc-card__meta {
+                display: grid;
+                gap: 0.5mm;
+                justify-items: center;
+              }
+              .pvc-card__name {
+                font-size: 3.2mm;
+                line-height: 1.15;
+                font-weight: 700;
+                letter-spacing: 0.02mm;
+                max-width: 55mm;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+              .pvc-card__line {
+                font-size: 2.2mm;
+                line-height: 1.1;
+                color: #3a5a7c;
+                max-width: 55mm;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+
               .pvc-card__qr {
                 position: absolute;
-                right: 2.4mm;
-                bottom: 7.2mm;
-                width: 9mm;
-                height: 9mm;
-                border-radius: 0.5mm;
+                right: 3mm;
+                bottom: 8mm;
+                width: 9.5mm;
+                height: 9.5mm;
+                border-radius: 1mm;
+                border: 0.2mm solid rgba(16,37,66,0.08);
               }
+
               .pvc-card__footer {
                 position: absolute;
-                left: 3mm;
-                right: 3mm;
-                bottom: 2.4mm;
+                left: 3.5mm;
+                right: 3.5mm;
+                bottom: 2.8mm;
                 display: flex;
                 justify-content: space-between;
+                align-items: center;
                 gap: 2mm;
-                font-size: 2.2mm;
-                color: #345676;
+                padding-top: 1.5mm;
+                border-top: 0.2mm solid rgba(16,37,66,0.08);
               }
+              .pvc-card__footer-id {
+                font-size: 2.1mm;
+                font-weight: 600;
+                color: #102542;
+                letter-spacing: 0.03mm;
+              }
+              .pvc-card__footer-contact {
+                font-size: 2mm;
+                color: #5a7a96;
+              }
+
               @media print {
-                * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
                 @page { margin: 8mm; size: auto; }
+                body { padding: 0; }
+                .pvc-card { box-shadow: none; border: 0.3mm solid rgba(16,37,66,0.15); }
               }
             </style>
           </head>
@@ -22055,8 +22153,10 @@ ${allContent}
         <article class="pvc-card pvc-card--student">
           <div class="pvc-card__topband"></div>
           <header class="pvc-card__header">
-            ${logo ? `<img src="${safeAttr(logo)}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
-            <div>
+            <div class="pvc-card__logo-wrap">
+              ${logo ? `<img src="${safeAttr(logo)}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
+            </div>
+            <div class="pvc-card__header-text">
               <strong class="pvc-card__school">${safeHtml(profile.name || database.school.name || "School", "School")}</strong>
               <span class="pvc-card__type">STUDENT ID CARD</span>
             </div>
@@ -22071,8 +22171,8 @@ ${allContent}
             </div>
           </section>
           <footer class="pvc-card__footer">
-            <span>Mobile: ${safeHtml(student.phone || "-", "-")}</span>
-            <span>${safeHtml(profile.name || database.school.name || "School", "School")}</span>
+            <span class="pvc-card__footer-id">Mobile: ${safeHtml(student.phone || "-", "-")}</span>
+            <span class="pvc-card__footer-contact">${safeHtml(profile.name || database.school.name || "School", "School")}</span>
           </footer>
           <img src="${studentQrUrl}" alt="QR" class="pvc-card__qr">
         </article>
@@ -22085,108 +22185,94 @@ ${allContent}
         <title></title>
         <meta charset="utf-8">
         <style>
-          * { box-sizing: border-box; }
-          body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #fff; color: #102542; padding: 10mm; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif; background: #fff; color: #102542; padding: 10mm; -webkit-font-smoothing: antialiased; }
           .pvc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(85.6mm, 1fr)); gap: 8mm; justify-items: center; }
           .pvc-card {
             position: relative;
             width: 85.6mm;
             height: 54mm;
-            border-radius: 3mm;
-            border: 0.35mm solid #000;
+            border-radius: 3.5mm;
+            border: 0.3mm solid rgba(16,37,66,0.12);
             overflow: hidden;
             background: #fff;
             color: #102542;
             break-inside: avoid;
+            box-shadow: 0 0.5mm 2mm rgba(16,37,66,0.08), 0 1mm 4mm rgba(16,37,66,0.04);
           }
           .pvc-card__topband {
-            height: 9mm;
-            background: linear-gradient(120deg, #0f2f58, #1e5eff 68%, #1d9c61);
+            height: 15mm;
+            background: linear-gradient(135deg, #0f2f58 0%, #14457a 40%, #1b5f7a 70%, #1d9c61 100%);
+            position: relative;
+          }
+          .pvc-card__topband::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 60%);
           }
           .pvc-card__header {
             position: absolute;
-            left: 3mm;
-            right: 3mm;
-            top: 1.5mm;
-            display: grid;
-            grid-template-columns: 10mm 1fr;
-            gap: 2.2mm;
+            left: 3.5mm;
+            right: 3.5mm;
+            top: 2.5mm;
+            display: flex;
             align-items: center;
+            gap: 3mm;
             color: #fff;
+            z-index: 1;
           }
-          .pvc-card__logo {
-            width: 9.5mm;
-            height: 9.5mm;
-            border-radius: 2mm;
-            border: 0.25mm solid rgba(255,255,255,.9);
-            object-fit: contain;
+          .pvc-card__logo-wrap {
+            flex-shrink: 0;
+            width: 10.5mm;
+            height: 10.5mm;
             background: #fff;
-          }
-          .pvc-card__logo--fallback {
-            display: inline-flex;
+            border: 0.3mm solid rgba(0,0,0,0.1);
+            border-radius: 2.5mm;
+            padding: 1.2mm;
+            display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.7mm;
-            font-weight: 700;
-            background: rgba(255,255,255,.18);
+            box-shadow: 0 0.8mm 2.5mm rgba(0,0,0,0.12);
           }
-          .pvc-card__school { display: block; font-size: 2.8mm; line-height: 1.1; font-weight: 700; }
-          .pvc-card__type { display: block; font-size: 2.1mm; opacity: .96; letter-spacing: .08mm; }
+          .pvc-card__logo { width: 100%; height: 100%; object-fit: contain; display: block; }
+          .pvc-card__logo--fallback {
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 3mm; font-weight: 700; color: #0f2f58; background: transparent; border: none; box-shadow: none; width: 100%; height: 100%;
+          }
+          .pvc-card__header-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3mm; }
+          .pvc-card__school { display: block; font-size: 3mm; line-height: 1.15; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.02mm; }
+          .pvc-card__type { display: block; font-size: 2mm; font-weight: 400; opacity: 0.88; letter-spacing: 0.15mm; text-transform: uppercase; }
           .pvc-card__body {
-            position: absolute;
-            left: 4mm;
-            right: 4mm;
-            top: 13mm;
-            display: grid;
-            justify-items: center;
-            gap: 1.5mm;
-            text-align: center;
+            position: absolute; left: 4mm; right: 4mm; top: 17mm;
+            display: grid; justify-items: center; gap: 1.8mm; text-align: center;
           }
           .pvc-card__photo {
-            width: 19mm;
-            height: 19mm;
-            border-radius: 50%;
-            border: 0.25mm solid #000;
-            object-fit: cover;
-            background: #fff;
+            width: 20mm; height: 20mm; border-radius: 50%;
+            border: 0.4mm solid rgba(16,37,66,0.15); object-fit: cover; background: #f0f4f8;
+            box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
           }
           .pvc-card__photo--fallback {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 4.6mm;
-            font-weight: 700;
-            color: #17335b;
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 5mm; font-weight: 700; color: #17335b;
+            background: linear-gradient(135deg, #e8f0fe, #d2e3fc);
+            border: 0.4mm solid rgba(16,37,66,0.15); box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
           }
-          .pvc-card__meta { display: grid; gap: .65mm; justify-items: center; }
-          .pvc-card__name { font-size: 3.2mm; line-height: 1.1; }
-          .pvc-card__line { font-size: 2.35mm; line-height: 1.05; color: #274669; }
-          .pvc-card__qr {
-            position: absolute;
-            right: 2.4mm;
-            bottom: 7.2mm;
-            width: 9mm;
-            height: 9mm;
-            border-radius: 0.5mm;
-          }
+          .pvc-card__meta { display: grid; gap: 0.5mm; justify-items: center; }
+          .pvc-card__name { font-size: 3.2mm; line-height: 1.15; font-weight: 700; letter-spacing: 0.02mm; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .pvc-card__line { font-size: 2.2mm; line-height: 1.1; color: #3a5a7c; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .pvc-card__qr { position: absolute; right: 3mm; bottom: 8mm; width: 9.5mm; height: 9.5mm; border-radius: 1mm; border: 0.2mm solid rgba(16,37,66,0.08); }
           .pvc-card__footer {
-            position: absolute;
-            left: 3mm;
-            right: 3mm;
-            bottom: 2.4mm;
-            display: flex;
-            justify-content: space-between;
-            gap: 2mm;
-            font-size: 2.2mm;
-            color: #345676;
+            position: absolute; left: 3.5mm; right: 3.5mm; bottom: 2.8mm;
+            display: flex; justify-content: space-between; align-items: center; gap: 2mm;
+            padding-top: 1.5mm; border-top: 0.2mm solid rgba(16,37,66,0.08);
           }
-          @media print {
-            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            @page { margin: 8mm; size: auto; }
-          }
+          .pvc-card__footer-id { font-size: 2.1mm; font-weight: 600; color: #102542; letter-spacing: 0.03mm; }
+          .pvc-card__footer-contact { font-size: 2mm; color: #5a7a96; }
+          @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } @page { margin: 8mm; size: auto; } body { padding: 0; } .pvc-card { box-shadow: none; border: 0.3mm solid rgba(16,37,66,0.15); } }
         </style>
       </head>
-      <body style="font-family:Arial,sans-serif;padding:16px;color:#102542;background:#fff;">
+      <body>
         <div class="pvc-grid">${cardsMarkup}</div>
         <script>
           window.addEventListener("load", function () {
@@ -22230,50 +22316,99 @@ ${allContent}
         <meta charset="utf-8">
         <title></title>
         <style>
-          * { box-sizing: border-box; }
-          body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #fff; padding: 14mm; display: flex; justify-content: center; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body { font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif; background: #fff; padding: 14mm; display: flex; justify-content: center; -webkit-font-smoothing: antialiased; }
           .pvc-card {
             position: relative;
             width: 85.6mm;
             height: 54mm;
-            border-radius: 3mm;
-            border: 0.35mm solid #000;
+            border-radius: 3.5mm;
+            border: 0.3mm solid rgba(16,37,66,0.12);
             overflow: hidden;
             background: #fff;
             color: #102542;
+            box-shadow: 0 0.5mm 2mm rgba(16,37,66,0.08), 0 1mm 4mm rgba(16,37,66,0.04);
           }
-          .pvc-card__topband { height: 9mm; background: linear-gradient(120deg, #0f2f58, #1e5eff 68%, #1d9c61); }
+          .pvc-card__topband {
+            height: 15mm;
+            background: linear-gradient(135deg, #0f2f58 0%, #14457a 40%, #1b5f7a 70%, #1d9c61 100%);
+            position: relative;
+          }
+          .pvc-card__topband::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 60%);
+          }
           .pvc-card__header {
-            position: absolute; left: 3mm; right: 3mm; top: 1.5mm;
-            display: grid; grid-template-columns: 10mm 1fr; gap: 2.2mm; align-items: center; color: #fff;
+            position: absolute;
+            left: 3.5mm;
+            right: 3.5mm;
+            top: 2.5mm;
+            display: flex;
+            align-items: center;
+            gap: 3mm;
+            color: #fff;
+            z-index: 1;
           }
-          .pvc-card__logo { width: 9.5mm; height: 9.5mm; border-radius: 2mm; border: 0.25mm solid rgba(255,255,255,.9); object-fit: contain; background: #fff; }
-          .pvc-card__logo--fallback { display:inline-flex; align-items:center; justify-content:center; font-size:2.7mm; font-weight:700; background:rgba(255,255,255,.18); }
-          .pvc-card__school { display:block; font-size:2.8mm; line-height:1.1; font-weight:700; }
-          .pvc-card__type { display:block; font-size:2.1mm; opacity:.96; letter-spacing:.08mm; }
+          .pvc-card__logo-wrap {
+            flex-shrink: 0;
+            width: 10.5mm;
+            height: 10.5mm;
+            background: #fff;
+            border: 0.3mm solid rgba(0,0,0,0.1);
+            border-radius: 2.5mm;
+            padding: 1.2mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0.8mm 2.5mm rgba(0,0,0,0.12);
+          }
+          .pvc-card__logo { width: 100%; height: 100%; object-fit: contain; display: block; }
+          .pvc-card__logo--fallback {
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 3mm; font-weight: 700; color: #0f2f58; background: transparent; border: none; box-shadow: none; width: 100%; height: 100%;
+          }
+          .pvc-card__header-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3mm; }
+          .pvc-card__school { display: block; font-size: 3mm; line-height: 1.15; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.02mm; }
+          .pvc-card__type { display: block; font-size: 2mm; font-weight: 400; opacity: 0.88; letter-spacing: 0.15mm; text-transform: uppercase; }
           .pvc-card__body {
-            position:absolute; left:4mm; right:4mm; top:13mm;
-            display:grid; justify-items:center; gap:1.5mm; text-align:center;
+            position: absolute; left: 4mm; right: 4mm; top: 17mm;
+            display: grid; justify-items: center; gap: 1.8mm; text-align: center;
           }
-          .pvc-card__photo { width:19mm; height:19mm; border-radius:50%; border:0.25mm solid #000; object-fit:cover; background:#fff; }
-          .pvc-card__photo--fallback { display:inline-flex; align-items:center; justify-content:center; font-size:4.6mm; font-weight:700; color:#17335b; }
-          .pvc-card__meta { display:grid; gap:.65mm; justify-items:center; }
-          .pvc-card__name { font-size:3.2mm; line-height:1.1; }
-          .pvc-card__line { font-size:2.35mm; line-height:1.05; color:#274669; }
+          .pvc-card__photo {
+            width: 20mm; height: 20mm; border-radius: 50%;
+            border: 0.4mm solid rgba(16,37,66,0.15); object-fit: cover; background: #f0f4f8;
+            box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
+          }
+          .pvc-card__photo--fallback {
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 5mm; font-weight: 700; color: #17335b;
+            background: linear-gradient(135deg, #e8f0fe, #d2e3fc);
+            border: 0.4mm solid rgba(16,37,66,0.15); box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
+          }
+          .pvc-card__meta { display: grid; gap: 0.5mm; justify-items: center; }
+          .pvc-card__name { font-size: 3.2mm; line-height: 1.15; font-weight: 700; letter-spacing: 0.02mm; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .pvc-card__line { font-size: 2.2mm; line-height: 1.1; color: #3a5a7c; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+          .pvc-card__qr { position: absolute; right: 3mm; bottom: 8mm; width: 9.5mm; height: 9.5mm; border-radius: 1mm; border: 0.2mm solid rgba(16,37,66,0.08); }
           .pvc-card__footer {
-            position:absolute; left:3mm; right:3mm; bottom:2.4mm;
-            display:flex; justify-content:space-between; gap:2mm; font-size:2.2mm; color:#345676;
+            position: absolute; left: 3.5mm; right: 3.5mm; bottom: 2.8mm;
+            display: flex; justify-content: space-between; align-items: center; gap: 2mm;
+            padding-top: 1.5mm; border-top: 0.2mm solid rgba(16,37,66,0.08);
           }
-          .pvc-card__qr { position: absolute; right: 1.8mm; bottom: 5mm; width: 8mm; height: 8mm; border-radius: 1mm; }
-          @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } @page { margin: 8mm; size: auto; } }
+          .pvc-card__footer-id { font-size: 2.1mm; font-weight: 600; color: #102542; letter-spacing: 0.03mm; }
+          .pvc-card__footer-contact { font-size: 2mm; color: #5a7a96; }
+          @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } @page { margin: 8mm; size: auto; } body { padding: 0; } .pvc-card { box-shadow: none; border: 0.3mm solid rgba(16,37,66,0.15); } }
         </style>
       </head>
       <body>
         <article class="pvc-card">
           <div class="pvc-card__topband"></div>
           <header class="pvc-card__header">
-            ${logo ? `<img src="${escapePrintAttr(logo)}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
-            <div>
+            <div class="pvc-card__logo-wrap">
+              ${logo ? `<img src="${escapePrintAttr(logo)}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
+            </div>
+            <div class="pvc-card__header-text">
               <strong class="pvc-card__school">${escapePrintHtml(profile.name || database.school.name || "School")}</strong>
               <span class="pvc-card__type">STUDENT ID CARD</span>
             </div>
@@ -22288,8 +22423,8 @@ ${allContent}
             </div>
           </section>
           <footer class="pvc-card__footer">
-            <span>Mobile: ${escapePrintHtml(normalizedStudent.phone || "-")}</span>
-            <span>${escapePrintHtml(profile.name || database.school.name || "School")}</span>
+            <span class="pvc-card__footer-id">Mobile: ${escapePrintHtml(normalizedStudent.phone || "-")}</span>
+            <span class="pvc-card__footer-contact">${escapePrintHtml(profile.name || database.school.name || "School")}</span>
           </footer>
           <img src="${singleQrUrl}" alt="QR" class="pvc-card__qr">
         </article>
