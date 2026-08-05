@@ -2528,6 +2528,7 @@ app.post("/api/admin/schools/resequence", requireSuperAdmin, async function (req
 });
 
 app.post("/api/admin/schools", requireSuperAdmin, async function (req, res) {
+  delete req.body.school_id;
   var schoolName = String(req.body.school_name || "").trim();
   var email = String(req.body.email || "").trim().toLowerCase();
   var password = String(req.body.password || "").trim();
@@ -2637,6 +2638,7 @@ app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, 
   var schoolId = String(req.params.schoolId || "").trim();
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
   var body = req.body || {};
+  delete body.school_id;
   try {
     var sets = [];
     var vals = [];

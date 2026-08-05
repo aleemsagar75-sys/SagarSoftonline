@@ -467,9 +467,13 @@
     cachedDatabase = normalizeDatabase(database);
     if (database && database.generalSettings && database.generalSettings.licenseSettings) {
       var ls = database.generalSettings.licenseSettings;
-      if (ls.schoolId) {
-        config.schoolId = String(ls.schoolId);
-        persistCredentials(ls.schoolId, ls.websiteApiKey || "", config.authToken || "");
+      if (ls.schoolId && String(ls.schoolId).trim()) {
+        var _newSid = String(ls.schoolId).trim();
+        if (_newSid !== config.schoolId) {
+          console.log("[Storage] school_id changed from " + config.schoolId + " to " + _newSid);
+        }
+        config.schoolId = _newSid;
+        persistCredentials(_newSid, ls.websiteApiKey || "", config.authToken || "");
         invalidateHeadersCache();
       }
       if (ls.websiteApiKey) { config.apiKey = String(ls.websiteApiKey); invalidateHeadersCache(); }

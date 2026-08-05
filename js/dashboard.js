@@ -1257,8 +1257,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const existingSchoolId = license.schoolId ? String(license.schoolId).trim() : "";
     const isActivatedSchool = existingSchoolId && (license.activated === true || license.status === "active");
     const accountSettings = database.generalSettings.accountSettings || {};
+    var _persistedSchoolId = "";
+    try { _persistedSchoolId = localStorage.getItem("ss_school_id_persistent") || ""; } catch (_e) {}
+    var _finalExistingId = existingSchoolId || _persistedSchoolId || "";
     const defaultLicense = {
-      schoolId: existingSchoolId || "",
+      schoolId: _finalExistingId,
       schoolName: fallbackSchoolName,
       activated: false,
       subscriptionPlan: "monthly",
@@ -1470,6 +1473,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const license = ensureLicenseSettings();
     const accountSettings = database.generalSettings.accountSettings || {};
     license.schoolId = String(payload.school_id || license.schoolId || "").trim();
+    if (!license.schoolId) {
+      try { license.schoolId = localStorage.getItem("ss_school_id_persistent") || ""; } catch (_e) {}
+    }
     license.schoolName = String(payload.school_name || license.schoolName || "").trim();
     license.activated = String(payload.activation_status || payload.status || "").toLowerCase() === "active" && !payload.modules_locked;
     license.subscriptionPlan = normalizePortalPlan(payload.plan || license.subscriptionPlan);
