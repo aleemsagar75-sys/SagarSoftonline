@@ -242,6 +242,10 @@
     if (!Array.isArray(db.events)) db.events = [];
     if (!Array.isArray(db.smsTemplates)) db.smsTemplates = [];
     if (!Array.isArray(db.accountActivity)) db.accountActivity = [];
+    if (db.generalSettings) {
+      if (!Array.isArray(db.generalSettings.notices)) db.generalSettings.notices = [];
+      if (!Array.isArray(db.generalSettings.events)) db.generalSettings.events = [];
+    }
 
     db.fees = db.fees.map(function (feeItem) {
       return Object.assign({}, feeItem, {

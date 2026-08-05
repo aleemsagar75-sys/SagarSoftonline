@@ -1188,8 +1188,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       } else {
         var tableName = ch.table;
-        var arr = database[tableName];
-        if (!Array.isArray(arr)) { database[tableName] = []; arr = database[tableName]; }
+        var targetKey = (tableName === "notices" || tableName === "events") ? "generalSettings." + tableName : tableName;
+        var arr;
+        if (tableName === "notices" || tableName === "events") {
+          database.generalSettings = database.generalSettings || {};
+          if (!Array.isArray(database.generalSettings[tableName])) database.generalSettings[tableName] = [];
+          arr = database.generalSettings[tableName];
+        } else {
+          arr = database[tableName];
+          if (!Array.isArray(arr)) { database[tableName] = []; arr = database[tableName]; }
+        }
         var recId = ch.record.id || ch.record.source_id;
         var idx = -1;
         if (recId) {
@@ -4475,30 +4483,62 @@ document.addEventListener("DOMContentLoaded", function () {
   function renderDashboardNotices() {
     var el = document.getElementById("dashboardNoticeBoard");
     if (!el) return;
-    var notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
-    var recent = notices.filter(function (n) { return n.pushed !== false; }).slice(-5).reverse();
+    var cache = window.SagarSoftCache;
+    var notices = (cache && typeof cache.getNotices === "function") ? cache.getNotices() : [];
+    if (!notices.length) notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
+    var now = new Date();
+    var todayStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+    var active = notices.filter(function (n) {
+      if (n.pushed === false) return false;
+      if (n.expiryDate && n.expiryDate < todayStr) return false;
+      return true;
+    });
+    active.sort(function (a, b) {
+      var da = a.createdAt || "";
+      var db = b.createdAt || "";
+      return da > db ? -1 : da < db ? 1 : 0;
+    });
+    var recent = active.slice(0, 5);
     if (!recent.length) {
-      el.innerHTML = '<div class="dash-empty"><i class="fas fa-bullhorn"></i>No pushed notices yet.</div>';
+      el.innerHTML = '<div class="dash-empty"><i class="fas fa-bullhorn"></i>No active notices.</div>';
       return;
     }
     el.innerHTML = recent.map(function (n) {
       var priority = n.priority || "normal";
+      var priorityLabel = priority.charAt(0).toUpperCase() + priority.slice(1);
       var date = n.createdAt || "";
-      var target = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
-      return '<div class="dash-notice">' +
+      var content = (n.content || "").replace(/\n/g, " ");
+      var preview = content.length > 100 ? content.substring(0, 100) + "..." : content;
+      return '<div class="dash-notice" data-notice-id="' + escapeAttr(n.id) + '" style="cursor:pointer;">' +
         '<span class="dash-notice__dot dash-notice__dot--' + escapeAttr(priority) + '"></span>' +
         '<div class="dash-notice__content">' +
           '<p class="dash-notice__title">' + escapeHtml(n.title) + '</p>' +
-          '<p class="dash-notice__meta">' + escapeHtml(date) + ' &middot; ' + escapeHtml(target) + '</p>' +
+          '<p class="dash-notice__preview" style="font-size:0.72rem;color:#5a7a96;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + escapeHtml(preview) + '</p>' +
+          '<p class="dash-notice__meta" style="margin:3px 0 0;">' +
+            '<span style="font-size:0.68rem;color:#8a97a5;">' + escapeHtml(date) + '</span>' +
+            ' <span style="font-size:0.6rem;padding:1px 6px;border-radius:8px;background:' + (priority === "urgent" ? "#fde8e8" : priority === "important" ? "#fff3e0" : "#e8f5e9") + ';color:' + (priority === "urgent" ? "#d32f2f" : priority === "important" ? "#e65100" : "#2e7d32") + ';font-weight:600;">' + escapeHtml(priorityLabel) + '</span>' +
+            (n.expiryDate ? ' <span style="font-size:0.65rem;color:#999;">Exp: ' + escapeHtml(n.expiryDate) + '</span>' : '') +
+          '</p>' +
         '</div>' +
       '</div>';
     }).join("");
+    el.querySelectorAll(".dash-notice[data-notice-id]").forEach(function (card) {
+      card.addEventListener("click", function () {
+        var nid = card.getAttribute("data-notice-id");
+        var notice = active.find(function (n) { return n.id === nid; });
+        if (!notice) return;
+        var content = (notice.content || "").replace(/\n/g, "<br>");
+        openAppMessageBox(notice.title || "Notice", content, "info");
+      });
+    });
   }
 
   function renderDashboardEvents() {
     var el = document.getElementById("dashboardEventCalendar");
     if (!el) return;
-    var events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
+    var cache = window.SagarSoftCache;
+    var events = (cache && typeof cache.getEvents === "function") ? cache.getEvents() : [];
+    if (!events.length) events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
     var today = new Date();
     var todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
 
@@ -4540,30 +4580,39 @@ document.addEventListener("DOMContentLoaded", function () {
     for (var day = 1; day <= daysInMonth; day++) {
       var ds = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
       var isToday = day === today.getDate();
-      var hasEvent = events.some(function (ev) { return ev.date === ds; });
+      var dayEvts = events.filter(function (ev) { var sd = ev.date || ev.start_date || ""; return sd === ds; });
+      var hasEvent = dayEvts.length > 0;
       var hasBday = birthdays.some(function (b) { return b.day === day; });
       var evType = "";
-      if (hasEvent) { var found = events.find(function (ev) { return ev.date === ds; }); evType = found ? (found.type || "custom") : "custom"; }
+      if (hasEvent) { evType = dayEvts[0].type || dayEvts[0].event_type || "custom"; }
       var cls = "dash-cal__cell";
       if (isToday) cls += " dash-cal__cell--today";
       if (hasEvent) cls += " dash-cal__cell--event dash-cal__cell--" + escapeAttr(evType);
       if (hasBday && !hasEvent) cls += " dash-cal__cell--event dash-cal__cell--birthday";
       var title = day;
-      if (hasBday) { var bNames = birthdays.filter(function (b) { return b.day === day; }).map(function (b) { return b.name; }).join(", "); title = "?? " + bNames; }
-      if (hasEvent) { title = events.find(function (ev) { return ev.date === ds; }).title; }
+      if (hasBday) { var bNames = birthdays.filter(function (b) { return b.day === day; }).map(function (b) { return b.name; }).join(", "); title = bNames; }
+      if (hasEvent) { title = dayEvts.map(function (ev) { return ev.title; }).join(", "); }
       calHtml += '<div class="' + cls + '" title="' + escapeAttr(title) + '">' + day + '</div>';
     }
     calHtml += '</div></div>';
 
     calHtml += '<div class="dash-cal__side">';
-    var upcoming = events.filter(function (ev) { return ev.date >= todayStr; }).sort(function (a, b) { return a.date > b.date ? 1 : a.date < b.date ? -1 : 0; }).slice(0, 3);
+    var upcoming = events.filter(function (ev) {
+      var sd = ev.date || ev.start_date || "";
+      return sd >= todayStr;
+    }).sort(function (a, b) {
+      var da = a.date || a.start_date || "";
+      var db = b.date || b.start_date || "";
+      return da > db ? 1 : da < db ? -1 : 0;
+    }).slice(0, 3);
     if (upcoming.length) {
       calHtml += '<div class="dash-events-upcoming">';
       calHtml += '<div class="dash-events-upcoming__header"><strong>Upcoming</strong></div>';
       upcoming.forEach(function (ev) {
-        var d = new Date(ev.date);
+        var evDate = ev.date || ev.start_date || "";
+        var d = new Date(evDate);
         var dayLabel = d.getDate() + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
-        var type = ev.type || "custom";
+        var type = ev.type || ev.event_type || "custom";
         calHtml += '<div class="dash-events-upcoming__item">' +
           '<span class="dash-events-upcoming__date">' + dayLabel + '</span>' +
           '<span class="dash-events-upcoming__dot dash-events-upcoming__dot--' + escapeAttr(type) + '"></span>' +
@@ -4575,7 +4624,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (birthdays.length) {
       calHtml += '<div class="dash-birthdays">';
-      calHtml += '<div class="dash-birthdays__header"><strong>?? Birthdays</strong></div>';
+      calHtml += '<div class="dash-birthdays__header"><strong>Birthdays</strong></div>';
       birthdays.forEach(function (b) {
         var cls = b.isToday ? " dash-birthdays__item--today" : "";
         calHtml += '<div class="dash-birthdays__item' + cls + '">' +
@@ -18181,10 +18230,11 @@ ${allContent}
       }
       return;
     }
-
     if (route === "notice-board") {
       moduleSectionLabel.textContent = "Communication Module";
-      var notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
+      var cache = window.SagarSoftCache;
+      var notices = (cache && typeof cache.getNotices === "function") ? cache.getNotices() : [];
+      if (!notices.length) notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
       database.generalSettings.notices = notices;
 
       var noticeHtml = '<article><strong class="module-center-title">Notice Board</strong>';
@@ -18196,6 +18246,38 @@ ${allContent}
       noticeHtml += '</div>';
       noticeHtml += '<div class="field-group" style="margin-bottom:1rem;"><label>Notice Content *</label><textarea id="noticeContent" rows="4" placeholder="Write notice content here..."></textarea></div>';
       noticeHtml += '<div class="form-actions" style="margin-bottom:2rem;"><button class="primary-button" id="saveNoticeBtn" type="button">Publish Notice</button></div>';
+
+      function renderNoticeGrid() {
+        var currentNotices = (cache && typeof cache.getNotices === "function") ? cache.getNotices() : [];
+        if (!currentNotices.length) currentNotices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
+        var gridHtml = '';
+        if (currentNotices.length === 0) {
+          gridHtml = '<p class="empty-state">No notices published yet.</p>';
+        } else {
+          for (var ni = currentNotices.length - 1; ni >= 0; ni--) {
+            var n = currentNotices[ni];
+            var priorityClass = "notice-card--" + (n.priority || "normal");
+            var targetLabel = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
+            var pushedBadge = n.pushed !== false ? '<span class="notice-card__pushed-badge">Pushed to Dashboard</span>' : '';
+            gridHtml += '<div class="notice-card ' + priorityClass + '" data-notice-id="' + escapeAttr(n.id) + '">';
+            gridHtml += '<div class="notice-card__header"><h4 class="notice-card__title">' + escapeHtml(n.title) + '</h4>';
+            gridHtml += '<span class="notice-card__date">' + escapeHtml(n.createdAt || "") + '</span></div>';
+            gridHtml += '<span class="notice-card__target">' + escapeHtml(targetLabel) + '</span> ' + pushedBadge;
+            gridHtml += '<p class="notice-card__content">' + escapeHtml(n.content) + '</p>';
+            if (n.expiryDate) { gridHtml += '<p style="font-size:0.72rem;color:#999;margin:0;">Expires: ' + escapeHtml(n.expiryDate) + '</p>'; }
+            gridHtml += '<div class="notice-card__actions">';
+            gridHtml += '<button class="table-action-btn" type="button" data-delete-notice="' + escapeAttr(n.id) + '">Delete</button>';
+            gridHtml += '<button class="table-action-btn" type="button" data-push-notice="' + escapeAttr(n.id) + '">' + (n.pushed !== false ? 'Unpush' : 'Push to Dashboard') + '</button>';
+            gridHtml += '<button class="table-action-btn" type="button" data-sms-notice="' + escapeAttr(n.id) + '"><i class="fas fa-sms"></i> SMS All</button>';
+            gridHtml += '<button class="table-action-btn" type="button" data-pdf-notice="' + escapeAttr(n.id) + '"><i class="fas fa-file-pdf"></i> PDF</button>';
+            gridHtml += '<button class="table-action-btn" type="button" data-print-notice="' + escapeAttr(n.id) + '"><i class="fas fa-print"></i> Print</button>';
+            gridHtml += '</div></div>';
+          }
+        }
+        var grid = document.getElementById("noticeBoardGrid");
+        if (grid) grid.innerHTML = gridHtml;
+      }
+
       noticeHtml += '<div id="noticeBoardGrid" class="notice-board-grid">';
       if (notices.length === 0) {
         noticeHtml += '<p class="empty-state">No notices published yet.</p>';
@@ -18204,7 +18286,7 @@ ${allContent}
           var n = notices[ni];
           var priorityClass = "notice-card--" + (n.priority || "normal");
           var targetLabel = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
-          var pushedBadge = n.pushed ? '<span class="notice-card__pushed-badge">Pushed to Dashboard</span>' : '';
+          var pushedBadge = n.pushed !== false ? '<span class="notice-card__pushed-badge">Pushed to Dashboard</span>' : '';
           noticeHtml += '<div class="notice-card ' + priorityClass + '" data-notice-id="' + escapeAttr(n.id) + '">';
           noticeHtml += '<div class="notice-card__header"><h4 class="notice-card__title">' + escapeHtml(n.title) + '</h4>';
           noticeHtml += '<span class="notice-card__date">' + escapeHtml(n.createdAt || "") + '</span></div>';
@@ -18213,7 +18295,7 @@ ${allContent}
           if (n.expiryDate) { noticeHtml += '<p style="font-size:0.72rem;color:#999;margin:0;">Expires: ' + escapeHtml(n.expiryDate) + '</p>'; }
           noticeHtml += '<div class="notice-card__actions">';
           noticeHtml += '<button class="table-action-btn" type="button" data-delete-notice="' + escapeAttr(n.id) + '">Delete</button>';
-          noticeHtml += '<button class="table-action-btn" type="button" data-push-notice="' + escapeAttr(n.id) + '">' + (n.pushed ? 'Unpush' : 'Push to Dashboard') + '</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-push-notice="' + escapeAttr(n.id) + '">' + (n.pushed !== false ? 'Unpush' : 'Push to Dashboard') + '</button>';
           noticeHtml += '<button class="table-action-btn" type="button" data-sms-notice="' + escapeAttr(n.id) + '"><i class="fas fa-sms"></i> SMS All</button>';
           noticeHtml += '<button class="table-action-btn" type="button" data-pdf-notice="' + escapeAttr(n.id) + '"><i class="fas fa-file-pdf"></i> PDF</button>';
           noticeHtml += '<button class="table-action-btn" type="button" data-print-notice="' + escapeAttr(n.id) + '"><i class="fas fa-print"></i> Print</button>';
@@ -18231,11 +18313,21 @@ ${allContent}
         var expiry = document.getElementById("noticeExpiry").value;
         if (!title || !content) { openAppMessageBox("Error", "Title and content are required.", "error"); return; }
         var notice = { id: "notice-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, content: content, priority: priority, target: target, expiryDate: expiry, pushed: true, createdAt: new Date().toLocaleString() };
+        if (cache && typeof cache.addNoticeOptimistic === "function") {
+          cache.addNoticeOptimistic(notice);
+        }
         notices.push(notice);
+        database.generalSettings.notices = notices;
         addActivity("Notice published", "Notice: " + title);
         saveDatabase("Publishing notice...", [{ table: "notices", record: notice, operation: "create" }]);
+        document.getElementById("noticeTitle").value = "";
+        document.getElementById("noticeContent").value = "";
+        document.getElementById("noticePriority").value = "normal";
+        document.getElementById("noticeTarget").value = "all";
+        document.getElementById("noticeExpiry").value = "";
         openAppMessageBox("Success", "Notice published and pushed to dashboard.", "success");
-        setRoute("notice-board");
+        renderNoticeGrid();
+        renderDashboardNotices();
       });
 
       safeOn(document.getElementById("noticeBoardGrid"), "click", function (e) {
@@ -18243,7 +18335,18 @@ ${allContent}
         if (delBtn) {
           var nid = delBtn.getAttribute("data-delete-notice");
           var idx = notices.findIndex(function (x) { return x.id === nid; });
-          if (idx > -1) { trackDeletion(nid); var _removedNotice = notices.splice(idx, 1)[0]; saveDatabase("Deleting notice...", [{ table: "notices", record: _removedNotice, operation: "delete" }]); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
+          if (idx > -1) {
+            trackDeletion(nid);
+            var _removedNotice = notices.splice(idx, 1)[0];
+            database.generalSettings.notices = notices;
+            if (cache && typeof cache.removeNoticeOptimistic === "function") {
+              cache.removeNoticeOptimistic(nid);
+            }
+            saveDatabase("Deleting notice...", [{ table: "notices", record: _removedNotice, operation: "delete" }]);
+            openAppMessageBox("Success", "Notice deleted.", "success");
+            renderNoticeGrid();
+            renderDashboardNotices();
+          }
           return;
         }
         var pushBtn = e.target.closest("[data-push-notice]");
@@ -18252,9 +18355,14 @@ ${allContent}
           var noticeP = notices.find(function (x) { return x.id === nidP; });
           if (noticeP) {
             noticeP.pushed = !noticeP.pushed;
+            database.generalSettings.notices = notices;
+            if (cache && typeof cache.updateNoticeOptimistic === "function") {
+              cache.updateNoticeOptimistic(nidP, { pushed: noticeP.pushed });
+            }
             saveDatabase("", [{ table: "notices", record: noticeP, operation: "update" }]);
             openAppMessageBox("Success", noticeP.pushed ? "Notice pushed to dashboard." : "Notice removed from dashboard.", "success");
-            setRoute("notice-board");
+            renderNoticeGrid();
+            renderDashboardNotices();
           }
           return;
         }
@@ -18388,7 +18496,9 @@ ${allContent}
 
     if (route === "event-calendar") {
       moduleSectionLabel.textContent = "Communication Module";
-      var events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
+      var cache = window.SagarSoftCache;
+      var events = (cache && typeof cache.getEvents === "function") ? cache.getEvents() : [];
+      if (!events.length) events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
       database.generalSettings.events = events;
 
       var pakHolidays = [
@@ -18528,7 +18638,18 @@ ${allContent}
             e.stopPropagation();
             var eid = btn.getAttribute("data-delete-event");
             var idx = events.findIndex(function (x) { return x.id === eid; });
-            if (idx > -1) { trackDeletion(eid); var _removedEvent = events.splice(idx, 1)[0]; saveDatabase("Deleting event...", [{ table: "events", record: _removedEvent, operation: "delete" }]); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+            if (idx > -1) {
+              trackDeletion(eid);
+              var _removedEvent = events.splice(idx, 1)[0];
+              database.generalSettings.events = events;
+              if (cache && typeof cache.removeEventOptimistic === "function") {
+                cache.removeEventOptimistic(eid);
+              }
+              saveDatabase("Deleting event...", [{ table: "events", record: _removedEvent, operation: "delete" }]);
+              openAppMessageBox("Success", "Event deleted.", "success");
+              renderCalendar();
+              renderDashboardEvents();
+            }
           });
         });
 
@@ -18586,12 +18707,17 @@ ${allContent}
             var desc = (document.getElementById("eventDesc").value || "").trim();
             if (!title || !date) { openAppMessageBox("Error", "Title and date are required.", "error"); return; }
             var _newEvent = { id: "evt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, date: date, type: type, description: desc, createdAt: new Date().toLocaleString() };
+            if (cache && typeof cache.addEventOptimistic === "function") {
+              cache.addEventOptimistic(_newEvent);
+            }
             events.push(_newEvent);
+            database.generalSettings.events = events;
             addActivity("Event created", "Event: " + title + " on " + date);
             saveDatabase("Creating event...", [{ table: "events", record: _newEvent, operation: "create" }]);
             openAppMessageBox("Success", "Event added successfully.", "success");
             selectedCalendarDate = date;
             renderCalendar();
+            renderDashboardEvents();
           });
         }
       }
@@ -24652,6 +24778,20 @@ ${allContent}
     cache.on("history-changed", function (history) {
       _renderNotifHistory(history);
     });
+    cache.on("notices-changed", function (notices) {
+      database.generalSettings.notices = notices;
+      renderDashboardNotices();
+    });
+    cache.on("events-changed", function (events) {
+      database.generalSettings.events = events;
+      renderDashboardEvents();
+    });
+    if (!superAdminBypass) {
+      setTimeout(function () {
+        cache.fetchNotices();
+        cache.fetchEvents();
+      }, 2000);
+    }
   })();
 
   updateTopProfileIdentity();

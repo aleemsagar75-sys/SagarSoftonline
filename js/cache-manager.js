@@ -13,7 +13,9 @@
   var cache = {
     schools: { data: null, lastSync: 0, version: 0 },
     notifications: { data: null, lastSync: 0, version: 0 },
-    history: { data: null, lastSync: 0, version: 0 }
+    history: { data: null, lastSync: 0, version: 0 },
+    notices: { data: null, lastSync: 0, version: 0 },
+    events: { data: null, lastSync: 0, version: 0 }
   };
 
   var _syncTimer = null;
@@ -55,7 +57,9 @@
       var payload = {
         schools: cache.schools,
         notifications: cache.notifications,
-        history: cache.history
+        history: cache.history,
+        notices: cache.notices,
+        events: cache.events
       };
       sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(payload));
     } catch (_e) { /* quota exceeded - ignore */ }
@@ -69,6 +73,8 @@
       if (payload.schools) cache.schools = payload.schools;
       if (payload.notifications) cache.notifications = payload.notifications;
       if (payload.history) cache.history = payload.history;
+      if (payload.notices) cache.notices = payload.notices;
+      if (payload.events) cache.events = payload.events;
     } catch (_e) { /* corrupt data - ignore */ }
   }
 
@@ -232,6 +238,132 @@
     emit("history-changed", []);
   }
 
+  // ── Notices Cache (school-level) ───────────────────────────
+  var _noticesLoaded = false;
+
+  function getNotices() {
+    return cache.notices ? cache.notices.data || [] : [];
+  }
+
+  function fetchNotices() {
+    var cfg = window.SagarSoftOnlineConfig || window.OnlineConfig || {};
+    var schoolId = cfg.schoolId || "";
+    if (!schoolId) return Promise.resolve(getNotices());
+    var apiBase = (cfg.apiBaseUrl || "").replace(/\/+$/, "") || getApiBase();
+    var url = apiBase + "/api/data/" + encodeURIComponent(schoolId) + "/notices";
+
+    return fetch(url, { cache: "no-store", headers: { "Content-Type": "application/json" } })
+      .then(function (resp) { return resp.json(); })
+      .then(function (result) {
+        if (!result.success || !Array.isArray(result.data)) return getNotices();
+        var arr = result.data.map(function (row) { return row.data || row; });
+        var changed = arraysChanged(cache.notices.data, arr);
+        cache.notices.data = arr;
+        cache.notices.lastSync = Date.now();
+        cache.notices.version++;
+        _noticesLoaded = true;
+        saveToSessionStorage();
+        if (changed) emit("notices-changed", arr);
+        return arr;
+      })
+      .catch(function (err) {
+        console.error("[Cache] fetchNotices error:", err.message);
+        return getNotices();
+      });
+  }
+
+  function addNoticeOptimistic(notice) {
+    if (!cache.notices.data) cache.notices.data = [];
+    cache.notices.data.unshift(notice);
+    cache.notices.version++;
+    saveToSessionStorage();
+    emit("notices-changed", cache.notices.data);
+  }
+
+  function updateNoticeOptimistic(noticeId, updates) {
+    if (!cache.notices.data) return;
+    for (var i = 0; i < cache.notices.data.length; i++) {
+      if (cache.notices.data[i].id === noticeId) {
+        Object.assign(cache.notices.data[i], updates);
+        break;
+      }
+    }
+    cache.notices.version++;
+    saveToSessionStorage();
+    emit("notices-changed", cache.notices.data);
+  }
+
+  function removeNoticeOptimistic(noticeId) {
+    if (!cache.notices.data) return;
+    cache.notices.data = cache.notices.data.filter(function (n) { return n.id !== noticeId; });
+    cache.notices.version++;
+    saveToSessionStorage();
+    emit("notices-changed", cache.notices.data);
+  }
+
+  // ── Events Cache (school-level) ────────────────────────────
+  var _eventsLoaded = false;
+
+  function getEvents() {
+    return cache.events ? cache.events.data || [] : [];
+  }
+
+  function fetchEvents() {
+    var cfg = window.SagarSoftOnlineConfig || window.OnlineConfig || {};
+    var schoolId = cfg.schoolId || "";
+    if (!schoolId) return Promise.resolve(getEvents());
+    var apiBase = (cfg.apiBaseUrl || "").replace(/\/+$/, "") || getApiBase();
+    var url = apiBase + "/api/data/" + encodeURIComponent(schoolId) + "/events";
+
+    return fetch(url, { cache: "no-store", headers: { "Content-Type": "application/json" } })
+      .then(function (resp) { return resp.json(); })
+      .then(function (result) {
+        if (!result.success || !Array.isArray(result.data)) return getEvents();
+        var arr = result.data.map(function (row) { return row.data || row; });
+        var changed = arraysChanged(cache.events.data, arr);
+        cache.events.data = arr;
+        cache.events.lastSync = Date.now();
+        cache.events.version++;
+        _eventsLoaded = true;
+        saveToSessionStorage();
+        if (changed) emit("events-changed", arr);
+        return arr;
+      })
+      .catch(function (err) {
+        console.error("[Cache] fetchEvents error:", err.message);
+        return getEvents();
+      });
+  }
+
+  function addEventOptimistic(evt) {
+    if (!cache.events.data) cache.events.data = [];
+    cache.events.data.push(evt);
+    cache.events.version++;
+    saveToSessionStorage();
+    emit("events-changed", cache.events.data);
+  }
+
+  function updateEventOptimistic(eventId, updates) {
+    if (!cache.events.data) return;
+    for (var i = 0; i < cache.events.data.length; i++) {
+      if (cache.events.data[i].id === eventId) {
+        Object.assign(cache.events.data[i], updates);
+        break;
+      }
+    }
+    cache.events.version++;
+    saveToSessionStorage();
+    emit("events-changed", cache.events.data);
+  }
+
+  function removeEventOptimistic(eventId) {
+    if (!cache.events.data) return;
+    cache.events.data = cache.events.data.filter(function (e) { return e.id !== eventId; });
+    cache.events.version++;
+    saveToSessionStorage();
+    emit("events-changed", cache.events.data);
+  }
+
   // ── Background Sync ──────────────────────────────────────────
   function syncAll() {
     return Promise.all([
@@ -295,6 +427,20 @@
     getHistory: getHistory,
     fetchHistory: fetchHistory,
     clearHistoryOptimistic: clearHistoryOptimistic,
+
+    // Notices (school-level)
+    getNotices: getNotices,
+    fetchNotices: fetchNotices,
+    addNoticeOptimistic: addNoticeOptimistic,
+    updateNoticeOptimistic: updateNoticeOptimistic,
+    removeNoticeOptimistic: removeNoticeOptimistic,
+
+    // Events (school-level)
+    getEvents: getEvents,
+    fetchEvents: fetchEvents,
+    addEventOptimistic: addEventOptimistic,
+    updateEventOptimistic: updateEventOptimistic,
+    removeEventOptimistic: removeEventOptimistic,
 
     // Sync
     syncAll: syncAll,

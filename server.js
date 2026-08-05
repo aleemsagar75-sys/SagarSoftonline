@@ -1651,8 +1651,8 @@ async function getSchoolDatabase(schoolId) {
   database.subjects = subjects;
   database.attendance = attendance;
   database.fees = fees;
-  database.notices = notices;
-  database.events = events;
+  database.generalSettings.notices = notices;
+  database.generalSettings.events = events;
   database.activityLogs = activityLogs;
   database.accountActivity = accountActivity;
   database.smsTemplates = smsTemplates;
