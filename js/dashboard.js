@@ -21030,35 +21030,35 @@ ${allContent}
     renderModulePlaceholder(route, title);
   }
 
+  function _renderNotifHistory(notifications) {
+    var tbody = document.getElementById("notifHistoryBody");
+    if (!tbody) return;
+    if (!notifications || !notifications.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = notifications.map(function (n) {
+      var date = n.created_at ? new Date(n.created_at).toLocaleString() : "-";
+      var school = escapeHtml(String(n.school_name || n.school_id || "All Schools"));
+      var title = escapeHtml(String(n.title || "Notification"));
+      var msg = escapeHtml(String(n.message || ""));
+      return '<tr><td>' + date + '</td><td>' + school + '</td><td>' + title + '</td><td>' + msg + '</td></tr>';
+    }).join("") || '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
+  }
+
   async function loadNotifHistory() {
     var tbody = document.getElementById("notifHistoryBody");
     if (!tbody) return;
-    var _notifApiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
-    try {
-      var _notifToken = (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken) ? window.SagarSoftAuth.getServerToken() : "";
-      var resp = await fetch(_notifApiBase + "/api/admin/notifications", { cache: "no-store", headers: { "Authorization": "Bearer " + (_notifToken || "") } });
-      if (!resp.ok) {
-        var _errData = await resp.json().catch(function () { return {}; });
-        console.error("[Notification History] HTTP " + resp.status + ":", _errData);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
-        return;
-      }
-      var data = await resp.json().catch(function () { return {}; });
-      if (!data.success || !Array.isArray(data.notifications)) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = data.notifications.map(function (n) {
-        var date = n.created_at ? new Date(n.created_at).toLocaleString() : "-";
-        var school = escapeHtml(String(n.school_name || n.school_id || "All Schools"));
-        var title = escapeHtml(String(n.title || "Notification"));
-        var msg = escapeHtml(String(n.message || ""));
-        return '<tr><td>' + date + '</td><td>' + school + '</td><td>' + title + '</td><td>' + msg + '</td></tr>';
-      }).join("") || '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
-    } catch (_e) {
-      console.error("[Notification History] Load error:", _e && _e.message ? _e.message : _e);
+    var cache = window.SagarSoftCache;
+    if (!cache) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
+      return;
     }
+    var cachedHistory = cache.getHistory();
+    if (cachedHistory.length) {
+      _renderNotifHistory(cachedHistory);
+    }
+    cache.fetchHistory();
   }
 
   var clearNotifBtn = document.getElementById("clearNotifHistoryBtn");
@@ -23920,49 +23920,44 @@ ${allContent}
     });
   }
 
+  function _renderSchoolTable(schools) {
+    var section = document.getElementById("superAdminDashboardSection");
+    var listEl = document.getElementById("superAdminSchoolList");
+    if (!section || !listEl) return;
+    if (currentUser.role !== superAdminRole) { section.style.display = "none"; return; }
+    section.style.display = "";
+    if (!schools || !schools.length) {
+      listEl.innerHTML = '<p style="text-align:center;padding:16px;">No schools found. Use Account Settings to add a school.</p>';
+      return;
+    }
+    listEl.innerHTML = '<div style="overflow-x:auto;"><table class="data-table" style="width:100%;font-size:13px;"><thead><tr><th>School ID</th><th>School Name</th><th>Email</th><th>Plan</th><th>Start Date</th><th>Expiry</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody>' +
+      schools.map(function (s) {
+        var statusClass = s.status === "active" && !s.modules_locked ? "active" : "inactive";
+        var statusLabel = s.status === "active" && !s.modules_locked ? "Active" : "Inactive";
+        var lastSeen = s.last_seen ? new Date(s.last_seen).toLocaleString() : "-";
+        var expiry = s.expiry_date ? s.expiry_date.slice(0, 10) : "-";
+        var startDate = s.start_date ? s.start_date.slice(0, 10) : "-";
+        var email = s.email || "-";
+        return '<tr><td style="font-family:monospace;font-size:12px;">' + escapeHtml(s.school_id || "-") + '</td><td>' + escapeHtml(s.school_name || "-") + '</td><td>' + escapeHtml(email) + '</td><td>' + escapeHtml(s.plan || "-") + '</td><td>' + escapeHtml(startDate) + '</td><td>' + escapeHtml(expiry) + '</td><td><span class="status-pill ' + statusClass + '">' + statusLabel + '</span></td><td style="font-size:12px;">' + escapeHtml(lastSeen) + '</td><td><button class="table-action-btn" type="button" data-school-action="manage" data-school-id="' + escapeAttr(s.school_id || "") + '">Manage</button></td></tr>';
+      }).join("") +
+      '</tbody></table></div>';
+  }
+
   function renderSuperAdminDashboard() {
     var section = document.getElementById("superAdminDashboardSection");
     var listEl = document.getElementById("superAdminSchoolList");
     if (!section || !listEl) return;
     if (currentUser.role !== superAdminRole) { section.style.display = "none"; return; }
     section.style.display = "";
-    listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#888;">Loading schools...</p>';
-    var apiBase = window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
-    var _serverToken = "";
-    try { _serverToken = (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken) ? window.SagarSoftAuth.getServerToken() : ""; } catch (_e) {}
-    var _ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
-    var _timeoutId = _ctrl ? setTimeout(function () { _ctrl.abort(); }, 15000) : null;
-    fetch(apiBase + "/api/admin/schools", {
-      cache: "no-store",
-      headers: { "Authorization": "Bearer " + _serverToken },
-      signal: _ctrl ? _ctrl.signal : undefined
-    })
-      .then(function (resp) {
-        if (_timeoutId) clearTimeout(_timeoutId);
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
-        return resp.json();
-      })
-      .then(function (data) {
-        if (!data.success || !Array.isArray(data.schools) || !data.schools.length) {
-          listEl.innerHTML = '<p style="text-align:center;padding:16px;">No schools found. Use Account Settings to add a school.</p>';
-          return;
-        }
-        listEl.innerHTML = '<div style="overflow-x:auto;"><table class="data-table" style="width:100%;font-size:13px;"><thead><tr><th>School ID</th><th>School Name</th><th>Email</th><th>Plan</th><th>Start Date</th><th>Expiry</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody>' +
-          data.schools.map(function (s) {
-            var statusClass = s.status === "active" && !s.modules_locked ? "active" : "inactive";
-            var statusLabel = s.status === "active" && !s.modules_locked ? "Active" : "Inactive";
-            var lastSeen = s.last_seen ? new Date(s.last_seen).toLocaleString() : "-";
-            var expiry = s.expiry_date ? s.expiry_date.slice(0, 10) : "-";
-            var startDate = s.start_date ? s.start_date.slice(0, 10) : "-";
-            var email = s.email || "-";
-            return '<tr><td style="font-family:monospace;font-size:12px;">' + escapeHtml(s.school_id || "-") + '</td><td>' + escapeHtml(s.school_name || "-") + '</td><td>' + escapeHtml(email) + '</td><td>' + escapeHtml(s.plan || "-") + '</td><td>' + escapeHtml(startDate) + '</td><td>' + escapeHtml(expiry) + '</td><td><span class="status-pill ' + statusClass + '">' + statusLabel + '</span></td><td style="font-size:12px;">' + escapeHtml(lastSeen) + '</td><td><button class="table-action-btn" type="button" data-school-action="manage" data-school-id="' + escapeAttr(s.school_id || "") + '">Manage</button></td></tr>';
-          }).join("") +
-          '</tbody></table></div>';
-      })
-      .catch(function (err) {
-        if (_timeoutId) clearTimeout(_timeoutId);
-        listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#d64b4b;">Could not load schools. ' + escapeHtml(err.message || "Check your connection.") + '</p>';
-      });
+    var cache = window.SagarSoftCache;
+    if (!cache) { listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#888;">Loading schools...</p>'; return; }
+    var cachedSchools = cache.getSchools();
+    if (cachedSchools.length) {
+      _renderSchoolTable(cachedSchools);
+    } else {
+      listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#888;">Loading schools...</p>';
+    }
+    cache.fetchSchools();
   }
 
   function renderDashboard() {
@@ -24545,6 +24540,19 @@ ${allContent}
     updateTopProfileIdentity();
     _loadProfileFromSupabase();
   });
+
+  // ── Cache Manager init + live UI sync ────────────────────────
+  (function initCache() {
+    var cache = window.SagarSoftCache;
+    if (!cache) return;
+    cache.init();
+    cache.on("schools-changed", function (schools) {
+      if (currentUser.role === superAdminRole) _renderSchoolTable(schools);
+    });
+    cache.on("history-changed", function (history) {
+      _renderNotifHistory(history);
+    });
+  })();
 
   updateTopProfileIdentity();
   renderProfileDropdownMenu();
