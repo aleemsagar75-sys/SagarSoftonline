@@ -61,6 +61,7 @@ window.handleEmployeeViewClick = function(employeeId) {
         '<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:0.6rem;font-size:0.88rem;">' +
           '<div><strong style="color:#555;">Employee ID:</strong> '+_eH(employee.id||"-")+'</div>' +
           '<div><strong style="color:#555;">Designation:</strong> '+_eH(employee.designation||employee.role||"-")+'</div>' +
+          '<div><strong style="color:#555;">Status:</strong> '+_eH(employee.status||"active")+'</div>' +
           '<div><strong style="color:#555;">Date of Joining:</strong> '+_eH(employee.dateOfJoining||"-")+'</div>' +
           '<div><strong style="color:#555;">Date of Birth:</strong> '+_eH(employee.dateOfBirth||"-")+'</div>' +
           '<div><strong style="color:#555;">Gender:</strong> '+_eH(employee.gender||"-")+'</div>' +
@@ -12757,13 +12758,14 @@ ${allContent}
         tableBody.innerHTML = employees.map(function (employee) {
 
           return `
-            <div class="employee-card">
+            <div class="employee-card employee-card--premium">
               <div class="employee-card__header">
                 ${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" class="employee-card__avatar">` : `<span class="employee-card__avatar-placeholder">${getInitials(employee.name || "E")}</span>`}
                 <div class="employee-card__info">
                   <h4>${escapeHtml(employee.name || "-")}</h4>
-                  <p>${escapeHtml(employee.designation || "-")}</p>
+                  <p>${escapeHtml(employee.designation || employee.role || "-")}</p>
                 </div>
+                <span class="employee-card__status ${String(employee.status || "active").toLowerCase() === "active" ? "employee-card__status--active" : "employee-card__status--inactive"}">${escapeHtml(employee.status || "active")}</span>
               </div>
               <div class="employee-card__meta">
                 <div class="meta-item">
@@ -12773,6 +12775,14 @@ ${allContent}
                 <div class="meta-item">
                   <span class="meta-label">Phone</span>
                   <span class="meta-value">${escapeHtml(getEmployeeDisplayPhone(employee))}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Salary</span>
+                  <span class="meta-value">${escapeHtml(String(employee.monthlySalary || "0"))}</span>
+                </div>
+                <div class="meta-item">
+                  <span class="meta-label">Joined</span>
+                  <span class="meta-value">${escapeHtml(employee.dateOfJoining || "-")}</span>
                 </div>
               </div>
               <div class="employee-card__actions">
@@ -20235,23 +20245,48 @@ ${allContent}
         }
       }
 
-      moduleGuide.innerHTML = `
-        <article>
-          <strong>Account details</strong>
-          <p><strong>Username:</strong> ${escapeHtml(account.username || currentUser.email || "-")}</p>
-          <p><strong>Password:</strong> ${escapeHtml(account.password || "-")}</p>
-          <p><strong>Subscription:</strong> ${escapeHtml(account.subscription || "Premium")}</p>
-          <p><strong>Expiry:</strong> ${escapeHtml(account.expiry || "-")}</p>
-          <p><strong>License Status:</strong> ${escapeHtml(license.activated ? "Active" : "Inactive")}</p>
-          <p><strong>Last Verified:</strong> ${escapeHtml(license.lastVerifiedAt || "-")}</p>
-          ${lockState.locked ? `<p style="color:#d64b4b;"><strong>Module Lock:</strong> ${escapeHtml(lockState.reason)}</p>` : '<p style="color:#1d9c61;"><strong>Module Lock:</strong> Not locked</p>'}
-          <div class="form-actions">
-            <button class="table-action-btn danger" id="deleteAccountBtn" type="button">Delete</button>
-            <button class="primary-button" id="exportSecureBackupBtn" type="button">Backup</button>
-          </div>
-        </article>
-        ${isSuperAdmin ? `<hr style="margin:12px 0;border:none;border-top:1px solid #dde4ea;">` : ""}
-      `;
+      if (!isSuperAdmin) {
+        moduleGuide.innerHTML = `
+          <article class="account-details-card">
+            <strong class="account-details-card__title">Account details</strong>
+            <div class="account-details-grid">
+              <div class="account-detail-chip">
+                <span class="account-detail-chip__label">Username</span>
+                <span class="account-detail-chip__value">${escapeHtml(account.username || currentUser.email || "-")}</span>
+              </div>
+              <div class="account-detail-chip">
+                <span class="account-detail-chip__label">Password</span>
+                <span class="account-detail-chip__value">${escapeHtml(account.password || "-")}</span>
+              </div>
+              <div class="account-detail-chip">
+                <span class="account-detail-chip__label">Subscription</span>
+                <span class="account-detail-chip__value">${escapeHtml(account.subscription || "Premium")}</span>
+              </div>
+              <div class="account-detail-chip">
+                <span class="account-detail-chip__label">Expiry</span>
+                <span class="account-detail-chip__value">${escapeHtml(account.expiry || "-")}</span>
+              </div>
+              <div class="account-detail-chip">
+                <span class="account-detail-chip__label">License Status</span>
+                <span class="account-detail-chip__value ${license.activated ? "account-detail-chip__value--active" : "account-detail-chip__value--inactive"}">${escapeHtml(license.activated ? "Active" : "Inactive")}</span>
+              </div>
+              <div class="account-detail-chip">
+                <span class="account-detail-chip__label">Last Verified</span>
+                <span class="account-detail-chip__value">${escapeHtml(license.lastVerifiedAt || "-")}</span>
+              </div>
+              <div class="account-detail-chip">
+                <span class="account-detail-chip__label">Module Lock</span>
+                <span class="account-detail-chip__value ${lockState.locked ? "account-detail-chip__value--inactive" : "account-detail-chip__value--active"}">${lockState.locked ? escapeHtml(lockState.reason) : "Not locked"}</span>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="table-action-btn danger" id="deleteAccountBtn" type="button">Delete</button>
+            </div>
+          </article>
+        `;
+      } else {
+        moduleGuide.innerHTML = "";
+      }
 
       if (false && isSuperAdmin) {
         const registryRows = ensureOfflineSchoolsRegistry().filter(function (row) {
@@ -21609,6 +21644,7 @@ ${allContent}
       var detailFields = [
         ["Employee ID", employee.id],
         ["Designation", employee.designation],
+        ["Status", employee.status || "active"],
         ["Date of Joining", employee.dateOfJoining],
         ["Date of Birth", employee.dob || employee.dateOfBirth || "-"],
         ["Gender", employee.gender || "-"],
@@ -21630,8 +21666,8 @@ ${allContent}
         ["Phone", getEmployeeDisplayPhone(employee)],
         ["Email", employee.email],
         ["Address", employee.address],
-        ["Father / Husband", employee.father || employee.fatherName || employee.husband || "-"],
-        ["National ID", employee.nic || employee.cnic || employee.nationalId || "-"],
+        ["Father / Husband", employee.fatherOrHusbandName || "-"],
+        ["National ID", employee.nationalId || "-"],
         ["Subject", employee.subject || "-"]
       ];
       contactFields.forEach(function (f) {
