@@ -948,11 +948,9 @@ document.addEventListener("DOMContentLoaded", function () {
   const superAdminBypass = currentUser.role === superAdminRole;
   var DEMO_EMAIL_LIST = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"]);
   var isDemoUser = currentUser && DEMO_EMAIL_LIST.has(String(currentUser.email || "").trim().toLowerCase());
+  isolateSuperAdminData();
   const roleRouteAllowMap = {
-    superadmin: [
-      "dashboard",
-      "account-settings"
-    ],
+    superadmin: ["*"],
     admin: ["*"],
     teacher: [
       "dashboard",
@@ -1037,10 +1035,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function refreshDatabase() {
     database = window.SagarSoftDB.getDatabase();
-    if (superAdminBypass) return;
+    isolateSuperAdminData();
     _studentsNormalized = false;
     normalizeStudentsDatasetInMemory();
     ensureLicenseSettings();
+  }
+
+  function isolateSuperAdminData() {
+    if (!superAdminBypass) return;
+    database.students = [];
+    database.teachers = [];
+    database.employees = [];
+    database.classes = [];
+    database.subjects = [];
+    database.attendance = [];
+    database.fees = [];
+    database.users = [];
+    database.activityLogs = [];
+    if (database.generalSettings) {
+      database.generalSettings.feeStructures = [];
+      database.generalSettings.discountTypes = [];
+      database.generalSettings.marksGrading = [];
+      database.generalSettings.notices = [];
+      database.generalSettings.events = [];
+      database.generalSettings.classAssignments = [];
+      database.generalSettings.salaryPayments = [];
+    }
   }
 
   function applySavedThemeSettings() {
@@ -1837,6 +1857,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     window.SagarSoftDB.saveDatabase(nextDatabase);
     database = window.SagarSoftDB.getDatabase();
+    isolateSuperAdminData();
     ensureLicenseSettings();
     ensurePortalSyncData();
     normalizeStudentsDatasetInMemory();
@@ -23907,25 +23928,40 @@ ${allContent}
     section.style.display = "";
     listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#888;">Loading schools...</p>';
     var apiBase = window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
-    fetch(apiBase + "/api/admin/schools", { cache: "no-store", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } })
-      .then(function (resp) { return resp.json().catch(function () { return {}; }); })
+    var _serverToken = "";
+    try { _serverToken = (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken) ? window.SagarSoftAuth.getServerToken() : ""; } catch (_e) {}
+    var _ctrl = typeof AbortController !== "undefined" ? new AbortController() : null;
+    var _timeoutId = _ctrl ? setTimeout(function () { _ctrl.abort(); }, 15000) : null;
+    fetch(apiBase + "/api/admin/schools", {
+      cache: "no-store",
+      headers: { "Authorization": "Bearer " + _serverToken },
+      signal: _ctrl ? _ctrl.signal : undefined
+    })
+      .then(function (resp) {
+        if (_timeoutId) clearTimeout(_timeoutId);
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        return resp.json();
+      })
       .then(function (data) {
         if (!data.success || !Array.isArray(data.schools) || !data.schools.length) {
           listEl.innerHTML = '<p style="text-align:center;padding:16px;">No schools found. Use Account Settings to add a school.</p>';
           return;
         }
-        listEl.innerHTML = '<table class="data-table" style="width:100%;font-size:13px;"><thead><tr><th>School ID</th><th>Name</th><th>Plan</th><th>Expiry</th><th>Status</th><th>Last Seen</th></tr></thead><tbody>' +
+        listEl.innerHTML = '<div style="overflow-x:auto;"><table class="data-table" style="width:100%;font-size:13px;"><thead><tr><th>School ID</th><th>School Name</th><th>Email</th><th>Plan</th><th>Start Date</th><th>Expiry</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody>' +
           data.schools.map(function (s) {
             var statusClass = s.status === "active" && !s.modules_locked ? "active" : "inactive";
             var statusLabel = s.status === "active" && !s.modules_locked ? "Active" : "Inactive";
             var lastSeen = s.last_seen ? new Date(s.last_seen).toLocaleString() : "-";
             var expiry = s.expiry_date ? s.expiry_date.slice(0, 10) : "-";
-            return '<tr><td style="font-family:monospace;font-size:12px;">' + escapeHtml(s.school_id || "-") + '</td><td>' + escapeHtml(s.school_name || "-") + '</td><td>' + escapeHtml(s.plan || "-") + '</td><td>' + escapeHtml(expiry) + '</td><td><span class="status-pill ' + statusClass + '">' + statusLabel + '</span></td><td style="font-size:12px;">' + escapeHtml(lastSeen) + '</td></tr>';
+            var startDate = s.start_date ? s.start_date.slice(0, 10) : "-";
+            var email = s.email || "-";
+            return '<tr><td style="font-family:monospace;font-size:12px;">' + escapeHtml(s.school_id || "-") + '</td><td>' + escapeHtml(s.school_name || "-") + '</td><td>' + escapeHtml(email) + '</td><td>' + escapeHtml(s.plan || "-") + '</td><td>' + escapeHtml(startDate) + '</td><td>' + escapeHtml(expiry) + '</td><td><span class="status-pill ' + statusClass + '">' + statusLabel + '</span></td><td style="font-size:12px;">' + escapeHtml(lastSeen) + '</td><td><button class="table-action-btn" type="button" data-school-action="manage" data-school-id="' + escapeAttr(s.school_id || "") + '">Manage</button></td></tr>';
           }).join("") +
-          '</tbody></table>';
+          '</tbody></table></div>';
       })
-      .catch(function () {
-        listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#d64b4b;">Could not load schools. Check your connection.</p>';
+      .catch(function (err) {
+        if (_timeoutId) clearTimeout(_timeoutId);
+        listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#d64b4b;">Could not load schools. ' + escapeHtml(err.message || "Check your connection.") + '</p>';
       });
   }
 
@@ -23936,14 +23972,6 @@ ${allContent}
     if (currentUser.role === "parent") {
       try { renderParentDashboard(); } catch (_e) { console.error("[DASH] renderParentDashboard:", _e.message); }
       try { applyMessagingVisibility(); } catch (_e) {}
-      return;
-    }
-    if (superAdminBypass) {
-      try { renderSuperAdminDashboard(); } catch (_e) {}
-      try { startDashboardClock(); } catch (_e) {}
-      try { updateHero(); } catch (_e) {}
-      try { applyMessagingVisibility(); } catch (_e) {}
-      setTimeout(setupRevealAnimations, 80);
       return;
     }
     try { renderStats(); } catch (_e) { console.error("[DASH] renderStats:", _e.message); }
@@ -24422,11 +24450,6 @@ ${allContent}
   function setRoute(route) {
     const normalizedRoute = route === "settings" ? "account-settings" : route;
     if (!isRouteAllowedByRole(normalizedRoute)) {
-      if (superAdminBypass) {
-        openAppMessageBox("Access Denied", "Super Admin cannot access school data modules. Redirecting to Dashboard.", "error");
-        window.location.hash = "#dashboard";
-        return;
-      }
       openAppMessageBox("Error", "This option is not allowed for your role.", "error");
       return;
     }
@@ -24581,7 +24604,6 @@ ${allContent}
 
   var _serverLoadAuthFailed = false;
   (async function loadFromServerAfterInit() {
-    if (superAdminBypass) return;
     var license = database.generalSettings && database.generalSettings.licenseSettings;
     var wasActivated = license && license.activated;
     var schoolId = "";
@@ -24616,6 +24638,7 @@ ${allContent}
           }
           database.generalSettings.licenseSettings.schoolId = schoolId;
           normalizeStudentsDatasetInMemory();
+          isolateSuperAdminData();
           applyRouteAccessVisibility();
           if (typeof renderDashboard === "function") renderDashboard();
         }
