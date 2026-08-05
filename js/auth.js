@@ -199,8 +199,9 @@
   }
 
   function getApiBaseUrl() {
-    if (window.OnlineConfig && window.OnlineConfig.getApiBaseUrl) return window.OnlineConfig.getApiBaseUrl();
-    if (window.OnlineConfig && window.OnlineConfig.apiBaseUrl) return window.OnlineConfig.apiBaseUrl;
+    var cfg = window.SagarSoftOnlineConfig || window.OnlineConfig;
+    if (cfg && cfg.getApiBaseUrl) return cfg.getApiBaseUrl();
+    if (cfg && cfg.apiBaseUrl) return cfg.apiBaseUrl;
     return window.location.origin;
   }
 
