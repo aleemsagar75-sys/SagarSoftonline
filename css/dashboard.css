@@ -2819,6 +2819,12 @@ body {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
 }
+.split-grid--single-panel {
+  grid-template-columns: 1fr !important;
+}
+.split-grid--single-panel > .panel-card:last-child {
+  display: none !important;
+}
 
 .view.module--account .split-grid > .panel-card {
   height: 100%;

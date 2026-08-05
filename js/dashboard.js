@@ -949,7 +949,10 @@ document.addEventListener("DOMContentLoaded", function () {
   var DEMO_EMAIL_LIST = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"]);
   var isDemoUser = currentUser && DEMO_EMAIL_LIST.has(String(currentUser.email || "").trim().toLowerCase());
   const roleRouteAllowMap = {
-    superadmin: ["*"],
+    superadmin: [
+      "dashboard",
+      "account-settings"
+    ],
     admin: ["*"],
     teacher: [
       "dashboard",
@@ -1034,6 +1037,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function refreshDatabase() {
     database = window.SagarSoftDB.getDatabase();
+    if (superAdminBypass) return;
     _studentsNormalized = false;
     normalizeStudentsDatasetInMemory();
     ensureLicenseSettings();
@@ -5756,8 +5760,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (moduleGuideCard) {
-      const shouldShowGuideCard = guidePanelRoutes.includes(route) || (!isEmployeeModuleRoute && !isFullWidthModuleRoute);
+      var isSuperAdminAccountSettings = superAdminBypass && route === "account-settings";
+      const shouldShowGuideCard = isSuperAdminAccountSettings ? false : (guidePanelRoutes.includes(route) || (!isEmployeeModuleRoute && !isFullWidthModuleRoute));
       moduleGuideCard.style.display = shouldShowGuideCard ? "block" : "none";
+      var splitGridEl = moduleGuideCard.closest(".split-grid");
+      if (splitGridEl) {
+        splitGridEl.classList.toggle("split-grid--single-panel", isSuperAdminAccountSettings);
+      }
     }
 
     if (viewModule) {
@@ -23929,6 +23938,14 @@ ${allContent}
       try { applyMessagingVisibility(); } catch (_e) {}
       return;
     }
+    if (superAdminBypass) {
+      try { renderSuperAdminDashboard(); } catch (_e) {}
+      try { startDashboardClock(); } catch (_e) {}
+      try { updateHero(); } catch (_e) {}
+      try { applyMessagingVisibility(); } catch (_e) {}
+      setTimeout(setupRevealAnimations, 80);
+      return;
+    }
     try { renderStats(); } catch (_e) { console.error("[DASH] renderStats:", _e.message); }
     try { renderActivity(); } catch (_e) {}
     try { renderInsights(); } catch (_e) {}
@@ -24405,6 +24422,11 @@ ${allContent}
   function setRoute(route) {
     const normalizedRoute = route === "settings" ? "account-settings" : route;
     if (!isRouteAllowedByRole(normalizedRoute)) {
+      if (superAdminBypass) {
+        openAppMessageBox("Access Denied", "Super Admin cannot access school data modules. Redirecting to Dashboard.", "error");
+        window.location.hash = "#dashboard";
+        return;
+      }
       openAppMessageBox("Error", "This option is not allowed for your role.", "error");
       return;
     }
@@ -24559,6 +24581,7 @@ ${allContent}
 
   var _serverLoadAuthFailed = false;
   (async function loadFromServerAfterInit() {
+    if (superAdminBypass) return;
     var license = database.generalSettings && database.generalSettings.licenseSettings;
     var wasActivated = license && license.activated;
     var schoolId = "";

@@ -3067,14 +3067,17 @@ app.delete("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (
   }
 });
 
-app.post("/api/backup", requireApiKey, async function (req, res) {
+app.post("/api/backup", requireApiKey, requireSchoolAuth, async function (req, res) {
   var rateKey = "backup:" + (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
   if (!checkRateLimit(rateKey)) {
     return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
   }
   var schoolId = String(req.body.school_id || "").trim();
-  var database = req.body.database || {};
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID required." });
+  if (req.authRole !== "superadmin" && req.authSchoolId !== schoolId) {
+    return res.status(403).json({ success: false, message: "Access denied: school_id mismatch." });
+  }
+  var database = req.body.database || {};
   try {
     var _schoolCheck = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
     if (!_schoolCheck.rowCount) {
@@ -3257,7 +3260,7 @@ app.get("/api/supabase-config", requireSuperAdmin, function (req, res) {
 
 app.get("/api/sms/device-status", requireSchoolAuth, async function (req, res) {
   try {
-    var schoolId = String(req.query.school_id || "").trim();
+    var schoolId = req.authSchoolId;
     if (!schoolId) return res.json({ success: true, device: null });
     var supabaseUrl = process.env.SUPABASE_URL || "";
     var anonKey = process.env.SUPABASE_ANON_KEY || "";
