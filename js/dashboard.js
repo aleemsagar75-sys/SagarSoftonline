@@ -1,4 +1,7 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
+
+// -- Null-safe event binding utility ---------------------------
+function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
 
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
@@ -4540,7 +4543,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (hasEvent) cls += " dash-cal__cell--event dash-cal__cell--" + escapeAttr(evType);
       if (hasBday && !hasEvent) cls += " dash-cal__cell--event dash-cal__cell--birthday";
       var title = day;
-      if (hasBday) { var bNames = birthdays.filter(function (b) { return b.day === day; }).map(function (b) { return b.name; }).join(", "); title = "🎂 " + bNames; }
+      if (hasBday) { var bNames = birthdays.filter(function (b) { return b.day === day; }).map(function (b) { return b.name; }).join(", "); title = "?? " + bNames; }
       if (hasEvent) { title = events.find(function (ev) { return ev.date === ds; }).title; }
       calHtml += '<div class="' + cls + '" title="' + escapeAttr(title) + '">' + day + '</div>';
     }
@@ -4566,7 +4569,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (birthdays.length) {
       calHtml += '<div class="dash-birthdays">';
-      calHtml += '<div class="dash-birthdays__header"><strong>🎂 Birthdays</strong></div>';
+      calHtml += '<div class="dash-birthdays__header"><strong>?? Birthdays</strong></div>';
       birthdays.forEach(function (b) {
         var cls = b.isToday ? " dash-birthdays__item--today" : "";
         calHtml += '<div class="dash-birthdays__item' + cls + '">' +
@@ -5005,7 +5008,7 @@ document.addEventListener("DOMContentLoaded", function () {
       wireToolbar("studentRulesToolbar", studentEditor);
       wireToolbar("employeeRulesToolbar", employeeEditor);
 
-      document.getElementById("saveStudentRulesBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("saveStudentRulesBtn"), "click", async function () {
         var msg = document.getElementById("studentRulesMsg");
         settings.rulesAndRegulations.students = studentEditor.innerHTML.trim();
         database.school.rulesRegulations = studentEditor.textContent.trim();
@@ -5017,7 +5020,7 @@ document.addEventListener("DOMContentLoaded", function () {
         msg.className = "rules-save-msg " + (saved ? "rules-save-msg--success" : "rules-save-msg--error");
       });
 
-      document.getElementById("saveEmployeeRulesBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("saveEmployeeRulesBtn"), "click", async function () {
         var msg = document.getElementById("employeeRulesMsg");
         settings.rulesAndRegulations.employees = employeeEditor.innerHTML.trim();
         addActivity("Rules updated", "Employee rules and regulations updated.");
@@ -5818,7 +5821,7 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">🏫</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Institute Profile</p><p class="gs-form-section__subtitle">Update school information</p></div>
           </div>
           <div class="gs-form-grid">
@@ -5939,8 +5942,8 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;">💰</div>
-            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view — edits are managed in Fee Structure</p></div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;">??</div>
+            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view � edits are managed in Fee Structure</p></div>
           </div>
           <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Fee Particulars for*</label><select class="gs-field__input" id="feeParticularClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
           <div id="feeParticularRows" class="gs-row-list" style="margin-top:1rem;"></div>
@@ -6006,7 +6009,7 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;">📋</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Fee Structure</p><p class="gs-form-section__subtitle">Define fee types and amounts per class</p></div>
           </div>
           <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Select Class</label><select class="gs-field__input" id="feeStructureClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
@@ -6191,7 +6194,7 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">🏷</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Section A: Manage Discount Types</p><p class="gs-form-section__subtitle">Create reusable discount templates</p></div>
           </div>
           <div class="gs-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
@@ -6210,7 +6213,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         <article class="gs-form-section" style="margin-top:1.25rem;">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;">📋</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Section B: Assign Discount</p><p class="gs-form-section__subtitle">Assign a discount type to students</p></div>
           </div>
           <div class="invoice-entry-cards" style="margin-bottom:0.75rem;">
@@ -6269,7 +6272,7 @@ document.addEventListener("DOMContentLoaded", function () {
       function showAssignMessage(text, type) {
         var el = document.getElementById("assignDiscountMessage");
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : "✕";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : "?";
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
       }
 
@@ -6340,8 +6343,8 @@ document.addEventListener("DOMContentLoaded", function () {
             var assignedCount = database.students.filter(function (s) { return s.discountTypeId === dt.id; }).length;
             if (assignedCount > 0) {
               var msg = document.getElementById("dtMessage");
-              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" — it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
-              msg.querySelector(".gs-message__icon").textContent = "✕";
+              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" � it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
+              msg.querySelector(".gs-message__icon").textContent = "?";
               msg.className = "gs-message gs-message--error gs-message--visible";
               return;
             }
@@ -6357,7 +6360,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      document.getElementById("dtCancelEditBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("dtCancelEditBtn"), "click", function () {
         editingDiscountTypeId = null;
         document.getElementById("dtNameInput").value = "";
         document.getElementById("dtPercentInput").value = "";
@@ -6367,7 +6370,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("dtCancelEditBtn").style.display = "none";
       });
 
-      document.getElementById("dtSaveBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("dtSaveBtn"), "click", async function () {
         var name = document.getElementById("dtNameInput").value.trim();
         var percentage = parseFloat(document.getElementById("dtPercentInput").value) || 0;
         var description = document.getElementById("dtDescInput").value.trim();
@@ -6375,14 +6378,14 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!name) {
           var msg = document.getElementById("dtMessage");
           msg.querySelector(".gs-message__text").textContent = "Discount type name is required.";
-          msg.querySelector(".gs-message__icon").textContent = "✕";
+          msg.querySelector(".gs-message__icon").textContent = "?";
           msg.className = "gs-message gs-message--error gs-message--visible";
           return;
         }
         if (percentage <= 0 || percentage > 100) {
           var msg = document.getElementById("dtMessage");
           msg.querySelector(".gs-message__text").textContent = "Percentage must be between 1 and 100.";
-          msg.querySelector(".gs-message__icon").textContent = "✕";
+          msg.querySelector(".gs-message__icon").textContent = "?";
           msg.className = "gs-message gs-message--error gs-message--visible";
           return;
         }
@@ -6392,7 +6395,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (duplicateName) {
           var msg = document.getElementById("dtMessage");
           msg.querySelector(".gs-message__text").textContent = "A discount type with this name already exists.";
-          msg.querySelector(".gs-message__icon").textContent = "✕";
+          msg.querySelector(".gs-message__icon").textContent = "?";
           msg.className = "gs-message gs-message--error gs-message--visible";
           return;
         }
@@ -6434,7 +6437,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("dtStatusInput").value = "active";
         var msg = document.getElementById("dtMessage");
         msg.querySelector(".gs-message__text").textContent = "Discount type saved successfully.";
-        msg.querySelector(".gs-message__icon").textContent = "✓";
+        msg.querySelector(".gs-message__icon").textContent = "?";
         msg.className = "gs-message gs-message--success gs-message--visible";
         renderTypesTable();
         refreshAllTypeDropdowns();
@@ -6578,7 +6581,7 @@ document.addEventListener("DOMContentLoaded", function () {
           var percent = dt ? dt.percentage : (student.discountInFee || "-");
           return '<article style="padding:8px 10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">' +
             '<div><strong>' + escapeHtml(student.name) + '</strong> <small style="color:#888;">(' + escapeHtml(student.admissionNo || "-") + ')</small>' +
-            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' — <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
+            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' � <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
             '</article>';
         }).join("");
       }
@@ -6876,7 +6879,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-      document.getElementById("saveFailCriteriaBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("saveFailCriteriaBtn"), "click", async function () {
         settings.failCriteria = {
           overallPercent: Number(document.getElementById("failOverallInput").value || 0),
           subjectPercent: Number(document.getElementById("failSubjectInput").value || 0),
@@ -6904,7 +6907,7 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">🎨</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Theme & Language</p><p class="gs-form-section__subtitle">Customize appearance and select your preferred language</p></div>
           </div>
           <div class="gs-form-grid">
@@ -6921,17 +6924,17 @@ document.addEventListener("DOMContentLoaded", function () {
           <div class="gs-message" id="themeMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
       `;
-      moduleGuide.innerHTML = `<article class="gs-form-section"><div class="gs-form-section__header"><div class="gs-form-section__icon" style="background:rgba(27,95,122,0.1);color:var(--primary-color);">ℹ</div><div><p class="gs-form-section__title">Current Settings</p></div></div><div style="display:grid;gap:0.5rem;"><p style="font-size:0.88rem;color:var(--text-muted);"><strong>Language:</strong> ${escapeHtml(theme.language || "English")}</p></div></article>`;
+      moduleGuide.innerHTML = `<article class="gs-form-section"><div class="gs-form-section__header"><div class="gs-form-section__icon" style="background:rgba(27,95,122,0.1);color:var(--primary-color);">?</div><div><p class="gs-form-section__title">Current Settings</p></div></div><div style="display:grid;gap:0.5rem;"><p style="font-size:0.88rem;color:var(--text-muted);"><strong>Language:</strong> ${escapeHtml(theme.language || "English")}</p></div></article>`;
 
       function setThemeMessage(text, type) {
         var el = document.getElementById("themeMessage");
         if (!el) return;
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : type === "error" ? "?" : "?";
       }
 
-      document.getElementById("saveThemeBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("saveThemeBtn"), "click", async function () {
         var selectedLang = document.getElementById("languageSettingSelect").value;
         settings.themeLanguage = {
           sidebarBackground: document.getElementById("sidebarBgColorInput").value,
@@ -7957,7 +7960,7 @@ ${allContent}
         `;
       }
 
-      document.getElementById("collectFeeBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("collectFeeBtn"), "click", function () {
         const student = getSelectedStudentFromSearch();
         if (!student) {
           message.textContent = "Please select student from search suggestions.";
@@ -8072,9 +8075,9 @@ ${allContent}
           name: student.name || "-",
           status: status === "paid" ? "Paid" : "Due",
           feeMonth: feeMonth,
-          totalAmount: `â‚¨ ${totalAmount}`,
-          deposit: `â‚¨ ${deposit}`,
-          remaining: `â‚¨ ${remaining}`
+          totalAmount: `₨ ${totalAmount}`,
+          deposit: `₨ ${deposit}`,
+          remaining: `₨ ${remaining}`
         };
         latestReceiptData.totalAmount = `${currencySymbol} ${totalAmount}`;
         latestReceiptData.deposit = `${currencySymbol} ${deposit}`;
@@ -8492,7 +8495,7 @@ ${allContent}
         alert(`SMS reminders processed. Success: ${smsSuccess}, Failed: ${smsFail}${missingPhone ? `, Missing Phone: ${missingPhone}` : ""}.`);
       }
 
-      document.getElementById("sendSelectedReminderBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("sendSelectedReminderBtn"), "click", async function () {
         await sendReminder();
       });
 
@@ -8682,7 +8685,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("clearAllFeesDataBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("clearAllFeesDataBtn"), "click", async function () {
         const confirmed = await openAppConfirm(
           "Delete All Fee Records",
           "This will PERMANENTLY DELETE ALL fee records from the system. This action cannot be undone. Are you absolutely sure?",
@@ -8706,7 +8709,7 @@ ${allContent}
         }
       });
 
-      document.getElementById("printFeesReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printFeesReportBtn"), "click", function () {
         const rows = getReportRows();
         if (!rows.length) {
           return;
@@ -9276,7 +9279,7 @@ ${allContent}
         }, null, paperSize);
       }
 
-      document.getElementById("submitSalaryBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("submitSalaryBtn"), "click", function () {
         const employee = getSelectedEmployee();
         if (!employee) {
           message.textContent = "Please select employee from search suggestions.";
@@ -9484,7 +9487,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("printSalarySheetBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printSalarySheetBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -9739,7 +9742,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("printSalaryReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printSalaryReportBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -9840,7 +9843,7 @@ ${allContent}
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">📅</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Manage Weekdays</p><p class="gs-form-section__subtitle">Configure school week schedule</p></div>
           </div>
           <div class="gs-form-grid">
@@ -9890,10 +9893,10 @@ ${allContent}
         if (!el) return;
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : type === "error" ? "?" : "?";
       }
 
-      document.getElementById("saveWeekdayBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveWeekdayBtn"), "click", function () {
         const dayName = nameInput.value.trim();
         const shortLabel = shortInput.value.trim();
         if (!dayName || !shortLabel) {
@@ -9970,7 +9973,7 @@ ${allContent}
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">⏰</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">?</div>
             <div><p class="gs-form-section__title">Manage Time Periods</p><p class="gs-form-section__subtitle">Set class periods and breaks</p></div>
           </div>
           <div class="gs-form-grid">
@@ -10005,7 +10008,7 @@ ${allContent}
         if (!el) return;
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : type === "error" ? "?" : "?";
       }
 
       function renderRows() {
@@ -10028,7 +10031,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("savePeriodBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("savePeriodBtn"), "click", function () {
         const label = labelInput.value.trim();
         const start = startInput.value;
         const end = endInput.value;
@@ -10121,7 +10124,7 @@ ${allContent}
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;">🏫</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Manage Class Rooms</p><p class="gs-form-section__subtitle">Assign rooms to classes</p></div>
           </div>
           <div class="gs-form-grid">
@@ -10153,7 +10156,7 @@ ${allContent}
         if (!el) return;
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : type === "error" ? "?" : "?";
       }
 
       function renderRows() {
@@ -10174,7 +10177,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("saveRoomBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveRoomBtn"), "click", function () {
         const roomName = nameInput.value.trim();
         if (!roomName) {
           setRoomMessage("Please select a class.", "error");
@@ -10321,7 +10324,7 @@ ${allContent}
         input.addEventListener("change", renderRows);
       });
 
-      document.getElementById("saveTimetableBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveTimetableBtn"), "click", function () {
         const selectedClass = classSelect.value;
         const selectedDay = weekdaySelect.value;
         if (!selectedClass || !selectedDay) {
@@ -10442,7 +10445,7 @@ ${allContent}
         emptyState.hidden = matrix.periods.length > 0;
       }
 
-      document.getElementById("printClassTimetableBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printClassTimetableBtn"), "click", function () {
         const matrix = getMatrix();
         if (!matrix) {
           return;
@@ -10548,7 +10551,7 @@ ${allContent}
         emptyState.hidden = rows.length > 0;
       }
 
-      document.getElementById("printTeacherTimetableBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printTeacherTimetableBtn"), "click", function () {
         const teacher = getEmployeeById(teacherSelect.value);
         const rows = getRows();
         if (!teacher || !rows.length) {
@@ -10748,7 +10751,7 @@ ${allContent}
         emptyState.hidden = exams.length !== 0;
       }
 
-      document.getElementById("saveExamBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveExamBtn"), "click", function () {
         const examName = nameInput.value.trim();
         const startDate = startDateInput.value;
         const endDate = endDateInput.value;
@@ -10902,7 +10905,7 @@ ${allContent}
         input.addEventListener("change", renderMarksTable);
       });
 
-      document.getElementById("updateExamMarksBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("updateExamMarksBtn"), "click", function () {
         const examId = examSelect.value;
         const className = classSelect.value;
         if (!examId || !className) {
@@ -11344,7 +11347,7 @@ ${allContent}
       }
 
 
-      document.getElementById("generateResultCardBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("generateResultCardBtn"), "click", function () {
         const examId = examSelect.value;
         const student = getSelectedStudent();
         if (!examId || !student) {
@@ -11379,7 +11382,7 @@ ${allContent}
         }, 0);
       });
 
-      document.getElementById("generateResultCardClasswiseBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("generateResultCardClasswiseBtn"), "click", function () {
         const examId = examSelect.value;
         const selectedClass = classSelect.value;
         if (!examId || selectedClass === "all" || !selectedClass) {
@@ -11676,7 +11679,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("printResultSheetBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printResultSheetBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -11765,7 +11768,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("saveExamScheduleBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveExamScheduleBtn"), "click", function () {
         if (!examSelect.value || !classSelect.value || !subjectSelect.value || !dateInput.value || !startTimeInput.value || !endTimeInput.value) {
           message.textContent = "Please fill all schedule fields.";
           message.className = "form-message error";
@@ -11861,7 +11864,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("printDateSheetBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printDateSheetBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -11948,7 +11951,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("printBlankAwardListBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printBlankAwardListBtn"), "click", function () {
         const rows = getRows();
         const exam = getExamById(examSelect.value);
         if (!rows.length || !exam || !subjectSelect.value) {
@@ -12159,7 +12162,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("saveStudentsAttendanceBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveStudentsAttendanceBtn"), "click", function () {
         const rows = getRows();
         var _attendanceChanges = [];
         rows.forEach(function (student) {
@@ -12321,7 +12324,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("saveEmployeesAttendanceBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveEmployeesAttendanceBtn"), "click", function () {
         const rows = getRows();
         rows.forEach(function (employee) {
           const statusValue = rowStatusState[employee.id] || "Absent";
@@ -12335,7 +12338,7 @@ ${allContent}
         refreshAttendanceOverview();
       });
 
-      document.getElementById("sendEmployeeAbsenteesBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("sendEmployeeAbsenteesBtn"), "click", async function () {
         window.SagarSoftDB.LoadingManager.show("Sending employee absentees SMS...");
         try {
           const rows = getRows();
@@ -12566,7 +12569,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("downloadStudentsAttendancePdfBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("downloadStudentsAttendancePdfBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -12698,7 +12701,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("downloadEmployeesAttendancePdfBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("downloadEmployeesAttendancePdfBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -13041,7 +13044,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("clearEmployeeFormBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("clearEmployeeFormBtn"), "click", function () {
         employeeForm.reset();
         employeePictureData = "";
         message.textContent = "";
@@ -13440,7 +13443,7 @@ ${allContent}
         printEmployeeCards([employee], `Employee ID Card - ${employee.name}`);
       });
 
-      document.getElementById("printAllEmployeeCardsBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printAllEmployeeCardsBtn"), "click", function () {
         printEmployeeCards(getFilteredEmployees(), "Employee ID Cards");
       });
       searchInput.addEventListener("input", renderEmployeeCards);
@@ -14299,7 +14302,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("printExamReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printExamReportBtn"), "click", function () {
         const rows = getRows();
         const exam = getExamById(examSelect.value);
         if (!rows.length) {
@@ -14547,8 +14550,8 @@ ${allContent}
           '</p></article></div>';
       }
 
-      document.getElementById("progressShowBtn").addEventListener("click", renderPR);
-      document.getElementById("progressPrintBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("progressShowBtn"), "click", renderPR);
+      safeOn(document.getElementById("progressPrintBtn"), "click", function () {
         var c = document.getElementById("progressContent");
         if (!c || !c.innerHTML.trim() || c.innerHTML.includes("empty-state")) return;
         var w = window.open("", "_blank", "width=900,height=700");
@@ -14634,7 +14637,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("printInfoReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printInfoReportBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -14746,7 +14749,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("printAttendanceReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printAttendanceReportBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -14874,7 +14877,7 @@ ${allContent}
           }).join("");
         }
 
-        document.getElementById("printFeeReportBtn").addEventListener("click", function () {
+        safeOn(document.getElementById("printFeeReportBtn"), "click", function () {
           const rows = getRows();
           if (!rows.length) {
             return;
@@ -15022,19 +15025,19 @@ ${allContent}
         };
       }
 
-      document.getElementById("printAccountsBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printAccountsBtn"), "click", function () {
         var pd = getStatementPrintData();
         if (!pd.rows.length) return;
         openPrintReport(pd);
       });
 
-      document.getElementById("pdfAccountsBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("pdfAccountsBtn"), "click", function () {
         var pd = getStatementPrintData();
         if (!pd.rows.length) return;
         openPrintReport(pd);
       });
 
-      document.getElementById("excelAccountsBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("excelAccountsBtn"), "click", function () {
         var data = getStatementRows();
         if (!data.rows.length) return;
         var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
@@ -15054,7 +15057,7 @@ ${allContent}
         URL.revokeObjectURL(link.href);
       });
 
-      document.getElementById("clearAccountsHistoryBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("clearAccountsHistoryBtn"), "click", function () {
         showStyledDeleteConfirmation("all account ledger history", function () {
           var settings = database.generalSettings || {};
           settings.accountsLedger = [];
@@ -15124,7 +15127,7 @@ ${allContent}
         printState = { title: title, subtitle: subtitle, headers: headers, rows: rows };
       }
 
-      document.getElementById("generateCustomReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("generateCustomReportBtn"), "click", function () {
         const type = typeSelect.value;
         const classValue = classSelect.value;
         const monthValue = monthInput.value;
@@ -15184,7 +15187,7 @@ ${allContent}
         setData("Custom Report - Accounts", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Date", "Type", "Source", "Reference", "Amount"], rows);
       });
 
-      document.getElementById("printCustomReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printCustomReportBtn"), "click", function () {
         if (!printState) {
           return;
         }
@@ -15417,7 +15420,7 @@ ${allContent}
              return;
            }
          });
-         document.getElementById("saveLedgerBtn").addEventListener("click", async function () {
+         safeOn(document.getElementById("saveLedgerBtn"), "click", async function () {
           const btn = this;
           const date = document.getElementById("ledgerDateInput").value;
           const category = document.getElementById("ledgerCategoryInput").value.trim();
@@ -15557,7 +15560,7 @@ ${allContent}
         input.addEventListener("input", renderStatement);
         input.addEventListener("change", renderStatement);
       });
-      document.getElementById("printStatementBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printStatementBtn"), "click", function () {
         const rows = getFilteredStatementRows();
         openPrintReport({
           title: "Account Statement",
@@ -15702,8 +15705,8 @@ ${allContent}
                   <button class="table-action-btn" type="button" data-qp-cmd="italic" style="padding:3px 6px;font-size:0.75rem;">Italic</button>
                   <button class="table-action-btn" type="button" data-qp-cmd="underline" style="padding:3px 6px;font-size:0.75rem;">Underline</button>
                   <button class="table-action-btn" type="button" data-qp-cmd="strikeThrough" style="padding:3px 6px;font-size:0.75rem;">Strike</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="subscript" style="padding:3px 6px;font-size:0.75rem;">Xâ‚‚</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="superscript" style="padding:3px 6px;font-size:0.75rem;">XÂ²</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="subscript" style="padding:3px 6px;font-size:0.75rem;">X₂</button>
+                  <button class="table-action-btn" type="button" data-qp-cmd="superscript" style="padding:3px 6px;font-size:0.75rem;">X²</button>
                   <button class="table-action-btn" type="button" data-qp-cmd="insertUnorderedList" style="padding:3px 6px;font-size:0.75rem;">UL</button>
                   <button class="table-action-btn" type="button" data-qp-cmd="insertOrderedList" style="padding:3px 6px;font-size:0.75rem;">OL</button>
                   <button class="table-action-btn" type="button" data-qp-cmd="justifyLeft" style="padding:3px 6px;font-size:0.75rem;">Left</button>
@@ -15881,16 +15884,16 @@ ${allContent}
           }).join("");
         }
 
-        document.getElementById("qpAddMcq").addEventListener("click", function () {
+        safeOn(document.getElementById("qpAddMcq"), "click", function () {
           mcqRows.appendChild(createMcqRow(""));
         });
-        document.getElementById("qpRemoveMcq").addEventListener("click", function () {
+        safeOn(document.getElementById("qpRemoveMcq"), "click", function () {
           if (mcqRows.children.length > 1) {
             mcqRows.removeChild(mcqRows.lastElementChild);
           }
         });
 
-        document.getElementById("qpSaveQuestion").addEventListener("click", function () {
+        safeOn(document.getElementById("qpSaveQuestion"), "click", function () {
           const className = classSelect.value;
           const subject = subjectSelect.value;
           const section = sectionSelect.value;
@@ -16697,26 +16700,26 @@ ${allContent}
             document.execCommand(cmd, false, null);
           });
 
-          document.getElementById("qpApplyFontSize").addEventListener("click", function () {
+          safeOn(document.getElementById("qpApplyFontSize"), "click", function () {
             const px = Math.max(8, Number(document.getElementById("qpFontSizeInput").value || 16));
             editorArea.focus();
             document.execCommand("fontSize", false, false);
             document.execCommand("insertHTML", false, `<span style="font-size:${px}px;">${window.getSelection().toString() || "Text"}</span>`);
           });
 
-          document.getElementById("qpApplyTextColor").addEventListener("click", function () {
+          safeOn(document.getElementById("qpApplyTextColor"), "click", function () {
             const color = document.getElementById("qpTextColorInput").value;
             editorArea.focus();
             document.execCommand("foreColor", false, color);
           });
 
-          document.getElementById("qpApplyBgColor").addEventListener("click", function () {
+          safeOn(document.getElementById("qpApplyBgColor"), "click", function () {
             const color = document.getElementById("qpBgColorInput").value;
             editorArea.focus();
             document.execCommand("backColor", false, color);
           });
 
-          document.getElementById("qpInsertTable").addEventListener("click", function () {
+          safeOn(document.getElementById("qpInsertTable"), "click", function () {
             openTableSizeDialog(function (rows, cols) {
               var html = '<p><br></p><div class="qp-editor-table-wrap" contenteditable="false" data-editor-interactive="1"><table style="width:100%;border-collapse:collapse;">';
               for (var r = 0; r < rows; r++) {
@@ -17135,8 +17138,8 @@ ${allContent}
           openAppMessageBox("Success", "Question changed successfully.", "success");
         });
 
-        document.getElementById("qpLoadQuestions").addEventListener("click", loadQuestions);
-        document.getElementById("qpSavePaper").addEventListener("click", function () {
+        safeOn(document.getElementById("qpLoadQuestions"), "click", loadQuestions);
+        safeOn(document.getElementById("qpSavePaper"), "click", function () {
           const className = classSelect.value;
           const subject = subjectSelect.value;
           const title = String(titleInput.value || "").trim();
@@ -17282,7 +17285,7 @@ ${allContent}
         `;
       }
 
-      document.getElementById("qpLoadSavedPaper").addEventListener("click", function () {
+      safeOn(document.getElementById("qpLoadSavedPaper"), "click", function () {
         const className = classSelect.value;
         const subject = subjectSelect.value;
         const paperId = titleSelect.value;
@@ -17307,7 +17310,7 @@ ${allContent}
         renderPreview();
       });
 
-      document.getElementById("qpPrintPaper").addEventListener("click", function () {
+      safeOn(document.getElementById("qpPrintPaper"), "click", function () {
         if (!activePaper) {
           message.textContent = "Please load paper first.";
           message.className = "form-message error";
@@ -17495,7 +17498,7 @@ ${allContent}
           }
         }
 
-        document.getElementById("saveClassTestMarksBtn").addEventListener("click", function () {
+        safeOn(document.getElementById("saveClassTestMarksBtn"), "click", function () {
           const className = classSelect.value;
           const subjectName = subjectSelect.value;
           const testName = testNameInput.value.trim();
@@ -17682,7 +17685,7 @@ ${allContent}
         sendDirectWhatsappToStudent(student, student.name || "student", text);
       });
 
-      document.getElementById("sendTestResultSmsBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("sendTestResultSmsBtn"), "click", async function () {
         const rows = getTestResultRows();
         if (!rows.length) {
           alert("No test result records to send.");
@@ -17732,7 +17735,7 @@ ${allContent}
         alert(`Class test SMS processed. Success: ${success}, Failed: ${failed}.`);
       });
 
-      document.getElementById("printTestResultBtn").addEventListener("click", function (event) {
+      safeOn(document.getElementById("printTestResultBtn"), "click", function (event) {
         event.preventDefault();
         event.stopPropagation();
         if (event.stopImmediatePropagation) {
@@ -17747,7 +17750,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("downloadTestResultPdfBtn").addEventListener("click", async function (event) {
+      safeOn(document.getElementById("downloadTestResultPdfBtn"), "click", async function (event) {
         event.preventDefault();
         event.stopPropagation();
         if (event.stopImmediatePropagation) {
@@ -17807,7 +17810,7 @@ ${allContent}
             return `<tr><td>${escapeHtml(item.name || "-")}</td><td>${escapeHtml(item.body || "-")}</td><td><button class="table-action-btn danger" type="button" data-delete-certificate-template="${escapeAttr(item.id)}">Delete</button></td></tr>`;
           }).join("");
         }
-        document.getElementById("saveCertificateTemplateBtn").addEventListener("click", function () {
+        safeOn(document.getElementById("saveCertificateTemplateBtn"), "click", function () {
           const name = document.getElementById("certificateTemplateName").value.trim();
           const bodyText = document.getElementById("certificateTemplateBody").value.trim();
           const message = document.getElementById("certificateTemplateMessage");
@@ -17946,7 +17949,7 @@ ${allContent}
         input.addEventListener("input", fillTemplatePreview);
         input.addEventListener("change", fillTemplatePreview);
       });
-      document.getElementById("printCertificateBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printCertificateBtn"), "click", function () {
         const student = getSelectedStudentForCertificate();
         const text = bodyPreview.value.trim();
         if (!student || !text) {
@@ -18116,7 +18119,7 @@ ${allContent}
       noticeHtml += '</div></article>';
       moduleSummary.innerHTML = noticeHtml;
 
-      document.getElementById("saveNoticeBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveNoticeBtn"), "click", function () {
         var title = (document.getElementById("noticeTitle").value || "").trim();
         var content = (document.getElementById("noticeContent").value || "").trim();
         var priority = document.getElementById("noticePriority").value;
@@ -18131,7 +18134,7 @@ ${allContent}
         setRoute("notice-board");
       });
 
-      document.getElementById("noticeBoardGrid").addEventListener("click", function (e) {
+      safeOn(document.getElementById("noticeBoardGrid"), "click", function (e) {
         var delBtn = e.target.closest("[data-delete-notice]");
         if (delBtn) {
           var nid = delBtn.getAttribute("data-delete-notice");
@@ -18409,8 +18412,8 @@ ${allContent}
         calHtml += '</div></article>';
         moduleSummary.innerHTML = calHtml;
 
-        document.getElementById("calPrev").addEventListener("click", function () { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
-        document.getElementById("calNext").addEventListener("click", function () { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
+        safeOn(document.getElementById("calPrev"), "click", function () { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
+        safeOn(document.getElementById("calNext"), "click", function () { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
 
         document.querySelectorAll("[data-date]").forEach(function (cell) {
           cell.addEventListener("click", function () { selectedCalendarDate = cell.getAttribute("data-date"); renderCalendar(); });
@@ -18853,7 +18856,7 @@ ${allContent}
         });
       }
 
-      document.getElementById("sendHomeworkBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("sendHomeworkBtn"), "click", function () {
         var subject = subjectSelect ? subjectSelect.value : "";
         var title = titleInput.value.trim();
         var dueDate = dueDateInput.value;
@@ -19595,7 +19598,7 @@ ${allContent}
         openNextPendingWhatsappChat();
       });
 
-      document.getElementById("sendWhatsappCustomBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("sendWhatsappCustomBtn"), "click", function () {
         const text = messageInput.value.trim();
         if (!text) {
           statusMessage.textContent = "Please write message.";
@@ -19813,10 +19816,10 @@ ${allContent}
           <div style="background:#fef9e7;border-left:4px solid #f39c12;padding:10px 12px;border-radius:6px;margin:8px 0;">
             <strong>SagarSoft SMS Agent (Recommended)</strong>
             <ol class="sms-guide-list" style="margin:6px 0 0;">
-              <li>Install <strong>SagarSoft SMS Agent</strong> app on phone → Login with school credentials.</li>
-              <li>In app, go to <strong>SIM Registration</strong> → enter SIM number → tap <strong>Register SIM</strong>.</li>
-              <li>Tap <strong>Start Service</strong> — it will auto-send queued SMS.</li>
-              <li>Works from <strong>any network</strong> — WiFi, mobile data, different locations, no setup needed.</li>
+              <li>Install <strong>SagarSoft SMS Agent</strong> app on phone ? Login with school credentials.</li>
+              <li>In app, go to <strong>SIM Registration</strong> ? enter SIM number ? tap <strong>Register SIM</strong>.</li>
+              <li>Tap <strong>Start Service</strong> � it will auto-send queued SMS.</li>
+              <li>Works from <strong>any network</strong> � WiFi, mobile data, different locations, no setup needed.</li>
             </ol>
           </div>
         </article>
@@ -20010,7 +20013,7 @@ ${allContent}
         recipientSuggestions.hidden = true;
       });
 
-      document.getElementById("sendSmsNowBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("sendSmsNowBtn"), "click", async function () {
         var cfg = getSupabaseConfig();
         if (!cfg.url || !cfg.anonKey) {
           setSendMessage("SagarSoft SMS Agent is not configured. Please contact administrator.", "error");
@@ -20667,7 +20670,7 @@ ${allContent}
               }
               var _refreshList = (typeof window._loadSchools === "function") ? window._loadSchools : null;
               if (_refreshList) _refreshList();
-              try { renderSuperAdminDashboard(); } catch (_e) {}
+              if (window.SagarSoftCache) window.SagarSoftCache.fetchSchools();
               try { renderDashboard(); } catch (_e) {}
             } else {
               var errMsg = data.message || "Save failed. Check console for details.";
@@ -20748,7 +20751,7 @@ ${allContent}
 
 
 
-      document.getElementById("deleteAccountBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("deleteAccountBtn"), "click", function () {
         const currentUserRecord = database.users.find(function (user) {
           return user.id === currentUser.id;
         });
@@ -20884,7 +20887,7 @@ ${allContent}
                   msgEl.textContent = "School deleted.";
                   msgEl.className = "form-message success";
                   loadSchools();
-                  try { renderSuperAdminDashboard(); } catch (_e) {}
+                  if (window.SagarSoftCache) window.SagarSoftCache.fetchSchools();
                 } else {
                   msgEl.textContent = data.message || "Delete failed.";
                   msgEl.className = "form-message error";
@@ -20906,7 +20909,7 @@ ${allContent}
                   msgEl.textContent = "Status updated.";
                   msgEl.className = "form-message success";
                   loadSchools();
-                  try { renderSuperAdminDashboard(); } catch (_e) {}
+                  if (window.SagarSoftCache) window.SagarSoftCache.fetchSchools();
                 } else {
                   msgEl.textContent = data.message || "Update failed.";
                   msgEl.className = "form-message error";
@@ -21904,7 +21907,7 @@ ${allContent}
           <div class="admission-field"><strong>Admission Date</strong><span>${student.dateOfAdmission || "-"}</span></div>
           <div class="admission-field"><strong>Account Status</strong><span>${loginInfo.status}</span></div>
           <div class="admission-field"><strong>Username</strong><span>${loginInfo.username}</span></div>
-          <div class="admission-field"><strong>Password</strong><span>••••••••</span></div>
+          <div class="admission-field"><strong>Password</strong><span>��������</span></div>
         </div>
       </article>
     `;
@@ -23772,7 +23775,7 @@ ${allContent}
         btnWrap.style.cssText = "margin-top:0.6rem;text-align:center;";
         btnWrap.innerHTML = '<button id="dashboardSendAbsenteesBtnOld" type="button" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.8rem;font-size:0.75rem;font-family:inherit;font-weight:600;color:#fff;background:#e74c3c;border:none;border-radius:8px;cursor:pointer;line-height:1.4;"><i class="fas fa-paper-plane"></i> Send Absentees Message</button>';
         absentContainer.appendChild(btnWrap);
-        document.getElementById("dashboardSendAbsenteesBtnOld").addEventListener("click", async function () {
+        safeOn(document.getElementById("dashboardSendAbsenteesBtnOld"), "click", async function () {
           try {
             var todayAttendance = database.attendance || [];
             var absentStudents = [];
@@ -23920,46 +23923,6 @@ ${allContent}
     });
   }
 
-  function _renderSchoolTable(schools) {
-    var section = document.getElementById("superAdminDashboardSection");
-    var listEl = document.getElementById("superAdminSchoolList");
-    if (!section || !listEl) return;
-    if (currentUser.role !== superAdminRole) { section.style.display = "none"; return; }
-    section.style.display = "";
-    if (!schools || !schools.length) {
-      listEl.innerHTML = '<p style="text-align:center;padding:16px;">No schools found. Use Account Settings to add a school.</p>';
-      return;
-    }
-    listEl.innerHTML = '<div style="overflow-x:auto;"><table class="data-table" style="width:100%;font-size:13px;"><thead><tr><th>School ID</th><th>School Name</th><th>Email</th><th>Plan</th><th>Start Date</th><th>Expiry</th><th>Status</th><th>Last Seen</th><th>Actions</th></tr></thead><tbody>' +
-      schools.map(function (s) {
-        var statusClass = s.status === "active" && !s.modules_locked ? "active" : "inactive";
-        var statusLabel = s.status === "active" && !s.modules_locked ? "Active" : "Inactive";
-        var lastSeen = s.last_seen ? new Date(s.last_seen).toLocaleString() : "-";
-        var expiry = s.expiry_date ? s.expiry_date.slice(0, 10) : "-";
-        var startDate = s.start_date ? s.start_date.slice(0, 10) : "-";
-        var email = s.email || "-";
-        return '<tr><td style="font-family:monospace;font-size:12px;">' + escapeHtml(s.school_id || "-") + '</td><td>' + escapeHtml(s.school_name || "-") + '</td><td>' + escapeHtml(email) + '</td><td>' + escapeHtml(s.plan || "-") + '</td><td>' + escapeHtml(startDate) + '</td><td>' + escapeHtml(expiry) + '</td><td><span class="status-pill ' + statusClass + '">' + statusLabel + '</span></td><td style="font-size:12px;">' + escapeHtml(lastSeen) + '</td><td><button class="table-action-btn" type="button" data-school-action="manage" data-school-id="' + escapeAttr(s.school_id || "") + '">Manage</button></td></tr>';
-      }).join("") +
-      '</tbody></table></div>';
-  }
-
-  function renderSuperAdminDashboard() {
-    var section = document.getElementById("superAdminDashboardSection");
-    var listEl = document.getElementById("superAdminSchoolList");
-    if (!section || !listEl) return;
-    if (currentUser.role !== superAdminRole) { section.style.display = "none"; return; }
-    section.style.display = "";
-    var cache = window.SagarSoftCache;
-    if (!cache) { listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#888;">Loading schools...</p>'; return; }
-    var cachedSchools = cache.getSchools();
-    if (cachedSchools.length) {
-      _renderSchoolTable(cachedSchools);
-    } else {
-      listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#888;">Loading schools...</p>';
-    }
-    cache.fetchSchools();
-  }
-
   function renderDashboard() {
     if (activeRoute && activeRoute !== "dashboard" && activeRoute !== "home") return;
     try { refreshDatabase(); } catch (_e) { console.error("[DASH] refreshDatabase:", _e.message); }
@@ -23976,7 +23939,6 @@ ${allContent}
     try { renderDashboardAnalytics(); } catch (_e) { console.error("[DASH] renderDashboardAnalytics:", _e.message); }
     try { refreshAttendanceOverview(); } catch (_e) {}
     try { renderDashboardTodayAttendance(); } catch (_e) {}
-    try { renderSuperAdminDashboard(); } catch (_e) {}
     try { startDashboardClock(); } catch (_e) {}
     try { updateHero(); } catch (_e) {}
     try { renderStudentsWorkspace(); } catch (_e) {}
@@ -24541,14 +24503,11 @@ ${allContent}
     _loadProfileFromSupabase();
   });
 
-  // ── Cache Manager init + live UI sync ────────────────────────
+  // -- Cache Manager init + live UI sync ------------------------
   (function initCache() {
     var cache = window.SagarSoftCache;
     if (!cache) return;
     cache.init();
-    cache.on("schools-changed", function (schools) {
-      if (currentUser.role === superAdminRole) _renderSchoolTable(schools);
-    });
     cache.on("history-changed", function (history) {
       _renderNotifHistory(history);
     });
@@ -24739,7 +24698,7 @@ ${allContent}
   });
 
   // Add admission number duplicate check listener
-  admissionNoInput.addEventListener("blur", function () {
+  safeOn(admissionNoInput, "blur", function () {
     const admissionValue = "STD" + this.value.trim();
     if (admissionValue === "STD") {
       const warning = document.getElementById("admissionNoWarning");
@@ -24760,7 +24719,7 @@ ${allContent}
     }
   });
 
-  studentForm.addEventListener("submit", handleStudentFormSubmit);
+  safeOn(studentForm, "submit", handleStudentFormSubmit);
 
   if (discountTypeSelectInput) {
     discountTypeSelectInput.addEventListener("change", function () {
@@ -24769,24 +24728,24 @@ ${allContent}
       discountInFeeInput.value = dt ? String(dt.percentage) : "";
     });
   }
-  newClassForm.addEventListener("submit", handleClassFormSubmit);
+  safeOn(newClassForm, "submit", handleClassFormSubmit);
 
 
-  assignSubjectsForm.addEventListener("submit", handleAssignSubjectsSubmit);
-  studentsTableBody.addEventListener("click", handleTableActionClick);
-  studentDirectoryGrid.addEventListener("click", handleTableActionClick);
-  studentDirectoryGrid.__listenerAttached = true;
-  studentStatusGrid.addEventListener("click", handleTableActionClick);
-  studentIdCardsGrid.addEventListener("click", handleTableActionClick);
-  allClassesContainer.addEventListener("click", handleAllClassesTableClick);
-  classesWithSubjectsGrid.addEventListener("click", handleClassesWithSubjectsClick);
-  studentsManageLoginTableBody.addEventListener("click", handleTableActionClick);
-  promoteStudentsTableBody.addEventListener("click", handleTableActionClick);
-  studentsUtilityContent.addEventListener("click", handleTableActionClick);
+  safeOn(assignSubjectsForm, "submit", handleAssignSubjectsSubmit);
+  safeOn(studentsTableBody, "click", handleTableActionClick);
+  safeOn(studentDirectoryGrid, "click", handleTableActionClick);
+  if (studentDirectoryGrid) studentDirectoryGrid.__listenerAttached = true;
+  safeOn(studentStatusGrid, "click", handleTableActionClick);
+  safeOn(studentIdCardsGrid, "click", handleTableActionClick);
+  safeOn(allClassesContainer, "click", handleAllClassesTableClick);
+  safeOn(classesWithSubjectsGrid, "click", handleClassesWithSubjectsClick);
+  safeOn(studentsManageLoginTableBody, "click", handleTableActionClick);
+  safeOn(promoteStudentsTableBody, "click", handleTableActionClick);
+  safeOn(studentsUtilityContent, "click", handleTableActionClick);
 
   [studentSearchInput, studentClassFilter, studentStatusFilter].forEach(function (element) {
-    element.addEventListener("input", renderStudentsWorkspace);
-    element.addEventListener("change", renderStudentsWorkspace);
+    safeOn(element, "input", renderStudentsWorkspace);
+    safeOn(element, "change", renderStudentsWorkspace);
   });
 
   // Initialize all-students search with dropdown
@@ -24848,14 +24807,14 @@ ${allContent}
     );
   }
 
-  allStudentsSearchInput.addEventListener("input", renderAllStudentsDirectory);
-  allStudentsClassFilter.addEventListener("change", renderAllStudentsDirectory);
-  allStudentsGenderFilter.addEventListener("change", renderAllStudentsDirectory);
-  assignSubjectsClassInput.addEventListener("change", function () {
+  safeOn(allStudentsSearchInput, "input", renderAllStudentsDirectory);
+  safeOn(allStudentsClassFilter, "change", renderAllStudentsDirectory);
+  safeOn(allStudentsGenderFilter, "change", renderAllStudentsDirectory);
+  safeOn(assignSubjectsClassInput, "change", function () {
     populateAssignSubjectsForm(assignSubjectsClassInput.value);
   });
-  studentStatusSearchInput.addEventListener("input", renderStudentStatusDirectory);
-  studentStatusClassFilter.addEventListener("change", renderStudentStatusDirectory);
+  safeOn(studentStatusSearchInput, "input", renderStudentStatusDirectory);
+  safeOn(studentStatusClassFilter, "change", renderStudentStatusDirectory);
   // Initialize admission autocomplete
   initializeSearchWithDropdown(
     admissionLetterSearchInput,
@@ -24933,19 +24892,19 @@ ${allContent}
     });
   }
   
-  studentIdCardsSearchInput.addEventListener("input", renderStudentIdCards);
-  studentIdCardsClassFilter.addEventListener("change", renderStudentIdCards);
-  printAllStudentIdCardsBtn.addEventListener("click", function () {
+  safeOn(studentIdCardsSearchInput, "input", renderStudentIdCards);
+  safeOn(studentIdCardsClassFilter, "change", renderStudentIdCards);
+  safeOn(printAllStudentIdCardsBtn, "click", function () {
     printStudentIdCardsByList(getIdCardStudents(), "Student ID Cards");
   });
-  printClasswiseStudentIdCardsBtn.addEventListener("click", function () {
+  safeOn(printClasswiseStudentIdCardsBtn, "click", function () {
     const selectedClass = studentIdCardsClassFilter.value;
     const title = selectedClass === "all" ? "Student ID Cards" : `Student ID Cards - ${selectedClass}`;
     printStudentIdCardsByList(getIdCardStudents(), title);
   });
-  printBasicListSearchInput.addEventListener("input", renderPrintBasicListTable);
-  printBasicListClassFilter.addEventListener("change", renderPrintBasicListTable);
-  printBasicListBtn.addEventListener("click", printBasicList);
+  safeOn(printBasicListSearchInput, "input", renderPrintBasicListTable);
+  safeOn(printBasicListClassFilter, "change", renderPrintBasicListTable);
+  safeOn(printBasicListBtn, "click", printBasicList);
   const dashboardStatsGrid = document.getElementById("statsGrid");
   if (dashboardStatsGrid) {
     dashboardStatsGrid.addEventListener("click", handleDashboardCardNavigation);
@@ -24956,30 +24915,30 @@ ${allContent}
       }
     });
   }
-  studentsManageLoginSearchInput.addEventListener("input", renderManageLoginTable);
-  promoteStudentsSearchInput.addEventListener("input", function () {
+  safeOn(studentsManageLoginSearchInput, "input", renderManageLoginTable);
+  safeOn(promoteStudentsSearchInput, "input", function () {
     promoteSelectionState = {};
     renderPromoteStudentsTable();
   });
-  promoteStudentsClassFilter.addEventListener("change", function () {
+  safeOn(promoteStudentsClassFilter, "change", function () {
     promoteSelectionState = {};
     renderPromoteStudentsTable();
   });
-  promoteSelectedStudentsBtn.addEventListener("click", promoteSelectedStudents);
+  safeOn(promoteSelectedStudentsBtn, "click", promoteSelectedStudents);
 
-  openStudentFormBtn.addEventListener("click", function () {
+  safeOn(openStudentFormBtn, "click", function () {
     setRoute("students-add-new");
   });
 
-  clearClassFormBtn.addEventListener("click", function () {
+  safeOn(clearClassFormBtn, "click", function () {
     populateClassForm(null);
   });
 
-  addSubjectRowBtn.addEventListener("click", function () {
+  safeOn(addSubjectRowBtn, "click", function () {
     assignSubjectsRows.appendChild(createSubjectRow());
   });
 
-  removeSubjectRowBtn.addEventListener("click", function () {
+  safeOn(removeSubjectRowBtn, "click", function () {
     const rows = assignSubjectsRows.querySelectorAll(".subject-row");
     if (rows.length <= 1) {
       setAssignSubjectsMessage("At least one subject row is required.", "error");
@@ -24990,11 +24949,11 @@ ${allContent}
     setAssignSubjectsMessage("", "");
   });
 
-  cancelStudentEditBtn.addEventListener("click", function () {
+  safeOn(cancelStudentEditBtn, "click", function () {
     populateStudentForm(null);
   });
 
-  resetStudentFiltersBtn.addEventListener("click", function () {
+  safeOn(resetStudentFiltersBtn, "click", function () {
     studentSearchInput.value = "";
     allStudentsSearchInput.value = "";
     studentStatusSearchInput.value = "";
@@ -25023,8 +24982,8 @@ ${allContent}
     renderStudentsWorkspace();
   });
 
-  closeStudentModalBtn.addEventListener("click", closeStudentModal);
-  studentModal.addEventListener("click", function (event) {
+  safeOn(closeStudentModalBtn, "click", closeStudentModal);
+  safeOn(studentModal, "click", function (event) {
     if (event.target.dataset.modalClose === "true") {
       closeStudentModal();
     }
@@ -25043,13 +25002,13 @@ ${allContent}
     });
   }
 
-  sidebarCollapseBtn.addEventListener("click", function () {
+  safeOn(sidebarCollapseBtn, "click", function () {
     database.settings.sidebarCollapsed = !database.settings.sidebarCollapsed;
     saveDatabase("", [{ table: "school_settings", record: { id: "uiPreferences", source_id: "uiPreferences", data: { sidebarCollapsed: database.settings.sidebarCollapsed }, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
     applySidebarState();
   });
 
-  mobileMenuBtn.addEventListener("click", function () {
+  safeOn(mobileMenuBtn, "click", function () {
     appShell.classList.toggle("sidebar-open");
   });
 
@@ -25059,7 +25018,7 @@ ${allContent}
     });
   }
 
-  profileMenuBtn.addEventListener("click", function () {
+  safeOn(profileMenuBtn, "click", function () {
     const isExpanded = profileMenu.classList.toggle("open");
     profileMenuBtn.setAttribute("aria-expanded", String(isExpanded));
   });
@@ -25205,7 +25164,7 @@ ${allContent}
   }, 30 * 60 * 1000);
 
   /* ===================================================================
-     NUCLEAR MOBILE RESPONSIVE FIX — JS-based, runs after every render
+     NUCLEAR MOBILE RESPONSIVE FIX � JS-based, runs after every render
      Bypasses ALL CSS specificity wars and inline style conflicts
      =================================================================== */
   function forceMobileLayout() {
