@@ -15846,6 +15846,16 @@ ${allContent}
             <div style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Editor*</label>
               <div class="ss-editor-wrapper" style="max-width:100%;overflow-x:hidden;">
+                <div class="ss-editor-ext-toolbar" id="ssEditorExtToolbar">
+                  <div class="ss-ext-group">
+                    <div class="ss-shape-dropdown-wrap">
+                      <button type="button" class="ss-ext-btn" id="ssShapeDropdownBtn" title="Insert Shape"><i class="fa-solid fa-shapes"></i> Shapes <i class="fa-solid fa-caret-down" style="font-size:10px;margin-left:2px;"></i></button>
+                      <div class="ss-shape-dropdown" id="ssShapeDropdown" style="display:none;"></div>
+                    </div>
+                    <button type="button" class="ss-ext-btn" id="ssInsertTextboxBtn" title="Insert Text Box"><i class="fa-solid fa-font"></i> Text Box</button>
+                    <button type="button" class="ss-ext-btn" id="ssInsertPageBreakBtn" title="Insert Page Break"><i class="fa-solid fa-file-circle-plus"></i> Page Break</button>
+                  </div>
+                </div>
                 <div id="qpEditorContainer"></div>
               </div>
             </div>
@@ -16041,6 +16051,82 @@ ${allContent}
             if (ta) ta.value += html;
           }
         }
+
+        /* ═══════════════════════════════════════════════════════════════
+           Ready-Made Shapes Library — Office-style SVG shapes
+           NOTE: These are block-level figures, not floating Word objects.
+           CKEditor 5 free does not support Word-like text wrapping around
+           positioned objects. Shapes insert as centered block elements.
+           ═══════════════════════════════════════════════════════════════ */
+        var _ssShapeLibrary = {
+          rectangle: { label: "Rectangle", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          roundedRect: { label: "Rounded Rectangle", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          circle: { label: "Circle", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="47" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          ellipse: { label: "Ellipse", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><ellipse cx="60" cy="40" rx="57" ry="37" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          triangle: { label: "Triangle", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><polygon points="60,3 117,77 3,77" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          diamond: { label: "Diamond", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><polygon points="60,3 117,40 60,77 3,40" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          pentagon: { label: "Pentagon", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><polygon points="60,3 114,30 96,77 24,77 6,30" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          hexagon: { label: "Hexagon", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><polygon points="30,3 90,3 120,40 90,77 30,77 0,40" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowRight: { label: "Arrow Right", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><polygon points="2,15 70,15 70,2 118,40 70,78 70,65 2,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowLeft: { label: "Arrow Left", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><polygon points="118,15 50,15 50,2 2,40 50,78 50,65 118,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowUp: { label: "Arrow Up", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 120" width="80" height="120"><polygon points="65,118 40,50 15,118" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="2" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowDown: { label: "Arrow Down", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 120" width="80" height="120"><polygon points="65,2 40,70 15,2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="63" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          doubleArrow: { label: "Double Arrow", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><polygon points="2,40 25,15 25,27 95,27 95,15 118,40 95,65 95,53 25,53 25,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          straightLine: { label: "Straight Line", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 20" width="120" height="20"><line x1="5" y1="10" x2="115" y2="10" stroke="#0277bd" stroke-width="3" stroke-linecap="round"/></svg>' },
+          callout: { label: "Callout", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="90" height="55" rx="6" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><polygon points="30,57 40,77 55,57" fill="#4fc3f7" stroke="#0277bd" stroke-width="2" stroke-linejoin="round"/></svg>' },
+          textBox: { label: "Text Box", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="2" stroke-dasharray="6,3"/><text x="60" y="44" text-anchor="middle" font-family="Segoe UI,Arial" font-size="13" fill="#333">Text Box</text></svg>' }
+        };
+
+        function _ssBuildShapeDropdown() {
+          var dd = document.getElementById("ssShapeDropdown");
+          if (!dd) return;
+          var keys = Object.keys(_ssShapeLibrary);
+          dd.innerHTML = keys.map(function (key) {
+            var s = _ssShapeLibrary[key];
+            return '<button type="button" class="ss-shape-item" data-shape="' + key + '" title="' + s.label + '">' + s.svg + '<span>' + s.label + '</span></button>';
+          }).join("");
+          dd.querySelectorAll(".ss-shape-item").forEach(function (btn) {
+            safeOn(btn, "click", function () {
+              var key = btn.getAttribute("data-shape");
+              _ssInsertShape(key);
+              dd.style.display = "none";
+            });
+          });
+        }
+
+        function _ssInsertShape(key) {
+          var shape = _ssShapeLibrary[key];
+          if (!shape) return;
+          var html = '<figure class="image ss-inserted-shape" style="text-align:center;margin:12px 0;">' + shape.svg + '</figure><p><br></p>';
+          insertAtCursor(html);
+        }
+
+        function _ssInsertTextBox() {
+          var html = '<table style="border:2px solid #0277bd;border-radius:6px;margin:12px auto;background:#ffffff;" cellpadding="8" cellspacing="0"><tr><td style="min-width:200px;min-height:40px;vertical-align:top;font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#102542;" contenteditable="true">Type here...</td></tr></table><p><br></p>';
+          insertAtCursor(html);
+        }
+
+        function _ssInsertPageBreak() {
+          insertAtCursor('<div style="page-break-after:always;border-top:2px dashed #b0bec5;margin:20px 0;padding-top:8px;font-size:11px;color:#90a4ae;text-align:center;">— Page Break —</div><p><br></p>');
+        }
+
+        function _ssInitExtToolbar() {
+          _ssBuildShapeDropdown();
+          var ddBtn = document.getElementById("ssShapeDropdownBtn");
+          var dd = document.getElementById("ssShapeDropdown");
+          if (ddBtn && dd) {
+            safeOn(ddBtn, "click", function (e) {
+              e.stopPropagation();
+              dd.style.display = dd.style.display === "none" ? "" : "none";
+            });
+            safeOn(document, "click", function () { dd.style.display = "none"; });
+          }
+          var tbBtn = document.getElementById("ssInsertTextboxBtn");
+          if (tbBtn) safeOn(tbBtn, "click", _ssInsertTextBox);
+          var pbBtn = document.getElementById("ssInsertPageBreakBtn");
+          if (pbBtn) safeOn(pbBtn, "click", _ssInsertPageBreak);
+        }
+        _ssInitExtToolbar();
 
         function renderSubjectSelect() {
           subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : `<option value="">Select class first</option>`;
