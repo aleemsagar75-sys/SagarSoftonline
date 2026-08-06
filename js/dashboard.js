@@ -16102,6 +16102,10 @@ ${allContent}
 
         // ── Selection System ──
         function _qeSelect(el, type) {
+          // Exit text edit mode if selecting a different object
+          if (_qeTextEditActive && _qeTextEditTarget && !el.contains(_qeTextEditTarget)) {
+            _qeExitTextEditMode();
+          }
           _qeDeselectAll();
           if (!el) return;
           _qe.selectedEl = el;
@@ -16239,19 +16243,31 @@ ${allContent}
               { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
             ];
           } else if (type === "shape") {
+            var isTextBox = el.querySelector(".ss-qe-shape-text-editor") !== null;
             items = [
               { label: "Wrap Text", submenu: [
                 { label: "Inline", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "inline"; _qeApplyWrapMode(obj.id); } } },
                 { label: "Square", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "square"; _qeApplyWrapMode(obj.id); } } },
                 { label: "Tight", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "tight"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } },
                 { label: "Behind Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "behind"; _qeApplyWrapMode(obj.id); } } },
                 { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } }
               ]},
-              { label: "Edit Text", fn: function() { var txt = el.querySelector(".ss-qe-shape-text-editor"); if (txt) txt.focus(); } },
+              { label: "Edit Text", fn: function() { var txt = el.querySelector(".ss-qe-shape-text-editor"); if (txt) _qeEnterTextEditMode(el, txt); } },
+              "---",
+              { label: "Cut", fn: function() { _qeDoc.clipboard = { html: el.outerHTML, type: "shape" }; var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } },
+              { label: "Copy", fn: function() { _qeDoc.clipboard = { html: el.outerHTML, type: "shape" }; } },
+              { label: "Paste", fn: function() { if (_qeDoc.clipboard) _qeInsertHTML(_qeDoc.clipboard.html); } },
+              { label: "Duplicate", fn: function() { _qeDuplicateObject(el); } },
               "---",
               { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); } } },
+              { label: "Bring To Front", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 99999; _qeSyncTransform(obj.id); } } },
               { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } } },
-              { label: "Duplicate", fn: function() { _qeDuplicateObject(el); } },
+              { label: "Send To Back", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 1; _qeSyncTransform(obj.id); } } },
+              "---",
+              { label: "Fill Color", fn: function() { var color = prompt("Fill color (hex):", "#4fc3f7"); if (color) { var obj = _qeGetObject(el); if (obj) { obj.meta.fill = color; _qeUpdateShapeStyle(obj); } } } },
+              { label: "Border Color", fn: function() { var color = prompt("Border color (hex):", "#0277bd"); if (color) { var obj = _qeGetObject(el); if (obj) { obj.meta.stroke = color; _qeUpdateShapeStyle(obj); } } } },
+              { label: "Border Width", fn: function() { var w = prompt("Border width:", "2"); if (w && !isNaN(w)) { var obj = _qeGetObject(el); if (obj) { obj.meta.strokeWidth = parseInt(w); _qeUpdateShapeStyle(obj); } } } },
               "---",
               { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
             ];
@@ -16317,6 +16333,46 @@ ${allContent}
 
         function _qeHideContextMenu() {
           if (_qe.contextMenu) { _qe.contextMenu.remove(); _qe.contextMenu = null; }
+        }
+
+        // ── Text Edit Mode ──
+        var _qeTextEditActive = false;
+        var _qeTextEditTarget = null;
+
+        function _qeEnterTextEditMode(fig, txt) {
+          _qeTextEditActive = true;
+          _qeTextEditTarget = txt;
+          txt.setAttribute("contenteditable", "true");
+          txt.style.cursor = "text";
+          txt.focus();
+          // Select all text in the editor
+          var range = document.createRange();
+          range.selectNodeContents(txt);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          // Add visual indicator
+          fig.classList.add("ss-qe-text-edit-mode");
+          // Listen for click outside to exit edit mode
+          setTimeout(function() {
+            safeOn(document, "mousedown", function handler(ev) {
+              if (!fig.contains(ev.target)) {
+                _qeExitTextEditMode();
+                document.removeEventListener("mousedown", handler);
+              }
+            });
+          }, 10);
+        }
+
+        function _qeExitTextEditMode() {
+          if (!_qeTextEditActive || !_qeTextEditTarget) return;
+          _qeTextEditTarget.setAttribute("contenteditable", "false");
+          _qeTextEditTarget.style.cursor = "";
+          if (_qeTextEditTarget.closest(".ss-qe-figure")) {
+            _qeTextEditTarget.closest(".ss-qe-figure").classList.remove("ss-qe-text-edit-mode");
+          }
+          _qeTextEditActive = false;
+          _qeTextEditTarget = null;
         }
 
         // ── Object Manipulation ──
@@ -16556,9 +16612,10 @@ ${allContent}
             });
             safeOn(fig, "dblclick", function(e) {
               e.stopPropagation();
-              if (type === "shape") {
-                var txt = fig.querySelector(".ss-qe-shape-text-editor");
-                if (txt) txt.focus();
+              // Enter text edit mode for shapes with text editors
+              var txt = fig.querySelector(".ss-qe-shape-text-editor");
+              if (txt) {
+                _qeEnterTextEditMode(fig, txt);
               }
             });
             safeOn(fig, "contextmenu", function(e) {
@@ -17093,7 +17150,7 @@ ${allContent}
           html += '<div class="ss-qe-btn-group"><div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-font-color-btn" title="Text Color">' + icons.fontColor + '</button><input type="color" class="ss-qe-color-input" value="#ff0000" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div><div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-highlight-btn" title="Highlight Color">' + icons.highlight + '</button><input type="color" class="ss-qe-color-input" value="#ffff00" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div>' + sep() + '</div>';
           html += '<div class="ss-qe-btn-group">' + btn(icons.alignL, "Align Left", "justifyLeft") + btn(icons.alignC, "Center", "justifyCenter") + btn(icons.alignR, "Align Right", "justifyRight") + btn(icons.alignJ, "Justify", "justifyFull") + sep() + '</div>';
           html += '<div class="ss-qe-btn-group">' + btn(icons.bullets, "Bullets", "insertUnorderedList") + btn(icons.numbers, "Numbering", "insertOrderedList") + btn(icons.indent, "Increase Indent", "indent") + btn(icons.outdent, "Decrease Indent", "outdent") + sep() + '</div>';
-          html += '<div class="ss-qe-btn-group">' + btn(icons.image, "Insert Image", "ss-qe-img") + btn(icons.table, "Insert Table", "ss-qe-table") + btn(icons.equation, "Math Equation", "ss-qe-equation") + btn(icons.spchar, "Special Characters", "ss-qe-spchar") + btn(icons.link, "Insert Link", "ss-qe-link") + btn(icons.hline, "Horizontal Line", "ss-qe-hline") + btn(icons.pagebreak, "Page Break", "ss-qe-pagebreak") + btn(icons.shapes, "Shapes", "ss-qe-shapes") + btn(icons.code, "Code Block", "formatBlock", "pre") + btn(icons.bringFwd, "Bring Forward", "ss-qe-bring-fwd") + btn(icons.sendBwd, "Send Backward", "ss-qe-send-bwd") + btn(icons.rtl, "Toggle RTL/LTR", "ss-qe-rtl") + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.image, "Insert Image", "ss-qe-img") + btn(icons.table, "Insert Table", "ss-qe-table") + btn(icons.equation, "Math Equation", "ss-qe-equation") + btn(icons.spchar, "Special Characters", "ss-qe-spchar") + btn(icons.link, "Insert Link", "ss-qe-link") + btn(icons.hline, "Horizontal Line", "ss-qe-hline") + btn(icons.pagebreak, "Page Break", "ss-qe-pagebreak") + btn(icons.shapes, "Shapes", "ss-qe-shapes") + btn(icons.code, "Code Block", "formatBlock", "pre") + sep() + btn(icons.bringFwd, "Bring Forward", "ss-qe-bring-fwd") + btn(icons.sendBwd, "Send Backward", "ss-qe-send-bwd") + btn(icons.clear, "Delete Object", "ss-qe-delete") + sep() + btn(icons.rtl, "Toggle RTL/LTR", "ss-qe-rtl") + '</div>';
           tb.innerHTML = html;
 
           tb.querySelectorAll("[data-cmd]").forEach(function(b) {
@@ -17114,6 +17171,7 @@ ${allContent}
               else if (cmd === "ss-qe-shapes") _qeShowPanel(document.getElementById("ssQEShapesPanel"), b);
               else if (cmd === "ss-qe-bring-fwd" && _qe.selectedEl) { var obj = _qeGetObject(_qe.selectedEl); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); } }
               else if (cmd === "ss-qe-send-bwd" && _qe.selectedEl) { var obj = _qeGetObject(_qe.selectedEl); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } }
+              else if (cmd === "ss-qe-delete" && _qe.selectedEl) { var obj = _qeGetObject(_qe.selectedEl); if (obj) _qeDoc.objects.delete(obj.id); _qe.selectedEl.remove(); _qeDeselectAll(); _qeUpdateStatus(); }
               else if (cmd === "ss-qe-rtl") { var isRTL = _qe.el.getAttribute("dir") === "rtl"; _qe.el.setAttribute("dir", isRTL ? "ltr" : "rtl"); _qe.el.style.textAlign = isRTL ? "left" : "right"; }
             });
           });
@@ -17132,9 +17190,15 @@ ${allContent}
         function _qeHandleKeydown(e) {
           if (!_qe.el || !_qe.el.contains(e.target)) return;
           var ctrl = e.ctrlKey || e.metaKey;
-          if (e.key === "Escape") { _qeClosePanels(); _qeDeselectAll(); _qeHideContextMenu(); return; }
+          // Escape: close panels, deselect, exit text edit mode
+          if (e.key === "Escape") {
+            if (_qeTextEditActive) { _qeExitTextEditMode(); return; }
+            _qeClosePanels(); _qeDeselectAll(); _qeHideContextMenu(); return;
+          }
+          // Delete/Backspace: only delete selected object
           if ((e.key === "Delete" || e.key === "Backspace") && _qe.selectedEl) {
             e.preventDefault();
+            e.stopPropagation();
             var obj = _qeGetObject(_qe.selectedEl);
             if (obj) _qeDoc.objects.delete(obj.id);
             _qe.selectedEl.remove();
@@ -17142,10 +17206,16 @@ ${allContent}
             _qeUpdateStatus();
             return;
           }
+          // Ctrl+Z: Undo (browser default)
+          if (ctrl && e.key === "z" && !e.shiftKey) { return; }
+          // Ctrl+Y or Ctrl+Shift+Z: Redo (browser default)
+          if (ctrl && (e.key === "y" || (e.key === "z" && e.shiftKey))) { return; }
+          // Ctrl+C: Copy
           if (ctrl && e.key === "c" && _qe.selectedEl) {
             e.preventDefault();
             _qeDoc.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType };
           }
+          // Ctrl+X: Cut
           if (ctrl && e.key === "x" && _qe.selectedEl) {
             e.preventDefault();
             _qeDoc.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType };
@@ -17155,12 +17225,19 @@ ${allContent}
             _qeDeselectAll();
             _qeUpdateStatus();
           }
+          // Ctrl+V: Paste
           if (ctrl && e.key === "v" && _qeDoc.clipboard) {
             if (_qe.selectedEl || document.activeElement === _qe.el) {
               e.preventDefault();
               _qeInsertHTML(_qeDoc.clipboard.html);
             }
           }
+          // Ctrl+D: Duplicate
+          if (ctrl && e.key === "d" && _qe.selectedEl) {
+            e.preventDefault();
+            _qeDuplicateObject(_qe.selectedEl);
+          }
+          // Ctrl+A: Select all editor content
           if (ctrl && e.key === "a" && document.activeElement === _qe.el) {
             e.preventDefault();
             var range = document.createRange();
@@ -17169,6 +17246,7 @@ ${allContent}
             sel.removeAllRanges();
             sel.addRange(range);
           }
+          // Arrow keys: move selected object
           if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.key) >= 0 && _qe.selectedEl) {
             e.preventDefault();
             var obj = _qeGetObject(_qe.selectedEl);
@@ -17189,6 +17267,12 @@ ${allContent}
           _qe.el.addEventListener("keyup", function() { _qeUpdateStatus(); _qeUpdateToolbar(); });
           _qe.el.addEventListener("mouseup", function() { _qeUpdateToolbar(); });
           _qe.el.addEventListener("keydown", _qeHandleKeydown);
+          // Exit text edit mode when clicking in editor (not on object)
+          _qe.el.addEventListener("click", function(e) {
+            if (_qeTextEditActive && !e.target.closest(".ss-qe-shape-text-editor")) {
+              _qeExitTextEditMode();
+            }
+          });
           _qe.el.addEventListener("paste", function(e) {
             var html = (e.clipboardData || window.clipboardData).getData("text/html");
             if (html && html.length > 10) {
@@ -17206,7 +17290,12 @@ ${allContent}
             if (html && html.indexOf("ss-qe-figure") < 0) _qeInsertHTML(html);
           });
           _qe.el.addEventListener("click", function(e) {
-            if (!e.target.closest(".ss-qe-figure") && !e.target.closest(".ss-qe-float-table") && !e.target.closest("table")) {
+            // Exit text edit mode when clicking outside the text editor
+            if (_qeTextEditActive && !e.target.closest(".ss-qe-shape-text-editor")) {
+              _qeExitTextEditMode();
+            }
+            // Deselect all when clicking on empty editor space
+            if (!e.target.closest(".ss-qe-figure") && !e.target.closest(".ss-qe-float-table") && !e.target.closest("table") && !e.target.closest(".ss-qe-resize-handle") && !e.target.closest(".ss-qe-rotate-handle")) {
               _qeDeselectAll();
             }
           });

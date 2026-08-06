@@ -5180,6 +5180,16 @@ body {
   word-wrap: break-word;
 }
 
+/* Text edit mode indicator */
+.ss-qe-text-edit-mode {
+  border-color: #1b5f7a !important;
+  box-shadow: 0 0 0 2px rgba(27, 95, 122, 0.3) !important;
+}
+.ss-qe-text-edit-mode .ss-qe-shape-text-editor {
+  cursor: text;
+  background: rgba(255, 255, 255, 0.9);
+}
+
 /* Crop overlay */
 .ss-qe-crop-overlay {
   position: absolute;
