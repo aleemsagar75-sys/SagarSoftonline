@@ -15846,41 +15846,7 @@ ${allContent}
             <div style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Editor*</label>
               <div class="question-rich-editor-shell" style="max-width:100%;overflow-x:hidden;">
-                <div id="qpEditorToolbar" class="question-editor-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;padding:6px;">
-                  <select id="qpFontFamily" class="table-inline-input" style="font-size:0.78rem;padding:4px;">
-                    <option value="Calibri, Arial, sans-serif">Calibri (Body)</option>
-                    <option value="Arial, sans-serif">Arial</option>
-                    <option value="'Times New Roman', serif">Times New Roman</option>
-                    <option value="Georgia, serif">Georgia</option>
-                    <option value="'Courier New', monospace">Courier New</option>
-                  </select>
-                  <button class="table-action-btn" type="button" data-qp-cmd="bold" style="padding:3px 6px;font-size:0.75rem;">Bold</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="italic" style="padding:3px 6px;font-size:0.75rem;">Italic</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="underline" style="padding:3px 6px;font-size:0.75rem;">Underline</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="strikeThrough" style="padding:3px 6px;font-size:0.75rem;">Strike</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="subscript" style="padding:3px 6px;font-size:0.75rem;">X₂</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="superscript" style="padding:3px 6px;font-size:0.75rem;">X²</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="insertUnorderedList" style="padding:3px 6px;font-size:0.75rem;">UL</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="insertOrderedList" style="padding:3px 6px;font-size:0.75rem;">OL</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="justifyLeft" style="padding:3px 6px;font-size:0.75rem;">Left</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="justifyCenter" style="padding:3px 6px;font-size:0.75rem;">Center</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="justifyRight" style="padding:3px 6px;font-size:0.75rem;">Right</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="outdent" style="padding:3px 6px;font-size:0.75rem;">Outdent</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="indent" style="padding:3px 6px;font-size:0.75rem;">Indent</button>
-                  <input id="qpFontSizeInput" class="table-inline-input" type="number" min="8" value="16" style="width:50px;padding:3px;font-size:0.78rem;" title="Size px">
-                  <button class="table-action-btn" type="button" id="qpApplyFontSize" style="padding:3px 6px;font-size:0.75rem;">Size</button>
-                  <input id="qpTextColorInput" class="table-inline-input" type="color" value="#0f2748" style="width:28px;height:24px;padding:1px;" title="Text Color">
-                  <button class="table-action-btn" type="button" id="qpApplyTextColor" style="padding:3px 6px;font-size:0.75rem;">Color</button>
-                  <input id="qpBgColorInput" class="table-inline-input" type="color" value="#fff59d" style="width:28px;height:24px;padding:1px;" title="Highlight">
-                  <button class="table-action-btn" type="button" id="qpApplyBgColor" style="padding:3px 6px;font-size:0.75rem;">Highlight</button>
-                  <button class="table-action-btn" type="button" id="qpClearFormat" style="padding:3px 6px;font-size:0.75rem;">Clear</button>
-                  <button class="table-action-btn" type="button" id="qpGrowSelected" style="padding:3px 6px;font-size:0.75rem;">+ Item</button>
-                  <button class="table-action-btn" type="button" id="qpShrinkSelected" style="padding:3px 6px;font-size:0.75rem;">- Item</button>
-                  <button class="table-action-btn" type="button" id="qpInsertTable" style="padding:3px 6px;font-size:0.75rem;">Table</button>
-                  <button class="table-action-btn" type="button" id="qpInsertImage" style="padding:3px 6px;font-size:0.75rem;">Image</button>
-                  <input id="qpImageInput" type="file" accept="image/*" hidden>
-                </div>
-                <div id="qpEditorArea" class="question-rich-editor" contenteditable="true" style="min-height:120px;max-width:100%;overflow-x:auto;"></div>
+                <div id="qpEditorContainer"></div>
               </div>
             </div>
             <div id="qpMcqOptionsField" hidden style="margin:4px 0;">
@@ -15920,7 +15886,6 @@ ${allContent}
         const existingChapterSelect = document.getElementById("qpExistingChapterName");
         const chapterNameInput = document.getElementById("qpChapterName");
         const questionTitleInput = document.getElementById("qpQuestionTitle");
-        const editorArea = document.getElementById("qpEditorArea");
         const mcqField = document.getElementById("qpMcqOptionsField");
         const mcqRows = document.getElementById("qpMcqRows");
         const fillField = document.getElementById("qpFillOptionsField");
@@ -15930,8 +15895,125 @@ ${allContent}
         const answerLinesInput = document.getElementById("qpAnswerLines");
         const message = document.getElementById("qpChapterMessage");
         const tableBody = document.getElementById("qpChapterBody");
-        const editorToolbar = document.getElementById("qpEditorToolbar");
-        const imageInput = document.getElementById("qpImageInput");
+
+        var _ckEditorInstance = null;
+        var _ckEditorReady = false;
+
+        function initCKEditor(callback) {
+          if (_ckEditorInstance) {
+            try { _ckEditorInstance.destroy(); } catch (_e) {}
+            _ckEditorInstance = null;
+            _ckEditorReady = false;
+          }
+          var container = document.getElementById("qpEditorContainer");
+          if (!container) { if (callback) callback(null); return; }
+          container.innerHTML = "";
+          if (typeof ClassicEditor === "undefined") {
+            container.innerHTML = '<textarea id="qpEditorArea" class="question-rich-editor" style="width:100%;min-height:400px;" placeholder="Question editor loading..."></textarea>';
+            _ckEditorReady = false;
+            if (callback) callback(null);
+            return;
+          }
+          ClassicEditor.create(container, {
+            toolbar: {
+              items: [
+                "undo", "redo", "|",
+                "findAndReplace", "selectAll", "|",
+                "heading", "|",
+                "bold", "italic", "underline", "strikethrough", "subscript", "superscript", "removeFormat", "|",
+                "fontFamily", "fontSize", "fontColor", "fontBackgroundColor", "|",
+                "bulletedList", "numberedList", "todoList", "|",
+                "outdent", "indent", "|",
+                "alignment", "|",
+                "insertTable", "blockQuote", "codeBlock", "horizontalLine", "|",
+                "link", "insertImage", "mediaEmbed", "|",
+                "specialCharacters", "emoji", "|",
+                "sourceEditing", "pageBreak", "|",
+                "heading6"
+              ],
+              shouldNotGroupWhenFull: true
+            },
+            removePlugins: ["Title"],
+            heading: {
+              options: [
+                { model: "paragraph", title: "Paragraph", class: "ck-heading_paragraph" },
+                { model: "heading1", view: "h1", title: "Heading 1", class: "ck-heading_heading1" },
+                { model: "heading2", view: "h2", title: "Heading 2", class: "ck-heading_heading2" },
+                { model: "heading3", view: "h3", title: "Heading 3", class: "ck-heading_heading3" },
+                { model: "heading4", view: "h4", title: "Heading 4", class: "ck-heading_heading4" },
+                { model: "heading5", view: "h5", title: "Heading 5", class: "ck-heading_heading5" },
+                { model: "heading6", view: "h6", title: "Heading 6", class: "ck-heading_heading6" }
+              ]
+            },
+            image: {
+              toolbar: ["imageTextAlternative", "toggleImageCaption", "imageStyle:inline", "imageStyle:block", "imageStyle:side"],
+              styles: ["full", "side", "alignLeft", "alignRight"],
+              resizeOptions: true
+            },
+            table: {
+              contentToolbar: ["tableColumn", "tableRow", "mergeTableCells", "tableProperties", "tableCellProperties", "toggleTableCaption"],
+              tableProperties: { borderColors: "#0f2f58,#1b5f7a,#1d9c61,#d32f2f,#f9a825", backgroundColors: "#ffffff,#f6f7f9,#e8f0fe" },
+              tableCellProperties: { borderColors: "#0f2f58,#1b5f7a,#1d9c61,#d32f2f,#f9a825", backgroundColors: "#ffffff,#f6f7f9,#e8f0fe" }
+            },
+            link: { addTargetLinks: true, decorators: { openInNewTab: { mode: "manual", label: "Open in a new tab", attributes: { target: "_blank", rel: "noopener noreferrer" } } } },
+            placeholder: "Type your question here...",
+            language: "en",
+            wordCount: {
+              onUpdate: function (stats) {
+                var wc = document.getElementById("qpWordCount");
+                if (wc) wc.textContent = stats.words + " words | " + stats.characters + " chars";
+              }
+            }
+          }).then(function (editor) {
+            _ckEditorInstance = editor;
+            _ckEditorReady = true;
+            editor.model.document.on("change", function () {
+              var data = editor.getData();
+              var ta = document.getElementById("qpEditorFallbackTA");
+              if (ta) ta.value = data;
+            });
+            if (callback) callback(editor);
+          }).catch(function (err) {
+            console.error("[CKEditor] Init error:", err);
+            container.innerHTML = '<textarea id="qpEditorArea" class="question-rich-editor" style="width:100%;min-height:400px;"></textarea>';
+            _ckEditorReady = false;
+            if (callback) callback(null);
+          });
+        }
+
+        function getEditorHtml() {
+          if (_ckEditorInstance && _ckEditorReady) {
+            return String(_ckEditorInstance.getData() || "").trim();
+          }
+          var ta = document.getElementById("qpEditorArea");
+          return ta ? String(ta.value || "").trim() : "";
+        }
+
+        function clearEditor() {
+          if (_ckEditorInstance && _ckEditorReady) {
+            _ckEditorInstance.setData("");
+          } else {
+            var ta = document.getElementById("qpEditorArea");
+            if (ta) ta.value = "";
+          }
+        }
+
+        function getEditorText() {
+          return qpStripHtml(getEditorHtml());
+        }
+
+        function insertAtCursor(html) {
+          if (_ckEditorInstance && _ckEditorReady) {
+            _ckEditorInstance.model.change(function (writer) {
+              var viewFragment = _ckEditorInstance.data.processor.toView(html);
+              var modelFragment = _ckEditorInstance.data.toModel(viewFragment);
+              _ckEditorInstance.model.insertContent(modelFragment);
+            });
+          } else {
+            var ta = document.getElementById("qpEditorArea");
+            if (ta) ta.value += html;
+          }
+        }
 
         function renderSubjectSelect() {
           subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : `<option value="">Select class first</option>`;
@@ -16006,19 +16088,6 @@ ${allContent}
             fillOpt1.value = "true";
             fillOpt2.value = "false";
           }
-        }
-
-        function getEditorHtml() {
-          return String(editorArea.innerHTML || "").trim();
-        }
-
-        function clearEditor() {
-          editorArea.innerHTML = "";
-        }
-
-        function getEditorText() {
-          const html = getEditorHtml();
-          return qpStripHtml(html);
         }
 
         function renderChapterRows() {
@@ -16125,768 +16194,74 @@ ${allContent}
               openAppMessageBox("Success", "Question deleted successfully.", "success");
             });
 
-        // Override editor behavior with in-editor toolbar (no external dependency).
-        function getRawEditorHtml() {
-          const clone = editorArea.cloneNode(true);
-          clone.querySelectorAll(".qp-resize-handle, .qp-move-handle").forEach(function (node) {
-            node.remove();
-          });
-          clone.querySelectorAll(".qp-editor-table-wrap, img, table, .qp-shape, .qp-icon").forEach(function (node) {
-            node.style.outline = "";
-          });
-          clone.querySelectorAll(".qp-editor-table-wrap").forEach(function (wrap) {
-            wrap.style.border = "none";
-            wrap.style.background = "transparent";
-            wrap.style.padding = "0";
-            wrap.style.overflow = "visible";
-            wrap.style.resize = "none";
-            wrap.style.cursor = "default";
-          });
-          clone.querySelectorAll("table").forEach(function (tbl) {
-            tbl.style.background = "transparent";
-          });
-          return String(clone.innerHTML || "").trim();
-        }
-
-        function clearRawEditor() {
-          editorArea.innerHTML = "";
-        }
-
-        function getRawEditorText() {
-          return qpStripHtml(editorArea.textContent || "");
-        }
-
-        let selectedEditorNode = null;
-        let activeTableResize = null;
-        let qpObjectContextMenu = null;
-
-        function setSelectedEditorNode(node) {
-          if (selectedEditorNode && selectedEditorNode !== node) {
-            selectedEditorNode.style.outline = "";
-          }
-          selectedEditorNode = node;
-          if (selectedEditorNode) {
-            const isTableWrap = selectedEditorNode.classList && selectedEditorNode.classList.contains("qp-editor-table-wrap");
-            if (isTableWrap) {
-              selectedEditorNode.style.outline = "";
-            } else {
-              selectedEditorNode.style.outline = "2px solid #1d9c61";
-            }
-          }
-        }
-
-        function hideObjectContextMenu() {
-          if (qpObjectContextMenu && qpObjectContextMenu.parentNode) {
-            qpObjectContextMenu.parentNode.removeChild(qpObjectContextMenu);
-          }
-          qpObjectContextMenu = null;
-        }
-
-        function applyObjectWrapInline(node) {
-          if (!node) return;
-          node.dataset.wrapMode = "inline";
-          node.classList.remove("qp-wrap-behind");
-          node.style.float = "";
-          node.style.position = "";
-          node.style.zIndex = "";
-          node.style.display = "inline-block";
-          node.style.margin = "6px";
-          node.style.transform = "";
-          node.dataset.tx = "0";
-          node.dataset.ty = "0";
-        }
-
-        function applyObjectWrapBehind(node) {
-          if (!node) return;
-          editorArea.style.position = "relative";
-          node.dataset.wrapMode = "behind";
-          node.classList.add("qp-wrap-behind");
-          node.style.float = "";
-          node.style.display = "inline-block";
-          node.style.position = "absolute";
-          node.style.zIndex = "0";
-          node.style.margin = "0";
-          if (!node.style.left) node.style.left = "24px";
-          if (!node.style.top) node.style.top = "24px";
-        }
-
-        function showObjectContextMenu(node, x, y) {
-          hideObjectContextMenu();
-          const menu = document.createElement("div");
-          menu.className = "qp-object-menu";
-          menu.style.position = "fixed";
-          menu.style.left = `${x}px`;
-          menu.style.top = `${y}px`;
-          menu.style.zIndex = "99999";
-          const isTableOrImage = node.tagName === "TABLE" || node.classList.contains("qp-editor-table-wrap") || node.tagName === "IMG";
-          menu.innerHTML = `
-            <button type="button" class="qp-object-menu__item" data-action="moveUp">Move Up</button>
-            <button type="button" class="qp-object-menu__item" data-action="moveDown">Move Down</button>
-            <button type="button" class="qp-object-menu__item" data-action="behind">Wrap Behind</button>
-            <button type="button" class="qp-object-menu__item" data-action="inline">Wrap Inline</button>
-            <button type="button" class="qp-object-menu__item danger" data-action="remove">Remove</button>
-          `;
-          menu.addEventListener("click", function (event) {
-            const item = event.target.closest("[data-action]");
-            if (!item) return;
-            const action = item.getAttribute("data-action");
-            if (action === "moveUp") {
-              const prev = node.previousElementSibling;
-              if (prev) { node.parentNode.insertBefore(node, prev); }
-            } else if (action === "moveDown") {
-              const next = node.nextElementSibling;
-              if (next) { node.parentNode.insertBefore(next, node); }
-            } else if (action === "behind") {
-              applyObjectWrapBehind(node);
-            } else if (action === "inline") {
-              applyObjectWrapInline(node);
-            } else if (action === "remove") {
-              node.remove();
-            }
-            hideObjectContextMenu();
-          });
-          document.body.appendChild(menu);
-          qpObjectContextMenu = menu;
-          setTimeout(function () {
-            document.addEventListener("click", hideObjectContextMenu, { once: true });
-          }, 0);
-        }
-
-        function makeInteractive(el) {
-          if (!el) return;
-          const isTableNode = el.tagName === "TABLE";
-          const isTableWrapper = el.classList.contains("qp-editor-table-wrap");
-          if (isTableWrapper) {
-            el.style.resize = "none";
-            el.style.overflow = "visible";
-            el.style.border = "none";
-            el.style.outline = "none";
-            el.style.boxShadow = "none";
-            el.style.padding = "0";
-          }
-          if (el.dataset.editorInteractive === "1") return;
-          el.dataset.editorInteractive = "1";
-          const cornerSize = 16;
-          el.style.resize = "none";
-          el.style.overflow = "visible";
-          el.style.maxWidth = "none";
-          el.style.border = isTableWrapper ? "none" : "";
-          el.style.padding = isTableWrapper ? "0" : "4px";
-          el.style.display = "inline-block";
-          el.style.cursor = isTableNode ? "default" : (isTableWrapper ? "text" : "move");
-          el.style.verticalAlign = "top";
-          if (isTableWrapper && !el.querySelector(".qp-resize-handle")) {
-            const moveHandle = document.createElement("span");
-            moveHandle.className = "qp-move-handle";
-            moveHandle.setAttribute("contenteditable", "false");
-            el.appendChild(moveHandle);
-            const handle = document.createElement("span");
-            handle.className = "qp-resize-handle";
-            handle.setAttribute("contenteditable", "false");
-            el.appendChild(handle);
-          }
-          if (el.tagName === "IMG") {
-            el.style.maxWidth = "none";
-            el.style.minWidth = "28px";
-            el.style.minHeight = "28px";
-          }
-          el.addEventListener("mouseenter", function () {
-            if (selectedEditorNode !== el) {
-              el.style.outline = "1px dashed #7a8da8";
-            }
-          });
-          el.addEventListener("mouseleave", function () {
-            if (selectedEditorNode !== el) {
-              el.style.outline = "";
-            }
-          });
-          let dragging = false;
-          let resizing = false;
-          let startX = 0;
-          let startY = 0;
-          let startTx = 0;
-          let startTy = 0;
-          let startWidth = 0;
-          let startHeight = 0;
-          el.addEventListener("click", function (event) {
-            setSelectedEditorNode(el);
-            event.stopPropagation();
-          });
-          if (isTableWrapper) {
-            el.addEventListener("mousemove", function (event) {
-              const rect = el.getBoundingClientRect();
-              const nearTopLeft = (event.clientX - rect.left) <= cornerSize && (event.clientY - rect.top) <= cornerSize;
-              const nearBottomRight = (rect.right - event.clientX) <= cornerSize && (rect.bottom - event.clientY) <= cornerSize;
-              if (nearTopLeft) {
-                el.style.cursor = "move";
-              } else if (nearBottomRight) {
-                el.style.cursor = "nwse-resize";
-              } else {
-                el.style.cursor = "text";
-              }
-            });
-          }
-          el.addEventListener("contextmenu", function (event) {
-            event.preventDefault();
-            setSelectedEditorNode(el);
-            showObjectContextMenu(el, event.clientX, event.clientY);
-          });
-          el.addEventListener("mousedown", function (event) {
-            if (isTableNode) return;
-            if (isTableWrapper) {
-              const isMoveHandle = event.target && event.target.classList && event.target.classList.contains("qp-move-handle");
-              const rect = el.getBoundingClientRect();
-              const isHandle = event.target && event.target.classList && event.target.classList.contains("qp-resize-handle");
-              const nearBottomRight = (rect.right - event.clientX) <= cornerSize && (rect.bottom - event.clientY) <= cornerSize;
-              if (isHandle || nearBottomRight) {
-                resizing = true;
-                startX = event.clientX;
-                startY = event.clientY;
-                startWidth = rect.width;
-                startHeight = rect.height;
-                event.preventDefault();
-                return;
-              }
-              if (isMoveHandle) {
-                dragging = true;
-                startX = event.clientX;
-                startY = event.clientY;
-                startTx = parseFloat(el.dataset.tx || "0");
-                startTy = parseFloat(el.dataset.ty || "0");
-                event.preventDefault();
-                return;
-              }
-              return;
-            }
-            if (el.tagName === "IMG") {
-              const rect = el.getBoundingClientRect();
-              const nearBottomRight = (rect.right - event.clientX) <= cornerSize && (rect.bottom - event.clientY) <= cornerSize;
-              if (nearBottomRight) {
-                resizing = true;
-                startX = event.clientX;
-                startY = event.clientY;
-                startWidth = rect.width;
-                startHeight = rect.height;
-                event.preventDefault();
-                return;
-              }
-            }
-            if (event.button !== 0) return;
-            if (String(el.dataset.wrapMode || "") === "behind") {
-              editorArea.style.position = "relative";
-              dragging = true;
-              startX = event.clientX;
-              startY = event.clientY;
-              startTx = parseFloat(el.style.left || "0");
-              startTy = parseFloat(el.style.top || "0");
-              event.preventDefault();
-              return;
-            }
-            dragging = true;
-            startX = event.clientX;
-            startY = event.clientY;
-            startTx = parseFloat(el.dataset.tx || "0");
-            startTy = parseFloat(el.dataset.ty || "0");
-            event.preventDefault();
-          });
-          document.addEventListener("mousemove", function (event) {
-            if (resizing) {
-              const nextWidth = Math.max(40, startWidth + (event.clientX - startX));
-              const nextHeight = Math.max(28, startHeight + (event.clientY - startY));
-              if (isTableWrapper) {
-                el.style.width = `${nextWidth}px`;
-                const table = el.querySelector("table");
-                if (table) {
-                  table.style.width = "100%";
-                }
-              } else if (el.tagName === "IMG") {
-                el.style.width = `${nextWidth}px`;
-                el.style.height = `${nextHeight}px`;
-                el.style.objectFit = "contain";
-              }
-              return;
-            }
-            if (!dragging) return;
-            if (String(el.dataset.wrapMode || "") === "behind") {
-              const nextLeft = startTx + (event.clientX - startX);
-              const nextTop = startTy + (event.clientY - startY);
-              el.style.left = `${nextLeft}px`;
-              el.style.top = `${nextTop}px`;
-            } else {
-              const nextX = startTx + (event.clientX - startX);
-              const nextY = startTy + (event.clientY - startY);
-              el.dataset.tx = String(nextX);
-              el.dataset.ty = String(nextY);
-              el.style.transform = `translate(${nextX}px, ${nextY}px)`;
-            }
-          });
-          document.addEventListener("mouseup", function () {
-            dragging = false;
-            resizing = false;
-          });
-        }
-
-        function enableTableGridResizing(table) {
-          if (!table || table.dataset.gridResizeBound === "1") return;
-          table.dataset.gridResizeBound = "1";
-          table.style.tableLayout = "fixed";
-
-          table.addEventListener("mousemove", function (event) {
-            const cell = event.target && event.target.closest ? event.target.closest("td,th") : null;
-            if (!cell || !table.contains(cell)) return;
-            const rect = cell.getBoundingClientRect();
-            const nearRight = (rect.right - event.clientX) <= 6;
-            const nearBottom = (rect.bottom - event.clientY) <= 6;
-            if (nearRight && nearBottom) {
-              cell.style.cursor = "nwse-resize";
-            } else if (nearRight) {
-              cell.style.cursor = "col-resize";
-            } else if (nearBottom) {
-              cell.style.cursor = "row-resize";
-            } else {
-              cell.style.cursor = "text";
-            }
-          });
-
-          table.addEventListener("mousedown", function (event) {
-            const cell = event.target && event.target.closest ? event.target.closest("td,th") : null;
-            if (!cell || !table.contains(cell) || event.button !== 0) return;
-            const rect = cell.getBoundingClientRect();
-            const nearRight = (rect.right - event.clientX) <= 6;
-            const nearBottom = (rect.bottom - event.clientY) <= 6;
-            if (!nearRight && !nearBottom) return;
-
-            activeTableResize = {
-              table: table,
-              rowIndex: cell.parentElement ? cell.parentElement.rowIndex : -1,
-              colIndex: cell.cellIndex,
-              startX: event.clientX,
-              startY: event.clientY,
-              startWidth: rect.width,
-              startHeight: rect.height,
-              resizeCol: nearRight,
-              resizeRow: nearBottom
-            };
-            event.preventDefault();
-          });
-        }
-
-        document.addEventListener("mousemove", function (event) {
-          if (!activeTableResize) return;
-          const state = activeTableResize;
-          const rows = Array.from(state.table.rows || []);
-          if (!rows.length) return;
-
-          if (state.resizeCol) {
-            const nextWidth = Math.max(40, state.startWidth + (event.clientX - state.startX));
-            rows.forEach(function (row) {
-              const cell = row.cells && row.cells[state.colIndex];
-              if (cell) cell.style.width = `${nextWidth}px`;
-            });
-          }
-
-          if (state.resizeRow && state.rowIndex >= 0) {
-            const nextHeight = Math.max(28, state.startHeight + (event.clientY - state.startY));
-            const row = rows[state.rowIndex];
-            if (row) {
-              Array.from(row.cells || []).forEach(function (cell) {
-                cell.style.height = `${nextHeight}px`;
-              });
-            }
-          }
-        });
-
-        document.addEventListener("mouseup", function () {
-          activeTableResize = null;
-        });
-
-        function bindInteractiveElements() {
-          editorArea.querySelectorAll("img, table, .qp-shape, .qp-icon, .qp-editor-table-wrap").forEach(function (node) {
-            makeInteractive(node);
-          });
-          editorArea.querySelectorAll(".qp-editor-table-wrap, img, .qp-shape, .qp-icon").forEach(function (node) {
-            node.setAttribute("contenteditable", "false");
-          });
-          editorArea.querySelectorAll(".qp-resize-handle, .qp-move-handle").forEach(function (node) {
-            node.setAttribute("contenteditable", "false");
-          });
-          editorArea.querySelectorAll("table").forEach(function (table) {
-            enableTableGridResizing(table);
-          });
-          editorArea.querySelectorAll("table td, table th").forEach(function (cell) {
-            if (!cell.hasAttribute("contenteditable")) {
-              cell.setAttribute("contenteditable", "true");
-            }
-          });
-        }
-
-        function openTableSizeDialog(onCreate) {
-          const overlay = document.createElement("div");
-          overlay.className = "app-modal-overlay";
-          overlay.style.position = "fixed";
-          overlay.style.inset = "0";
-          overlay.style.background = "rgba(12,25,44,0.45)";
-          overlay.style.display = "flex";
-          overlay.style.alignItems = "center";
-          overlay.style.justifyContent = "center";
-          overlay.style.zIndex = "99999";
-          const panel = document.createElement("div");
-          panel.className = "app-modal app-modal--compact";
-          panel.style.width = "min(92vw, 460px)";
-          panel.style.background = "#f5f9fc";
-          panel.style.border = "1px solid #c8d5e2";
-          panel.style.borderRadius = "16px";
-          panel.style.boxShadow = "0 18px 35px rgba(12,25,44,0.28)";
-          panel.style.padding = "18px";
-          panel.innerHTML = `
-            <h3 class="app-modal-title">Insert Table</h3>
-            <p class="app-modal-detail">Set rows and columns for your table.</p>
-            <div class="form-grid">
-              <div class="field-group">
-                <label for="qpTblRows">Rows</label>
-                <input id="qpTblRows" type="number" min="1" value="2">
-              </div>
-              <div class="field-group">
-                <label for="qpTblCols">Columns</label>
-                <input id="qpTblCols" type="number" min="1" value="2">
-              </div>
-            </div>
-            <div class="form-actions">
-              <button type="button" class="table-action-btn" id="qpTblCancel">Cancel</button>
-              <button type="button" class="table-action-btn success" id="qpTblCreate">Create Table</button>
-            </div>
-          `;
-          const titleNode = panel.querySelector(".app-modal-title");
-          if (titleNode) {
-            titleNode.style.margin = "0 0 8px";
-            titleNode.style.fontSize = "1.2rem";
-            titleNode.style.color = "#113350";
-          }
-          const detailNode = panel.querySelector(".app-modal-detail");
-          if (detailNode) {
-            detailNode.style.margin = "0 0 12px";
-            detailNode.style.color = "#4d647e";
-          }
-          overlay.appendChild(panel);
-          document.body.appendChild(overlay);
-          const close = function () {
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        // ── CKEditor 5 initialization (replaces old custom editor) ──
+        // Question Paper Tools: custom template inserts
+        function insertQuestionTemplate(templateType) {
+          var templates = {
+            "section-a": '<h3>Section A — Objective Questions</h3><p><strong>Instructions:</strong> Attempt all questions. Each question carries 1 mark.</p><p><br></p>',
+            "section-b": '<h3>Section B — Short Questions</h3><p><strong>Instructions:</strong> Attempt any THREE questions. Each question carries 5 marks.</p><p><br></p>',
+            "section-c": '<h3>Section C — Long Questions</h3><p><strong>Instructions:</strong> Attempt any TWO questions. Each question carries 10 marks.</p><p><br></p>',
+            "mcq": '<p><strong>Q.___</strong> &nbsp;&nbsp; </p><p>a) Option 1 &nbsp;&nbsp; b) Option 2 &nbsp;&nbsp; c) Option 3 &nbsp;&nbsp; d) Option 4</p><p><br></p>',
+            "fill": '<p><strong>Q.___</strong> &nbsp;&nbsp; The __________ is used to __________.</p><p><br></p>',
+            "truefalse": '<p><strong>Q.___</strong> &nbsp;&nbsp; True / False: _______________________________</p><p><br></p>',
+            "short": '<p><strong>Q.___</strong> &nbsp;&nbsp; <em>[5 Marks]</em></p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p><br></p>',
+            "long": '<p><strong>Q.___</strong> &nbsp;&nbsp; <em>[10 Marks]</em></p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p><br></p>',
+            "answer-space": '<p><strong>Answer:</strong></p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p><br></p>',
+            "instructions": '<h3>Exam Instructions</h3><ul><li>Time Allowed: 2 Hours</li><li>Total Marks: 50</li><li>Attempt all questions.</li><li>Write neatly and clearly.</li><li>Do not use calculators unless permitted.</li></ul><p><br></p>',
+            "marks": '<p><em>[ ___ Marks]</em></p>',
+            "q-num": '<p><strong>Q.</strong></p>',
+            "roman": '<p><strong>(i)</strong> &nbsp;</p>',
+            "alpha": '<p><strong>(a)</strong> &nbsp;</p>',
+            "time-allowed": '<p><strong>Time Allowed:</strong> 2 Hours</p>',
+            "total-marks": '<p><strong>Total Marks:</strong> 50</p>',
+            "diagram": '<p><strong>Diagram:</strong></p><p>[Insert diagram here]</p><p><br></p>'
           };
-          panel.querySelector("#qpTblCancel").addEventListener("click", close);
-          overlay.addEventListener("click", function (event) {
-            if (event.target === overlay) close();
-          });
-          panel.querySelector("#qpTblCreate").addEventListener("click", function () {
-            const rows = Math.max(1, Number(panel.querySelector("#qpTblRows").value || 2));
-            const cols = Math.max(1, Number(panel.querySelector("#qpTblCols").value || 2));
-            close();
-            onCreate(rows, cols);
-          });
+          var html = templates[templateType] || "";
+          if (html) insertAtCursor(html);
         }
 
-        function insertAtCursor(html) {
-          editorArea.focus();
-          const selection = window.getSelection ? window.getSelection() : null;
-          if (selection && selection.rangeCount) {
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            const temp = document.createElement("div");
-            temp.innerHTML = html;
-            const frag = document.createDocumentFragment();
-            let node = null;
-            let lastNode = null;
-            while ((node = temp.firstChild)) {
-              lastNode = frag.appendChild(node);
-            }
-            range.insertNode(frag);
-            if (lastNode) {
-              range.setStartAfter(lastNode);
-              range.setEndAfter(lastNode);
-              selection.removeAllRanges();
-              selection.addRange(range);
-            }
-          } else {
-            editorArea.innerHTML += html;
-          }
-          bindInteractiveElements();
-        }
-
-        function openGlyphPicker(title, categories, className) {
-          const overlay = document.createElement("div");
-          overlay.style.position = "fixed";
-          overlay.style.inset = "0";
-          overlay.style.background = "rgba(15, 39, 72, 0.22)";
-          overlay.style.zIndex = "9999";
-          const panel = document.createElement("div");
-          panel.style.position = "absolute";
-          panel.style.left = "50%";
-          panel.style.top = "50%";
-          panel.style.transform = "translate(-50%, -50%)";
-          panel.style.width = "min(980px, 96vw)";
-          panel.style.height = "min(76vh, 740px)";
-          panel.style.background = "#fff";
-          panel.style.borderRadius = "10px";
-          panel.style.padding = "12px";
-          panel.style.boxShadow = "0 16px 42px rgba(12, 28, 48, 0.28)";
-          panel.style.display = "grid";
-          panel.style.gridTemplateRows = "auto 1fr";
-          panel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><strong style="font-size:1rem;">${escapeHtml(title)}</strong><button id="qpClosePicker" class="table-action-btn" type="button">Close</button></div>`;
-          const shell = document.createElement("div");
-          shell.style.display = "grid";
-          shell.style.gridTemplateColumns = "240px minmax(0,1fr)";
-          shell.style.gap = "0";
-          shell.style.border = "1px solid #d4dbe6";
-          shell.style.borderRadius = "8px";
-          shell.style.overflow = "hidden";
-          const sidebar = document.createElement("aside");
-          sidebar.style.background = "#f7f7f7";
-          sidebar.style.borderRight = "1px solid #d7dce6";
-          sidebar.style.overflowY = "auto";
-          const body = document.createElement("section");
-          body.style.background = "#fff";
-          body.style.overflowY = "auto";
-          body.style.padding = "10px";
-          let activeCategory = null;
-          function setActiveButton(btn) {
-            Array.from(sidebar.querySelectorAll("button")).forEach(function (node) {
-              node.style.background = "transparent";
-              node.style.borderLeft = "3px solid transparent";
-              node.style.fontWeight = "500";
+        // Initialize CKEditor 5
+        initCKEditor(function (editor) {
+          if (!editor) return;
+          // Add Question Paper Tools buttons to toolbar after init
+          var toolbarContainer = document.querySelector(".ck-toolbar__container") || document.querySelector(".ck-editor__top");
+          if (toolbarContainer) {
+            var qpToolsDiv = document.createElement("div");
+            qpToolsDiv.className = "ck-toolbar__separator";
+            toolbarContainer.appendChild(qpToolsDiv);
+            var qpGroup = document.createElement("div");
+            qpGroup.style.cssText = "display:flex;gap:2px;align-items:center;flex-wrap:wrap;padding:0 4px;";
+            qpGroup.innerHTML = '<span style="font-size:0.65rem;font-weight:700;color:#102542;white-space:nowrap;margin-right:4px;">QP Tools:</span>';
+            var qpButtons = [
+              { label: "Q.No", tpl: "q-num" }, { label: "(i)", tpl: "roman" }, { label: "(a)", tpl: "alpha" },
+              { label: "Marks", tpl: "marks" }, { label: "Sec A", tpl: "section-a" }, { label: "Sec B", tpl: "section-b" },
+              { label: "Sec C", tpl: "section-c" }, { label: "MCQ", tpl: "mcq" }, { label: "Fill", tpl: "fill" },
+              { label: "T/F", tpl: "truefalse" }, { label: "Short Q", tpl: "short" }, { label: "Long Q", tpl: "long" },
+              { label: "Diagram", tpl: "diagram" }, { label: "Answer", tpl: "answer-space" }, { label: "Instructions", tpl: "instructions" },
+              { label: "Time", tpl: "time-allowed" }, { label: "Total", tpl: "total-marks" }
+            ];
+            qpButtons.forEach(function (btn) {
+              var b = document.createElement("button");
+              b.type = "button";
+              b.className = "ck-button";
+              b.textContent = btn.label;
+              b.title = "Insert " + btn.label;
+              b.style.cssText = "font-size:0.65rem;padding:2px 5px;border:1px solid #d8deea;border-radius:4px;background:#f6f7f9;cursor:pointer;white-space:nowrap;";
+              b.addEventListener("click", function () { insertQuestionTemplate(btn.tpl); });
+              b.addEventListener("mouseenter", function () { b.style.background = "#e8f0fe"; });
+              b.addEventListener("mouseleave", function () { b.style.background = "#f6f7f9"; });
+              qpGroup.appendChild(b);
             });
-            if (btn) {
-              btn.style.background = "#ffffff";
-              btn.style.borderLeft = "3px solid #1f2f45";
-              btn.style.fontWeight = "700";
-            }
+            toolbarContainer.appendChild(qpGroup);
           }
-          function renderCategory(catKey) {
-            body.innerHTML = "";
-            activeCategory = catKey;
-            const list = categories[catKey] || [];
-            const titleNode = document.createElement("div");
-            titleNode.style.margin = "2px 2px 10px";
-            titleNode.style.color = "#4f5f78";
-            titleNode.style.fontSize = "0.9rem";
-            titleNode.textContent = `${catKey} (${list.length})`;
-            body.appendChild(titleNode);
-            const grid = document.createElement("div");
-            grid.style.display = "grid";
-            grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(58px, 1fr))";
-            grid.style.gap = "10px";
-            list.forEach(function (glyph) {
-              const isImageItem = (typeof glyph === "object" && glyph && glyph.src) || (typeof glyph === "string" && String(glyph).startsWith("data:image/"));
-              const glyphSrc = typeof glyph === "object" && glyph ? String(glyph.src || "") : (isImageItem ? String(glyph) : "");
-              const glyphText = typeof glyph === "object" && glyph ? String(glyph.label || glyph.name || "") : String(glyph || "");
-              const btn = document.createElement("button");
-              btn.type = "button";
-              btn.className = "table-action-btn icon-cell";
-              btn.style.fontSize = isImageItem ? "14px" : "24px";
-              btn.style.minHeight = "46px";
-              btn.style.padding = "8px 6px";
-              if (isImageItem) {
-                const img = document.createElement("img");
-                img.src = glyphSrc;
-                img.alt = glyphText || "item";
-                img.style.maxWidth = "36px";
-                img.style.maxHeight = "36px";
-                img.style.objectFit = "contain";
-                btn.appendChild(img);
-              } else {
-                btn.textContent = glyphText;
-              }
-              btn.addEventListener("click", function () {
-                if (isImageItem) {
-                  insertAtCursor(`<img class="${className}" src="${escapeAttr(glyphSrc)}" alt="${escapeAttr(glyphText || "item")}" style="max-width:100%;width:180px;height:auto;">`);
-                } else {
-                  const safe = escapeHtml(glyphText);
-                  insertAtCursor(`<span class="${className}" style="font-size:24px;line-height:1.2;">${safe}</span>`);
-                }
-              });
-              grid.appendChild(btn);
-            });
-            if (!list.length) {
-              const empty = document.createElement("p");
-              empty.className = "empty-state";
-              empty.textContent = "No icons in this category yet.";
-              body.appendChild(empty);
-            }
-            body.appendChild(grid);
-          }
-          Object.keys(categories).forEach(function (key, index) {
-            const tab = document.createElement("button");
-            tab.type = "button";
-            tab.className = "table-action-btn";
-            tab.textContent = key;
-            tab.style.width = "100%";
-            tab.style.textAlign = "left";
-            tab.style.padding = "10px 14px";
-            tab.style.border = "none";
-            tab.style.borderRadius = "0";
-            tab.style.background = "transparent";
-            tab.style.boxShadow = "none";
-            tab.style.color = "#1e293b";
-            tab.addEventListener("click", function () {
-              renderCategory(key);
-              setActiveButton(tab);
-            });
-            sidebar.appendChild(tab);
-            if (index === 0) {
-              renderCategory(key);
-              setActiveButton(tab);
-            }
-          });
-          shell.appendChild(sidebar);
-          shell.appendChild(body);
-          panel.appendChild(shell);
-          overlay.appendChild(panel);
-          overlay.addEventListener("click", function (event) {
-            if (event.target === overlay) {
-              document.body.removeChild(overlay);
-            }
-          });
-          panel.querySelector("#qpClosePicker").addEventListener("click", function () {
-            document.body.removeChild(overlay);
-          });
-          document.body.appendChild(overlay);
-        }
-
-
-
-        function setupAdvancedToolbar() {
-          function ensureCustomLibraries() {
-            if (!settings.editorCustomLibraries) {
-              settings.editorCustomLibraries = { icons: [], shapes: [], graphs: [], images: [] };
-            }
-            return settings.editorCustomLibraries;
-          }
-          function importLibrary(type) {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = "image/png";
-            input.multiple = true;
-            input.onchange = function () {
-              const files = Array.from(input.files || []).filter(function (f) { return /image\/png/i.test(String(f.type || "")); });
-              if (!files.length) {
-                openAppMessageBox("Error", "Please select PNG files only.", "error");
-                return;
-              }
-              const promises = files.map(function (file) {
-                return new Promise(function (resolve) {
-                  const reader = new FileReader();
-                  reader.onload = function () { resolve({ src: String(reader.result || ""), label: file.name }); };
-                  reader.onerror = function () { resolve(null); };
-                  reader.readAsDataURL(file);
-                });
-              });
-              Promise.all(promises).then(function (items) {
-                const valid = items.filter(function (item) { return item && item.src; });
-                if (!valid.length) {
-                  openAppMessageBox("Error", `No valid ${type} found in file.`, "error");
-                  return;
-                }
-                const libs = ensureCustomLibraries();
-                const current = Array.isArray(libs[type]) ? libs[type] : [];
-                libs[type] = current.concat(valid).filter(function (item, idx, arr) {
-                  return arr.findIndex(function (x) { return x.src === item.src; }) === idx;
-                });
-                saveDatabase("", [{ table: "school_settings", record: { id: "customLibraries", source_id: "customLibraries", data: database.generalSettings.customLibraries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-                openAppMessageBox("Success", `${valid.length} ${type} imported successfully.`, "success");
-              });
-            };
-            input.click();
-          }
-          const fontFamily = document.getElementById("qpFontFamily");
-          if (fontFamily) {
-            fontFamily.onchange = function () {
-              editorArea.focus();
-              document.execCommand("fontName", false, this.value);
-            };
-          }
-          const clearBtn = document.getElementById("qpClearFormat");
-          if (clearBtn) {
-            clearBtn.onclick = function () { editorArea.focus(); document.execCommand("removeFormat", false, null); };
-          }
-          const growBtn = document.getElementById("qpGrowSelected");
-          if (growBtn) {
-            growBtn.onclick = function () {
-              if (!selectedEditorNode) return;
-              const isTableNode = selectedEditorNode.tagName === "TABLE" || selectedEditorNode.classList.contains("qp-editor-table-wrap");
-              selectedEditorNode.style.width = `${Math.max(30, selectedEditorNode.offsetWidth + 40)}px`;
-              if (isTableNode) {
-                selectedEditorNode.style.height = `${Math.max(80, selectedEditorNode.offsetHeight + 20)}px`;
-              }
-            };
-          }
-          const shrinkBtn = document.getElementById("qpShrinkSelected");
-          if (shrinkBtn) {
-            shrinkBtn.onclick = function () {
-              if (!selectedEditorNode) return;
-              const isTableNode = selectedEditorNode.tagName === "TABLE" || selectedEditorNode.classList.contains("qp-editor-table-wrap");
-              selectedEditorNode.style.width = `${Math.max(24, selectedEditorNode.offsetWidth - 40)}px`;
-              if (isTableNode) {
-                selectedEditorNode.style.height = `${Math.max(60, selectedEditorNode.offsetHeight - 20)}px`;
-              }
-            };
-          }
-          const imageBtn = document.getElementById("qpInsertImage");
-          if (imageBtn) {
-            imageBtn.onclick = function () {
-              imageInput.click();
-            };
-          }
-          imageInput.onchange = function () {
-            const file = imageInput.files && imageInput.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function () {
-              insertAtCursor(`<img src="${String(reader.result || "")}" alt="editor-image" style="max-width:100%;width:320px;height:auto;"><p><br></p>`);
-            };
-            reader.readAsDataURL(file);
-            imageInput.value = "";
-          };
-
-          editorToolbar.addEventListener("click", function (e) {
-            const btn = e.target.closest("[data-qp-cmd]");
-            if (!btn) return;
-            const cmd = btn.getAttribute("data-qp-cmd");
-            editorArea.focus();
-            document.execCommand(cmd, false, null);
-          });
-
-          safeOn(document.getElementById("qpApplyFontSize"), "click", function () {
-            const px = Math.max(8, Number(document.getElementById("qpFontSizeInput").value || 16));
-            editorArea.focus();
-            document.execCommand("fontSize", false, false);
-            document.execCommand("insertHTML", false, `<span style="font-size:${px}px;">${window.getSelection().toString() || "Text"}</span>`);
-          });
-
-          safeOn(document.getElementById("qpApplyTextColor"), "click", function () {
-            const color = document.getElementById("qpTextColorInput").value;
-            editorArea.focus();
-            document.execCommand("foreColor", false, color);
-          });
-
-          safeOn(document.getElementById("qpApplyBgColor"), "click", function () {
-            const color = document.getElementById("qpBgColorInput").value;
-            editorArea.focus();
-            document.execCommand("backColor", false, color);
-          });
-
-          safeOn(document.getElementById("qpInsertTable"), "click", function () {
-            openTableSizeDialog(function (rows, cols) {
-              var html = '<p><br></p><div class="qp-editor-table-wrap" contenteditable="false" data-editor-interactive="1"><table style="width:100%;border-collapse:collapse;">';
-              for (var r = 0; r < rows; r++) {
-                html += "<tr>";
-                for (var c = 0; c < cols; c++) {
-                  html += '<td style="border:1px solid #0f2748;padding:8px;" contenteditable="true">&nbsp;</td>';
-                }
-                html += "</tr>";
-              }
-              html += "</table></div><p><br></p>";
-              insertAtCursor(html);
-            });
-          });
-        }
+          // Word count display
+          var wcDiv = document.createElement("div");
+          wcDiv.id = "qpWordCount";
+          wcDiv.style.cssText = "font-size:0.68rem;color:#8a97a5;padding:4px 8px;text-align:right;";
+          wcDiv.textContent = "0 words | 0 chars";
+          var editorEl = document.querySelector(".ck-editor__main") || editor.ui.view.element;
+          if (editorEl && editorEl.parentNode) editorEl.parentNode.appendChild(wcDiv);
+        });
 
 
 
@@ -16902,7 +16277,6 @@ ${allContent}
         renderTypeMode();
         renderMcqRows();
         renderChapterRows();
-        setupAdvancedToolbar();
         return;
       }
 

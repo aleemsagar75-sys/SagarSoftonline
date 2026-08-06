@@ -4457,12 +4457,74 @@ body {
   border-bottom: 1px solid #7a8da8;
 }
 
+/* ===== CKEditor 5 Premium Fluent Design ===== */
 .ck-editor__main {
   min-height: 500px;
+  border-radius: 0 0 12px 12px;
 }
-
 .ck-editor__editable {
   min-height: 500px !important;
+  font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #102542;
+  padding: 1rem 1.2rem;
+}
+.ck-editor__editable:focus {
+  box-shadow: none;
+}
+.ck-editor__top {
+  border-radius: 12px 12px 0 0;
+  border: 1px solid rgba(27, 95, 122, 0.12);
+  border-bottom: none;
+  background: linear-gradient(180deg, #f8fbfa 0%, #f0f5f3 100%);
+}
+.ck-editor__main {
+  border: 1px solid rgba(27, 95, 122, 0.12);
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 2px 8px rgba(15, 43, 63, 0.04), 0 4px 16px rgba(15, 43, 63, 0.02);
+}
+.ck-toolbar {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.ck-toolbar .ck-toolbar__separator {
+  background: rgba(27, 95, 122, 0.1);
+}
+.ck-button {
+  border-radius: 6px !important;
+  transition: background 0.15s ease, box-shadow 0.15s ease !important;
+}
+.ck-button:hover {
+  background: rgba(27, 95, 122, 0.06) !important;
+}
+.ck-button.ck-on {
+  background: rgba(27, 95, 122, 0.1) !important;
+  box-shadow: 0 1px 3px rgba(27, 95, 122, 0.12) !important;
+}
+.ck-dropdown__panel {
+  border-radius: 10px !important;
+  border: 1px solid rgba(27, 95, 122, 0.12) !important;
+  box-shadow: 0 8px 24px rgba(15, 43, 63, 0.12) !important;
+}
+.ck-list {
+  padding: 4px !important;
+}
+.ck-list__item {
+  border-radius: 6px !important;
+}
+.ck-tooltip {
+  border-radius: 6px !important;
+  background: #102542 !important;
+}
+.ck-editor__word-count {
+  font-size: 0.72rem;
+  color: #8a97a5;
+  padding: 6px 12px;
+  text-align: right;
+  border-top: 1px solid rgba(27, 95, 122, 0.06);
 }
 
 .question-options-grid {
