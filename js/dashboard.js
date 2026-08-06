@@ -15846,67 +15846,55 @@ ${allContent}
             <div style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Editor*</label>
               <div class="ss-editor-wrapper" style="max-width:100%;overflow-x:hidden;">
-                <div class="ss-editor-tabs" style="display:flex;gap:0;margin-bottom:0;">
-                  <button type="button" class="ss-editor-tab active" data-editor-tab="richtext">Rich Text</button>
-                  <button type="button" class="ss-editor-tab" data-editor-tab="drawing">Drawing Canvas</button>
-                </div>
-                <div class="ss-editor-panel active" data-editor-panel="richtext">
-                  <div id="qpEditorContainer"></div>
-                </div>
-                <div class="ss-editor-panel" data-editor-panel="drawing" style="display:none;">
-                  <div class="ss-drawing-toolbar" id="ssDrawingToolbar">
-                    <div class="ss-drawing-group">
-                      <button type="button" class="ss-draw-btn active" data-tool="select" title="Select / Move"><i class="fa-solid fa-arrow-pointer"></i></button>
-                      <button type="button" class="ss-draw-btn" data-tool="freehand" title="Free Draw"><i class="fa-solid fa-pen"></i></button>
-                    </div>
-                    <div class="ss-drawing-sep"></div>
-                    <div class="ss-drawing-group">
-                      <button type="button" class="ss-draw-btn" data-tool="rect" title="Rectangle"><i class="fa-regular fa-square"></i></button>
-                      <button type="button" class="ss-draw-btn" data-tool="circle" title="Circle"><i class="fa-regular fa-circle"></i></button>
-                      <button type="button" class="ss-draw-btn" data-tool="triangle" title="Triangle"><i class="fa-solid fa-play fa-rotate-270"></i></button>
-                      <button type="button" class="ss-draw-btn" data-tool="line" title="Line"><i class="fa-solid fa-minus"></i></button>
-                      <button type="button" class="ss-draw-btn" data-tool="arrow" title="Arrow"><i class="fa-solid fa-arrow-right-long"></i></button>
-                    </div>
-                    <div class="ss-drawing-sep"></div>
-                    <div class="ss-drawing-group">
-                      <button type="button" class="ss-draw-btn" data-tool="text" title="Add Text"><i class="fa-solid fa-font"></i></button>
-                      <button type="button" class="ss-draw-btn" data-tool="textbox" title="Add Text Box"><i class="fa-solid fa-comment"></i></button>
-                    </div>
-                    <div class="ss-drawing-sep"></div>
-                    <div class="ss-drawing-group">
-                      <button type="button" class="ss-draw-btn" data-tool="eraser" title="Eraser"><i class="fa-solid fa-eraser"></i></button>
-                    </div>
-                    <div class="ss-drawing-sep"></div>
-                    <div class="ss-drawing-group ss-drawing-colors">
-                      <label class="ss-color-label">Stroke</label>
-                      <input type="color" id="ssStrokeColor" value="#102542" class="ss-color-input" title="Stroke Color">
-                      <label class="ss-color-label">Fill</label>
-                      <input type="color" id="ssFillColor" value="#ffffff" class="ss-color-input" title="Fill Color">
-                      <label class="ss-color-label">Size</label>
-                      <input type="range" id="ssBrushSize" min="1" max="20" value="3" class="ss-brush-range" title="Brush / Stroke Size">
-                      <span id="ssBrushSizeLabel" class="ss-brush-label">3px</span>
-                    </div>
-                    <div class="ss-drawing-sep"></div>
-                    <div class="ss-drawing-group">
-                      <button type="button" class="ss-draw-btn" data-action="undo" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
-                      <button type="button" class="ss-draw-btn" data-action="redo" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
-                      <button type="button" class="ss-draw-btn" data-action="delete" title="Delete Selected"><i class="fa-solid fa-trash"></i></button>
-                      <button type="button" class="ss-draw-btn" data-action="clear" title="Clear Canvas"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                    <div class="ss-drawing-sep"></div>
-                    <div class="ss-drawing-group">
-                      <button type="button" class="ss-draw-btn" data-action="bring-front" title="Bring to Front"><i class="fa-solid fa-layer-group"></i></button>
-                      <button type="button" class="ss-draw-btn" data-action="send-back" title="Send to Back"><i class="fa-solid fa-layer-group fa-flip-vertical"></i></button>
-                      <button type="button" class="ss-draw-btn" data-action="duplicate" title="Duplicate"><i class="fa-regular fa-copy"></i></button>
-                    </div>
-                    <div class="ss-drawing-sep"></div>
-                    <div class="ss-drawing-group">
-                      <button type="button" class="ss-draw-btn" data-action="grid" title="Toggle Grid"><i class="fa-solid fa-border-all"></i></button>
-                      <button type="button" class="ss-draw-btn" data-action="upload-image" title="Upload Image"><i class="fa-solid fa-image"></i></button>
+                <div class="ss-editor-ext-toolbar" id="ssEditorExtToolbar">
+                  <div class="ss-ext-group">
+                    <button type="button" class="ss-ext-btn" id="ssInsertImageBtn" title="Insert Image"><i class="fa-solid fa-image"></i> Image</button>
+                    <button type="button" class="ss-ext-btn" id="ssInsertTextBtn" title="Insert Text Box"><i class="fa-solid fa-font"></i> Text Box</button>
+                  </div>
+                  <div class="ss-ext-sep"></div>
+                  <div class="ss-ext-group">
+                    <div class="ss-shape-dropdown-wrap">
+                      <button type="button" class="ss-ext-btn" id="ssShapeDropdownBtn" title="Insert Shape"><i class="fa-shapes fa-solid"></i> Shapes <i class="fa-solid fa-caret-down" style="font-size:10px;margin-left:2px;"></i></button>
+                      <div class="ss-shape-dropdown" id="ssShapeDropdown" style="display:none;"></div>
                     </div>
                   </div>
-                  <div class="ss-canvas-container" id="ssCanvasContainer">
-                    <canvas id="ssFabricCanvas"></canvas>
+                  <div class="ss-ext-sep"></div>
+                  <div class="ss-ext-group ss-ext-wrap-group">
+                    <label class="ss-ext-label">Wrap:</label>
+                    <select id="ssWrapSelect" class="ss-ext-select">
+                      <option value="inline">Inline</option>
+                      <option value="square">Square</option>
+                      <option value="tight">Tight</option>
+                      <option value="topAndBottom">Top & Bottom</option>
+                      <option value="behind">Behind Text</option>
+                      <option value="front">In Front of Text</option>
+                    </select>
+                    <label class="ss-ext-label">Align:</label>
+                    <select id="ssAlignSelect" class="ss-ext-select">
+                      <option value="left">Left</option>
+                      <option value="center">Center</option>
+                      <option value="right">Right</option>
+                    </select>
+                  </div>
+                  <div class="ss-ext-sep"></div>
+                  <div class="ss-ext-group">
+                    <button type="button" class="ss-ext-btn" id="ssDuplicateBtn" title="Duplicate Object" disabled><i class="fa-regular fa-copy"></i></button>
+                    <button type="button" class="ss-ext-btn danger" id="ssDeleteObjBtn" title="Delete Object" disabled><i class="fa-solid fa-trash"></i></button>
+                  </div>
+                </div>
+                <div class="ss-editor-body">
+                  <div class="ss-editor-main">
+                    <div class="ss-editor-rel-wrap" id="ssEditorRelWrap">
+                      <div id="qpEditorContainer"></div>
+                      <div class="ss-objects-layer" id="ssObjectsLayer"></div>
+                    </div>
+                  </div>
+                  <div class="ss-props-panel" id="ssPropsPanel" style="display:none;">
+                    <div class="ss-props-header">
+                      <span class="ss-props-title">Properties</span>
+                      <button type="button" class="ss-props-close" id="ssPropsClose"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="ss-props-body" id="ssPropsBody"></div>
                   </div>
                 </div>
               </div>
@@ -15960,12 +15948,343 @@ ${allContent}
 
         var _ckEditorInstance = null;
         var _ckEditorReady = false;
-        var _fabricCanvas = null;
-        var _fabricHistory = [];
-        var _fabricHistoryIndex = -1;
-        var _fabricGridVisible = false;
-        var _fabricCurrentTool = "select";
-        var _fabricImageInput = null;
+        var _ssObjId = 0;
+        var _ssSelectedObjId = null;
+        var _ssObjects = {};
+        var _ssImageInput = null;
+
+        /* ═══════════════════════════════════════════════════════════════
+           Floating Object Manager — Word-like objects inside the editor
+           ═══════════════════════════════════════════════════════════════ */
+        var SSObjTypes = { IMAGE: "image", SHAPE: "shape", TEXTBOX: "textbox" };
+        var SSShapeSvg = {
+          rectangle: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="2"/></svg>',
+          roundedRect: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="14"/></svg>',
+          circle: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="47"/></svg>',
+          ellipse: '<svg viewBox="0 0 120 80"><ellipse cx="60" cy="40" rx="57" ry="37"/></svg>',
+          triangle: '<svg viewBox="0 0 120 80"><polygon points="60,3 117,77 3,77"/></svg>',
+          diamond: '<svg viewBox="0 0 120 80"><polygon points="60,3 117,40 60,77 3,40"/></svg>',
+          pentagon: '<svg viewBox="0 0 120 80"><polygon points="60,3 114,30 96,77 24,77 6,30"/></svg>',
+          hexagon: '<svg viewBox="0 0 120 80"><polygon points="30,3 90,3 120,40 90,77 30,77 0,40"/></svg>',
+          arrowRight: '<svg viewBox="0 0 120 80"><polygon points="2,15 70,15 70,2 118,40 70,78 70,65 2,65"/></svg>',
+          arrowLeft: '<svg viewBox="0 0 120 80"><polygon points="118,15 50,15 50,2 2,40 50,78 50,65 118,65"/></svg>',
+          arrowUp: '<svg viewBox="0 0 100 120"><polygon points="85,118 50,50 15,118"/></svg>',
+          arrowDown: '<svg viewBox="0 0 100 120"><polygon points="85,2 50,70 15,2"/></svg>',
+          doubleArrow: '<svg viewBox="0 0 120 80"><polygon points="2,40 25,15 25,27 95,27 95,15 118,40 95,65 95,53 25,53 25,65"/></svg>',
+          straightLine: '<svg viewBox="0 0 120 80"><line x1="5" y1="40" x2="115" y2="40" stroke-width="3" fill="none"/></svg>',
+          callout: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="90" height="55" rx="6"/><polygon points="30,57 40,77 55,57"/></svg>',
+          textbox: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="4" stroke-dasharray="6,3"/><text x="60" y="44" text-anchor="middle" font-size="11" fill="#333">Text</text></svg>'
+        };
+
+        function _ssNextId() { return "ssobj-" + (++_ssObjId); }
+
+        function _ssCreateObj(type, props) {
+          var id = _ssNextId();
+          var obj = Object.assign({
+            id: id, type: type, x: 50, y: 50, w: 120, h: 80,
+            fill: "#4fc3f7", stroke: "#0277bd", strokeWidth: 2,
+            opacity: 1, borderRadius: 4, shadow: false,
+            wrap: "square", align: "left",
+            rotation: 0, zIndex: Object.keys(_ssObjects).length + 1,
+            src: "", alt: "", caption: "",
+            svgShape: "", text: "",
+            fontFamily: "Segoe UI", fontSize: 14, fontColor: "#102542",
+            textAlign: "center"
+          }, props || {});
+          _ssObjects[id] = obj;
+          return obj;
+        }
+
+        function _ssRenderObject(obj) {
+          var layer = document.getElementById("ssObjectsLayer");
+          if (!layer) return;
+          var existing = document.getElementById(obj.id);
+          if (existing) existing.remove();
+          var el = document.createElement("div");
+          el.id = obj.id;
+          el.className = "ss-float-obj ss-float-" + obj.type;
+          if (obj.id === _ssSelectedObjId) el.classList.add("selected");
+          el.setAttribute("data-ss-obj", obj.id);
+          var wrapCss = _ssWrapToCss(obj.wrap, obj.align);
+          el.style.cssText = "position:absolute;left:" + obj.x + "px;top:" + obj.y + "px;width:" + obj.w + "px;height:" + obj.h + "px;opacity:" + obj.opacity + ";transform:rotate(" + (obj.rotation || 0) + "deg);z-index:" + (obj.zIndex || 1) + ";" + wrapCss + ";cursor:move;";
+          if (obj.type === SSObjTypes.IMAGE) {
+            el.innerHTML = '<img src="' + (obj.src || "") + '" alt="' + (obj.alt || "") + '" style="width:100%;height:100%;object-fit:contain;display:block;border-radius:' + obj.borderRadius + 'px;border:' + obj.strokeWidth + 'px solid ' + obj.stroke + ';box-shadow:' + (obj.shadow ? "0 4px 12px rgba(0,0,0,0.2)" : "none") + ';">' + (obj.caption ? '<div class="ss-obj-caption">' + obj.caption + '</div>' : '') + '<div class="ss-resize-handle ss-rh-se"></div><div class="ss-resize-handle ss-rh-sw"></div><div class="ss-resize-handle ss-rh-ne"></div><div class="ss-resize-handle ss-rh-nw"></div>';
+          } else if (obj.type === SSObjTypes.SHAPE) {
+            var svgContent = SSShapeSvg[obj.svgShape] || SSShapeSvg.rectangle;
+            el.innerHTML = '<div class="ss-shape-wrap" style="width:100%;height:100%;fill:' + obj.fill + ';stroke:' + obj.stroke + ';stroke-width:' + obj.strokeWidth + ';border-radius:' + obj.borderRadius + 'px;box-shadow:' + (obj.shadow ? "0 4px 12px rgba(0,0,0,0.15)" : "none") + ';">' + svgContent + '</div><div class="ss-resize-handle ss-rh-se"></div><div class="ss-resize-handle ss-rh-sw"></div><div class="ss-resize-handle ss-rh-ne"></div><div class="ss-resize-handle ss-rh-nw"></div>';
+          } else if (obj.type === SSObjTypes.TEXTBOX) {
+            el.innerHTML = '<div class="ss-textbox-inner" contenteditable="true" style="width:100%;height:100%;background:' + obj.fill + ';color:' + obj.fontColor + ';font-family:' + obj.fontFamily + ';font-size:' + obj.fontSize + 'px;text-align:' + obj.textAlign + ';border:' + obj.strokeWidth + 'px solid ' + obj.stroke + ';border-radius:' + obj.borderRadius + 'px;padding:6px;box-shadow:' + (obj.shadow ? "0 4px 12px rgba(0,0,0,0.15)" : "none") + ';overflow:auto;outline:none;cursor:text;">' + (obj.text || "Type here") + '</div><div class="ss-resize-handle ss-rh-se"></div><div class="ss-resize-handle ss-rh-sw"></div><div class="ss-resize-handle ss-rh-ne"></div><div class="ss-resize-handle ss-rh-nw"></div>';
+          }
+          layer.appendChild(el);
+          _ssBindObjectEvents(el, obj);
+        }
+
+        function _ssWrapToCss(wrap, align) {
+          var float = "none", clear = "", ml = "0", mr = "0", disp = "block";
+          if (wrap === "inline") { disp = "inline-block"; float = "none"; }
+          else if (wrap === "square") { float = align || "left"; clear = "none"; }
+          else if (wrap === "tight") { float = align || "left"; clear = "none"; }
+          else if (wrap === "topAndBottom") { float = "none"; clear = "both"; disp = "block"; }
+          else if (wrap === "behind") { float = "none"; }
+          else if (wrap === "front") { float = "none"; }
+          if (align === "center" && wrap !== "inline") { ml = "auto"; mr = "auto"; float = "none"; }
+          if (align === "right" && wrap !== "inline" && wrap !== "topAndBottom") { float = "right"; ml = "8px"; }
+          if (align === "left" && wrap !== "inline" && wrap !== "topAndBottom" && wrap !== "center") { mr = "8px"; }
+          var pos = (wrap === "behind" || wrap === "front") ? "absolute" : "relative";
+          var z = wrap === "behind" ? "-1" : wrap === "front" ? "999" : "auto";
+          return "float:" + float + ";clear:" + clear + ";margin-left:" + ml + ";margin-right:" + mr + ";display:" + disp + ";position:" + pos + ";z-index:" + z + ";pointer-events:auto;";
+        }
+
+        function _ssBindObjectEvents(el, obj) {
+          var isDragging = false, startX, startY, origX, origY;
+          var isResizing = false, resizeDir = "", startW, startH, startX2, startY2;
+          safeOn(el, "mousedown", function (e) {
+            if (e.target.classList.contains("ss-resize-handle")) {
+              isResizing = true;
+              resizeDir = e.target.className.replace("ss-resize-handle ", "").replace("ss-rh-", "");
+              startX2 = e.clientX; startY2 = e.clientY;
+              startW = obj.w; startH = obj.h;
+              e.preventDefault(); e.stopPropagation();
+              return;
+            }
+            if (e.target.contentEditable === "true") return;
+            _ssSelectObj(obj.id);
+            isDragging = true;
+            startX = e.clientX; startY = e.clientY;
+            origX = obj.x; origY = obj.y;
+            e.preventDefault();
+          });
+          safeOn(document, "mousemove", function (e) {
+            if (isDragging) {
+              obj.x = origX + (e.clientX - startX);
+              obj.y = origY + (e.clientY - startY);
+              el.style.left = obj.x + "px";
+              el.style.top = obj.y + "px";
+            } else if (isResizing) {
+              var dx = e.clientX - startX2;
+              var dy = e.clientY - startY2;
+              if (resizeDir === "se") { obj.w = Math.max(30, startW + dx); obj.h = Math.max(20, startH + dy); }
+              else if (resizeDir === "sw") { obj.x = origX + dx; obj.w = Math.max(30, startW - dx); obj.h = Math.max(20, startH + dy); }
+              else if (resizeDir === "ne") { obj.w = Math.max(30, startW + dx); obj.y = origY + dy; obj.h = Math.max(20, startH - dy); }
+              else if (resizeDir === "nw") { obj.x = origX + dx; obj.y = origY + dy; obj.w = Math.max(30, startW - dx); obj.h = Math.max(20, startH - dy); }
+              el.style.left = obj.x + "px"; el.style.top = obj.y + "px";
+              el.style.width = obj.w + "px"; el.style.height = obj.h + "px";
+            }
+          });
+          safeOn(document, "mouseup", function () {
+            if (isDragging || isResizing) { isDragging = false; isResizing = false; _ssSaveObjects(); }
+          });
+          if (obj.type === SSObjTypes.TEXTBOX) {
+            var inner = el.querySelector(".ss-textbox-inner");
+            if (inner) {
+              safeOn(inner, "input", function () { obj.text = inner.innerHTML; _ssSaveObjects(); });
+              safeOn(inner, "mousedown", function (e) { e.stopPropagation(); });
+            }
+          }
+        }
+
+        function _ssSelectObj(id) {
+          if (_ssSelectedObjId) {
+            var prev = document.getElementById(_ssSelectedObjId);
+            if (prev) prev.classList.remove("selected");
+          }
+          _ssSelectedObjId = id;
+          var el = document.getElementById(id);
+          if (el) el.classList.add("selected");
+          var obj = _ssObjects[id];
+          if (obj) {
+            _ssShowPropsPanel(obj);
+            document.getElementById("ssWrapSelect").value = obj.wrap;
+            document.getElementById("ssAlignSelect").value = obj.align;
+            document.getElementById("ssDuplicateBtn").disabled = false;
+            document.getElementById("ssDeleteObjBtn").disabled = false;
+          }
+        }
+
+        function _ssDeselectAll() {
+          if (_ssSelectedObjId) {
+            var prev = document.getElementById(_ssSelectedObjId);
+            if (prev) prev.classList.remove("selected");
+          }
+          _ssSelectedObjId = null;
+          document.getElementById("ssPropsPanel").style.display = "none";
+          document.getElementById("ssDuplicateBtn").disabled = true;
+          document.getElementById("ssDeleteObjBtn").disabled = true;
+        }
+
+        function _ssDeleteObj(id) {
+          var target = id || _ssSelectedObjId;
+          if (!target) return;
+          var el = document.getElementById(target);
+          if (el) el.remove();
+          delete _ssObjects[target];
+          _ssSelectedObjId = null;
+          document.getElementById("ssPropsPanel").style.display = "none";
+          document.getElementById("ssDuplicateBtn").disabled = true;
+          document.getElementById("ssDeleteObjBtn").disabled = true;
+          _ssSaveObjects();
+        }
+
+        function _ssDuplicateObj() {
+          if (!_ssSelectedObjId || !_ssObjects[_ssSelectedObjId]) return;
+          var orig = _ssObjects[_ssSelectedObjId];
+          var props = Object.assign({}, orig);
+          delete props.id;
+          props.x = orig.x + 20; props.y = orig.y + 20;
+          var newObj = _ssCreateObj(orig.type, props);
+          _ssRenderObject(newObj);
+          _ssSelectObj(newObj.id);
+          _ssSaveObjects();
+        }
+
+        function _ssSaveObjects() {
+          var data = {};
+          Object.keys(_ssObjects).forEach(function (k) { data[k] = Object.assign({}, _ssObjects[k]); });
+          var ta = document.getElementById("ssObjectsDataTA");
+          if (ta) ta.value = JSON.stringify(data);
+        }
+
+        function _ssLoadObjects(jsonStr) {
+          if (!jsonStr) return;
+          try {
+            var data = typeof jsonStr === "string" ? JSON.parse(jsonStr) : jsonStr;
+            _ssObjects = {};
+            var layer = document.getElementById("ssObjectsLayer");
+            if (layer) layer.innerHTML = "";
+            Object.keys(data).forEach(function (k) {
+              var obj = data[k];
+              _ssObjects[k] = obj;
+              var numId = parseInt(String(k).replace("ssobj-", "")) || 0;
+              if (numId >= _ssObjId) _ssObjId = numId;
+              _ssRenderObject(obj);
+            });
+          } catch (e) { console.warn("[SS Objects] Load error:", e); }
+        }
+
+        /* ── Shape Dropdown ── */
+        function _ssBuildShapeDropdown() {
+          var dd = document.getElementById("ssShapeDropdown");
+          if (!dd) return;
+          var shapeNames = Object.keys(SSShapeSvg);
+          dd.innerHTML = shapeNames.map(function (key) {
+            var label = key.replace(/([A-Z])/g, " $1").replace(/^./, function (s) { return s.toUpperCase(); });
+            return '<button type="button" class="ss-shape-item" data-shape="' + key + '" title="' + label + '">' + SSShapeSvg[key] + '<span>' + label + '</span></button>';
+          }).join("");
+          dd.querySelectorAll(".ss-shape-item").forEach(function (btn) {
+            safeOn(btn, "click", function () {
+              _ssInsertShape(btn.getAttribute("data-shape"));
+              dd.style.display = "none";
+            });
+          });
+        }
+
+        function _ssInsertShape(shapeKey) {
+          var obj = _ssCreateObj(SSObjTypes.SHAPE, {
+            svgShape: shapeKey, x: 80, y: 80, w: 120, h: 80,
+            fill: "#4fc3f7", stroke: "#0277bd", strokeWidth: 2,
+            wrap: document.getElementById("ssWrapSelect").value || "square",
+            align: document.getElementById("ssAlignSelect").value || "left"
+          });
+          _ssRenderObject(obj);
+          _ssSelectObj(obj.id);
+          _ssSaveObjects();
+        }
+
+        /* ── Image Insert ── */
+        function _ssInsertImage() {
+          if (!_ssImageInput) {
+            _ssImageInput = document.createElement("input");
+            _ssImageInput.type = "file";
+            _ssImageInput.accept = "image/*";
+            _ssImageInput.style.display = "none";
+            document.body.appendChild(_ssImageInput);
+          }
+          _ssImageInput.value = "";
+          _ssImageInput.onchange = function (e) {
+            var file = e.target.files && e.target.files[0];
+            if (!file) return;
+            var reader = new FileReader();
+            reader.onload = function (ev) {
+              var img = new Image();
+              img.onload = function () {
+                var maxW = 300, maxH = 200;
+                var w = img.width, h = img.height;
+                if (w > maxW || h > maxH) { var s = Math.min(maxW / w, maxH / h); w *= s; h *= s; }
+                var obj = _ssCreateObj(SSObjTypes.IMAGE, {
+                  src: ev.target.result, w: w, h: h,
+                  wrap: document.getElementById("ssWrapSelect").value || "square",
+                  align: document.getElementById("ssAlignSelect").value || "left"
+                });
+                _ssRenderObject(obj);
+                _ssSelectObj(obj.id);
+                _ssSaveObjects();
+              };
+              img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+          };
+          _ssImageInput.click();
+        }
+
+        /* ── Text Box Insert ── */
+        function _ssInsertTextBox() {
+          var obj = _ssCreateObj(SSObjTypes.TEXTBOX, {
+            x: 80, y: 80, w: 180, h: 60,
+            fill: "#ffffff", stroke: "#90a4ae", strokeWidth: 1,
+            wrap: document.getElementById("ssWrapSelect").value || "square",
+            align: document.getElementById("ssAlignSelect").value || "left",
+            text: "Type here"
+          });
+          _ssRenderObject(obj);
+          _ssSelectObj(obj.id);
+          _ssSaveObjects();
+        }
+
+        /* ── Properties Panel ── */
+        function _ssShowPropsPanel(obj) {
+          var panel = document.getElementById("ssPropsPanel");
+          var body = document.getElementById("ssPropsBody");
+          if (!panel || !body) return;
+          panel.style.display = "";
+          var html = '<div class="ss-prop-row"><label>Fill</label><input type="color" id="ssPropFill" value="' + (obj.fill || "#4fc3f7") + '"></div>';
+          html += '<div class="ss-prop-row"><label>Border</label><input type="color" id="ssPropStroke" value="' + (obj.stroke || "#0277bd") + '"></div>';
+          html += '<div class="ss-prop-row"><label>Border Width</label><input type="range" id="ssPropStrokeW" min="0" max="10" value="' + (obj.strokeWidth || 2) + '"><span class="ss-prop-val" id="ssPropStrokeWVal">' + (obj.strokeWidth || 2) + 'px</span></div>';
+          html += '<div class="ss-prop-row"><label>Opacity</label><input type="range" id="ssPropOpacity" min="0" max="100" value="' + Math.round((obj.opacity || 1) * 100) + '"><span class="ss-prop-val" id="ssPropOpacityVal">' + Math.round((obj.opacity || 1) * 100) + '%</span></div>';
+          html += '<div class="ss-prop-row"><label>Border Radius</label><input type="range" id="ssPropRadius" min="0" max="50" value="' + (obj.borderRadius || 0) + '"><span class="ss-prop-val" id="ssPropRadiusVal">' + (obj.borderRadius || 0) + 'px</span></div>';
+          html += '<div class="ss-prop-row"><label>Shadow</label><label class="ss-toggle"><input type="checkbox" id="ssPropShadow"' + (obj.shadow ? " checked" : "") + '><span class="ss-toggle-slider"></span></label></div>';
+          if (obj.type === SSObjTypes.IMAGE) {
+            html += '<div class="ss-prop-row"><label>Alt Text</label><input type="text" id="ssPropAlt" value="' + (obj.alt || "") + '" class="ss-prop-input"></div>';
+            html += '<div class="ss-prop-row"><label>Caption</label><input type="text" id="ssPropCaption" value="' + (obj.caption || "") + '" class="ss-prop-input"></div>';
+          }
+          if (obj.type === SSObjTypes.TEXTBOX) {
+            html += '<div class="ss-prop-row"><label>Font Size</label><input type="number" id="ssPropFontSize" min="8" max="72" value="' + (obj.fontSize || 14) + '" class="ss-prop-input-sm"></div>';
+            html += '<div class="ss-prop-row"><label>Font</label><select id="ssPropFontFamily" class="ss-prop-select"><option value="Segoe UI"' + (obj.fontFamily === "Segoe UI" ? " selected" : "") + '>Segoe UI</option><option value="Arial"' + (obj.fontFamily === "Arial" ? " selected" : "") + '>Arial</option><option value="Times New Roman"' + (obj.fontFamily === "Times New Roman" ? " selected" : "") + '>Times New Roman</option><option value="Courier New"' + (obj.fontFamily === "Courier New" ? " selected" : "") + '>Courier New</option><option value="Georgia"' + (obj.fontFamily === "Georgia" ? " selected" : "") + '>Georgia</option><option value="Verdana"' + (obj.fontFamily === "Verdana" ? " selected" : "") + '>Verdana</option></select></div>';
+            html += '<div class="ss-prop-row"><label>Text Color</label><input type="color" id="ssPropFontColor" value="' + (obj.fontColor || "#102542") + '"></div>';
+            html += '<div class="ss-prop-row"><label>Align</label><select id="ssPropTextAlign" class="ss-prop-select"><option value="left"' + (obj.textAlign === "left" ? " selected" : "") + '>Left</option><option value="center"' + (obj.textAlign === "center" ? " selected" : "") + '>Center</option><option value="right"' + (obj.textAlign === "right" ? " selected" : "") + '>Right</option></select></div>';
+          }
+          html += '<div class="ss-prop-row"><label>Width</label><input type="number" id="ssPropW" min="20" max="800" value="' + Math.round(obj.w) + '" class="ss-prop-input-sm"></div>';
+          html += '<div class="ss-prop-row"><label>Height</label><input type="number" id="ssPropH" min="20" max="600" value="' + Math.round(obj.h) + '" class="ss-prop-input-sm"></div>';
+          body.innerHTML = html;
+          _ssBindPropsEvents(obj);
+        }
+
+        function _ssBindPropsEvents(obj) {
+          var bind = function (id, evt, fn) { var el = document.getElementById(id); if (el) safeOn(el, evt, fn); };
+          bind("ssPropFill", "input", function () { obj.fill = this.value; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropStroke", "input", function () { obj.stroke = this.value; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropStrokeW", "input", function () { obj.strokeWidth = parseInt(this.value); document.getElementById("ssPropStrokeWVal").textContent = this.value + "px"; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropOpacity", "input", function () { obj.opacity = parseInt(this.value) / 100; document.getElementById("ssPropOpacityVal").textContent = this.value + "%"; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropRadius", "input", function () { obj.borderRadius = parseInt(this.value); document.getElementById("ssPropRadiusVal").textContent = this.value + "px"; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropShadow", "change", function () { obj.shadow = this.checked; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropAlt", "input", function () { obj.alt = this.value; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropCaption", "input", function () { obj.caption = this.value; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropFontSize", "input", function () { obj.fontSize = parseInt(this.value) || 14; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropFontFamily", "change", function () { obj.fontFamily = this.value; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropFontColor", "input", function () { obj.fontColor = this.value; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropTextAlign", "change", function () { obj.textAlign = this.value; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropW", "input", function () { obj.w = parseInt(this.value) || 120; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+          bind("ssPropH", "input", function () { obj.h = parseInt(this.value) || 80; _ssRenderObject(obj); _ssSelectObj(obj.id); });
+        }
 
         function initCKEditor(callback) {
           if (_ckEditorInstance) {
@@ -16069,381 +16388,6 @@ ${allContent}
           return qpStripHtml(getEditorHtml());
         }
 
-        function getCanvasJson() {
-          if (_fabricCanvas) {
-            try { return JSON.stringify(_fabricCanvas.toJSON(["name"])); } catch (e) { return "{}"; }
-          }
-          return "{}";
-        }
-
-        function loadCanvasJson(jsonStr) {
-          if (!_fabricCanvas) return;
-          try {
-            var json = typeof jsonStr === "string" ? JSON.parse(jsonStr) : jsonStr;
-            if (json && Object.keys(json).length > 0) {
-              _fabricCanvas.loadFromJSON(json, function () {
-                _fabricCanvas.renderAll();
-                _fabricSaveHistory();
-              });
-            }
-          } catch (e) { console.warn("[Canvas] Load JSON error:", e); }
-        }
-
-        function _fabricSaveHistory() {
-          if (!_fabricCanvas) return;
-          var state = JSON.stringify(_fabricCanvas.toJSON(["name"]));
-          _fabricHistory = _fabricHistory.slice(0, _fabricHistoryIndex + 1);
-          _fabricHistory.push(state);
-          _fabricHistoryIndex = _fabricHistory.length - 1;
-          if (_fabricHistory.length > 50) {
-            _fabricHistory.shift();
-            _fabricHistoryIndex--;
-          }
-        }
-
-        function _fabricUndo() {
-          if (_fabricHistoryIndex <= 0 || !_fabricCanvas) return;
-          _fabricHistoryIndex--;
-          _fabricCanvas.loadFromJSON(_fabricHistory[_fabricHistoryIndex], function () {
-            _fabricCanvas.renderAll();
-          });
-        }
-
-        function _fabricRedo() {
-          if (_fabricHistoryIndex >= _fabricHistory.length - 1 || !_fabricCanvas) return;
-          _fabricHistoryIndex++;
-          _fabricCanvas.loadFromJSON(_fabricHistory[_fabricHistoryIndex], function () {
-            _fabricCanvas.renderAll();
-          });
-        }
-
-        function initFabricCanvas() {
-          var container = document.getElementById("ssCanvasContainer");
-          var canvasEl = document.getElementById("ssFabricCanvas");
-          if (!container || !canvasEl || typeof fabric === "undefined") return;
-          var w = Math.min(container.clientWidth - 4, 900);
-          var h = Math.max(400, Math.min(container.clientHeight - 10, 600));
-          canvasEl.width = w;
-          canvasEl.height = h;
-          _fabricCanvas = new fabric.Canvas("ssFabricCanvas", {
-            width: w,
-            height: h,
-            backgroundColor: "#ffffff",
-            selection: true,
-            preserveObjectStacking: true
-          });
-          _fabricHistory = [];
-          _fabricHistoryIndex = -1;
-          _fabricSaveHistory();
-          _fabricCanvas.on("object:modified", function () { _fabricSaveHistory(); });
-          _fabricCanvas.on("path:created", function () { _fabricSaveHistory(); });
-          _fabricCanvas.on("selection:created", _updateDrawingUI);
-          _fabricCanvas.on("selection:updated", _updateDrawingUI);
-          _fabricCanvas.on("selection:cleared", _updateDrawingUI);
-          _setupDrawingToolbar();
-        }
-
-        function _setupDrawingToolbar() {
-          var toolbar = document.getElementById("ssDrawingToolbar");
-          if (!toolbar) return;
-          toolbar.querySelectorAll("[data-tool]").forEach(function (btn) {
-            safeOn(btn, "click", function () {
-              var tool = btn.getAttribute("data-tool");
-              _fabricCurrentTool = tool;
-              toolbar.querySelectorAll("[data-tool]").forEach(function (b) { b.classList.remove("active"); });
-              btn.classList.add("active");
-              if (tool === "select") {
-                _fabricCanvas.isDrawingMode = false;
-                _fabricCanvas.selection = true;
-                _fabricCanvas.forEachObject(function (o) { o.selectable = true; });
-              } else if (tool === "freehand") {
-                _fabricCanvas.isDrawingMode = true;
-                _fabricCanvas.freeDrawingBrush.color = document.getElementById("ssStrokeColor").value;
-                _fabricCanvas.freeDrawingBrush.width = parseInt(document.getElementById("ssBrushSize").value) || 3;
-                _fabricCanvas.selection = false;
-              } else if (tool === "eraser") {
-                _fabricCanvas.isDrawingMode = false;
-                _fabricCanvas.selection = false;
-                var active = _fabricCanvas.getActiveObject();
-                if (active) {
-                  _fabricCanvas.remove(active);
-                  _fabricCanvas.discardActiveObject();
-                  _fabricCanvas.renderAll();
-                  _fabricSaveHistory();
-                }
-              } else if (tool === "rect") {
-                _fabricCanvas.isDrawingMode = false;
-                _fabricCanvas.selection = false;
-                var rect = new fabric.Rect({
-                  left: 50, top: 50, width: 120, height: 80,
-                  fill: document.getElementById("ssFillColor").value,
-                  stroke: document.getElementById("ssStrokeColor").value,
-                  strokeWidth: parseInt(document.getElementById("ssBrushSize").value) || 2,
-                  strokeUniform: true
-                });
-                _fabricCanvas.add(rect);
-                _fabricCanvas.setActiveObject(rect);
-                _fabricSaveHistory();
-                _setTool("select");
-              } else if (tool === "circle") {
-                _fabricCanvas.isDrawingMode = false;
-                _fabricCanvas.selection = false;
-                var circ = new fabric.Circle({
-                  left: 80, top: 80, radius: 50,
-                  fill: document.getElementById("ssFillColor").value,
-                  stroke: document.getElementById("ssStrokeColor").value,
-                  strokeWidth: parseInt(document.getElementById("ssBrushSize").value) || 2,
-                  strokeUniform: true
-                });
-                _fabricCanvas.add(circ);
-                _fabricCanvas.setActiveObject(circ);
-                _fabricSaveHistory();
-                _setTool("select");
-              } else if (tool === "triangle") {
-                _fabricCanvas.isDrawingMode = false;
-                _fabricCanvas.selection = false;
-                var tri = new fabric.Triangle({
-                  left: 80, top: 80, width: 100, height: 80,
-                  fill: document.getElementById("ssFillColor").value,
-                  stroke: document.getElementById("ssStrokeColor").value,
-                  strokeWidth: parseInt(document.getElementById("ssBrushSize").value) || 2,
-                  strokeUniform: true
-                });
-                _fabricCanvas.add(tri);
-                _fabricCanvas.setActiveObject(tri);
-                _fabricSaveHistory();
-                _setTool("select");
-              } else if (tool === "line") {
-                _fabricCanvas.isDrawingMode = false;
-                _fabricCanvas.selection = false;
-                var ln = new fabric.Line([50, 50, 200, 50], {
-                  stroke: document.getElementById("ssStrokeColor").value,
-                  strokeWidth: parseInt(document.getElementById("ssBrushSize").value) || 2,
-                  strokeUniform: true
-                });
-                _fabricCanvas.add(ln);
-                _fabricCanvas.setActiveObject(ln);
-                _fabricSaveHistory();
-                _setTool("select");
-              } else if (tool === "arrow") {
-                _fabricCanvas.isDrawingMode = false;
-                _fabricCanvas.selection = false;
-                _drawArrow(50, 50, 200, 50);
-                _setTool("select");
-              } else if (tool === "text") {
-                _fabricCanvas.isDrawingMode = false;
-                _fabricCanvas.selection = false;
-                var txt = new fabric.IText("Type here", {
-                  left: 60, top: 60,
-                  fontFamily: "Segoe UI, SF Pro Text, Helvetica Neue, Arial, sans-serif",
-                  fontSize: 20, fill: document.getElementById("ssStrokeColor").value
-                });
-                _fabricCanvas.add(txt);
-                _fabricCanvas.setActiveObject(txt);
-                txt.enterEditing();
-                _fabricSaveHistory();
-                _setTool("select");
-              } else if (tool === "textbox") {
-                _fabricCanvas.isDrawingMode = false;
-                _fabricCanvas.selection = false;
-                var tb = new fabric.Textbox("Type here", {
-                  left: 60, top: 60, width: 200,
-                  fontFamily: "Segoe UI, SF Pro Text, Helvetica Neue, Arial, sans-serif",
-                  fontSize: 16, fill: document.getElementById("ssStrokeColor").value,
-                  splitByGrapheme: false
-                });
-                _fabricCanvas.add(tb);
-                _fabricCanvas.setActiveObject(tb);
-                tb.enterEditing();
-                _fabricSaveHistory();
-                _setTool("select");
-              }
-            });
-          });
-          toolbar.querySelectorAll("[data-action]").forEach(function (btn) {
-            safeOn(btn, "click", function () {
-              var action = btn.getAttribute("data-action");
-              if (action === "undo") _fabricUndo();
-              else if (action === "redo") _fabricRedo();
-              else if (action === "delete") {
-                var active = _fabricCanvas.getActiveObject();
-                if (active) {
-                  if (active.type === "activeSelection") {
-                    active.forEachObject(function (o) { _fabricCanvas.remove(o); });
-                    _fabricCanvas.discardActiveObject();
-                  } else {
-                    _fabricCanvas.remove(active);
-                  }
-                  _fabricCanvas.renderAll();
-                  _fabricSaveHistory();
-                }
-              } else if (action === "clear") {
-                if (confirm("Clear entire canvas?")) {
-                  _fabricCanvas.clear();
-                  _fabricCanvas.backgroundColor = "#ffffff";
-                  _fabricCanvas.renderAll();
-                  _fabricSaveHistory();
-                }
-              } else if (action === "bring-front") {
-                var obj = _fabricCanvas.getActiveObject();
-                if (obj) { _fabricCanvas.bringObjectToFront(obj); _fabricCanvas.renderAll(); _fabricSaveHistory(); }
-              } else if (action === "send-back") {
-                var obj2 = _fabricCanvas.getActiveObject();
-                if (obj2) { _fabricCanvas.sendObjectToBack(obj2); _fabricCanvas.renderAll(); _fabricSaveHistory(); }
-              } else if (action === "duplicate") {
-                var active = _fabricCanvas.getActiveObject();
-                if (active) {
-                  active.clone(function (cloned) {
-                    cloned.set({ left: (cloned.left || 0) + 20, top: (cloned.top || 0) + 20 });
-                    _fabricCanvas.add(cloned);
-                    _fabricCanvas.setActiveObject(cloned);
-                    _fabricCanvas.renderAll();
-                    _fabricSaveHistory();
-                  });
-                }
-              } else if (action === "grid") {
-                _fabricGridVisible = !_fabricGridVisible;
-                _toggleGrid();
-                btn.classList.toggle("active", _fabricGridVisible);
-              } else if (action === "upload-image") {
-                if (!_fabricImageInput) {
-                  _fabricImageInput = document.createElement("input");
-                  _fabricImageInput.type = "file";
-                  _fabricImageInput.accept = "image/*";
-                  _fabricImageInput.style.display = "none";
-                  document.body.appendChild(_fabricImageInput);
-                }
-                _fabricImageInput.value = "";
-                _fabricImageInput.onchange = function (e) {
-                  var file = e.target.files && e.target.files[0];
-                  if (!file) return;
-                  var reader = new FileReader();
-                  reader.onload = function (ev) {
-                    fabric.Image.fromURL(ev.target.result, function (img) {
-                      var maxW = _fabricCanvas.width * 0.6;
-                      var maxH = _fabricCanvas.height * 0.6;
-                      if (img.width > maxW || img.height > maxH) {
-                        var scale = Math.min(maxW / img.width, maxH / img.height);
-                        img.scale(scale);
-                      }
-                      img.set({ left: 40, top: 40 });
-                      _fabricCanvas.add(img);
-                      _fabricCanvas.setActiveObject(img);
-                      _fabricCanvas.renderAll();
-                      _fabricSaveHistory();
-                    });
-                  };
-                  reader.readAsDataURL(file);
-                };
-                _fabricImageInput.click();
-              }
-            });
-          });
-          var strokeColor = document.getElementById("ssStrokeColor");
-          var fillColor = document.getElementById("ssFillColor");
-          var brushSize = document.getElementById("ssBrushSize");
-          var brushLabel = document.getElementById("ssBrushSizeLabel");
-          if (strokeColor) safeOn(strokeColor, "input", function () {
-            if (_fabricCanvas.freeDrawingBrush) _fabricCanvas.freeDrawingBrush.color = strokeColor.value;
-            var active = _fabricCanvas.getActiveObject();
-            if (active && active.type !== "i-text" && active.type !== "textbox") {
-              active.set("stroke", strokeColor.value);
-              _fabricCanvas.renderAll();
-            }
-          });
-          if (fillColor) safeOn(fillColor, "input", function () {
-            var active = _fabricCanvas.getActiveObject();
-            if (active && ["rect", "circle", "triangle"].indexOf(active.type) !== -1) {
-              active.set("fill", fillColor.value);
-              _fabricCanvas.renderAll();
-            }
-          });
-          if (brushSize) safeOn(brushSize, "input", function () {
-            var val = parseInt(brushSize.value) || 3;
-            if (_fabricCanvas.freeDrawingBrush) _fabricCanvas.freeDrawingBrush.width = val;
-            if (brushLabel) brushLabel.textContent = val + "px";
-          });
-        }
-
-        function _setTool(toolName) {
-          _fabricCurrentTool = toolName;
-          var btn = document.querySelector('[data-editor-panel="drawing"] [data-tool="' + toolName + '"]');
-          if (btn) {
-            document.querySelectorAll('[data-editor-panel="drawing"] [data-tool]').forEach(function (b) { b.classList.remove("active"); });
-            btn.classList.add("active");
-          }
-          if (toolName === "select") {
-            _fabricCanvas.isDrawingMode = false;
-            _fabricCanvas.selection = true;
-            _fabricCanvas.forEachObject(function (o) { o.selectable = true; });
-          }
-        }
-
-        function _drawArrow(x1, y1, x2, y2) {
-          var headLen = 15;
-          var dx = x2 - x1;
-          var dy = y2 - y1;
-          var angle = Math.atan2(dy, dx);
-          var stroke = document.getElementById("ssStrokeColor").value;
-          var sw = parseInt(document.getElementById("ssBrushSize").value) || 2;
-          var line = new fabric.Line([x1, y1, x2, y2], {
-            stroke: stroke, strokeWidth: sw, strokeUniform: true
-          });
-          var head = new fabric.Triangle({
-            left: x2, top: y2, width: headLen, height: headLen,
-            fill: stroke, angle: (angle * 180 / Math.PI) + 90,
-            originX: "center", originY: "center", strokeUniform: true
-          });
-          var group = new fabric.Group([line, head], { left: x1, top: y1 });
-          _fabricCanvas.add(group);
-          _fabricCanvas.setActiveObject(group);
-          _fabricSaveHistory();
-        }
-
-        function _toggleGrid() {
-          if (!_fabricCanvas) return;
-          var objects = _fabricCanvas.getObjects("line").filter(function (o) { return o.name === "grid-line"; });
-          if (_fabricGridVisible && objects.length === 0) {
-            var step = 30;
-            var w = _fabricCanvas.width;
-            var h = _fabricCanvas.height;
-            for (var x = step; x < w; x += step) {
-              var vLine = new fabric.Line([x, 0, x, h], {
-                stroke: "#e0e4ea", strokeWidth: 0.5, selectable: false, evented: false, name: "grid-line"
-              });
-              _fabricCanvas.add(vLine);
-              _fabricCanvas.sendObjectToBack(vLine);
-            }
-            for (var y = step; y < h; y += step) {
-              var hLine = new fabric.Line([0, y, w, y], {
-                stroke: "#e0e4ea", strokeWidth: 0.5, selectable: false, evented: false, name: "grid-line"
-              });
-              _fabricCanvas.add(hLine);
-              _fabricCanvas.sendObjectToBack(hLine);
-            }
-          } else if (!_fabricGridVisible) {
-            _fabricCanvas.getObjects("line").filter(function (o) { return o.name === "grid-line"; }).forEach(function (o) {
-              _fabricCanvas.remove(o);
-            });
-          }
-          _fabricCanvas.renderAll();
-        }
-
-        function _updateDrawingUI() {
-          if (!_fabricCanvas) return;
-          var active = _fabricCanvas.getActiveObject();
-          var strokeInput = document.getElementById("ssStrokeColor");
-          var fillInput = document.getElementById("ssFillColor");
-          if (active && strokeInput) {
-            var stroke = active.stroke || "#102542";
-            if (typeof stroke === "string" && stroke.match(/^#[0-9a-f]{6}$/i)) strokeInput.value = stroke;
-          }
-          if (active && fillInput) {
-            var fill = active.fill || "#ffffff";
-            if (typeof fill === "string" && fill.match(/^#[0-9a-f]{6}$/i)) fillInput.value = fill;
-          }
-        }
-
         function insertAtCursor(html) {
           if (_ckEditorInstance && _ckEditorReady) {
             _ckEditorInstance.model.change(function (writer) {
@@ -16457,32 +16401,56 @@ ${allContent}
           }
         }
 
-        function setupEditorTabs() {
-          var tabs = document.querySelectorAll(".ss-editor-tab");
-          var panels = document.querySelectorAll(".ss-editor-panel");
-          tabs.forEach(function (tab) {
-            safeOn(tab, "click", function () {
-              var target = tab.getAttribute("data-editor-tab");
-              tabs.forEach(function (t) { t.classList.remove("active"); });
-              tab.classList.add("active");
-              panels.forEach(function (p) {
-                var panelName = p.getAttribute("data-editor-panel");
-                if (panelName === target) {
-                  p.style.display = "";
-                  p.classList.add("active");
-                } else {
-                  p.style.display = "none";
-                  p.classList.remove("active");
-                }
-              });
-              if (target === "drawing" && _fabricCanvas) {
-                setTimeout(function () { _fabricCanvas.renderAll(); }, 100);
-              }
+        /* ── Initialize Extension Toolbar ── */
+        function _ssInitExtToolbar() {
+          _ssBuildShapeDropdown();
+          var ddBtn = document.getElementById("ssShapeDropdownBtn");
+          var dd = document.getElementById("ssShapeDropdown");
+          if (ddBtn && dd) {
+            safeOn(ddBtn, "click", function (e) {
+              e.stopPropagation();
+              dd.style.display = dd.style.display === "none" ? "" : "none";
             });
+            safeOn(document, "click", function () { dd.style.display = "none"; });
+          }
+          var imgBtn = document.getElementById("ssInsertImageBtn");
+          if (imgBtn) safeOn(imgBtn, "click", _ssInsertImage);
+          var txtBtn = document.getElementById("ssInsertTextBtn");
+          if (txtBtn) safeOn(txtBtn, "click", _ssInsertTextBox);
+          var dupBtn = document.getElementById("ssDuplicateBtn");
+          if (dupBtn) safeOn(dupBtn, "click", _ssDuplicateObj);
+          var delBtn = document.getElementById("ssDeleteObjBtn");
+          if (delBtn) safeOn(delBtn, "click", function () { _ssDeleteObj(); });
+          var propsClose = document.getElementById("ssPropsClose");
+          if (propsClose) safeOn(propsClose, "click", function () { document.getElementById("ssPropsPanel").style.display = "none"; });
+          var wrapSel = document.getElementById("ssWrapSelect");
+          if (wrapSel) safeOn(wrapSel, "change", function () {
+            if (_ssSelectedObjId && _ssObjects[_ssSelectedObjId]) {
+              _ssObjects[_ssSelectedObjId].wrap = this.value;
+              _ssRenderObject(_ssObjects[_ssSelectedObjId]);
+              _ssSelectObj(_ssSelectedObjId);
+              _ssSaveObjects();
+            }
           });
+          var alignSel = document.getElementById("ssAlignSelect");
+          if (alignSel) safeOn(alignSel, "change", function () {
+            if (_ssSelectedObjId && _ssObjects[_ssSelectedObjId]) {
+              _ssObjects[_ssSelectedObjId].align = this.value;
+              _ssRenderObject(_ssObjects[_ssSelectedObjId]);
+              _ssSelectObj(_ssSelectedObjId);
+              _ssSaveObjects();
+            }
+          });
+          var layer = document.getElementById("ssObjectsLayer");
+          if (layer) safeOn(layer, "mousedown", function (e) {
+            if (e.target === layer) _ssDeselectAll();
+          });
+          var hiddenTA = document.createElement("textarea");
+          hiddenTA.id = "ssObjectsDataTA";
+          hiddenTA.style.display = "none";
+          document.body.appendChild(hiddenTA);
         }
-
-        setupEditorTabs();
+        _ssInitExtToolbar();
 
         function renderSubjectSelect() {
           subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : `<option value="">Select class first</option>`;
@@ -16627,7 +16595,7 @@ ${allContent}
             marks: marks,
             questionHtml: questionHtml,
             questionText: questionText,
-            canvasJson: getCanvasJson(),
+            floatingObjects: (function () { var ta = document.getElementById("ssObjectsDataTA"); return ta ? ta.value : "{}"; })(),
             options: options,
             correctAnswer: correctAnswer,
             answerLines: answerLines
@@ -16642,7 +16610,11 @@ ${allContent}
           existingChapterSelect.value = "";
           questionTitleInput.value = "";
           clearEditor();
-          if (_fabricCanvas) { _fabricCanvas.clear(); _fabricCanvas.backgroundColor = "#ffffff"; _fabricCanvas.renderAll(); _fabricSaveHistory(); }
+          _ssObjects = {};
+          var layer = document.getElementById("ssObjectsLayer");
+          if (layer) layer.innerHTML = "";
+          _ssDeselectAll();
+          _ssSaveObjects();
           fillOpt1.value = "true";
           fillOpt2.value = "false";
           answerLinesInput.value = "3";
@@ -16665,7 +16637,7 @@ ${allContent}
               openAppMessageBox("Success", "Question deleted successfully.", "success");
             });
 
-        // ── CKEditor 5 + Fabric.js initialization ──
+        // ── CKEditor 5 + Object Editing initialization ──
         initCKEditor(function (editor) {
           if (!editor) return;
           var wcDiv = document.createElement("div");
@@ -16675,7 +16647,6 @@ ${allContent}
           var editorEl = document.querySelector(".ck-editor__main") || editor.ui.view.element;
           if (editorEl && editorEl.parentNode) editorEl.parentNode.appendChild(wcDiv);
         });
-        initFabricCanvas();
 
 
 
