@@ -15930,6 +15930,19 @@ ${allContent}
           var id = el.getAttribute("data-obj-id") || _qeGenId();
           el.setAttribute("data-obj-id", id);
           var rect = el.getBoundingClientRect();
+          // Read SVG fill/stroke from existing element for state persistence
+          var svgMeta = meta || {};
+          if (type === "shape" && !meta) {
+            var svg = el.querySelector("svg");
+            if (svg) {
+              var shape = svg.querySelector("rect, circle, ellipse, polygon, line, path, polyline");
+              if (shape) {
+                svgMeta.fill = shape.getAttribute("fill") || "#4fc3f7";
+                svgMeta.stroke = shape.getAttribute("stroke") || "#0277bd";
+                svgMeta.strokeWidth = parseInt(shape.getAttribute("stroke-width")) || 2;
+              }
+            }
+          }
           var obj = {
             id: id, el: el, type: type,
             x: parseInt(el.style.left) || 0,
@@ -15940,7 +15953,7 @@ ${allContent}
             zIndex: parseInt(el.style.zIndex) || 100,
             wrapMode: el.getAttribute("data-wrap") || "inline",
             selected: false, locked: false,
-            meta: meta || {}
+            meta: svgMeta
           };
           _qeDoc.objects.set(id, obj);
           return obj;
@@ -15970,15 +15983,40 @@ ${allContent}
           } else {
             obj.el.style.transform = "";
           }
+          // Shape SVGs: fill container and preserve aspect ratio via viewBox
           var svg = obj.el.querySelector("svg");
           if (svg && obj.type !== "image") {
             svg.style.width = "100%";
             svg.style.height = "100%";
             svg.style.display = "block";
+            svg.style.position = "absolute";
+            svg.style.top = "0";
+            svg.style.left = "0";
+            svg.style.pointerEvents = "none";
+            // Ensure figure-inner is positioned for absolute SVG and text editor
+            var inner = obj.el.querySelector(".ss-qe-figure-inner");
+            if (inner) {
+              inner.style.width = "100%";
+              inner.style.height = "100%";
+              inner.style.position = "relative";
+              inner.style.display = "block";
+              inner.style.overflow = "hidden";
+            }
           }
+          // Images: fill container
           if (obj.type === "image") {
             var img = obj.el.querySelector("img");
             if (img) { img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "contain"; }
+            var inner = obj.el.querySelector(".ss-qe-figure-inner");
+            if (inner) {
+              inner.style.width = "100%";
+              inner.style.height = "100%";
+            }
+          }
+          // Tables: fill container width
+          if (obj.type === "table") {
+            var tbl = obj.el.querySelector("table");
+            if (tbl) { tbl.style.width = "100%"; }
           }
         }
 
@@ -16163,11 +16201,14 @@ ${allContent}
           if (!obj.el) return;
           var svg = obj.el.querySelector("svg");
           if (!svg) return;
-          var shape = svg.querySelector("rect, circle, ellipse, polygon, line, path, polyline");
-          if (shape) {
+          var shapes = svg.querySelectorAll("rect, circle, ellipse, polygon, line, path, polyline");
+          shapes.forEach(function(shape) {
             if (obj.meta.fill) shape.setAttribute("fill", obj.meta.fill);
             if (obj.meta.stroke) shape.setAttribute("stroke", obj.meta.stroke);
             if (obj.meta.strokeWidth) shape.setAttribute("stroke-width", obj.meta.strokeWidth);
+          });
+          if (obj.meta.opacity !== undefined) {
+            obj.el.style.opacity = obj.meta.opacity;
           }
         }
 
@@ -16403,21 +16444,61 @@ ${allContent}
 
         // ── Duplicate Object ──
         function _qeDuplicateObject(el) {
-          var clone = el.cloneNode(true);
-          var newId = _qeGenId();
-          clone.setAttribute("data-obj-id", newId);
-          clone.classList.remove("ss-qe-selected");
           var obj = _qeGetObject(el);
-          if (obj) {
-            var newObj = _qeCreateObj(clone, obj.type, JSON.parse(JSON.stringify(obj.meta)));
-            newObj.x = obj.x + 20;
-            newObj.y = obj.y + 20;
-            newObj.zIndex = ++_qeDoc.zCounter;
-            _qeSyncTransform(newObj.id);
+          if (!obj) return;
+          var newId = _qeGenId();
+          var isTable = el.classList.contains("ss-qe-float-table");
+          var isImage = el.classList.contains("ss-qe-image-figure");
+          var isShape = !isTable && !isImage;
+          var newEl;
+          if (isTable) {
+            var tbl = el.querySelector("table");
+            newEl = el.cloneNode(true);
+          } else {
+            newEl = el.cloneNode(true);
           }
+          // Strip all handles, controls, and wiring artifacts from clone
+          newEl.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize").forEach(function(h) { h.remove(); });
+          var controls = newEl.querySelector(".ss-qe-figure-controls");
+          if (controls) controls.remove();
+          var imgControls = newEl.querySelector(".ss-qe-image-controls");
+          if (imgControls) imgControls.style.display = "none";
+          // Remove wiring flags so _qeWireAllObjects will rewire
+          newEl.removeAttribute("data-wired");
+          newEl.removeAttribute("data-drag-wired");
+          newEl.setAttribute("data-obj-id", newId);
+          newEl.classList.remove("ss-qe-selected", "ss-qe-table-selected");
+          // Copy object state with new ID and offset position
+          var newObj = _qeCreateObj(newEl, obj.type, JSON.parse(JSON.stringify(obj.meta || {})));
+          newObj.x = obj.x + 20;
+          newObj.y = obj.y + 20;
+          newObj.w = obj.w;
+          newObj.h = obj.h;
+          newObj.rotation = obj.rotation;
+          newObj.zIndex = ++_qeDoc.zCounter;
+          newObj.wrapMode = obj.wrapMode;
+          newObj.locked = false;
+          newObj.selected = false;
+          // Apply saved fill/stroke from meta to SVG if shape
+          if (isShape && newObj.meta) {
+            var svg = newEl.querySelector("svg");
+            if (svg) {
+              var shape = svg.querySelector("rect, circle, ellipse, polygon, line, path, polyline");
+              if (shape) {
+                if (newObj.meta.fill) shape.setAttribute("fill", newObj.meta.fill);
+                if (newObj.meta.stroke) shape.setAttribute("stroke", newObj.meta.stroke);
+                if (newObj.meta.strokeWidth) shape.setAttribute("stroke-width", newObj.meta.strokeWidth);
+              }
+            }
+          }
+          // Apply transform
+          _qeSyncTransform(newObj.id);
+          _qeApplyWrapMode(newObj.id);
+          // Insert into DOM
           if (el.parentNode) {
-            el.parentNode.insertBefore(clone, el.nextSibling);
+            el.parentNode.insertBefore(newEl, el.nextSibling);
           }
+          // Re-wire all objects (this will pick up the new clone)
           setTimeout(function() { _qeWireAllObjects(); }, 0);
         }
 
@@ -16449,12 +16530,23 @@ ${allContent}
         function _qeWireAllObjects() {
           if (!_qe.el) return;
           _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(fig) {
-            if (fig.getAttribute("data-wired")) return;
-            fig.setAttribute("data-wired", "1");
+            // Check if already wired by looking at our object registry, not data-wired attribute
+            var existingId = fig.getAttribute("data-obj-id");
+            if (existingId && _qeDoc.objects.has(existingId)) return;
             fig.setAttribute("draggable", "false");
             _qeSetupObject(fig);
             var type = fig.classList.contains("ss-qe-image-figure") ? "image" : "shape";
             var obj = _qeCreateObj(fig, type);
+            // Read SVG fill/stroke and store in meta
+            var svg = fig.querySelector("svg");
+            if (svg && type === "shape") {
+              var shape = svg.querySelector("rect, circle, ellipse, polygon, line, path, polyline");
+              if (shape) {
+                if (!obj.meta.fill) obj.meta.fill = shape.getAttribute("fill") || "#4fc3f7";
+                if (!obj.meta.stroke) obj.meta.stroke = shape.getAttribute("stroke") || "#0277bd";
+                if (!obj.meta.strokeWidth) obj.meta.strokeWidth = parseInt(shape.getAttribute("stroke-width")) || 2;
+              }
+            }
             _qeSyncTransform(obj.id);
             _qeApplyWrapMode(obj.id);
             safeOn(fig, "mousedown", function(e) {
@@ -16495,8 +16587,8 @@ ${allContent}
           });
 
           _qe.el.querySelectorAll(".ss-qe-float-table").forEach(function(ft) {
-            if (ft.getAttribute("data-wired")) return;
-            ft.setAttribute("data-wired", "1");
+            var existingId = ft.getAttribute("data-obj-id");
+            if (existingId && _qeDoc.objects.has(existingId)) return;
             ft.setAttribute("draggable", "false");
             var tbl = ft.querySelector("table");
             var obj = _qeCreateObj(ft, "table");
@@ -16767,19 +16859,19 @@ ${allContent}
 
         // ── Shape Library ──
         var _qeShapeLibrary = {
-          rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          circle: { label: "Circle", svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="47" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          ellipse: { label: "Ellipse", svg: '<svg viewBox="0 0 120 80"><ellipse cx="60" cy="40" rx="57" ry="37" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          triangle: { label: "Triangle", svg: '<svg viewBox="0 0 120 80"><polygon points="60,3 117,77 3,77" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          diamond: { label: "Diamond", svg: '<svg viewBox="0 0 120 80"><polygon points="60,3 117,40 60,77 3,40" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowRight: { label: "Arrow Right", svg: '<svg viewBox="0 0 120 80"><polygon points="2,15 70,15 70,2 118,40 70,78 70,65 2,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowLeft: { label: "Arrow Left", svg: '<svg viewBox="0 0 120 80"><polygon points="118,15 50,15 50,2 2,40 50,78 50,65 118,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowUp: { label: "Arrow Up", svg: '<svg viewBox="0 0 80 120"><polygon points="65,118 40,50 15,118" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="2" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowDown: { label: "Arrow Down", svg: '<svg viewBox="0 0 80 120"><polygon points="65,2 40,70 15,2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="63" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          line: { label: "Line", svg: '<svg viewBox="0 0 120 20"><line x1="5" y1="10" x2="115" y2="10" stroke="#0277bd" stroke-width="3" stroke-linecap="round"/></svg>' },
-          callout: { label: "Callout", svg: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="90" height="55" rx="6" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><polygon points="30,57 40,77 55,57" fill="#4fc3f7" stroke="#0277bd" stroke-width="2" stroke-linejoin="round"/></svg>' },
-          textBox: { label: "Text Box", svg: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="2" stroke-dasharray="6,3"/></svg>' }
+          rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          circle: { label: "Circle", svg: '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><circle cx="50" cy="50" r="47" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          ellipse: { label: "Ellipse", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><ellipse cx="60" cy="40" rx="57" ry="37" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          triangle: { label: "Triangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="60,3 117,77 3,77" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          diamond: { label: "Diamond", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="60,3 117,40 60,77 3,40" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowRight: { label: "Arrow Right", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="2,15 70,15 70,2 118,40 70,78 70,65 2,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowLeft: { label: "Arrow Left", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="118,15 50,15 50,2 2,40 50,78 50,65 118,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowUp: { label: "Arrow Up", svg: '<svg viewBox="0 0 80 120" preserveAspectRatio="none"><polygon points="65,118 40,50 15,118" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="2" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowDown: { label: "Arrow Down", svg: '<svg viewBox="0 0 80 120" preserveAspectRatio="none"><polygon points="65,2 40,70 15,2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="63" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          line: { label: "Line", svg: '<svg viewBox="0 0 120 20" preserveAspectRatio="none"><line x1="5" y1="10" x2="115" y2="10" stroke="#0277bd" stroke-width="3" stroke-linecap="round"/></svg>' },
+          callout: { label: "Callout", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="90" height="55" rx="6" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><polygon points="30,57 40,77 55,57" fill="#4fc3f7" stroke="#0277bd" stroke-width="2" stroke-linejoin="round"/></svg>' },
+          textBox: { label: "Text Box", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="2" stroke-dasharray="6,3"/></svg>' }
         };
 
         function _qeBuildShapesPanel() {
@@ -16798,7 +16890,7 @@ ${allContent}
               var shape = _qeShapeLibrary[key];
               if (!shape) return;
               var isTextBox = key === "textBox";
-              var inner = '<div class="ss-qe-figure-inner">' + shape.svg + (isTextBox ? '<div class="ss-qe-shape-text-editor" contenteditable="true">Type here</div>' : '') + '</div>';
+              var inner = '<div class="ss-qe-figure-inner">' + shape.svg + (isTextBox ? '<div class="ss-qe-shape-text-editor" contenteditable="true" style="position:absolute;top:10%;left:10%;right:10%;bottom:10%;outline:none;font-size:14px;text-align:center;display:flex;align-items:center;justify-content:center;cursor:text;z-index:2;">Type here</div>' : '') + '</div>';
               var id = _qeGenId();
               var fig = '<figure class="ss-qe-figure" contenteditable="false" data-obj-id="' + id + '" data-z="' + (++_qeDoc.zCounter) + '" style="text-align:center;margin:8px 4px;position:relative;display:inline-block;width:120px;height:80px;z-index:' + _qeDoc.zCounter + ';">' + inner + '<div class="ss-qe-figure-controls"><button type="button" class="ss-qe-fc-btn" data-action="delete" title="Delete">\u2715</button></div></figure><p><br></p>';
               _qeInsertHTML(fig);
@@ -16875,7 +16967,7 @@ ${allContent}
         function _qeInsertEquation(tex) {
           var rendered = "";
           try { rendered = katex.renderToString(tex, { throwOnError: false, displayMode: false }); } catch(e) { rendered = '<span style="color:red;">' + tex + '</span>'; }
-          var html = '<span class="ss-qe-equation" contenteditable="false" data-tex="' + tex.replace(/"/g, "&quot;") + '" style="display:inline-block;margin:2px 4px;padding:2px 6px;background:#f0f4ff;border:1px solid #c5d5f5;border-radius:4px;cursor:pointer;vertical-align:middle;">' + rendered + '</span>&nbsp;';
+          var html = '<span class="ss-qe-equation" contenteditable="false" data-tex="' + tex.replace(/"/g, "&quot;") + '" style="display:inline-block;margin:2px 4px;padding:2px 6px;background:#ffffff;border:1px solid #d0d0d0;border-radius:4px;cursor:pointer;vertical-align:middle;">' + rendered + '</span>&nbsp;';
           _qeInsertHTML(html);
         }
 
