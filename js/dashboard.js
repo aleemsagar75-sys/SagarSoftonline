@@ -16293,8 +16293,8 @@ ${allContent}
               { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } } },
               { label: "Send To Back", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 1; _qeSyncTransform(obj.id); } } },
               "---",
-              { label: "Fill Color", fn: function() { var color = prompt("Fill color (hex):", "#4fc3f7"); if (color) { var obj = _qeGetObject(el); if (obj) { obj.meta.fill = color; _qeUpdateShapeStyle(obj); } } } },
-              { label: "Border Color", fn: function() { var color = prompt("Border color (hex):", "#0277bd"); if (color) { var obj = _qeGetObject(el); if (obj) { obj.meta.stroke = color; _qeUpdateShapeStyle(obj); } } } },
+              { label: "Fill Color", fn: function(e) { var obj = _qeGetObject(el); var cur = (obj && obj.meta.fill) || "#4fc3f7"; _qeShowColorPopup(e, "Fill Color", cur, function(color) { if (obj) { obj.meta.fill = color; _qeUpdateShapeStyle(obj); } }); } },
+              { label: "Border Color", fn: function(e) { var obj = _qeGetObject(el); var cur = (obj && obj.meta.stroke) || "#0277bd"; _qeShowColorPopup(e, "Border Color", cur, function(color) { if (obj) { obj.meta.stroke = color; _qeUpdateShapeStyle(obj); } }); } },
               { label: "Border Width", fn: function() { var w = prompt("Border width:", "2"); if (w && !isNaN(w)) { var obj = _qeGetObject(el); if (obj) { obj.meta.strokeWidth = parseInt(w); _qeUpdateShapeStyle(obj); } } } },
               "---",
               { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
@@ -16344,7 +16344,7 @@ ${allContent}
               });
               btn.appendChild(sub);
             }
-            if (item.fn) safeOn(btn, "click", function(ev) { ev.stopPropagation(); _qeHideContextMenu(); item.fn(); });
+            if (item.fn) safeOn(btn, "click", function(ev) { ev.stopPropagation(); _qeHideContextMenu(); item.fn(ev); });
             menu.appendChild(btn);
           });
           document.body.appendChild(menu);
@@ -16363,6 +16363,51 @@ ${allContent}
 
         function _qeHideContextMenu() {
           if (_qe.contextMenu) { _qe.contextMenu.remove(); _qe.contextMenu = null; }
+        }
+
+        // ── Color Picker Popup (for context menu) ──
+        function _qeShowColorPopup(e, title, currentColor, onApply) {
+          _qeHideContextMenu();
+          var popup = document.createElement("div");
+          popup.className = "ss-qe-color-popup";
+          var presets = ["#4fc3f7","#0277bd","#ffffff","#000000","#ff0000","#ff9800","#ffeb3b","#4caf50","#2196f3","#9c27b0","#795548","#607d8b"];
+          var html = '<div class="ss-qe-color-popup-header">' + title + '</div>';
+          html += '<div class="ss-qe-color-popup-row"><input type="color" class="ss-qe-color-popup-input" value="' + (currentColor || "#4fc3f7") + '"><input type="text" class="ss-qe-color-popup-hex" value="' + (currentColor || "#4fc3f7") + '" maxlength="7"></div>';
+          html += '<div class="ss-qe-color-popup-presets">';
+          presets.forEach(function(c) { html += '<button type="button" class="ss-qe-color-popup-swatch" data-color="' + c + '" style="background:' + c + ';"></button>'; });
+          html += '</div>';
+          html += '<div class="ss-qe-color-popup-actions"><button type="button" class="ss-qe-color-popup-apply">Apply</button><button type="button" class="ss-qe-color-popup-cancel">Cancel</button></div>';
+          popup.innerHTML = html;
+          document.body.appendChild(popup);
+          var colorInput = popup.querySelector(".ss-qe-color-popup-input");
+          var hexInput = popup.querySelector(".ss-qe-color-popup-hex");
+          colorInput.addEventListener("input", function() { hexInput.value = colorInput.value; });
+          hexInput.addEventListener("input", function() { if (/^#[0-9a-f]{6}$/i.test(hexInput.value)) colorInput.value = hexInput.value; });
+          popup.querySelectorAll(".ss-qe-color-popup-swatch").forEach(function(sw) {
+            sw.addEventListener("click", function() {
+              var c = sw.getAttribute("data-color");
+              colorInput.value = c;
+              hexInput.value = c;
+            });
+          });
+          popup.querySelector(".ss-qe-color-popup-apply").addEventListener("click", function() {
+            onApply(hexInput.value);
+            popup.remove();
+          });
+          popup.querySelector(".ss-qe-color-popup-cancel").addEventListener("click", function() { popup.remove(); });
+          // Position at cursor
+          var px = e.clientX || (e.originalEvent && e.originalEvent.clientX) || 100;
+          var py = e.clientY || (e.originalEvent && e.originalEvent.clientY) || 100;
+          popup.style.left = px + "px";
+          popup.style.top = py + "px";
+          if (px + 220 > window.innerWidth) popup.style.left = (px - 220) + "px";
+          if (py + 200 > window.innerHeight) popup.style.top = (py - 200) + "px";
+          // Close on outside click
+          setTimeout(function() {
+            document.addEventListener("mousedown", function handler(ev) {
+              if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener("mousedown", handler); }
+            });
+          }, 10);
         }
 
         // ── Text Edit Mode ──
@@ -16695,6 +16740,7 @@ ${allContent}
             _qeApplyWrapMode(obj.id);
             _qeSetupObjectDrag(ft);
             _qeSetupResizeHandles(ft);
+            _qeSetupRotateHandle(ft);
             _qeSetupTableMoveHandle(ft);
             _qeSetupTableResizeHandle(ft);
             _qeSetupTableColResize(tbl);
@@ -17151,7 +17197,7 @@ ${allContent}
           var icons = {
             undo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a5 5 0 0 1 0 10H13"/><path d="M3 10l4-4M3 10l4 4"/></svg>',
             redo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H11a5 5 0 0 0 0 10h1"/><path d="M21 10l-4-4M21 10l-4 4"/></svg>',
-            clear: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>',
+            clear: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16l9-9 8 8-4 4"/><path d="M6.5 13.5l8-8"/></svg>',
             bold: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 0 8H6zM6 12h9a4 4 0 0 1 0 8H6z"/></svg>',
             italic: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 4h-9M14 20H5M15 4L9 20"/></svg>',
             underline: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 12 0V3M4 21h16"/></svg>',
@@ -17331,7 +17377,7 @@ ${allContent}
             // Create marquee element
             var marquee = document.createElement("div");
             marquee.className = "ss-qe-selection-box";
-            marquee.style.cssText = "position:fixed;border:1px dashed #1b5f7a;background:rgba(27,95,122,0.08);pointer-events:none;z-index:99999;display:none;";
+            marquee.style.cssText = "position:fixed;border:1px solid rgba(37,99,235,0.5);background:rgba(37,99,235,0.08);pointer-events:none;z-index:99999;display:none;";
             function onMove(ev) {
               var dx = ev.clientX - startX;
               var dy = ev.clientY - startY;
