@@ -16148,7 +16148,7 @@ ${allContent}
             if (ic) ic.style.display = "flex";
           }
           if (type === "table") el.classList.add("ss-qe-table-selected");
-          _qeShowPropsPanel();
+          // Properties panel only opens via right-click context menu
         }
 
         function _qeDeselectAll() {
@@ -16267,6 +16267,7 @@ ${allContent}
               { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); } } },
               { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } } },
               "---",
+              { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
               { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
             ];
           } else if (type === "shape") {
@@ -16296,6 +16297,7 @@ ${allContent}
               { label: "Border Color", fn: function() { var color = prompt("Border color (hex):", "#0277bd"); if (color) { var obj = _qeGetObject(el); if (obj) { obj.meta.stroke = color; _qeUpdateShapeStyle(obj); } } } },
               { label: "Border Width", fn: function() { var w = prompt("Border width:", "2"); if (w && !isNaN(w)) { var obj = _qeGetObject(el); if (obj) { obj.meta.strokeWidth = parseInt(w); _qeUpdateShapeStyle(obj); } } } },
               "---",
+              { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
               { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
             ];
           } else if (type === "table") {
@@ -16315,6 +16317,7 @@ ${allContent}
               { label: "Delete Row", fn: function() { if (extra) _qeTableDeleteRow(tbl, extra.closest("tr")); } },
               { label: "Delete Column", fn: function() { if (extra) _qeTableDeleteCol(tbl, extra); } },
               "---",
+              { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
               { label: "Delete Table", fn: function() { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); }, cls: "danger" }
             ];
           }
@@ -17176,7 +17179,8 @@ ${allContent}
             rtl: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h10M3 18h14"/><text x="15" y="15" font-size="9" fill="currentColor" stroke="none">R</text></svg>',
             code: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>',
             bringFwd: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="12" height="12" rx="1" fill="currentColor" opacity="0.2"/><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M15 3v12M21 9h-12"/></svg>',
-            sendBwd: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="1" fill="currentColor" opacity="0.2"/><rect x="3" y="3" width="12" height="12" rx="1"/><path d="M9 21V9M3 15h12"/></svg>'
+            sendBwd: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="1" fill="currentColor" opacity="0.2"/><rect x="3" y="3" width="12" height="12" rx="1"/><path d="M9 21V9M3 15h12"/></svg>',
+            delete: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>'
           };
           var html = '';
           html += '<div class="ss-qe-btn-group">' + btn(icons.undo, "Undo (Ctrl+Z)", "undo") + btn(icons.redo, "Redo (Ctrl+Y)", "redo") + btn(icons.clear, "Clear Formatting", "removeFormat") + sep() + '</div>';
@@ -17189,7 +17193,7 @@ ${allContent}
           html += '<div class="ss-qe-btn-group"><div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-font-color-btn" title="Text Color">' + icons.fontColor + '</button><input type="color" class="ss-qe-color-input" value="#ff0000" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div><div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-highlight-btn" title="Highlight Color">' + icons.highlight + '</button><input type="color" class="ss-qe-color-input" value="#ffff00" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div>' + sep() + '</div>';
           html += '<div class="ss-qe-btn-group">' + btn(icons.alignL, "Align Left", "justifyLeft") + btn(icons.alignC, "Center", "justifyCenter") + btn(icons.alignR, "Align Right", "justifyRight") + btn(icons.alignJ, "Justify", "justifyFull") + sep() + '</div>';
           html += '<div class="ss-qe-btn-group">' + btn(icons.bullets, "Bullets", "insertUnorderedList") + btn(icons.numbers, "Numbering", "insertOrderedList") + btn(icons.indent, "Increase Indent", "indent") + btn(icons.outdent, "Decrease Indent", "outdent") + sep() + '</div>';
-          html += '<div class="ss-qe-btn-group">' + btn(icons.image, "Insert Image", "ss-qe-img") + btn(icons.table, "Insert Table", "ss-qe-table") + btn(icons.equation, "Math Equation", "ss-qe-equation") + btn(icons.spchar, "Special Characters", "ss-qe-spchar") + btn(icons.link, "Insert Link", "ss-qe-link") + btn(icons.hline, "Horizontal Line", "ss-qe-hline") + btn(icons.pagebreak, "Page Break", "ss-qe-pagebreak") + btn(icons.shapes, "Shapes", "ss-qe-shapes") + btn(icons.code, "Code Block", "formatBlock", "pre") + sep() + btn(icons.bringFwd, "Bring Forward", "ss-qe-bring-fwd") + btn(icons.sendBwd, "Send Backward", "ss-qe-send-bwd") + btn(icons.clear, "Delete Object", "ss-qe-delete") + sep() + btn(icons.rtl, "Toggle RTL/LTR", "ss-qe-rtl") + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.image, "Insert Image", "ss-qe-img") + btn(icons.table, "Insert Table", "ss-qe-table") + btn(icons.equation, "Math Equation", "ss-qe-equation") + btn(icons.spchar, "Special Characters", "ss-qe-spchar") + btn(icons.link, "Insert Link", "ss-qe-link") + btn(icons.hline, "Horizontal Line", "ss-qe-hline") + btn(icons.pagebreak, "Page Break", "ss-qe-pagebreak") + btn(icons.shapes, "Shapes", "ss-qe-shapes") + btn(icons.code, "Code Block", "formatBlock", "pre") + sep() + btn(icons.bringFwd, "Bring Forward", "ss-qe-bring-fwd") + btn(icons.sendBwd, "Send Backward", "ss-qe-send-bwd") + btn(icons.delete, "Delete Object", "ss-qe-delete") + sep() + btn(icons.rtl, "Toggle RTL/LTR", "ss-qe-rtl") + '</div>';
           tb.innerHTML = html;
 
           tb.querySelectorAll("[data-cmd]").forEach(function(b) {
