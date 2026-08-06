@@ -15905,12 +15905,99 @@ ${allContent}
         const message = document.getElementById("qpChapterMessage");
         const tableBody = document.getElementById("qpChapterBody");
 
+        // ── Document Object Model State Manager ──
+        var _qeDoc = {
+          objects: new Map(),
+          selectedIds: new Set(),
+          zCounter: 100,
+          interaction: { state: "idle", type: null, startX: 0, startY: 0, objId: null, handle: null, origState: null },
+          clipboard: null,
+          undoStack: [],
+          redoStack: []
+        };
+
         var _qe = {
           el: null, toolbar: null, status: null, activePanel: null,
-          selectedEl: null, selectedType: null, clipboard: null, zCounter: 100,
+          selectedEl: null, selectedType: null,
+          contextMenu: null, propsPanel: null,
           wordFontSizes: [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72],
           fontFamilies: ["Arial", "Calibri", "Times New Roman", "Cambria", "Poppins", "Inter", "Segoe UI", "Georgia", "Courier New", "Verdana", "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq"]
         };
+
+        function _qeGenId() { return "qeobj-" + Date.now().toString(36) + "-" + Math.random().toString(36).substr(2, 6); }
+
+        function _qeCreateObj(el, type, meta) {
+          var id = el.getAttribute("data-obj-id") || _qeGenId();
+          el.setAttribute("data-obj-id", id);
+          var rect = el.getBoundingClientRect();
+          var obj = {
+            id: id, el: el, type: type,
+            x: parseInt(el.style.left) || 0,
+            y: parseInt(el.style.top) || 0,
+            w: parseInt(el.style.width) || rect.width || 120,
+            h: parseInt(el.style.height) || rect.height || 80,
+            rotation: parseFloat(el.getAttribute("data-rotation")) || 0,
+            zIndex: parseInt(el.style.zIndex) || 100,
+            wrapMode: el.getAttribute("data-wrap") || "inline",
+            selected: false, locked: false,
+            meta: meta || {}
+          };
+          _qeDoc.objects.set(id, obj);
+          return obj;
+        }
+
+        function _qeGetObject(el) {
+          var fig = el.closest ? (el.closest(".ss-qe-figure") || el.closest(".ss-qe-float-table")) : null;
+          if (fig) {
+            var id = fig.getAttribute("data-obj-id");
+            if (id && _qeDoc.objects.has(id)) return _qeDoc.objects.get(id);
+            return _qeCreateObj(fig, fig.classList.contains("ss-qe-image-figure") ? "image" : fig.classList.contains("ss-qe-float-table") ? "table" : "shape");
+          }
+          return null;
+        }
+
+        function _qeSyncTransform(id) {
+          var obj = _qeDoc.objects.get(id);
+          if (!obj || !obj.el) return;
+          obj.el.style.position = "relative";
+          obj.el.style.left = obj.x + "px";
+          obj.el.style.top = obj.y + "px";
+          obj.el.style.width = obj.w + "px";
+          obj.el.style.height = obj.h + "px";
+          obj.el.style.zIndex = obj.zIndex;
+          if (obj.rotation) {
+            obj.el.style.transform = "rotate(" + obj.rotation + "deg)";
+          } else {
+            obj.el.style.transform = "";
+          }
+          var svg = obj.el.querySelector("svg");
+          if (svg && obj.type !== "image") {
+            svg.style.width = "100%";
+            svg.style.height = "100%";
+            svg.style.display = "block";
+          }
+          if (obj.type === "image") {
+            var img = obj.el.querySelector("img");
+            if (img) { img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "contain"; }
+          }
+        }
+
+        function _qeApplyWrapMode(id) {
+          var obj = _qeDoc.objects.get(id);
+          if (!obj || !obj.el) return;
+          var el = obj.el;
+          el.style.float = "";
+          el.style.position = "relative";
+          el.style.zIndex = obj.zIndex;
+          switch (obj.wrapMode) {
+            case "square": el.style.float = "left"; el.style.margin = "8px 12px 8px 0"; break;
+            case "tight": el.style.float = "left"; el.style.margin = "4px 6px 4px 0"; break;
+            case "topBottom": el.style.display = "block"; el.style.clear = "both"; el.style.margin = "8px auto"; break;
+            case "behind": el.style.position = "absolute"; el.style.zIndex = 0; el.style.pointerEvents = "none"; break;
+            case "front": el.style.position = "absolute"; el.style.zIndex = 9999; break;
+            default: el.style.float = ""; el.style.display = ""; el.style.clear = ""; el.style.margin = "8px 4px"; break;
+          }
+        }
 
         function _qeExec(cmd, val) {
           _qe.el && _qe.el.focus();
@@ -15930,7 +16017,15 @@ ${allContent}
 
         function _qeGetHTML() { return _qe.el ? _qe.el.innerHTML : ""; }
         function _qeGetText() { return _qe.el ? _qe.el.innerText : ""; }
-        function _qeClear() { if (_qe.el) { _qe.el.innerHTML = "<p><br></p>"; _qeDeselectAll(); _qeUpdateStatus(); } }
+        function _qeClear() {
+          if (_qe.el) {
+            _qe.el.innerHTML = "<p><br></p>";
+            _qeDeselectAll();
+            _qeDoc.objects.clear();
+            _qeDoc.zCounter = 100;
+            _qeUpdateStatus();
+          }
+        }
 
         function _qeUpdateStatus() {
           if (!_qe.status || !_qe.el) return;
@@ -15967,17 +16062,24 @@ ${allContent}
           }
         }
 
+        // ── Selection System ──
         function _qeSelect(el, type) {
           _qeDeselectAll();
           if (!el) return;
           _qe.selectedEl = el;
           _qe.selectedType = type;
           el.classList.add("ss-qe-selected");
+          var obj = _qeGetObject(el);
+          if (obj) {
+            _qeDoc.selectedIds.add(obj.id);
+            obj.selected = true;
+          }
           if (type === "image") {
             var ic = el.querySelector(".ss-qe-image-controls");
             if (ic) ic.style.display = "flex";
           }
           if (type === "table") el.classList.add("ss-qe-table-selected");
+          _qeShowPropsPanel();
         }
 
         function _qeDeselectAll() {
@@ -15985,39 +16087,237 @@ ${allContent}
             _qe.selectedEl.classList.remove("ss-qe-selected", "ss-qe-table-selected");
             var ic = _qe.selectedEl.querySelector(".ss-qe-image-controls");
             if (ic) ic.style.display = "none";
+            var obj = _qeGetObject(_qe.selectedEl);
+            if (obj) { obj.selected = false; _qeDoc.selectedIds.delete(obj.id); }
           }
           _qe.selectedEl = null;
           _qe.selectedType = null;
+          _qeDoc.selectedIds.clear();
+          _qeHidePropsPanel();
         }
 
+        // ── Properties Panel ──
+        function _qeShowPropsPanel() {
+          _qeHidePropsPanel();
+          if (!_qe.selectedEl || !_qe.selectedType) return;
+          var obj = _qeGetObject(_qe.selectedEl);
+          if (!obj) return;
+          var panel = document.createElement("div");
+          panel.className = "ss-qe-props-panel";
+          var html = '<div class="ss-qe-props-header">' + (obj.type.charAt(0).toUpperCase() + obj.type.slice(1)) + ' Properties</div>';
+          if (obj.type === "image") {
+            html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Height</label><input type="number" data-prop="h" value="' + Math.round(obj.h) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Rotation</label><input type="number" data-prop="rotation" value="' + Math.round(obj.rotation) + '" step="15"></div>';
+            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="tight"' + (obj.wrapMode === "tight" ? " selected" : "") + '>Tight</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option><option value="behind"' + (obj.wrapMode === "behind" ? " selected" : "") + '>Behind Text</option><option value="front"' + (obj.wrapMode === "front" ? " selected" : "") + '>In Front</option></select></div>';
+            html += '<div class="ss-qe-props-row"><label>Transparency</label><input type="range" data-prop="opacity" min="0" max="100" value="' + ((obj.meta.opacity || 1) * 100) + '" style="flex:1;"></div>';
+          } else if (obj.type === "shape") {
+            html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Height</label><input type="number" data-prop="h" value="' + Math.round(obj.h) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Rotation</label><input type="number" data-prop="rotation" value="' + Math.round(obj.rotation) + '" step="15"></div>';
+            html += '<div class="ss-qe-props-row"><label>Fill</label><input type="color" data-prop="fill" value="' + (obj.meta.fill || "#4fc3f7") + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Stroke</label><input type="color" data-prop="stroke" value="' + (obj.meta.stroke || "#0277bd") + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Stroke W</label><input type="number" data-prop="strokeWidth" value="' + (obj.meta.strokeWidth || 2) + '" min="0" max="20"></div>';
+            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="tight"' + (obj.wrapMode === "tight" ? " selected" : "") + '>Tight</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option><option value="behind"' + (obj.wrapMode === "behind" ? " selected" : "") + '>Behind Text</option><option value="front"' + (obj.wrapMode === "front" ? " selected" : "") + '>In Front</option></select></div>';
+          } else if (obj.type === "table") {
+            html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option></select></div>';
+          }
+          html += '<div class="ss-qe-props-row"><label>Layer</label><div style="display:flex;gap:4px;flex:1;"><button class="ss-qe-props-btn" data-action="bringFwd" style="flex:1;padding:3px 6px;border:1px solid #dde4ea;border-radius:4px;cursor:pointer;font-size:10px;">Forward</button><button class="ss-qe-props-btn" data-action="sendBwd" style="flex:1;padding:3px 6px;border:1px solid #dde4ea;border-radius:4px;cursor:pointer;font-size:10px;">Backward</button></div></div>';
+          panel.innerHTML = html;
+          document.body.appendChild(panel);
+          _qe.propsPanel = panel;
+          var selRect = _qe.selectedEl.getBoundingClientRect();
+          panel.style.top = (selRect.top) + "px";
+          panel.style.left = (selRect.right + 8) + "px";
+          if (selRect.right + 8 + 240 > window.innerWidth) {
+            panel.style.left = (selRect.left - 248) + "px";
+          }
+          panel.querySelectorAll("[data-prop]").forEach(function(inp) {
+            var prop = inp.getAttribute("data-prop");
+            safeOn(inp, "input", function() {
+              if (prop === "w") { obj.w = Math.max(40, parseInt(inp.value) || 40); _qeSyncTransform(obj.id); }
+              else if (prop === "h") { obj.h = Math.max(20, parseInt(inp.value) || 20); _qeSyncTransform(obj.id); }
+              else if (prop === "rotation") { obj.rotation = parseInt(inp.value) || 0; _qeSyncTransform(obj.id); }
+              else if (prop === "wrapMode") { obj.wrapMode = inp.value; _qeApplyWrapMode(obj.id); }
+              else if (prop === "fill") { obj.meta.fill = inp.value; _qeUpdateShapeStyle(obj); }
+              else if (prop === "stroke") { obj.meta.stroke = inp.value; _qeUpdateShapeStyle(obj); }
+              else if (prop === "strokeWidth") { obj.meta.strokeWidth = parseInt(inp.value) || 2; _qeUpdateShapeStyle(obj); }
+              else if (prop === "opacity") { obj.meta.opacity = parseInt(inp.value) / 100; obj.el.style.opacity = obj.meta.opacity; }
+            });
+          });
+          panel.querySelectorAll("[data-action]").forEach(function(btn) {
+            safeOn(btn, "click", function() {
+              var action = btn.getAttribute("data-action");
+              if (action === "bringFwd") { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); }
+              else if (action === "sendBwd") { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); }
+            });
+          });
+        }
+
+        function _qeHidePropsPanel() {
+          if (_qe.propsPanel) { _qe.propsPanel.remove(); _qe.propsPanel = null; }
+        }
+
+        function _qeUpdateShapeStyle(obj) {
+          if (!obj.el) return;
+          var svg = obj.el.querySelector("svg");
+          if (!svg) return;
+          var shape = svg.querySelector("rect, circle, ellipse, polygon, line, path, polyline");
+          if (shape) {
+            if (obj.meta.fill) shape.setAttribute("fill", obj.meta.fill);
+            if (obj.meta.stroke) shape.setAttribute("stroke", obj.meta.stroke);
+            if (obj.meta.strokeWidth) shape.setAttribute("stroke-width", obj.meta.strokeWidth);
+          }
+        }
+
+        // ── Context Menu System ──
+        function _qeShowContextMenu(e, type, el, extra) {
+          e.preventDefault();
+          e.stopPropagation();
+          _qeHideContextMenu();
+          var menu = document.createElement("div");
+          menu.className = "ss-qe-context-menu";
+          var items = [];
+          if (type === "image") {
+            items = [
+              { label: "Wrap Text", submenu: [
+                { label: "Inline", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "inline"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Square", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "square"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Tight", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "tight"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Behind Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "behind"; _qeApplyWrapMode(obj.id); } } },
+                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } }
+              ]},
+              { label: "Replace", fn: function() { document.getElementById("ssQEImgInput").click(); } },
+              { label: "Crop", fn: function() { _qeStartCrop(el); } },
+              "---",
+              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); } } },
+              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } } },
+              "---",
+              { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
+            ];
+          } else if (type === "shape") {
+            items = [
+              { label: "Wrap Text", submenu: [
+                { label: "Inline", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "inline"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Square", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "square"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Tight", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "tight"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Behind Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "behind"; _qeApplyWrapMode(obj.id); } } },
+                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } }
+              ]},
+              { label: "Edit Text", fn: function() { var txt = el.querySelector(".ss-qe-shape-text-editor"); if (txt) txt.focus(); } },
+              "---",
+              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); } } },
+              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } } },
+              { label: "Duplicate", fn: function() { _qeDuplicateObject(el); } },
+              "---",
+              { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
+            ];
+          } else if (type === "table") {
+            var tbl = el.querySelector("table") || el;
+            items = [
+              { label: "Wrap Text", submenu: [
+                { label: "Inline", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "inline"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Square", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "square"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } }
+              ]},
+              "---",
+              { label: "Insert Row Above", fn: function() { _qeTableInsertRow(tbl, false); } },
+              { label: "Insert Row Below", fn: function() { _qeTableInsertRow(tbl, true); } },
+              { label: "Insert Column Left", fn: function() { _qeTableInsertCol(tbl, false); } },
+              { label: "Insert Column Right", fn: function() { _qeTableInsertCol(tbl, true); } },
+              "---",
+              { label: "Delete Row", fn: function() { if (extra) _qeTableDeleteRow(tbl, extra.closest("tr")); } },
+              { label: "Delete Column", fn: function() { if (extra) _qeTableDeleteCol(tbl, extra); } },
+              "---",
+              { label: "Delete Table", fn: function() { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); }, cls: "danger" }
+            ];
+          }
+          items.forEach(function(item) {
+            if (item.label === "---") {
+              var sep = document.createElement("div");
+              sep.className = "ss-qe-context-menu-sep";
+              menu.appendChild(sep);
+              return;
+            }
+            var btn = document.createElement("button");
+            btn.className = "ss-qe-context-menu-item" + (item.cls ? " " + item.cls : "");
+            btn.textContent = item.label;
+            if (item.submenu) {
+              btn.classList.add("ss-qe-context-menu-sub");
+              var sub = document.createElement("div");
+              sub.className = "ss-qe-context-menu-submenu";
+              item.submenu.forEach(function(si) {
+                var sb = document.createElement("button");
+                sb.className = "ss-qe-context-menu-item";
+                sb.textContent = si.label;
+                safeOn(sb, "click", function(ev) { ev.stopPropagation(); _qeHideContextMenu(); si.fn(); });
+                sub.appendChild(sb);
+              });
+              btn.appendChild(sub);
+            }
+            if (item.fn) safeOn(btn, "click", function(ev) { ev.stopPropagation(); _qeHideContextMenu(); item.fn(); });
+            menu.appendChild(btn);
+          });
+          document.body.appendChild(menu);
+          menu.style.left = e.clientX + "px";
+          menu.style.top = e.clientY + "px";
+          if (e.clientX + 200 > window.innerWidth) menu.style.left = (e.clientX - 200) + "px";
+          if (e.clientY + menu.offsetHeight > window.innerHeight) menu.style.top = (e.clientY - menu.offsetHeight) + "px";
+          _qe.contextMenu = menu;
+          setTimeout(function() {
+            safeOn(document, "mousedown", function handler(ev) {
+              if (_qe.contextMenu && !_qe.contextMenu.contains(ev.target)) { _qeHideContextMenu(); }
+              document.removeEventListener("mousedown", handler);
+            });
+          }, 10);
+        }
+
+        function _qeHideContextMenu() {
+          if (_qe.contextMenu) { _qe.contextMenu.remove(); _qe.contextMenu = null; }
+        }
+
+        // ── Object Manipulation ──
         function _qeSetupObjectDrag(el) {
           if (el.getAttribute("data-drag-wired")) return;
           el.setAttribute("data-drag-wired", "1");
           el.setAttribute("draggable", "false");
-          var startX, startY, startLeft, startTop, isDragging = false;
+          var startX, startY, startObjX, startObjY, isDragging = false;
           safeOn(el, "mousedown", function(e) {
-            if (e.target.classList.contains("ss-qe-resize-handle") || e.target.classList.contains("ss-qe-rotate-handle") || e.target.classList.contains("ss-qe-fc-btn") || e.target.tagName === "BUTTON" || e.target.closest("button")) return;
+            if (e.target.classList.contains("ss-qe-resize-handle") || e.target.classList.contains("ss-qe-rotate-handle") || e.target.classList.contains("ss-qe-fc-btn") || e.target.tagName === "BUTTON" || e.target.closest("button") || e.target.closest(".ss-qe-table-move-handle") || e.target.closest(".ss-qe-table-resize-handle") || e.target.closest(".ss-qe-col-resize") || e.target.closest(".ss-qe-row-resize")) return;
             e.preventDefault();
             e.stopPropagation();
             var fig = e.target.closest(".ss-qe-figure");
-            if (fig) _qeSelect(fig, fig.classList.contains("ss-qe-image-figure") ? "image" : "shape");
-            else _qeSelect(el, _qe.selectedType || "shape");
-            startX = e.clientX; startY = e.clientY;
-            var cs = window.getComputedStyle(el);
-            startLeft = parseInt(cs.left) || 0;
-            startTop = parseInt(cs.top) || 0;
+            var tbl = e.target.closest(".ss-qe-float-table");
+            if (fig) {
+              var type = fig.classList.contains("ss-qe-image-figure") ? "image" : "shape";
+              _qeSelect(fig, type);
+            } else if (tbl) {
+              _qeSelect(tbl, "table");
+            } else {
+              _qeSelect(el, _qe.selectedType || "shape");
+            }
+            var obj = _qeGetObject(el);
+            if (!obj) return;
+            _qeDoc.interaction = { state: "dragging", type: obj.type, startX: e.clientX, startY: e.clientY, objId: obj.id, origState: { x: obj.x, y: obj.y } };
+            startX = e.clientX;
+            startY = e.clientY;
+            startObjX = obj.x;
+            startObjY = obj.y;
             isDragging = false;
             function onMove(ev) {
               var dx = ev.clientX - startX, dy = ev.clientY - startY;
               if (Math.abs(dx) > 2 || Math.abs(dy) > 2) isDragging = true;
               if (!isDragging) return;
-              el.style.position = "relative";
-              el.style.left = (startLeft + dx) + "px";
-              el.style.top = (startTop + dy) + "px";
-              el.style.zIndex = ++_qe.zCounter;
+              obj.x = startObjX + dx;
+              obj.y = startObjY + dy;
+              obj.el.style.position = "relative";
+              _qeSyncTransform(obj.id);
             }
             function onUp() {
               isDragging = false;
+              _qeDoc.interaction.state = "idle";
               document.removeEventListener("mousemove", onMove);
               document.removeEventListener("mouseup", onUp);
             }
@@ -16034,29 +16334,31 @@ ${allContent}
             h.setAttribute("data-handle", pos);
             safeOn(h, "mousedown", function(e) {
               e.preventDefault(); e.stopPropagation();
+              var obj = _qeGetObject(el);
+              if (!obj) return;
               var sX = e.clientX, sY = e.clientY;
-              var sW = el.offsetWidth, sH = el.offsetHeight;
-              var sL = parseInt(el.style.left) || 0, sT = parseInt(el.style.top) || 0;
-              var img = el.querySelector("img");
-              var origRatio = img ? img.naturalWidth / img.naturalHeight : null;
+              var origW = obj.w, origH = obj.h, origX = obj.x, origY = obj.y;
+              var origRatio = origW / origH;
               function onMove(ev) {
                 var dx = ev.clientX - sX, dy = ev.clientY - sY;
-                var nW = sW, nH = sH;
-                if (pos.indexOf("e") >= 0) nW = sW + dx;
-                if (pos.indexOf("w") >= 0) nW = sW - dx;
-                if (pos.indexOf("s") >= 0) nH = sH + dy;
-                if (pos.indexOf("n") >= 0) nH = sH - dy;
-                if (origRatio && !e.shiftKey) {
+                var nW = origW, nH = origH, nX = origX, nY = origY;
+                if (pos.indexOf("e") >= 0) nW = origW + dx;
+                if (pos.indexOf("w") >= 0) { nW = origW - dx; nX = origX + dx; }
+                if (pos.indexOf("s") >= 0) nH = origH + dy;
+                if (pos.indexOf("n") >= 0) { nH = origH - dy; nY = origY + dy; }
+                if (obj.type === "image" && !e.shiftKey) {
                   if (pos === "n" || pos === "s") nW = nH * origRatio;
                   else nH = nW / origRatio;
                 }
                 nW = Math.max(40, nW); nH = Math.max(20, nH);
-                el.style.width = nW + "px"; el.style.height = nH + "px";
-                if (pos.indexOf("w") >= 0) el.style.left = (sL + dx) + "px";
-                if (pos.indexOf("n") >= 0) el.style.top = (sT + dy) + "px";
-                if (img) { img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "contain"; }
+                obj.w = nW; obj.h = nH; obj.x = nX; obj.y = nY;
+                _qeSyncTransform(obj.id);
+                _qeShowPropsPanel();
               }
-              function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+              function onUp() {
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+              }
               document.addEventListener("mousemove", onMove);
               document.addEventListener("mouseup", onUp);
             });
@@ -16073,16 +16375,19 @@ ${allContent}
           el.appendChild(rh);
           safeOn(rh, "mousedown", function(e) {
             e.preventDefault(); e.stopPropagation();
+            var obj = _qeGetObject(el);
+            if (!obj) return;
             var rect = el.getBoundingClientRect();
             var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
             var startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
-            var curRot = parseFloat(el.getAttribute("data-rotation")) || 0;
+            var curRot = obj.rotation;
             function onMove(ev) {
               var angle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
               var newRot = curRot + (angle - startAngle);
               if (e.shiftKey) newRot = Math.round(newRot / 15) * 15;
-              el.style.transform = "rotate(" + newRot + "deg)";
-              el.setAttribute("data-rotation", newRot);
+              obj.rotation = newRot;
+              _qeSyncTransform(obj.id);
+              _qeShowPropsPanel();
             }
             function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
             document.addEventListener("mousemove", onMove);
@@ -16096,6 +16401,51 @@ ${allContent}
           _qeSetupRotateHandle(el);
         }
 
+        // ── Duplicate Object ──
+        function _qeDuplicateObject(el) {
+          var clone = el.cloneNode(true);
+          var newId = _qeGenId();
+          clone.setAttribute("data-obj-id", newId);
+          clone.classList.remove("ss-qe-selected");
+          var obj = _qeGetObject(el);
+          if (obj) {
+            var newObj = _qeCreateObj(clone, obj.type, JSON.parse(JSON.stringify(obj.meta)));
+            newObj.x = obj.x + 20;
+            newObj.y = obj.y + 20;
+            newObj.zIndex = ++_qeDoc.zCounter;
+            _qeSyncTransform(newObj.id);
+          }
+          if (el.parentNode) {
+            el.parentNode.insertBefore(clone, el.nextSibling);
+          }
+          setTimeout(function() { _qeWireAllObjects(); }, 0);
+        }
+
+        // ── Crop Image ──
+        function _qeStartCrop(el) {
+          var img = el.querySelector("img");
+          if (!img) return;
+          var overlay = document.createElement("div");
+          overlay.className = "ss-qe-crop-overlay";
+          overlay.innerHTML = '<button class="ss-qe-crop-btn" data-action="crop">Apply</button><button class="ss-qe-crop-btn" data-action="cancel">Cancel</button>';
+          el.appendChild(overlay);
+          safeOn(overlay, "click", function(e) {
+            var action = e.target.getAttribute("data-action");
+            if (action === "crop") {
+              var rect = img.getBoundingClientRect();
+              var elRect = el.getBoundingClientRect();
+              var obj = _qeGetObject(el);
+              if (obj) {
+                obj.w = rect.width;
+                obj.h = rect.height;
+                _qeSyncTransform(obj.id);
+              }
+            }
+            overlay.remove();
+          });
+        }
+
+        // ── Wire All Objects ──
         function _qeWireAllObjects() {
           if (!_qe.el) return;
           _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(fig) {
@@ -16103,18 +16453,37 @@ ${allContent}
             fig.setAttribute("data-wired", "1");
             fig.setAttribute("draggable", "false");
             _qeSetupObject(fig);
+            var type = fig.classList.contains("ss-qe-image-figure") ? "image" : "shape";
+            var obj = _qeCreateObj(fig, type);
+            _qeSyncTransform(obj.id);
+            _qeApplyWrapMode(obj.id);
             safeOn(fig, "mousedown", function(e) {
-              if (e.target.closest("button")) return;
+              if (e.target.closest("button") || e.target.closest(".ss-qe-resize-handle") || e.target.closest(".ss-qe-rotate-handle")) return;
               e.stopPropagation();
-              var type = fig.classList.contains("ss-qe-image-figure") ? "image" : "shape";
               _qeSelect(fig, type);
+            });
+            safeOn(fig, "dblclick", function(e) {
+              e.stopPropagation();
+              if (type === "shape") {
+                var txt = fig.querySelector(".ss-qe-shape-text-editor");
+                if (txt) txt.focus();
+              }
+            });
+            safeOn(fig, "contextmenu", function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              _qeSelect(fig, type);
+              _qeShowContextMenu(e, type, fig);
             });
             fig.querySelectorAll(".ss-qe-fc-btn[data-action]").forEach(function(b) {
               safeOn(b, "click", function(ev) {
                 ev.stopPropagation();
                 var action = b.getAttribute("data-action");
-                if (action === "delete" || action === "img-delete") fig.remove();
-                else if (action === "img-caption") {
+                if (action === "delete" || action === "img-delete") {
+                  var obj = _qeGetObject(fig);
+                  if (obj) _qeDoc.objects.delete(obj.id);
+                  fig.remove(); _qeDeselectAll();
+                } else if (action === "img-caption") {
                   var cap = fig.querySelector("figcaption");
                   if (cap) cap.style.display = "block";
                 } else if (action === "img-alt") {
@@ -16124,39 +16493,108 @@ ${allContent}
               });
             });
           });
-          _qe.el.querySelectorAll("table[data-ss-table]").forEach(function(tbl) {
-            if (tbl.getAttribute("data-wired")) return;
-            tbl.setAttribute("data-wired", "1");
-            _qeSetupTableResize(tbl);
-            safeOn(tbl, "contextmenu", function(e) {
-              var cell = e.target.closest("td, th");
-              if (cell) _qeShowTableContextMenu(e, tbl, cell);
-            });
-            safeOn(tbl, "click", function(e) {
-              if (!e.target.closest("td, th")) return;
+
+          _qe.el.querySelectorAll(".ss-qe-float-table").forEach(function(ft) {
+            if (ft.getAttribute("data-wired")) return;
+            ft.setAttribute("data-wired", "1");
+            ft.setAttribute("draggable", "false");
+            var tbl = ft.querySelector("table");
+            var obj = _qeCreateObj(ft, "table");
+            _qeSyncTransform(obj.id);
+            _qeApplyWrapMode(obj.id);
+            _qeSetupObjectDrag(ft);
+            _qeSetupResizeHandles(ft);
+            _qeSetupTableMoveHandle(ft);
+            _qeSetupTableResizeHandle(ft);
+            _qeSetupTableColResize(tbl);
+            _qeSetupTableRowResize(tbl);
+            safeOn(ft, "mousedown", function(e) {
+              if (e.target.closest("button") || e.target.closest(".ss-qe-table-move-handle") || e.target.closest(".ss-qe-table-resize-handle") || e.target.closest(".ss-qe-col-resize") || e.target.closest(".ss-qe-row-resize")) return;
               e.stopPropagation();
-              _qeSelect(tbl, "table");
+              _qeSelect(ft, "table");
             });
+            safeOn(ft, "contextmenu", function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var cell = e.target.closest("td, th");
+              _qeSelect(ft, "table");
+              _qeShowContextMenu(e, "table", ft, cell);
+            });
+            _qeSetupTableSelection(ft, tbl);
           });
         }
 
-        function _qeSetupTableResize(table) {
+        // ── Table Move Handle ──
+        function _qeSetupTableMoveHandle(ft) {
+          if (ft.querySelector(".ss-qe-table-move-handle")) return;
+          var handle = document.createElement("div");
+          handle.className = "ss-qe-table-move-handle";
+          handle.innerHTML = "\u2194";
+          handle.title = "Move Table";
+          ft.appendChild(handle);
+          safeOn(handle, "mousedown", function(e) {
+            e.preventDefault(); e.stopPropagation();
+            var obj = _qeGetObject(ft);
+            if (!obj) return;
+            var startX = e.clientX, startY = e.clientY;
+            var origX = obj.x, origY = obj.y;
+            function onMove(ev) {
+              obj.x = origX + (ev.clientX - startX);
+              obj.y = origY + (ev.clientY - startY);
+              _qeSyncTransform(obj.id);
+            }
+            function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        // ── Table Resize Handle ──
+        function _qeSetupTableResizeHandle(ft) {
+          if (ft.querySelector(".ss-qe-table-resize-handle")) return;
+          var handle = document.createElement("div");
+          handle.className = "ss-qe-table-resize-handle";
+          ft.appendChild(handle);
+          safeOn(handle, "mousedown", function(e) {
+            e.preventDefault(); e.stopPropagation();
+            var obj = _qeGetObject(ft);
+            if (!obj) return;
+            var startX = e.clientX, startY = e.clientY;
+            var origW = obj.w, origH = obj.h;
+            function onMove(ev) {
+              var nW = Math.max(100, origW + (ev.clientX - startX));
+              var nH = Math.max(60, origH + (ev.clientY - startY));
+              obj.w = nW; obj.h = nH;
+              _qeSyncTransform(obj.id);
+              var tbl = ft.querySelector("table");
+              if (tbl) { tbl.style.width = "100%"; tbl.style.height = "100%"; }
+              _qeShowPropsPanel();
+            }
+            function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        // ── Table Column Resize ──
+        function _qeSetupTableColResize(table) {
+          if (!table) return;
           var thead = table.querySelector("thead");
           if (!thead) return;
-          thead.querySelectorAll("th").forEach(function(th, idx) {
+          var headerCells = thead.querySelectorAll("th");
+          headerCells.forEach(function(th, idx) {
             var handle = document.createElement("div");
-            handle.className = "ss-qe-col-resize-handle";
-            handle.style.cssText = "position:absolute;right:-3px;top:0;width:6px;height:100%;cursor:col-resize;z-index:5;";
+            handle.className = "ss-qe-col-resize";
             th.style.position = "relative";
             th.appendChild(handle);
             safeOn(handle, "mousedown", function(e) {
               e.preventDefault(); e.stopPropagation();
               var startX = e.clientX, startW = th.offsetWidth;
-              var tbody = table.querySelector("tbody");
+              var allRows = table.querySelectorAll("tr");
               function onMove(ev) {
                 var newW = Math.max(30, startW + (ev.clientX - startX));
                 th.style.width = newW + "px"; th.style.minWidth = newW + "px"; th.style.maxWidth = newW + "px";
-                if (tbody) tbody.querySelectorAll("tr").forEach(function(tr) {
+                allRows.forEach(function(tr) {
                   var cell = tr.children[idx];
                   if (cell) { cell.style.width = newW + "px"; cell.style.minWidth = newW + "px"; cell.style.maxWidth = newW + "px"; }
                 });
@@ -16168,20 +16606,180 @@ ${allContent}
           });
         }
 
+        // ── Table Row Resize ──
+        function _qeSetupTableRowResize(table) {
+          if (!table) return;
+          table.querySelectorAll("tr").forEach(function(tr) {
+            if (tr.querySelector(".ss-qe-row-resize")) return;
+            var handle = document.createElement("div");
+            handle.className = "ss-qe-row-resize";
+            tr.style.position = "relative";
+            tr.appendChild(handle);
+            safeOn(handle, "mousedown", function(e) {
+              e.preventDefault(); e.stopPropagation();
+              var startY = e.clientY, startH = tr.offsetHeight;
+              function onMove(ev) {
+                var newH = Math.max(20, startH + (ev.clientY - startY));
+                tr.style.height = newH + "px";
+                tr.querySelectorAll("td, th").forEach(function(cell) { cell.style.height = newH + "px"; });
+              }
+              function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+              document.addEventListener("mousemove", onMove);
+              document.addEventListener("mouseup", onUp);
+            });
+          });
+        }
+
+        // ── Table Selection (click/double-click/triple-click) ──
+        function _qeSetupTableSelection(ft, table) {
+          if (!table) return;
+          var clickCount = 0;
+          var clickTimer = null;
+          table.addEventListener("click", function(e) {
+            var cell = e.target.closest("td, th");
+            if (!cell) return;
+            e.stopPropagation();
+            clickCount++;
+            if (clickCount === 1) {
+              clickTimer = setTimeout(function() {
+                _qeSelect(ft, "table");
+                cell.style.background = "rgba(27, 95, 122, 0.1)";
+                clickCount = 0;
+              }, 250);
+            } else if (clickCount === 2) {
+              clearTimeout(clickTimer);
+              cell.setAttribute("contenteditable", "true");
+              cell.focus();
+              clickCount = 0;
+            } else {
+              clearTimeout(clickTimer);
+              var tr = cell.closest("tr");
+              if (tr) tr.querySelectorAll("td, th").forEach(function(c) { c.style.background = "rgba(27, 95, 122, 0.15)"; });
+              clickCount = 0;
+            }
+          });
+          table.addEventListener("dblclick", function(e) {
+            var cell = e.target.closest("td, th");
+            if (cell) { cell.setAttribute("contenteditable", "true"); cell.focus(); }
+          });
+        }
+
+        // ── Table Operations ──
+        function _qeInsertTable(rows, cols) {
+          var wrapper = document.createElement("figure");
+          wrapper.className = "ss-qe-float-table";
+          wrapper.setAttribute("contenteditable", "false");
+          wrapper.setAttribute("data-obj-id", _qeGenId());
+          wrapper.setAttribute("data-wrap", "inline");
+          wrapper.setAttribute("data-z", String(++_qeDoc.zCounter));
+          wrapper.style.cssText = "display:inline-block;margin:8px 4px;position:relative;z-index:" + _qeDoc.zCounter + ";";
+          var moveHandle = document.createElement("div");
+          moveHandle.className = "ss-qe-table-move-handle";
+          moveHandle.innerHTML = "\u2194";
+          moveHandle.title = "Move Table";
+          wrapper.appendChild(moveHandle);
+          var resizeHandle = document.createElement("div");
+          resizeHandle.className = "ss-qe-table-resize-handle";
+          wrapper.appendChild(resizeHandle);
+          var t = document.createElement("table");
+          t.style.cssText = "width:100%;border-collapse:collapse;";
+          var thead = document.createElement("thead");
+          var htr = document.createElement("tr");
+          for (var c = 0; c < cols; c++) {
+            var th = document.createElement("th");
+            th.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;background:#f6f7f9;text-align:left;font-weight:600;";
+            th.setAttribute("contenteditable", "true");
+            th.textContent = "Header";
+            htr.appendChild(th);
+          }
+          thead.appendChild(htr);
+          t.appendChild(thead);
+          var tbody = document.createElement("tbody");
+          for (var r = 0; r < rows; r++) {
+            var tr = document.createElement("tr");
+            for (var c2 = 0; c2 < cols; c2++) {
+              var td = document.createElement("td");
+              td.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;";
+              td.setAttribute("contenteditable", "true");
+              td.innerHTML = "<br>";
+              tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
+          }
+          t.appendChild(tbody);
+          wrapper.appendChild(t);
+          _qe.el.focus();
+          _qeDeselectAll();
+          document.execCommand("insertHTML", false, wrapper.outerHTML + "<p><br></p>");
+          _qeUpdateStatus();
+          setTimeout(function() { _qeWireAllObjects(); }, 0);
+        }
+
+        function _qeTableInsertRow(table, after) {
+          var firstRow = table.querySelector("tr");
+          if (!firstRow) return;
+          var cols = firstRow.children.length;
+          var newRow = document.createElement("tr");
+          for (var i = 0; i < cols; i++) {
+            var td = document.createElement("td");
+            td.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;";
+            td.setAttribute("contenteditable", "true");
+            td.innerHTML = "<br>";
+            newRow.appendChild(td);
+          }
+          var rows = table.querySelectorAll("tr");
+          var ref = after ? rows[rows.length - 1] : rows[0];
+          if (ref && ref.parentNode) ref.parentNode.insertBefore(newRow, after ? null : ref);
+        }
+
+        function _qeTableDeleteRow(table, tr) {
+          var rows = table.querySelectorAll("tr");
+          if (rows.length <= 1) {
+            var ft = table.closest(".ss-qe-float-table");
+            if (ft) { var obj = _qeGetObject(ft); if (obj) _qeDoc.objects.delete(obj.id); ft.remove(); }
+            else table.remove();
+            return;
+          }
+          tr.remove();
+        }
+
+        function _qeTableInsertCol(table, after) {
+          var rows = table.querySelectorAll("tr");
+          rows.forEach(function(tr, ri) {
+            var cell = document.createElement(ri === 0 && table.querySelector("thead") ? "th" : "td");
+            cell.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;" + (ri === 0 && table.querySelector("thead") ? "background:#f6f7f9;font-weight:600;" : "");
+            cell.setAttribute("contenteditable", "true");
+            cell.innerHTML = ri === 0 && table.querySelector("thead") ? "Header" : "<br>";
+            var ref = after ? tr.lastElementChild : tr.firstElementChild;
+            if (ref) ref.parentNode.insertBefore(cell, after ? null : ref);
+          });
+        }
+
+        function _qeTableDeleteCol(table, td) {
+          var idx = Array.from(td.parentNode.children).indexOf(td);
+          table.querySelectorAll("tr").forEach(function(tr) { if (tr.children[idx]) tr.children[idx].remove(); });
+          if (!table.querySelector("td") && !table.querySelector("th")) {
+            var ft = table.closest(".ss-qe-float-table");
+            if (ft) { var obj = _qeGetObject(ft); if (obj) _qeDoc.objects.delete(obj.id); ft.remove(); }
+            else table.remove();
+          }
+        }
+
+        // ── Shape Library ──
         var _qeShapeLibrary = {
-          rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          circle: { label: "Circle", svg: '<svg viewBox="0 0 100 100" width="100" height="100"><circle cx="50" cy="50" r="47" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          ellipse: { label: "Ellipse", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><ellipse cx="60" cy="40" rx="57" ry="37" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          triangle: { label: "Triangle", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><polygon points="60,3 117,77 3,77" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          diamond: { label: "Diamond", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><polygon points="60,3 117,40 60,77 3,40" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowRight: { label: "Arrow Right", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><polygon points="2,15 70,15 70,2 118,40 70,78 70,65 2,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowLeft: { label: "Arrow Left", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><polygon points="118,15 50,15 50,2 2,40 50,78 50,65 118,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowUp: { label: "Arrow Up", svg: '<svg viewBox="0 0 80 120" width="80" height="120"><polygon points="65,118 40,50 15,118" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="2" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowDown: { label: "Arrow Down", svg: '<svg viewBox="0 0 80 120" width="80" height="120"><polygon points="65,2 40,70 15,2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="63" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          line: { label: "Line", svg: '<svg viewBox="0 0 120 20" width="120" height="20"><line x1="5" y1="10" x2="115" y2="10" stroke="#0277bd" stroke-width="3" stroke-linecap="round"/></svg>' },
-          callout: { label: "Callout", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="90" height="55" rx="6" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><polygon points="30,57 40,77 55,57" fill="#4fc3f7" stroke="#0277bd" stroke-width="2" stroke-linejoin="round"/></svg>' },
-          textBox: { label: "Text Box", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="2" stroke-dasharray="6,3"/></svg>' }
+          rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          circle: { label: "Circle", svg: '<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="47" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          ellipse: { label: "Ellipse", svg: '<svg viewBox="0 0 120 80"><ellipse cx="60" cy="40" rx="57" ry="37" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          triangle: { label: "Triangle", svg: '<svg viewBox="0 0 120 80"><polygon points="60,3 117,77 3,77" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          diamond: { label: "Diamond", svg: '<svg viewBox="0 0 120 80"><polygon points="60,3 117,40 60,77 3,40" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowRight: { label: "Arrow Right", svg: '<svg viewBox="0 0 120 80"><polygon points="2,15 70,15 70,2 118,40 70,78 70,65 2,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowLeft: { label: "Arrow Left", svg: '<svg viewBox="0 0 120 80"><polygon points="118,15 50,15 50,2 2,40 50,78 50,65 118,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowUp: { label: "Arrow Up", svg: '<svg viewBox="0 0 80 120"><polygon points="65,118 40,50 15,118" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="2" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          arrowDown: { label: "Arrow Down", svg: '<svg viewBox="0 0 80 120"><polygon points="65,2 40,70 15,2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="63" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
+          line: { label: "Line", svg: '<svg viewBox="0 0 120 20"><line x1="5" y1="10" x2="115" y2="10" stroke="#0277bd" stroke-width="3" stroke-linecap="round"/></svg>' },
+          callout: { label: "Callout", svg: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="90" height="55" rx="6" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><polygon points="30,57 40,77 55,57" fill="#4fc3f7" stroke="#0277bd" stroke-width="2" stroke-linejoin="round"/></svg>' },
+          textBox: { label: "Text Box", svg: '<svg viewBox="0 0 120 80"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="2" stroke-dasharray="6,3"/></svg>' }
         };
 
         function _qeBuildShapesPanel() {
@@ -16200,8 +16798,9 @@ ${allContent}
               var shape = _qeShapeLibrary[key];
               if (!shape) return;
               var isTextBox = key === "textBox";
-              var inner = '<div class="ss-qe-figure-inner">' + shape.svg + (isTextBox ? '<div class="ss-qe-shape-text" contenteditable="true" style="position:absolute;top:10px;left:10px;right:10px;bottom:10px;outline:none;font-size:14px;text-align:center;display:flex;align-items:center;justify-content:center;">Type here</div>' : '') + '</div>';
-              var fig = '<figure class="ss-qe-figure" contenteditable="false" data-z="' + (++_qe.zCounter) + '" style="text-align:center;margin:8px 4px;position:relative;display:inline-block;z-index:' + _qe.zCounter + ';">' + inner + '<div class="ss-qe-figure-controls"><button type="button" class="ss-qe-fc-btn" data-action="delete" title="Delete">\u2715</button></div></figure><p><br></p>';
+              var inner = '<div class="ss-qe-figure-inner">' + shape.svg + (isTextBox ? '<div class="ss-qe-shape-text-editor" contenteditable="true">Type here</div>' : '') + '</div>';
+              var id = _qeGenId();
+              var fig = '<figure class="ss-qe-figure" contenteditable="false" data-obj-id="' + id + '" data-z="' + (++_qeDoc.zCounter) + '" style="text-align:center;margin:8px 4px;position:relative;display:inline-block;width:120px;height:80px;z-index:' + _qeDoc.zCounter + ';">' + inner + '<div class="ss-qe-figure-controls"><button type="button" class="ss-qe-fc-btn" data-action="delete" title="Delete">\u2715</button></div></figure><p><br></p>';
               _qeInsertHTML(fig);
               _qeClosePanels();
             });
@@ -16227,87 +16826,6 @@ ${allContent}
           });
           var insBtn = panel.querySelector(".ss-qe-table-insert-btn");
           if (insBtn) safeOn(insBtn, "click", function() { _qeInsertTable(parseInt(rowsInput.value) || 3, parseInt(colsInput.value) || 3); _qeClosePanels(); });
-        }
-
-        function _qeInsertTable(rows, cols) {
-          var t = '<table style="width:100%;border-collapse:collapse;margin:12px 0;" data-ss-table="true"><thead><tr>';
-          for (var c = 0; c < cols; c++) t += '<th style="border:1px solid #b0bec5;padding:6px 8px;background:#f6f7f9;text-align:left;font-weight:600;" contenteditable="true">Header</th>';
-          t += '</tr></thead><tbody>';
-          for (var r = 0; r < rows; r++) { t += '<tr>'; for (var c2 = 0; c2 < cols; c2++) t += '<td style="border:1px solid #b0bec5;padding:6px 8px;" contenteditable="true"><br></td>'; t += '</tr>'; }
-          t += '</tbody></table><p><br></p>';
-          _qeInsertHTML(t);
-        }
-
-        function _qeTableInsertRow(table, after) {
-          var tr = table.querySelector("tr"); if (!tr) return;
-          var cols = tr.children.length;
-          var newRow = document.createElement("tr");
-          for (var i = 0; i < cols; i++) { var td = document.createElement("td"); td.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;"; td.setAttribute("contenteditable", "true"); td.innerHTML = "<br>"; newRow.appendChild(td); }
-          var rows = table.querySelectorAll("tr");
-          var ref = after ? rows[rows.length - 1] : rows[0];
-          if (ref && ref.parentNode) ref.parentNode.insertBefore(newRow, after ? null : ref);
-        }
-
-        function _qeTableDeleteRow(table, tr) {
-          var rows = table.querySelectorAll("tr");
-          if (rows.length <= 1) { table.remove(); return; }
-          tr.remove();
-        }
-
-        function _qeTableInsertCol(table, after) {
-          var rows = table.querySelectorAll("tr");
-          rows.forEach(function(tr, ri) {
-            var cell = document.createElement(ri === 0 && table.querySelector("thead") ? "th" : "td");
-            cell.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;" + (ri === 0 && table.querySelector("thead") ? "background:#f6f7f9;font-weight:600;" : "");
-            cell.setAttribute("contenteditable", "true");
-            cell.innerHTML = ri === 0 && table.querySelector("thead") ? "Header" : "<br>";
-            var ref = after ? tr.lastElementChild : tr.firstElementChild;
-            if (ref) ref.parentNode.insertBefore(cell, after ? null : ref);
-          });
-        }
-
-        function _qeTableDeleteCol(table, td) {
-          var idx = Array.from(td.parentNode.children).indexOf(td);
-          table.querySelectorAll("tr").forEach(function(tr) { if (tr.children[idx]) tr.children[idx].remove(); });
-          if (!table.querySelector("td") && !table.querySelector("th")) table.remove();
-        }
-
-        var _qeTableContextMenu = null;
-        function _qeShowTableContextMenu(e, table, cell) {
-          e.preventDefault(); e.stopPropagation();
-          _qeHideTableContextMenu();
-          var menu = document.createElement("div");
-          menu.className = "ss-qe-table-context-menu";
-          menu.style.cssText = "position:fixed;z-index:9999;background:#fff;border:1px solid rgba(27,95,122,0.15);border-radius:8px;box-shadow:0 8px 24px rgba(15,43,63,0.18);padding:4px 0;min-width:180px;";
-          var items = [
-            { label: "Insert Row Above", fn: function() { _qeTableInsertRow(table, false); } },
-            { label: "Insert Row Below", fn: function() { _qeTableInsertRow(table, true); } },
-            { label: "Delete Row", fn: function() { _qeTableDeleteRow(table, cell.closest("tr")); } },
-            { label: "---" },
-            { label: "Insert Column Left", fn: function() { _qeTableInsertCol(table, false); } },
-            { label: "Insert Column Right", fn: function() { _qeTableInsertCol(table, true); } },
-            { label: "Delete Column", fn: function() { _qeTableDeleteCol(table, cell); } },
-            { label: "---" },
-            { label: "Delete Table", fn: function() { table.remove(); } }
-          ];
-          items.forEach(function(item) {
-            if (item.label === "---") { var sep = document.createElement("div"); sep.style.cssText = "height:1px;background:#e0e0e0;margin:4px 8px;"; menu.appendChild(sep); return; }
-            var btn = document.createElement("button");
-            btn.textContent = item.label;
-            btn.style.cssText = "display:block;width:100%;text-align:left;padding:6px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-family:inherit;color:#333;";
-            safeOn(btn, "mouseenter", function() { btn.style.background = "rgba(27,95,122,0.06)"; });
-            safeOn(btn, "mouseleave", function() { btn.style.background = "none"; });
-            safeOn(btn, "click", function() { _qeHideTableContextMenu(); item.fn(); });
-            menu.appendChild(btn);
-          });
-          document.body.appendChild(menu);
-          menu.style.left = e.clientX + "px"; menu.style.top = e.clientY + "px";
-          _qeTableContextMenu = menu;
-          setTimeout(function() { safeOn(document, "mousedown", function handler() { _qeHideTableContextMenu(); document.removeEventListener("mousedown", handler); }); }, 10);
-        }
-
-        function _qeHideTableContextMenu() {
-          if (_qeTableContextMenu) { _qeTableContextMenu.remove(); _qeTableContextMenu = null; }
         }
 
         function _qeBuildEquationPanel() {
@@ -16389,7 +16907,8 @@ ${allContent}
             if (!file.type.startsWith("image/")) return;
             var reader = new FileReader();
             reader.onload = function() {
-              var wrap = '<figure class="ss-qe-figure ss-qe-image-figure" contenteditable="false" data-wrap="inline" data-z="' + (++_qe.zCounter) + '" style="display:inline-block;margin:8px 4px;position:relative;max-width:100%;z-index:' + _qe.zCounter + ';"><div class="ss-qe-figure-inner" style="position:relative;display:inline-block;"><img src="' + reader.result + '" alt="" style="max-width:100%;height:auto;border-radius:4px;display:block;" onload="if(this.naturalWidth>600)this.style.width=\'600px\';"><div class="ss-qe-image-controls" style="display:none;position:absolute;top:-32px;right:0;background:rgba(255,255,255,0.95);border-radius:6px;padding:2px 4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);gap:2px;"><button type="button" class="ss-qe-fc-btn" data-action="img-delete" title="Delete">\u2715</button><button type="button" class="ss-qe-fc-btn" data-action="img-caption" title="Caption">\u270E</button><button type="button" class="ss-qe-fc-btn" data-action="img-alt" title="Alt Text">ALT</button></div></div><figcaption contenteditable="true" class="ss-qe-img-caption" style="text-align:center;font-size:0.8rem;color:#666;margin-top:4px;outline:none;"></figcaption></figure><p><br></p>';
+              var id = _qeGenId();
+              var wrap = '<figure class="ss-qe-figure ss-qe-image-figure" contenteditable="false" data-obj-id="' + id + '" data-wrap="inline" data-z="' + (++_qeDoc.zCounter) + '" style="display:inline-block;margin:8px 4px;position:relative;max-width:100%;width:300px;height:200px;z-index:' + _qeDoc.zCounter + ';"><div class="ss-qe-figure-inner" style="position:relative;display:inline-block;width:100%;height:100%;"><img src="' + reader.result + '" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:4px;display:block;"><div class="ss-qe-image-controls" style="display:none;position:absolute;top:-32px;right:0;background:rgba(255,255,255,0.95);border-radius:6px;padding:2px 4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);gap:2px;"><button type="button" class="ss-qe-fc-btn" data-action="img-delete" title="Delete">\u2715</button><button type="button" class="ss-qe-fc-btn" data-action="img-caption" title="Caption">\u270E</button><button type="button" class="ss-qe-fc-btn" data-action="img-alt" title="Alt Text">ALT</button></div></div><figcaption contenteditable="true" class="ss-qe-img-caption" style="text-align:center;font-size:0.8rem;color:#666;margin-top:4px;outline:none;"></figcaption></figure><p><br></p>';
               _qeInsertHTML(wrap);
             };
             reader.readAsDataURL(file);
@@ -16431,6 +16950,7 @@ ${allContent}
           if (url) _qeExec("createLink", url);
         }
 
+        // ── Toolbar ──
         function _qeBuildToolbar() {
           var tb = _qe.toolbar; if (!tb) return;
           function btn(icon, title, cmd, val, cls) {
@@ -16500,8 +17020,8 @@ ${allContent}
               else if (cmd === "ss-qe-hline") _qeInsertHTML('<hr style="border:none;border-top:1px solid #b0bec5;margin:12px 0;">');
               else if (cmd === "ss-qe-pagebreak") _qeInsertHTML('<div style="page-break-after:always;border-top:2px dashed #b0bec5;margin:20px 0;padding-top:8px;font-size:11px;color:#90a4ae;text-align:center;">\u2014 Page Break \u2014</div><p><br></p>');
               else if (cmd === "ss-qe-shapes") _qeShowPanel(document.getElementById("ssQEShapesPanel"), b);
-              else if (cmd === "ss-qe-bring-fwd" && _qe.selectedEl) { _qe.selectedEl.style.zIndex = ++_qe.zCounter; }
-              else if (cmd === "ss-qe-send-bwd" && _qe.selectedEl) { _qe.selectedEl.style.zIndex = Math.max(1, (_qe.selectedEl.style.zIndex || 100) - 1); }
+              else if (cmd === "ss-qe-bring-fwd" && _qe.selectedEl) { var obj = _qeGetObject(_qe.selectedEl); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); } }
+              else if (cmd === "ss-qe-send-bwd" && _qe.selectedEl) { var obj = _qeGetObject(_qe.selectedEl); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } }
               else if (cmd === "ss-qe-rtl") { var isRTL = _qe.el.getAttribute("dir") === "rtl"; _qe.el.setAttribute("dir", isRTL ? "ltr" : "rtl"); _qe.el.style.textAlign = isRTL ? "left" : "right"; }
             });
           });
@@ -16516,29 +17036,62 @@ ${allContent}
           if (hlBtn && hlInput) { safeOn(hlInput, "input", function() { _qeExec("hiliteColor", hlInput.value); }); safeOn(hlBtn, "click", function(e) { e.preventDefault(); hlInput.click(); }); }
         }
 
+        // ── Keyboard Shortcuts ──
         function _qeHandleKeydown(e) {
           if (!_qe.el || !_qe.el.contains(e.target)) return;
           var ctrl = e.ctrlKey || e.metaKey;
-          if (e.key === "Escape") { _qeClosePanels(); _qeDeselectAll(); return; }
+          if (e.key === "Escape") { _qeClosePanels(); _qeDeselectAll(); _qeHideContextMenu(); return; }
           if ((e.key === "Delete" || e.key === "Backspace") && _qe.selectedEl) {
-            e.preventDefault(); _qe.selectedEl.remove(); _qeDeselectAll(); _qeUpdateStatus(); return;
+            e.preventDefault();
+            var obj = _qeGetObject(_qe.selectedEl);
+            if (obj) _qeDoc.objects.delete(obj.id);
+            _qe.selectedEl.remove();
+            _qeDeselectAll();
+            _qeUpdateStatus();
+            return;
           }
-          if (ctrl && e.key === "c" && _qe.selectedEl) { e.preventDefault(); _qe.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType }; }
-          if (ctrl && e.key === "x" && _qe.selectedEl) { e.preventDefault(); _qe.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType }; _qe.selectedEl.remove(); _qeDeselectAll(); _qeUpdateStatus(); }
-          if (ctrl && e.key === "v" && _qe.clipboard) { if (_qe.selectedEl || document.activeElement === _qe.el) { e.preventDefault(); _qeInsertHTML(_qe.clipboard.html); } }
-          if (ctrl && e.key === "a" && document.activeElement === _qe.el) { e.preventDefault(); var range = document.createRange(); range.selectNodeContents(_qe.el); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); }
+          if (ctrl && e.key === "c" && _qe.selectedEl) {
+            e.preventDefault();
+            _qeDoc.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType };
+          }
+          if (ctrl && e.key === "x" && _qe.selectedEl) {
+            e.preventDefault();
+            _qeDoc.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType };
+            var obj = _qeGetObject(_qe.selectedEl);
+            if (obj) _qeDoc.objects.delete(obj.id);
+            _qe.selectedEl.remove();
+            _qeDeselectAll();
+            _qeUpdateStatus();
+          }
+          if (ctrl && e.key === "v" && _qeDoc.clipboard) {
+            if (_qe.selectedEl || document.activeElement === _qe.el) {
+              e.preventDefault();
+              _qeInsertHTML(_qeDoc.clipboard.html);
+            }
+          }
+          if (ctrl && e.key === "a" && document.activeElement === _qe.el) {
+            e.preventDefault();
+            var range = document.createRange();
+            range.selectNodeContents(_qe.el);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
           if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.key) >= 0 && _qe.selectedEl) {
             e.preventDefault();
+            var obj = _qeGetObject(_qe.selectedEl);
+            if (!obj) return;
             var step = e.shiftKey ? 1 : 5;
-            var curL = parseInt(_qe.selectedEl.style.left) || 0, curT = parseInt(_qe.selectedEl.style.top) || 0;
-            _qe.selectedEl.style.position = "relative";
-            if (e.key === "ArrowUp") _qe.selectedEl.style.top = (curT - step) + "px";
-            if (e.key === "ArrowDown") _qe.selectedEl.style.top = (curT + step) + "px";
-            if (e.key === "ArrowLeft") _qe.selectedEl.style.left = (curL - step) + "px";
-            if (e.key === "ArrowRight") _qe.selectedEl.style.left = (curL + step) + "px";
+            if (e.key === "ArrowUp") obj.y -= step;
+            if (e.key === "ArrowDown") obj.y += step;
+            if (e.key === "ArrowLeft") obj.x -= step;
+            if (e.key === "ArrowRight") obj.x += step;
+            _qeSyncTransform(obj.id);
+            _qeShowPropsPanel();
           }
         }
 
+        // ── Wire Events ──
         function _qeWireEvents() {
           _qe.el.addEventListener("input", function() { _qeUpdateStatus(); });
           _qe.el.addEventListener("keyup", function() { _qeUpdateStatus(); _qeUpdateToolbar(); });
@@ -16561,198 +17114,25 @@ ${allContent}
             if (html && html.indexOf("ss-qe-figure") < 0) _qeInsertHTML(html);
           });
           _qe.el.addEventListener("click", function(e) {
-            if (!e.target.closest(".ss-qe-figure") && !e.target.closest("table")) _qeDeselectAll();
+            if (!e.target.closest(".ss-qe-figure") && !e.target.closest(".ss-qe-float-table") && !e.target.closest("table")) {
+              _qeDeselectAll();
+            }
           });
           _qeWireAllObjects();
           safeOn(document, "keydown", function(e) {
-            if (e.key === "Escape") { _qeClosePanels(); _qeHideTableContextMenu(); }
+            if (e.key === "Escape") { _qeClosePanels(); _qeHideContextMenu(); _qeHideTableContextMenu(); }
           });
         }
+
+        // Keep backward compat for old table context menu
+        var _qeTableContextMenu = null;
+        function _qeHideTableContextMenu() {}
 
         function getEditorHtml() { return _qeGetHTML(); }
         function clearEditor() { _qeClear(); }
         function getEditorText() { return _qeGetText(); }
         function insertAtCursor(html) { _qeInsertHTML(html); }
 
-
-        function renderSubjectSelect() {
-          subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : `<option value="">Select class first</option>`;
-          renderExistingChapterSelect();
-        }
-
-        function getExistingChapterNames() {
-          const className = classSelect.value;
-          const subject = subjectSelect.value;
-          return (settings.questionChapters || []).filter(function (row) {
-            return (!className || row.className === className) &&
-              (!subject || row.subject === subject) &&
-              String(row.chapterName || "").trim();
-          }).map(function (row) {
-            return String(row.chapterName || "").trim();
-          }).filter(function (value, index, arr) {
-            return value && arr.indexOf(value) === index;
-          });
-        }
-
-        function renderExistingChapterSelect() {
-          const currentValue = existingChapterSelect ? existingChapterSelect.value : "";
-          const chapters = getExistingChapterNames();
-          existingChapterSelect.innerHTML = `<option value="">New / No Chapter</option>${chapters.map(function (name) {
-            return `<option value="${escapeAttr(name)}" ${currentValue === name ? "selected" : ""}>${escapeHtml(name)}</option>`;
-          }).join("")}`;
-        }
-
-        function createMcqRow(value) {
-          const row = document.createElement("div");
-          row.className = "question-option-row";
-          row.innerHTML = `<span class="menu-icon">OP</span><input type="text" class="question-option-input" value="${escapeAttr(value || "")}" placeholder="Option text">`;
-          return row;
-        }
-
-        function renderMcqRows(values) {
-          const rows = Array.isArray(values) && values.length ? values : ["", "", "", ""];
-          mcqRows.innerHTML = "";
-          rows.forEach(function (value) {
-            mcqRows.appendChild(createMcqRow(value));
-          });
-        }
-
-        function getMcqValues() {
-          return Array.from(mcqRows.querySelectorAll(".question-option-input")).map(function (input) {
-            return String(input.value || "").trim();
-          }).filter(Boolean);
-        }
-
-        function renderTypeMode() {
-          const type = typeSelect.value;
-          const isMcq = type === "mcq";
-          const isFill = type === "fill";
-          const isTrueFalse = type === "truefalse";
-          const isShortLong = type === "short" || type === "long";
-          mcqField.hidden = !isMcq;
-          fillField.hidden = !(isFill || isTrueFalse);
-          linesField.hidden = !isShortLong;
-          mcqField.style.display = isMcq ? "" : "none";
-          fillField.style.display = (isFill || isTrueFalse) ? "" : "none";
-          linesField.style.display = isShortLong ? "" : "none";
-          if (isMcq && !mcqRows.children.length) {
-            renderMcqRows();
-          }
-          if (isShortLong) {
-            answerLinesInput.value = type === "long" ? "6" : "3";
-          }
-          if (isTrueFalse) {
-            fillOpt1.value = "True";
-            fillOpt2.value = "False";
-          } else if (isFill && (!fillOpt1.value || !fillOpt2.value)) {
-            fillOpt1.value = "true";
-            fillOpt2.value = "false";
-          }
-        }
-
-        function renderChapterRows() {
-          tableBody.innerHTML = (settings.questionChapters || []).map(function (row) {
-            return `<tr>
-              <td>${escapeHtml(row.className || "-")}</td>
-              <td>${escapeHtml(row.subject || "-")}</td>
-              <td>${escapeHtml(row.chapterName || "-")}</td>
-              <td>${escapeHtml(row.section || "-")}</td>
-              <td>${escapeHtml(qpTypeLabel(row.questionType))}</td>
-              <td>${Number(row.marks || 0)}</td>
-              <td>${escapeHtml(row.questionTitle || "-")}</td>
-              <td>${escapeHtml(qpStripHtml(row.questionText || row.questionHtml || "").slice(0, 90) || "-")}</td>
-              <td><button class="table-action-btn danger" type="button" data-qp-delete="${escapeAttr(row.id)}">Delete</button></td>
-            </tr>`;
-          }).join("");
-        }
-
-        safeOn(document.getElementById("qpAddMcq"), "click", function () {
-          mcqRows.appendChild(createMcqRow(""));
-        });
-        safeOn(document.getElementById("qpRemoveMcq"), "click", function () {
-          if (mcqRows.children.length > 1) {
-            mcqRows.removeChild(mcqRows.lastElementChild);
-          }
-        });
-
-        safeOn(document.getElementById("qpSaveQuestion"), "click", function () {
-          const className = classSelect.value;
-          const subject = subjectSelect.value;
-          const section = sectionSelect.value;
-          const questionType = typeSelect.value;
-          const marks = Number(marksInput.value);
-          const chapterName = String(existingChapterSelect.value || chapterNameInput.value || "").trim();
-          const questionTitle = String(questionTitleInput.value || "").trim();
-          const questionHtml = getEditorHtml();
-          const questionText = getEditorText();
-          const hasQuestionContent = Boolean(questionText) || /<(img|table)\b/i.test(questionHtml);
-          const options = questionType === "mcq"
-            ? getMcqValues()
-            : ((questionType === "fill" || questionType === "truefalse")
-              ? [String(fillOpt1.value || "").trim(), String(fillOpt2.value || "").trim()].filter(Boolean)
-              : []);
-          const answerLines = (questionType === "short" || questionType === "long") ? Math.max(1, Number(answerLinesInput.value || 3)) : 0;
-          const correctAnswer = "";
-
-          if (!className || !subject || !section || !questionType || !questionTitle || !(marks > 0) || !hasQuestionContent) {
-            message.textContent = "Please fill required fields.";
-            message.className = "form-message error";
-            openAppMessageBox("Error", "Please fill required fields.", "error");
-            return;
-          }
-          if (questionType === "mcq" && options.length < 2) {
-            message.textContent = "For MCQ, add at least two options.";
-            message.className = "form-message error";
-            openAppMessageBox("Error", "For MCQ, add at least two options.", "error");
-            return;
-          }
-
-          settings.questionChapters.unshift({
-            id: `QCH-${generateId()}`,
-            className: className,
-            subject: subject,
-            chapterName: chapterName,
-            questionTitle: questionTitle,
-            section: section,
-            questionType: questionType,
-            marks: marks,
-            questionHtml: questionHtml,
-            questionText: questionText,
-            options: options,
-            correctAnswer: correctAnswer,
-            answerLines: answerLines
-          });
-          saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          renderChapterRows();
-          message.textContent = "Question saved successfully.";
-          message.className = "form-message success";
-          openAppMessageBox("Success", "Question saved successfully.", "success");
-
-          chapterNameInput.value = "";
-          existingChapterSelect.value = "";
-          questionTitleInput.value = "";
-          clearEditor();
-          fillOpt1.value = "true";
-          fillOpt2.value = "false";
-          answerLinesInput.value = "3";
-          renderMcqRows();
-          renderExistingChapterSelect();
-        });
-
-        tableBody.addEventListener("click", function (event) {
-          const button = event.target.closest("[data-qp-delete]");
-          if (!button) {
-            return;
-          }
-          const rowId = button.getAttribute("data-qp-delete");
-          settings.questionChapters = (settings.questionChapters || []).filter(function (row) {
-            return String(row.id) !== String(rowId);
-          });
-              saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-              renderChapterRows();
-              renderExistingChapterSelect();
-              openAppMessageBox("Success", "Question deleted successfully.", "success");
-            });
 
         // ── Question Editor initialization ──
         (function initQuestionEditor() {
@@ -16776,8 +17156,7 @@ ${allContent}
         })();
 
 
-
-        classSelect.addEventListener("change", renderSubjectSelect);
+classSelect.addEventListener("change", renderSubjectSelect);
         subjectSelect.addEventListener("change", renderExistingChapterSelect);
         existingChapterSelect.addEventListener("change", function () {
           if (existingChapterSelect.value) {
