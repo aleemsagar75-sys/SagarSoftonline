@@ -16053,7 +16053,34 @@ ${allContent}
           setTimeout(function() { _qeWireAllObjects(); }, 0);
         }
 
-        function _qeGetHTML() { return _qe.el ? _qe.el.innerHTML : ""; }
+        function _qeGetHTML() {
+          if (!_qe.el) return "";
+          // Clone the editor content to strip editing controls
+          var clone = _qe.el.cloneNode(true);
+          // Remove all editing UI from clone
+          clone.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize, .ss-qe-figure-controls, .ss-qe-image-controls, .ss-qe-crop-overlay, .ss-qe-selection-box, .ss-qe-props-panel").forEach(function(el) { el.remove(); });
+          // Remove selection classes
+          clone.querySelectorAll(".ss-qe-selected, .ss-qe-table-selected, .ss-qe-text-edit-mode, .ss-qe-marquee-highlight").forEach(function(el) {
+            el.classList.remove("ss-qe-selected", "ss-qe-table-selected", "ss-qe-text-edit-mode", "ss-qe-marquee-highlight");
+          });
+          // Remove wiring attributes
+          clone.querySelectorAll("[data-wired], [data-drag-wired]").forEach(function(el) {
+            el.removeAttribute("data-wired");
+            el.removeAttribute("data-drag-wired");
+          });
+          // Remove temporary inline styles from editing
+          clone.querySelectorAll("[style]").forEach(function(el) {
+            // Keep essential styles but remove editing artifacts
+            var style = el.getAttribute("style");
+            if (style) {
+              // Remove selection-related styles
+              style = style.replace(/outline[^;]*;?/gi, "");
+              style = style.replace(/box-shadow[^;]*;?/gi, "");
+              el.setAttribute("style", style);
+            }
+          });
+          return clone.innerHTML;
+        }
         function _qeGetText() { return _qe.el ? _qe.el.innerText : ""; }
         function _qeClear() {
           if (_qe.el) {
@@ -16436,16 +16463,32 @@ ${allContent}
               var sX = e.clientX, sY = e.clientY;
               var origW = obj.w, origH = obj.h, origX = obj.x, origY = obj.y;
               var origRatio = origW / origH;
+              var centerX = origX + origW / 2;
+              var centerY = origY + origH / 2;
               function onMove(ev) {
                 var dx = ev.clientX - sX, dy = ev.clientY - sY;
                 var nW = origW, nH = origH, nX = origX, nY = origY;
+                // Calculate new dimensions based on handle position
                 if (pos.indexOf("e") >= 0) nW = origW + dx;
                 if (pos.indexOf("w") >= 0) { nW = origW - dx; nX = origX + dx; }
                 if (pos.indexOf("s") >= 0) nH = origH + dy;
                 if (pos.indexOf("n") >= 0) { nH = origH - dy; nY = origY + dy; }
-                if (obj.type === "image" && !e.shiftKey) {
+                // Shift: maintain aspect ratio
+                if (e.shiftKey) {
                   if (pos === "n" || pos === "s") nW = nH * origRatio;
-                  else nH = nW / origRatio;
+                  else if (pos === "e" || pos === "w") nH = nW / origRatio;
+                  else {
+                    // Corner: use the larger dimension
+                    if (Math.abs(dx) > Math.abs(dy)) nH = nW / origRatio;
+                    else nW = nH * origRatio;
+                  }
+                }
+                // Alt: resize from center
+                if (e.altKey) {
+                  var dW = nW - origW;
+                  var dH = nH - origH;
+                  nX = centerX - nW / 2;
+                  nY = centerY - nH / 2;
                 }
                 nW = Math.max(40, nW); nH = Math.max(20, nH);
                 obj.w = nW; obj.h = nH; obj.x = nX; obj.y = nY;
@@ -16506,25 +16549,22 @@ ${allContent}
           var isTable = el.classList.contains("ss-qe-float-table");
           var isImage = el.classList.contains("ss-qe-image-figure");
           var isShape = !isTable && !isImage;
-          var newEl;
-          if (isTable) {
-            var tbl = el.querySelector("table");
-            newEl = el.cloneNode(true);
-          } else {
-            newEl = el.cloneNode(true);
-          }
-          // Strip all handles, controls, and wiring artifacts from clone
+          // Clone the element
+          var newEl = el.cloneNode(true);
+          // Strip ALL wiring and UI artifacts from clone
           newEl.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize").forEach(function(h) { h.remove(); });
           var controls = newEl.querySelector(".ss-qe-figure-controls");
           if (controls) controls.remove();
           var imgControls = newEl.querySelector(".ss-qe-image-controls");
-          if (imgControls) imgControls.style.display = "none";
-          // Remove wiring flags so _qeWireAllObjects will rewire
+          if (imgControls) imgControls.remove();
+          // Remove ALL wiring flags and state attributes
           newEl.removeAttribute("data-wired");
           newEl.removeAttribute("data-drag-wired");
+          newEl.removeAttribute("data-obj-id");
+          newEl.classList.remove("ss-qe-selected", "ss-qe-table-selected", "ss-qe-text-edit-mode");
+          // Set new ID
           newEl.setAttribute("data-obj-id", newId);
-          newEl.classList.remove("ss-qe-selected", "ss-qe-table-selected");
-          // Copy object state with new ID and offset position
+          // Create new object state with all properties
           var newObj = _qeCreateObj(newEl, obj.type, JSON.parse(JSON.stringify(obj.meta || {})));
           newObj.x = obj.x + 20;
           newObj.y = obj.y + 20;
@@ -16539,12 +16579,11 @@ ${allContent}
           if (isShape && newObj.meta) {
             var svg = newEl.querySelector("svg");
             if (svg) {
-              var shape = svg.querySelector("rect, circle, ellipse, polygon, line, path, polyline");
-              if (shape) {
+              svg.querySelectorAll("rect, circle, ellipse, polygon, line, path, polyline").forEach(function(shape) {
                 if (newObj.meta.fill) shape.setAttribute("fill", newObj.meta.fill);
                 if (newObj.meta.stroke) shape.setAttribute("stroke", newObj.meta.stroke);
                 if (newObj.meta.strokeWidth) shape.setAttribute("stroke-width", newObj.meta.strokeWidth);
-              }
+              });
             }
           }
           // Apply transform
@@ -17190,12 +17229,24 @@ ${allContent}
         function _qeHandleKeydown(e) {
           if (!_qe.el || !_qe.el.contains(e.target)) return;
           var ctrl = e.ctrlKey || e.metaKey;
+          // TEXT MODE: If cursor is inside a text editor, let browser handle text editing
+          if (_qeTextEditActive && _qeTextEditTarget && _qeTextEditTarget.contains(e.target)) {
+            // In text edit mode, only handle Escape to exit
+            if (e.key === "Escape") {
+              e.preventDefault();
+              _qeExitTextEditMode();
+              return;
+            }
+            // Let browser handle all other keys (Backspace, Delete, arrows, etc.)
+            return;
+          }
+          // OBJECT MODE: Object is selected but not in text edit mode
           // Escape: close panels, deselect, exit text edit mode
           if (e.key === "Escape") {
             if (_qeTextEditActive) { _qeExitTextEditMode(); return; }
             _qeClosePanels(); _qeDeselectAll(); _qeHideContextMenu(); return;
           }
-          // Delete/Backspace: only delete selected object
+          // Delete/Backspace in Object Mode: delete selected object
           if ((e.key === "Delete" || e.key === "Backspace") && _qe.selectedEl) {
             e.preventDefault();
             e.stopPropagation();
@@ -17261,6 +17312,88 @@ ${allContent}
           }
         }
 
+        // ── Drag Selection (Marquee) ──
+        var _qeMarquee = null;
+        var _qeMarqueeStart = null;
+
+        function _qeSetupMarquee() {
+          _qe.el.addEventListener("mousedown", function(e) {
+            // Only start marquee on empty editor space (not on objects)
+            if (e.target.closest(".ss-qe-figure") || e.target.closest(".ss-qe-float-table") || e.target.closest("table") || e.target.closest(".ss-qe-resize-handle") || e.target.closest(".ss-qe-rotate-handle") || e.target.closest("button") || e.target.closest(".ss-qe-shape-text-editor")) return;
+            if (_qeTextEditActive) return;
+            var startX = e.clientX;
+            var startY = e.clientY;
+            var isDragging = false;
+            // Create marquee element
+            var marquee = document.createElement("div");
+            marquee.className = "ss-qe-selection-box";
+            marquee.style.cssText = "position:fixed;border:1px dashed #1b5f7a;background:rgba(27,95,122,0.08);pointer-events:none;z-index:99999;display:none;";
+            function onMove(ev) {
+              var dx = ev.clientX - startX;
+              var dy = ev.clientY - startY;
+              if (Math.abs(dx) > 5 || Math.abs(dy) > 5) isDragging = true;
+              if (!isDragging) return;
+              if (!_qeMarquee) {
+                _qeMarquee = marquee;
+                document.body.appendChild(marquee);
+              }
+              marquee.style.display = "block";
+              var left = Math.min(startX, ev.clientX);
+              var top = Math.min(startY, ev.clientY);
+              var width = Math.abs(dx);
+              var height = Math.abs(dy);
+              marquee.style.left = left + "px";
+              marquee.style.top = top + "px";
+              marquee.style.width = width + "px";
+              marquee.style.height = height + "px";
+              // Highlight objects inside marquee
+              _qeHighlightMarqueeObjects(left, top, width, height, e.ctrlKey || e.metaKey);
+            }
+            function onUp() {
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              if (_qeMarquee) {
+                _qeMarquee.remove();
+                _qeMarquee = null;
+              }
+              if (isDragging) {
+                // Finalize selection
+                _qeFinalizeMarqueeSelection(e.ctrlKey || e.metaKey);
+              }
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        function _qeHighlightMarqueeObjects(left, top, width, height, additive) {
+          if (!additive) {
+            _qeDoc.objects.forEach(function(obj) {
+              if (obj.el) obj.el.classList.remove("ss-qe-marquee-highlight");
+            });
+          }
+          _qeDoc.objects.forEach(function(obj) {
+            if (!obj.el) return;
+            var rect = obj.el.getBoundingClientRect();
+            // Check if object intersects with marquee
+            if (rect.left < left + width && rect.right > left && rect.top < top + height && rect.bottom > top) {
+              obj.el.classList.add("ss-qe-marquee-highlight");
+            } else if (!additive) {
+              obj.el.classList.remove("ss-qe-marquee-highlight");
+            }
+          });
+        }
+
+        function _qeFinalizeMarqueeSelection(additive) {
+          if (!additive) _qeDeselectAll();
+          _qeDoc.objects.forEach(function(obj) {
+            if (obj.el && obj.el.classList.contains("ss-qe-marquee-highlight")) {
+              obj.el.classList.remove("ss-qe-marquee-highlight");
+              _qeSelect(obj.el, obj.type);
+            }
+          });
+        }
+
         // ── Wire Events ──
         function _qeWireEvents() {
           _qe.el.addEventListener("input", function() { _qeUpdateStatus(); });
@@ -17273,6 +17406,8 @@ ${allContent}
               _qeExitTextEditMode();
             }
           });
+          // Setup marquee selection
+          _qeSetupMarquee();
           _qe.el.addEventListener("paste", function(e) {
             var html = (e.clipboardData || window.clipboardData).getData("text/html");
             if (html && html.length > 10) {

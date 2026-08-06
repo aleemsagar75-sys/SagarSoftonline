@@ -5225,6 +5225,12 @@ body {
   z-index: 9999;
 }
 
+/* Marquee highlight for objects */
+.ss-qe-marquee-highlight {
+  outline: 2px dashed #1b5f7a !important;
+  outline-offset: 2px;
+}
+
 .question-options-grid {
   display: grid;
   gap: 0.45rem;
