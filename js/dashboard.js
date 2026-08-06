@@ -15907,57 +15907,45 @@ ${allContent}
 
         var _qe = {
           el: null, toolbar: null, status: null, activePanel: null,
+          selectedEl: null, selectedType: null, clipboard: null, zCounter: 100,
           wordFontSizes: [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72],
-          fontFamilies: ["Segoe UI", "Arial", "Times New Roman", "Calibri", "Cambria", "Georgia", "Courier New", "Verdana", "Trebuchet MS", "Comic Sans MS", "Impact", "Lucida Console"],
-          wrapModes: ["inline", "square", "tight", "behind", "front"]
+          fontFamilies: ["Arial", "Calibri", "Times New Roman", "Cambria", "Poppins", "Inter", "Segoe UI", "Georgia", "Courier New", "Verdana", "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq"]
         };
 
-        function _qeExec(cmd, val) { document.execCommand(cmd, false, val || null); _qe.el && _qe.el.focus(); _qeUpdateStatus(); _qeUpdateToolbar(); }
-        function _qeWrap(tag, attrs) {
-          var sel = window.getSelection();
-          if (!sel || !sel.rangeCount) return;
-          var range = sel.getRangeAt(0);
-          var wrapper = document.createElement(tag);
-          if (attrs) Object.keys(attrs).forEach(function(k){ wrapper.setAttribute(k, attrs[k]); });
-          wrapper.innerHTML = range.toString() || "\u200B";
-          range.deleteContents();
-          range.insertNode(wrapper);
-          sel.removeAllRanges();
-          var nr = document.createRange();
-          nr.selectNodeContents(wrapper);
-          sel.addRange(nr);
+        function _qeExec(cmd, val) {
+          _qe.el && _qe.el.focus();
+          document.execCommand(cmd, false, val || null);
           _qeUpdateStatus();
+          _qeUpdateToolbar();
         }
+
         function _qeInsertHTML(html) {
           if (!_qe.el) return;
           _qe.el.focus();
+          _qeDeselectAll();
           document.execCommand("insertHTML", false, html);
           _qeUpdateStatus();
+          setTimeout(function() { _qeWireAllObjects(); }, 0);
         }
+
         function _qeGetHTML() { return _qe.el ? _qe.el.innerHTML : ""; }
         function _qeGetText() { return _qe.el ? _qe.el.innerText : ""; }
-        function _qeClear() { if (_qe.el) { _qe.el.innerHTML = "<p><br></p>"; _qeUpdateStatus(); } }
+        function _qeClear() { if (_qe.el) { _qe.el.innerHTML = "<p><br></p>"; _qeDeselectAll(); _qeUpdateStatus(); } }
 
         function _qeUpdateStatus() {
           if (!_qe.status || !_qe.el) return;
           var txt = _qe.el.innerText || "";
           var words = txt.trim() ? txt.trim().split(/\s+/).length : 0;
-          var chars = txt.length;
-          _qe.status.textContent = words + " words | " + chars + " chars";
+          _qe.status.textContent = words + " words | " + txt.length + " chars";
         }
 
         function _qeUpdateToolbar() {
           if (!_qe.toolbar) return;
-          _qe.toolbar.querySelectorAll("[data-cmd]").forEach(function(btn) {
-            var cmd = btn.getAttribute("data-cmd");
-            var active = false;
-            try { active = document.queryCommandState(cmd); } catch(e){}
-            btn.classList.toggle("ss-qe-active", active);
-          });
-          _qe.toolbar.querySelectorAll("[data-val]").forEach(function(btn) {
-            var cmd = btn.getAttribute("data-cmd");
-            var val = btn.getAttribute("data-val");
-            btn.classList.toggle("ss-qe-active", false);
+          _qe.toolbar.querySelectorAll("[data-cmd]").forEach(function(b) {
+            var cmd = b.getAttribute("data-cmd");
+            if (["bold","italic","underline","strikethrough","superscript","subscript","justifyLeft","justifyCenter","justifyRight","justifyFull","insertUnorderedList","insertOrderedList"].indexOf(cmd) >= 0) {
+              try { b.classList.toggle("ss-qe-active", document.queryCommandState(cmd)); } catch(e){}
+            }
           });
         }
 
@@ -15973,10 +15961,211 @@ ${allContent}
           _qe.activePanel = panelEl;
           if (anchorEl) {
             var rect = anchorEl.getBoundingClientRect();
-            var parentRect = anchorEl.closest(".ss-qe").getBoundingClientRect();
-            panelEl.style.top = (rect.bottom - parentRect.top + 4) + "px";
-            panelEl.style.left = Math.max(0, Math.min(rect.left - parentRect.left, parentRect.width - panelEl.offsetWidth - 8)) + "px";
+            var pRect = anchorEl.closest(".ss-qe").getBoundingClientRect();
+            panelEl.style.top = (rect.bottom - pRect.top + 4) + "px";
+            panelEl.style.left = Math.max(0, Math.min(rect.left - pRect.left, pRect.width - panelEl.offsetWidth - 8)) + "px";
           }
+        }
+
+        function _qeSelect(el, type) {
+          _qeDeselectAll();
+          if (!el) return;
+          _qe.selectedEl = el;
+          _qe.selectedType = type;
+          el.classList.add("ss-qe-selected");
+          if (type === "image") {
+            var ic = el.querySelector(".ss-qe-image-controls");
+            if (ic) ic.style.display = "flex";
+          }
+          if (type === "table") el.classList.add("ss-qe-table-selected");
+        }
+
+        function _qeDeselectAll() {
+          if (_qe.selectedEl) {
+            _qe.selectedEl.classList.remove("ss-qe-selected", "ss-qe-table-selected");
+            var ic = _qe.selectedEl.querySelector(".ss-qe-image-controls");
+            if (ic) ic.style.display = "none";
+          }
+          _qe.selectedEl = null;
+          _qe.selectedType = null;
+        }
+
+        function _qeSetupObjectDrag(el) {
+          if (el.getAttribute("data-drag-wired")) return;
+          el.setAttribute("data-drag-wired", "1");
+          el.setAttribute("draggable", "false");
+          var startX, startY, startLeft, startTop, isDragging = false;
+          safeOn(el, "mousedown", function(e) {
+            if (e.target.classList.contains("ss-qe-resize-handle") || e.target.classList.contains("ss-qe-rotate-handle") || e.target.classList.contains("ss-qe-fc-btn") || e.target.tagName === "BUTTON" || e.target.closest("button")) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var fig = e.target.closest(".ss-qe-figure");
+            if (fig) _qeSelect(fig, fig.classList.contains("ss-qe-image-figure") ? "image" : "shape");
+            else _qeSelect(el, _qe.selectedType || "shape");
+            startX = e.clientX; startY = e.clientY;
+            var cs = window.getComputedStyle(el);
+            startLeft = parseInt(cs.left) || 0;
+            startTop = parseInt(cs.top) || 0;
+            isDragging = false;
+            function onMove(ev) {
+              var dx = ev.clientX - startX, dy = ev.clientY - startY;
+              if (Math.abs(dx) > 2 || Math.abs(dy) > 2) isDragging = true;
+              if (!isDragging) return;
+              el.style.position = "relative";
+              el.style.left = (startLeft + dx) + "px";
+              el.style.top = (startTop + dy) + "px";
+              el.style.zIndex = ++_qe.zCounter;
+            }
+            function onUp() {
+              isDragging = false;
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        function _qeSetupResizeHandles(el) {
+          if (el.querySelector(".ss-qe-resize-handle")) return;
+          ["nw","ne","sw","se","n","s","e","w"].forEach(function(pos) {
+            var h = document.createElement("div");
+            h.className = "ss-qe-resize-handle ss-qe-rh-" + pos;
+            h.setAttribute("data-handle", pos);
+            safeOn(h, "mousedown", function(e) {
+              e.preventDefault(); e.stopPropagation();
+              var sX = e.clientX, sY = e.clientY;
+              var sW = el.offsetWidth, sH = el.offsetHeight;
+              var sL = parseInt(el.style.left) || 0, sT = parseInt(el.style.top) || 0;
+              var img = el.querySelector("img");
+              var origRatio = img ? img.naturalWidth / img.naturalHeight : null;
+              function onMove(ev) {
+                var dx = ev.clientX - sX, dy = ev.clientY - sY;
+                var nW = sW, nH = sH;
+                if (pos.indexOf("e") >= 0) nW = sW + dx;
+                if (pos.indexOf("w") >= 0) nW = sW - dx;
+                if (pos.indexOf("s") >= 0) nH = sH + dy;
+                if (pos.indexOf("n") >= 0) nH = sH - dy;
+                if (origRatio && !e.shiftKey) {
+                  if (pos === "n" || pos === "s") nW = nH * origRatio;
+                  else nH = nW / origRatio;
+                }
+                nW = Math.max(40, nW); nH = Math.max(20, nH);
+                el.style.width = nW + "px"; el.style.height = nH + "px";
+                if (pos.indexOf("w") >= 0) el.style.left = (sL + dx) + "px";
+                if (pos.indexOf("n") >= 0) el.style.top = (sT + dy) + "px";
+                if (img) { img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "contain"; }
+              }
+              function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+              document.addEventListener("mousemove", onMove);
+              document.addEventListener("mouseup", onUp);
+            });
+            el.appendChild(h);
+          });
+        }
+
+        function _qeSetupRotateHandle(el) {
+          if (el.querySelector(".ss-qe-rotate-handle")) return;
+          var rh = document.createElement("div");
+          rh.className = "ss-qe-rotate-handle";
+          rh.innerHTML = "\u21BB";
+          rh.title = "Rotate";
+          el.appendChild(rh);
+          safeOn(rh, "mousedown", function(e) {
+            e.preventDefault(); e.stopPropagation();
+            var rect = el.getBoundingClientRect();
+            var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+            var startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+            var curRot = parseFloat(el.getAttribute("data-rotation")) || 0;
+            function onMove(ev) {
+              var angle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
+              var newRot = curRot + (angle - startAngle);
+              if (e.shiftKey) newRot = Math.round(newRot / 15) * 15;
+              el.style.transform = "rotate(" + newRot + "deg)";
+              el.setAttribute("data-rotation", newRot);
+            }
+            function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        function _qeSetupObject(el) {
+          _qeSetupObjectDrag(el);
+          _qeSetupResizeHandles(el);
+          _qeSetupRotateHandle(el);
+        }
+
+        function _qeWireAllObjects() {
+          if (!_qe.el) return;
+          _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(fig) {
+            if (fig.getAttribute("data-wired")) return;
+            fig.setAttribute("data-wired", "1");
+            fig.setAttribute("draggable", "false");
+            _qeSetupObject(fig);
+            safeOn(fig, "mousedown", function(e) {
+              if (e.target.closest("button")) return;
+              e.stopPropagation();
+              var type = fig.classList.contains("ss-qe-image-figure") ? "image" : "shape";
+              _qeSelect(fig, type);
+            });
+            fig.querySelectorAll(".ss-qe-fc-btn[data-action]").forEach(function(b) {
+              safeOn(b, "click", function(ev) {
+                ev.stopPropagation();
+                var action = b.getAttribute("data-action");
+                if (action === "delete" || action === "img-delete") fig.remove();
+                else if (action === "img-caption") {
+                  var cap = fig.querySelector("figcaption");
+                  if (cap) cap.style.display = "block";
+                } else if (action === "img-alt") {
+                  var img = fig.querySelector("img");
+                  if (img) { var alt = prompt("Alt text:", img.getAttribute("alt") || ""); if (alt !== null) img.setAttribute("alt", alt); }
+                }
+              });
+            });
+          });
+          _qe.el.querySelectorAll("table[data-ss-table]").forEach(function(tbl) {
+            if (tbl.getAttribute("data-wired")) return;
+            tbl.setAttribute("data-wired", "1");
+            _qeSetupTableResize(tbl);
+            safeOn(tbl, "contextmenu", function(e) {
+              var cell = e.target.closest("td, th");
+              if (cell) _qeShowTableContextMenu(e, tbl, cell);
+            });
+            safeOn(tbl, "click", function(e) {
+              if (!e.target.closest("td, th")) return;
+              e.stopPropagation();
+              _qeSelect(tbl, "table");
+            });
+          });
+        }
+
+        function _qeSetupTableResize(table) {
+          var thead = table.querySelector("thead");
+          if (!thead) return;
+          thead.querySelectorAll("th").forEach(function(th, idx) {
+            var handle = document.createElement("div");
+            handle.className = "ss-qe-col-resize-handle";
+            handle.style.cssText = "position:absolute;right:-3px;top:0;width:6px;height:100%;cursor:col-resize;z-index:5;";
+            th.style.position = "relative";
+            th.appendChild(handle);
+            safeOn(handle, "mousedown", function(e) {
+              e.preventDefault(); e.stopPropagation();
+              var startX = e.clientX, startW = th.offsetWidth;
+              var tbody = table.querySelector("tbody");
+              function onMove(ev) {
+                var newW = Math.max(30, startW + (ev.clientX - startX));
+                th.style.width = newW + "px"; th.style.minWidth = newW + "px"; th.style.maxWidth = newW + "px";
+                if (tbody) tbody.querySelectorAll("tr").forEach(function(tr) {
+                  var cell = tr.children[idx];
+                  if (cell) { cell.style.width = newW + "px"; cell.style.minWidth = newW + "px"; cell.style.maxWidth = newW + "px"; }
+                });
+              }
+              function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+              document.addEventListener("mousemove", onMove);
+              document.addEventListener("mouseup", onUp);
+            });
+          });
         }
 
         var _qeShapeLibrary = {
@@ -15992,7 +16181,7 @@ ${allContent}
           arrowDown: { label: "Arrow Down", svg: '<svg viewBox="0 0 80 120" width="80" height="120"><polygon points="65,2 40,70 15,2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="63" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
           line: { label: "Line", svg: '<svg viewBox="0 0 120 20" width="120" height="20"><line x1="5" y1="10" x2="115" y2="10" stroke="#0277bd" stroke-width="3" stroke-linecap="round"/></svg>' },
           callout: { label: "Callout", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="90" height="55" rx="6" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><polygon points="30,57 40,77 55,57" fill="#4fc3f7" stroke="#0277bd" stroke-width="2" stroke-linejoin="round"/></svg>' },
-          textBox: { label: "Text Box", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="2" stroke-dasharray="6,3"/><text x="60" y="44" text-anchor="middle" font-size="13" fill="#333">Text Box</text></svg>' }
+          textBox: { label: "Text Box", svg: '<svg viewBox="0 0 120 80" width="120" height="80"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="2" stroke-dasharray="6,3"/></svg>' }
         };
 
         function _qeBuildShapesPanel() {
@@ -16010,11 +16199,11 @@ ${allContent}
               var key = btn.getAttribute("data-shape");
               var shape = _qeShapeLibrary[key];
               if (!shape) return;
-              var wrapClass = "ss-qe-shape-inline";
-              var fig = '<figure class="ss-qe-figure" contenteditable="false" data-wrap="inline" style="text-align:center;margin:12px 0;position:relative;display:inline-block;">' + '<div class="ss-qe-figure-inner" draggable="false">' + shape.svg + '</div>' + '<div class="ss-qe-figure-controls"><button type="button" class="ss-qe-fc-btn" data-action="delete" title="Delete">\u2715</button></div>' + '</figure><p><br></p>';
+              var isTextBox = key === "textBox";
+              var inner = '<div class="ss-qe-figure-inner">' + shape.svg + (isTextBox ? '<div class="ss-qe-shape-text" contenteditable="true" style="position:absolute;top:10px;left:10px;right:10px;bottom:10px;outline:none;font-size:14px;text-align:center;display:flex;align-items:center;justify-content:center;">Type here</div>' : '') + '</div>';
+              var fig = '<figure class="ss-qe-figure" contenteditable="false" data-z="' + (++_qe.zCounter) + '" style="text-align:center;margin:8px 4px;position:relative;display:inline-block;z-index:' + _qe.zCounter + ';">' + inner + '<div class="ss-qe-figure-controls"><button type="button" class="ss-qe-fc-btn" data-action="delete" title="Delete">\u2715</button></div></figure><p><br></p>';
               _qeInsertHTML(fig);
-              panel.style.display = "none";
-              _qe.activePanel = null;
+              _qeClosePanels();
             });
           });
         }
@@ -16023,58 +16212,102 @@ ${allContent}
           var panel = document.getElementById("ssQETablePanel");
           if (!panel) return;
           var html = '<div class="ss-qe-panel-header">Insert Table</div><div class="ss-qe-table-grid">';
-          for (var r = 1; r <= 8; r++) {
-            for (var c = 1; c <= 8; c++) {
-              html += '<button type="button" class="ss-qe-table-cell" data-rows="' + r + '" data-cols="' + c + '"></button>';
-            }
-          }
+          for (var r = 1; r <= 8; r++) for (var c = 1; c <= 8; c++) html += '<button type="button" class="ss-qe-table-cell" data-rows="' + r + '" data-cols="' + c + '"></button>';
           html += '</div><div class="ss-qe-table-size-label">Insert Custom Table</div>';
           html += '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;"><input type="number" class="ss-qe-table-rows-input" min="1" max="50" value="3" style="width:50px;padding:4px;border:1px solid #dde4ea;border-radius:4px;font-size:0.75rem;"><span style="font-size:0.75rem;">\u00D7</span><input type="number" class="ss-qe-table-cols-input" min="1" max="20" value="3" style="width:50px;padding:4px;border:1px solid #dde4ea;border-radius:4px;font-size:0.75rem;"><button type="button" class="ss-qe-panel-btn ss-qe-table-insert-btn">Insert</button></div>';
           panel.innerHTML = html;
-          var rowsInput = panel.querySelector(".ss-qe-table-rows-input");
-          var colsInput = panel.querySelector(".ss-qe-table-cols-input");
-          var hovLabel = panel.querySelector(".ss-qe-table-size-label");
+          var rowsInput = panel.querySelector(".ss-qe-table-rows-input"), colsInput = panel.querySelector(".ss-qe-table-cols-input"), hovLabel = panel.querySelector(".ss-qe-table-size-label");
           panel.querySelectorAll(".ss-qe-table-cell").forEach(function(cell) {
             safeOn(cell, "mouseenter", function() {
-              var r = parseInt(cell.getAttribute("data-rows"));
-              var c = parseInt(cell.getAttribute("data-cols"));
+              var r = parseInt(cell.getAttribute("data-rows")), c = parseInt(cell.getAttribute("data-cols"));
               hovLabel.textContent = r + " \u00D7 " + c + " Table";
-              panel.querySelectorAll(".ss-qe-table-cell").forEach(function(sc) {
-                var sr = parseInt(sc.getAttribute("data-rows"));
-                var sc2 = parseInt(sc.getAttribute("data-cols"));
-                sc.classList.toggle("ss-qe-table-cell-hl", sr <= r && sc2 <= c);
-              });
+              panel.querySelectorAll(".ss-qe-table-cell").forEach(function(sc) { sc.classList.toggle("ss-qe-table-cell-hl", parseInt(sc.getAttribute("data-rows")) <= r && parseInt(sc.getAttribute("data-cols")) <= c); });
             });
-            safeOn(cell, "click", function() {
-              var r = parseInt(cell.getAttribute("data-rows"));
-              var c = parseInt(cell.getAttribute("data-cols"));
-              _qeInsertTable(r, c);
-              panel.style.display = "none";
-              _qe.activePanel = null;
-            });
+            safeOn(cell, "click", function() { _qeInsertTable(parseInt(cell.getAttribute("data-rows")), parseInt(cell.getAttribute("data-cols"))); _qeClosePanels(); });
           });
           var insBtn = panel.querySelector(".ss-qe-table-insert-btn");
-          if (insBtn) safeOn(insBtn, "click", function() {
-            var r = parseInt(rowsInput.value) || 3;
-            var c = parseInt(colsInput.value) || 3;
-            _qeInsertTable(r, c);
-            panel.style.display = "none";
-            _qe.activePanel = null;
-          });
+          if (insBtn) safeOn(insBtn, "click", function() { _qeInsertTable(parseInt(rowsInput.value) || 3, parseInt(colsInput.value) || 3); _qeClosePanels(); });
         }
 
         function _qeInsertTable(rows, cols) {
-          var t = '<table style="width:100%;border-collapse:collapse;margin:12px 0;" data-ss-table="true">';
-          t += '<thead><tr>';
+          var t = '<table style="width:100%;border-collapse:collapse;margin:12px 0;" data-ss-table="true"><thead><tr>';
           for (var c = 0; c < cols; c++) t += '<th style="border:1px solid #b0bec5;padding:6px 8px;background:#f6f7f9;text-align:left;font-weight:600;" contenteditable="true">Header</th>';
           t += '</tr></thead><tbody>';
-          for (var r = 0; r < rows; r++) {
-            t += '<tr>';
-            for (var c2 = 0; c2 < cols; c2++) t += '<td style="border:1px solid #b0bec5;padding:6px 8px;" contenteditable="true"><br></td>';
-            t += '</tr>';
-          }
+          for (var r = 0; r < rows; r++) { t += '<tr>'; for (var c2 = 0; c2 < cols; c2++) t += '<td style="border:1px solid #b0bec5;padding:6px 8px;" contenteditable="true"><br></td>'; t += '</tr>'; }
           t += '</tbody></table><p><br></p>';
           _qeInsertHTML(t);
+        }
+
+        function _qeTableInsertRow(table, after) {
+          var tr = table.querySelector("tr"); if (!tr) return;
+          var cols = tr.children.length;
+          var newRow = document.createElement("tr");
+          for (var i = 0; i < cols; i++) { var td = document.createElement("td"); td.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;"; td.setAttribute("contenteditable", "true"); td.innerHTML = "<br>"; newRow.appendChild(td); }
+          var rows = table.querySelectorAll("tr");
+          var ref = after ? rows[rows.length - 1] : rows[0];
+          if (ref && ref.parentNode) ref.parentNode.insertBefore(newRow, after ? null : ref);
+        }
+
+        function _qeTableDeleteRow(table, tr) {
+          var rows = table.querySelectorAll("tr");
+          if (rows.length <= 1) { table.remove(); return; }
+          tr.remove();
+        }
+
+        function _qeTableInsertCol(table, after) {
+          var rows = table.querySelectorAll("tr");
+          rows.forEach(function(tr, ri) {
+            var cell = document.createElement(ri === 0 && table.querySelector("thead") ? "th" : "td");
+            cell.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;" + (ri === 0 && table.querySelector("thead") ? "background:#f6f7f9;font-weight:600;" : "");
+            cell.setAttribute("contenteditable", "true");
+            cell.innerHTML = ri === 0 && table.querySelector("thead") ? "Header" : "<br>";
+            var ref = after ? tr.lastElementChild : tr.firstElementChild;
+            if (ref) ref.parentNode.insertBefore(cell, after ? null : ref);
+          });
+        }
+
+        function _qeTableDeleteCol(table, td) {
+          var idx = Array.from(td.parentNode.children).indexOf(td);
+          table.querySelectorAll("tr").forEach(function(tr) { if (tr.children[idx]) tr.children[idx].remove(); });
+          if (!table.querySelector("td") && !table.querySelector("th")) table.remove();
+        }
+
+        var _qeTableContextMenu = null;
+        function _qeShowTableContextMenu(e, table, cell) {
+          e.preventDefault(); e.stopPropagation();
+          _qeHideTableContextMenu();
+          var menu = document.createElement("div");
+          menu.className = "ss-qe-table-context-menu";
+          menu.style.cssText = "position:fixed;z-index:9999;background:#fff;border:1px solid rgba(27,95,122,0.15);border-radius:8px;box-shadow:0 8px 24px rgba(15,43,63,0.18);padding:4px 0;min-width:180px;";
+          var items = [
+            { label: "Insert Row Above", fn: function() { _qeTableInsertRow(table, false); } },
+            { label: "Insert Row Below", fn: function() { _qeTableInsertRow(table, true); } },
+            { label: "Delete Row", fn: function() { _qeTableDeleteRow(table, cell.closest("tr")); } },
+            { label: "---" },
+            { label: "Insert Column Left", fn: function() { _qeTableInsertCol(table, false); } },
+            { label: "Insert Column Right", fn: function() { _qeTableInsertCol(table, true); } },
+            { label: "Delete Column", fn: function() { _qeTableDeleteCol(table, cell); } },
+            { label: "---" },
+            { label: "Delete Table", fn: function() { table.remove(); } }
+          ];
+          items.forEach(function(item) {
+            if (item.label === "---") { var sep = document.createElement("div"); sep.style.cssText = "height:1px;background:#e0e0e0;margin:4px 8px;"; menu.appendChild(sep); return; }
+            var btn = document.createElement("button");
+            btn.textContent = item.label;
+            btn.style.cssText = "display:block;width:100%;text-align:left;padding:6px 14px;border:none;background:none;cursor:pointer;font-size:12px;font-family:inherit;color:#333;";
+            safeOn(btn, "mouseenter", function() { btn.style.background = "rgba(27,95,122,0.06)"; });
+            safeOn(btn, "mouseleave", function() { btn.style.background = "none"; });
+            safeOn(btn, "click", function() { _qeHideTableContextMenu(); item.fn(); });
+            menu.appendChild(btn);
+          });
+          document.body.appendChild(menu);
+          menu.style.left = e.clientX + "px"; menu.style.top = e.clientY + "px";
+          _qeTableContextMenu = menu;
+          setTimeout(function() { safeOn(document, "mousedown", function handler() { _qeHideTableContextMenu(); document.removeEventListener("mousedown", handler); }); }, 10);
+        }
+
+        function _qeHideTableContextMenu() {
+          if (_qeTableContextMenu) { _qeTableContextMenu.remove(); _qeTableContextMenu = null; }
         }
 
         function _qeBuildEquationPanel() {
@@ -16096,15 +16329,13 @@ ${allContent}
             { label: "Omega", tex: "\\omega" }, { label: "Pi", tex: "\\pi" },
             { label: "Infinity", tex: "\\infty" }, { label: "Not Equal", tex: "\\neq" },
             { label: "Less Equal", tex: "\\leq" }, { label: "Greater Equal", tex: "\\geq" },
-            { label: "Arrow Right", tex: "\\rightarrow" }, { label: "Arrow Left", tex: "\\leftarrow" },
             { label: "Therefore", tex: "\\therefore" }, { label: "Because", tex: "\\because" },
             { label: "Approx", tex: "\\approx" }, { label: "Plus/Minus", tex: "\\pm" },
             { label: "Times", tex: "\\times" }, { label: "Divide", tex: "\\div" },
-            { label: "H2O (Water)", tex: "H_2O" }, { label: "CO2 (Carbon Dioxide)", tex: "CO_2" },
-            { label: "NaCl (Salt)", tex: "NaCl" }, { label: "E=mc\u00B2", tex: "E=mc^2" },
-            { label: "F=ma", tex: "F=ma" }, { label: "PV=nRT", tex: "PV=nRT" }
+            { label: "H\u2082O", tex: "H_2O" }, { label: "CO\u2082", tex: "CO_2" },
+            { label: "E=mc\u00B2", tex: "E=mc^2" }, { label: "F=ma", tex: "F=ma" }
           ];
-          var html = '<div class="ss-qe-panel-header">Math Equations</div>';
+          var html = '<div class="ss-qe-panel-header">Math Equations <span class="ss-qe-panel-close" style="float:right;cursor:pointer;font-size:14px;" title="Close">\u2715</span></div>';
           html += '<div class="ss-qe-eq-custom"><input type="text" class="ss-qe-eq-input" placeholder="Type LaTeX... (e.g. \\frac{1}{2})" style="flex:1;"><button type="button" class="ss-qe-panel-btn ss-qe-eq-insert-btn">Insert</button></div>';
           html += '<div class="ss-qe-eq-grid">';
           eqs.forEach(function(eq) {
@@ -16114,170 +16345,98 @@ ${allContent}
           });
           html += '</div>';
           panel.innerHTML = html;
-          var eqInput = panel.querySelector(".ss-qe-eq-input");
-          var insBtn = panel.querySelector(".ss-qe-eq-insert-btn");
-          if (insBtn) safeOn(insBtn, "click", function() {
-            var tex = eqInput.value.trim();
-            if (!tex) return;
-            _qeInsertEquation(tex);
-            eqInput.value = "";
-            panel.style.display = "none";
-            _qe.activePanel = null;
-          });
+          var eqInput = panel.querySelector(".ss-qe-eq-input"), insBtn = panel.querySelector(".ss-qe-eq-insert-btn"), closeBtn = panel.querySelector(".ss-qe-panel-close");
+          if (closeBtn) safeOn(closeBtn, "click", function() { panel.style.display = "none"; _qe.activePanel = null; });
+          if (insBtn) safeOn(insBtn, "click", function() { var tex = eqInput.value.trim(); if (!tex) return; _qeInsertEquation(tex); eqInput.value = ""; panel.style.display = "none"; _qe.activePanel = null; });
+          if (eqInput) safeOn(eqInput, "keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); insBtn.click(); } if (e.key === "Escape") { panel.style.display = "none"; _qe.activePanel = null; } });
           panel.querySelectorAll(".ss-qe-eq-btn").forEach(function(btn) {
-            safeOn(btn, "click", function() {
-              var tex = btn.getAttribute("data-tex");
-              _qeInsertEquation(tex);
-              panel.style.display = "none";
-              _qe.activePanel = null;
-            });
+            safeOn(btn, "click", function() { _qeInsertEquation(btn.getAttribute("data-tex")); panel.style.display = "none"; _qe.activePanel = null; });
           });
         }
 
         function _qeInsertEquation(tex) {
           var rendered = "";
-          try { rendered = katex.renderToString(tex, { throwOnError: false, displayMode: true }); } catch(e) { rendered = '<span style="color:red;">' + tex + '</span>'; }
-          var html = '<span class="ss-qe-equation" contenteditable="false" data-tex="' + tex.replace(/"/g, "&quot;") + '" style="display:inline-block;margin:4px 2px;padding:2px 6px;background:#f0f4ff;border:1px solid #c5d5f5;border-radius:4px;cursor:pointer;">' + rendered + '</span>&nbsp;';
+          try { rendered = katex.renderToString(tex, { throwOnError: false, displayMode: false }); } catch(e) { rendered = '<span style="color:red;">' + tex + '</span>'; }
+          var html = '<span class="ss-qe-equation" contenteditable="false" data-tex="' + tex.replace(/"/g, "&quot;") + '" style="display:inline-block;margin:2px 4px;padding:2px 6px;background:#f0f4ff;border:1px solid #c5d5f5;border-radius:4px;cursor:pointer;vertical-align:middle;">' + rendered + '</span>&nbsp;';
           _qeInsertHTML(html);
         }
 
         function _qeBuildSpCharPanel() {
           var panel = document.getElementById("ssQESpCharPanel");
           if (!panel) return;
-          var chars = ["\u00A0","\u2013","\u2014","\u2018","\u2019","\u201C","\u201D","\u2026","\u2022","\u00A9","\u00AE","\u2122","\u00B0","\u00B1","\u00D7","\u00F7","\u2260","\u2264","\u2265","\u221E","\u2211","\u220F","\u222B","\u2248","\u221A","\u03B1","\u03B2","\u03B3","\u03B4","\u03B8","\u03BB","\u03C0","\u03C3","\u03C9","\u0394","\u03A3","\u2190","\u2191","\u2192","\u2193","\u2194","\u25CF","\u25CB","\u25A0","\u25B2","\u25BC","\u2605","\u2606","\u2713","\u2717","\u271C","\u2720","\u2721"];
-          var html = '<div class="ss-qe-panel-header">Special Characters</div><div class="ss-qe-spchar-grid">';
-          chars.forEach(function(ch) {
-            html += '<button type="button" class="ss-qe-spchar-btn" data-char="' + ch + '">' + ch + '</button>';
+          var groups = {
+            "Greek": ["\u03B1","\u03B2","\u03B3","\u03B4","\u03B5","\u03B8","\u03BB","\u03C0","\u03C3","\u03C9","\u0394","\u03A3"],
+            "Math": ["\u00B1","\u00D7","\u00F7","\u2260","\u2264","\u2265","\u221E","\u2211","\u220F","\u222B","\u2248","\u221A"],
+            "Arrows": ["\u2190","\u2191","\u2192","\u2193","\u2194"],
+            "Symbols": ["\u00A9","\u00AE","\u2122","\u00B0","\u2022","\u2026","\u2013","\u2014","\u2018","\u2019","\u201C","\u201D"],
+            "Shapes": ["\u25CF","\u25CB","\u25A0","\u25B2","\u25BC","\u2605","\u2606"],
+            "Checks": ["\u2713","\u2717","\u271C"]
+          };
+          var html = '<div class="ss-qe-panel-header">Special Characters <span class="ss-qe-panel-close" style="float:right;cursor:pointer;font-size:14px;" title="Close">\u2715</span></div>';
+          Object.keys(groups).forEach(function(grp) {
+            html += '<div style="font-size:10px;font-weight:600;color:#6b7a8d;margin:6px 0 3px;text-transform:uppercase;letter-spacing:0.5px;">' + grp + '</div><div class="ss-qe-spchar-grid">';
+            groups[grp].forEach(function(ch) { html += '<button type="button" class="ss-qe-spchar-btn" data-char="' + ch + '">' + ch + '</button>'; });
+            html += '</div>';
           });
-          html += '</div>';
           panel.innerHTML = html;
-          panel.querySelectorAll(".ss-qe-spchar-btn").forEach(function(btn) {
-            safeOn(btn, "click", function() {
-              _qeInsertHTML(btn.getAttribute("data-char"));
+          var closeBtn = panel.querySelector(".ss-qe-panel-close");
+          if (closeBtn) safeOn(closeBtn, "click", function() { panel.style.display = "none"; _qe.activePanel = null; });
+          panel.querySelectorAll(".ss-qe-spchar-btn").forEach(function(btn) { safeOn(btn, "click", function() { _qeInsertHTML(btn.getAttribute("data-char")); }); });
+        }
+
+        function _qeHandleImageUpload(files) {
+          Array.from(files).forEach(function(file) {
+            if (!file.type.startsWith("image/")) return;
+            var reader = new FileReader();
+            reader.onload = function() {
+              var wrap = '<figure class="ss-qe-figure ss-qe-image-figure" contenteditable="false" data-wrap="inline" data-z="' + (++_qe.zCounter) + '" style="display:inline-block;margin:8px 4px;position:relative;max-width:100%;z-index:' + _qe.zCounter + ';"><div class="ss-qe-figure-inner" style="position:relative;display:inline-block;"><img src="' + reader.result + '" alt="" style="max-width:100%;height:auto;border-radius:4px;display:block;" onload="if(this.naturalWidth>600)this.style.width=\'600px\';"><div class="ss-qe-image-controls" style="display:none;position:absolute;top:-32px;right:0;background:rgba(255,255,255,0.95);border-radius:6px;padding:2px 4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);gap:2px;"><button type="button" class="ss-qe-fc-btn" data-action="img-delete" title="Delete">\u2715</button><button type="button" class="ss-qe-fc-btn" data-action="img-caption" title="Caption">\u270E</button><button type="button" class="ss-qe-fc-btn" data-action="img-alt" title="Alt Text">ALT</button></div></div><figcaption contenteditable="true" class="ss-qe-img-caption" style="text-align:center;font-size:0.8rem;color:#666;margin-top:4px;outline:none;"></figcaption></figure><p><br></p>';
+              _qeInsertHTML(wrap);
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+
+        function _qeSetFontSize(size) {
+          var sel = window.getSelection();
+          if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+          document.execCommand("fontSize", false, "7");
+          setTimeout(function() {
+            _qe.el.querySelectorAll("font[size='7']").forEach(function(f) {
+              var span = document.createElement("span");
+              span.style.fontSize = size + "pt";
+              while (f.firstChild) span.appendChild(f.firstChild);
+              f.parentNode.replaceChild(span, f);
             });
-          });
+          }, 0);
         }
 
-        function _qeBuildColorPanel(type) {
-          var panel = document.getElementById("ssQEColorPanel");
-          if (!panel) return;
-          var colors = ["#000000","#434343","#666666","#999999","#b7b7b7","#cccccc","#d9d9d9","#efefef","#f3f3f3","#ffffff","#980000","#ff0000","#ff9900","#ffff00","#00ff00","#00ffff","#4a86e8","#0000ff","#9900ff","#ff00ff","#e6b8af","#f4cccc","#fce5cd","#d9ead3","#d0e0e3","#c9daf8","#cfe2f3","#d9d2e9","#ead1dc","#f6f2f0"];
-          var html = '<div class="ss-qe-panel-header">' + (type === "text" ? "Text Color" : "Highlight Color") + '</div><div class="ss-qe-color-grid">';
-          colors.forEach(function(c) {
-            html += '<button type="button" class="ss-qe-color-btn" style="background:' + c + ';" data-color="' + c + '" title="' + c + '"></button>';
-          });
-          html += '<button type="button" class="ss-qe-color-btn ss-qe-color-none" data-color="" title="No Color">\u2715</button>';
-          html += '</div>';
-          panel.innerHTML = html;
-          panel.querySelectorAll(".ss-qe-color-btn").forEach(function(btn) {
-            safeOn(btn, "click", function() {
-              var c = btn.getAttribute("data-color");
-              if (type === "text") _qeExec("foreColor", c || "#000000");
-              else _qeExec("hiliteColor", c || "#ffffff");
-              panel.style.display = "none";
-              _qe.activePanel = null;
-            });
-          });
+        function _qeChangeFontSize(dir) {
+          var sel = window.getSelection();
+          if (!sel || !sel.rangeCount) return;
+          var node = sel.anchorNode;
+          if (node && node.nodeType === 3) node = node.parentNode;
+          var el = node && node.nodeType === 1 ? node : null;
+          var curSize = 12;
+          if (el) { try { curSize = parseFloat(window.getComputedStyle(el).fontSize) * 72 / 96; } catch(e){} }
+          var pt = Math.round(curSize), idx = -1;
+          _qe.wordFontSizes.forEach(function(s, i) { if (s <= pt) idx = i; });
+          var next = _qe.wordFontSizes[Math.max(0, Math.min(_qe.wordFontSizes.length - 1, idx + dir))];
+          _qeSetFontSize(next);
+          var sizeSelect = _qe.toolbar.querySelector(".ss-qe-font-size");
+          if (sizeSelect) sizeSelect.value = next;
         }
 
-        function _qeMakeObjectDraggable(el) {
-          var startX, startY, startLeft, startTop, dragging = false;
-          safeOn(el, "mousedown", function(e) {
-            if (e.target.classList.contains("ss-qe-resize-handle") || e.target.classList.contains("ss-qe-rotate-handle") || e.target.classList.contains("ss-qe-fc-btn")) return;
-            e.preventDefault();
-            dragging = true;
-            startX = e.clientX; startY = e.clientY;
-            var cs = window.getComputedStyle(el);
-            startLeft = parseInt(cs.left) || 0;
-            startTop = parseInt(cs.top) || 0;
-            el.style.position = "relative";
-            function onMove(ev) {
-              if (!dragging) return;
-              el.style.left = (startLeft + ev.clientX - startX) + "px";
-              el.style.top = (startTop + ev.clientY - startY) + "px";
-            }
-            function onUp() {
-              dragging = false;
-              document.removeEventListener("mousemove", onMove);
-              document.removeEventListener("mouseup", onUp);
-            }
-            document.addEventListener("mousemove", onMove);
-            document.addEventListener("mouseup", onUp);
-          });
+        function _qeInsertLink() {
+          var url = prompt("Enter URL:", "https://");
+          if (url) _qeExec("createLink", url);
         }
-
-        function _qeMakeObjectResizable(el) {
-          var handles = ["nw","ne","sw","se","n","s","e","w"];
-          handles.forEach(function(pos) {
-            var h = document.createElement("div");
-            h.className = "ss-qe-resize-handle ss-qe-rh-" + pos;
-            h.setAttribute("data-handle", pos);
-            el.appendChild(h);
-            var startX, startY, startW, startH, startPosL, startPosT;
-            safeOn(h, "mousedown", function(e) {
-              e.preventDefault(); e.stopPropagation();
-              startX = e.clientX; startY = e.clientY;
-              startW = el.offsetWidth; startH = el.offsetHeight;
-              startPosL = parseInt(el.style.left) || 0;
-              startPosT = parseInt(el.style.top) || 0;
-              function onMove(ev) {
-                var dx = ev.clientX - startX;
-                var dy = ev.clientY - startY;
-                if (pos.indexOf("e") >= 0) el.style.width = Math.max(40, startW + dx) + "px";
-                if (pos.indexOf("s") >= 0) el.style.height = Math.max(20, startH + dy) + "px";
-                if (pos.indexOf("w") >= 0) { el.style.width = Math.max(40, startW - dx) + "px"; el.style.left = (startPosL + dx) + "px"; }
-                if (pos.indexOf("n") >= 0) { el.style.height = Math.max(20, startH - dy) + "px"; el.style.top = (startPosT + dy) + "px"; }
-              }
-              function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
-              document.addEventListener("mousemove", onMove);
-              document.addEventListener("mouseup", onUp);
-            });
-          });
-        }
-
-        function _qeMakeObjectRotatable(el) {
-          var rh = document.createElement("div");
-          rh.className = "ss-qe-rotate-handle";
-          rh.innerHTML = "\u21BB";
-          rh.title = "Rotate";
-          el.appendChild(rh);
-          var startAngle = 0, startRot = 0;
-          safeOn(rh, "mousedown", function(e) {
-            e.preventDefault(); e.stopPropagation();
-            var rect = el.getBoundingClientRect();
-            var cx = rect.left + rect.width / 2;
-            var cy = rect.top + rect.height / 2;
-            startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
-            var curRot = parseFloat(el.getAttribute("data-rotation")) || 0;
-            startRot = curRot;
-            function onMove(ev) {
-              var angle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
-              var newRot = startRot + (angle - startAngle);
-              el.style.transform = "rotate(" + newRot + "deg)";
-              el.setAttribute("data-rotation", newRot);
-            }
-            function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
-            document.addEventListener("mousemove", onMove);
-            document.addEventListener("mouseup", onUp);
-          });
-        }
-
-        var _qeSpans = "bold,italic,underline,strikethrough,superscript,subscript";
-        var _qeBlock = "formatBlock";
-        var _qeFontFamilies = _qe.fontFamilies;
-        var _qeFontSizes = _qe.wordFontSizes;
 
         function _qeBuildToolbar() {
-          var tb = _qe.toolbar;
-          if (!tb) return;
+          var tb = _qe.toolbar; if (!tb) return;
           function btn(icon, title, cmd, val, cls) {
             return '<button type="button" class="ss-qe-btn' + (cls ? " " + cls : "") + '" data-cmd="' + (cmd || "") + '" data-val="' + (val || "") + '" title="' + title + '">' + icon + '</button>';
           }
           function sep() { return '<span class="ss-qe-sep"></span>'; }
-          function dropdown(id, label, items, cmd) {
-            var h = '<div class="ss-qe-dropdown-wrap"><button type="button" class="ss-qe-btn ss-qe-dropdown-trigger" data-panel="' + id + '" title="' + label + '">' + label + ' <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 3.5L5 6.5L8 3.5" stroke="currentColor" fill="none" stroke-width="1.5"/></svg></button></div>';
-            return h;
-          }
           var icons = {
             undo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a5 5 0 0 1 0 10H13"/><path d="M3 10l4-4M3 10l4 4"/></svg>',
             redo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H11a5 5 0 0 0 0 10h1"/><path d="M21 10l-4-4M21 10l-4 4"/></svg>',
@@ -16298,7 +16457,6 @@ ${allContent}
             numbers: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><text x="2" y="8" font-size="7" fill="currentColor" stroke="none">1</text><text x="2" y="14" font-size="7" fill="currentColor" stroke="none">2</text><text x="2" y="20" font-size="7" fill="currentColor" stroke="none">3</text><path d="M8 6h13M8 12h13M8 18h13"/></svg>',
             indent: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M9 12h12M3 18h18"/><path d="M3 12l4-3v6z" fill="currentColor"/></svg>',
             outdent: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M9 12h12M3 18h18"/><path d="M7 12l-4-3v6z" fill="currentColor"/></svg>',
-            lineSpacing: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 18h18"/><path d="M12 6v12"/><path d="M8 8l4-2 4 2"/><path d="M8 16l4 2 4-2"/></svg>',
             image: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><path d="M21 15l-5-5L5 21"/></svg>',
             table: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
             link: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
@@ -16308,249 +16466,89 @@ ${allContent}
             pagebreak: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M4 9h16M12 9v11M8 16h8"/></svg>',
             shapes: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3l9 18H3z"/></svg>',
             rtl: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h10M3 18h14"/><text x="15" y="15" font-size="9" fill="currentColor" stroke="none">R</text></svg>',
-            code: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>'
+            code: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>',
+            bringFwd: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="12" height="12" rx="1" fill="currentColor" opacity="0.2"/><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M15 3v12M21 9h-12"/></svg>',
+            sendBwd: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="1" fill="currentColor" opacity="0.2"/><rect x="3" y="3" width="12" height="12" rx="1"/><path d="M9 21V9M3 15h12"/></svg>'
           };
-
           var html = '';
-          html += '<div class="ss-qe-btn-group">';
-          html += btn(icons.undo, "Undo", "undo");
-          html += btn(icons.redo, "Redo", "redo");
-          html += btn(icons.clear, "Clear Formatting", "removeFormat");
-          html += sep();
-          html += '</div>';
-
-          html += '<div class="ss-qe-btn-group">';
-          html += '<select class="ss-qe-select ss-qe-font-family" title="Font Family">';
-          _qeFontFamilies.forEach(function(f) { html += '<option value="' + f + '" style="font-family:' + f + ';">' + f + '</option>'; });
-          html += '</select>';
-          html += '<select class="ss-qe-select ss-qe-font-size" title="Font Size">';
-          _qeFontSizes.forEach(function(s) { html += '<option value="' + s + '">' + s + '</option>'; });
-          html += '</select>';
-          html += btn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>', "Increase Size", "ss-qe-inc-size");
-          html += btn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>', "Decrease Size", "ss-qe-dec-size");
-          html += sep();
-          html += '</div>';
-
-          html += '<div class="ss-qe-btn-group">';
-          html += btn(icons.bold, "Bold", "bold");
-          html += btn(icons.italic, "Italic", "italic");
-          html += btn(icons.underline, "Underline", "underline");
-          html += btn(icons.strikethrough, "Strikethrough", "strikethrough");
-          html += btn(icons.sup, "Superscript", "superscript");
-          html += btn(icons.sub, "Subscript", "subscript");
-          html += sep();
-          html += '</div>';
-
-          html += '<div class="ss-qe-btn-group">';
-          html += '<div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-font-color-btn" data-panel="fontColor" title="Text Color">' + icons.fontColor + '</button><input type="color" class="ss-qe-color-input" value="#ff0000" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div>';
-          html += '<div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-highlight-btn" data-panel="highlight" title="Highlight Color">' + icons.highlight + '</button><input type="color" class="ss-qe-color-input" value="#ffff00" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div>';
-          html += sep();
-          html += '</div>';
-
-          html += '<div class="ss-qe-btn-group">';
-          html += btn(icons.alignL, "Align Left", "justifyLeft");
-          html += btn(icons.alignC, "Center", "justifyCenter");
-          html += btn(icons.alignR, "Align Right", "justifyRight");
-          html += btn(icons.alignJ, "Justify", "justifyFull");
-          html += sep();
-          html += '</div>';
-
-          html += '<div class="ss-qe-btn-group">';
-          html += btn(icons.bullets, "Bullets", "insertUnorderedList");
-          html += btn(icons.numbers, "Numbering", "insertOrderedList");
-          html += btn(icons.indent, "Increase Indent", "indent");
-          html += btn(icons.outdent, "Decrease Indent", "outdent");
-          html += sep();
-          html += '</div>';
-
-          html += '<div class="ss-qe-btn-group">';
-          html += btn(icons.image, "Insert Image", "ss-qe-img");
-          html += btn(icons.table, "Insert Table", "ss-qe-table");
-          html += btn(icons.equation, "Math Equation", "ss-qe-equation");
-          html += btn(icons.spchar, "Special Characters", "ss-qe-spchar");
-          html += btn(icons.link, "Insert Link", "ss-qe-link");
-          html += btn(icons.hline, "Horizontal Line", "ss-qe-hline");
-          html += btn(icons.pagebreak, "Page Break", "ss-qe-pagebreak");
-          html += btn(icons.shapes, "Shapes", "ss-qe-shapes");
-          html += btn(icons.code, "Code Block", "formatBlock", "pre");
-          html += btn(icons.rtl, "Toggle RTL/LTR", "ss-qe-rtl");
-          html += '</div>';
-
+          html += '<div class="ss-qe-btn-group">' + btn(icons.undo, "Undo (Ctrl+Z)", "undo") + btn(icons.redo, "Redo (Ctrl+Y)", "redo") + btn(icons.clear, "Clear Formatting", "removeFormat") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group"><select class="ss-qe-select ss-qe-font-family" title="Font Family">';
+          _qe.fontFamilies.forEach(function(f) { html += '<option value="' + f + '" style="font-family:' + f + ';">' + f + '</option>'; });
+          html += '</select><select class="ss-qe-select ss-qe-font-size" title="Font Size">';
+          _qe.wordFontSizes.forEach(function(s) { html += '<option value="' + s + '">' + s + '</option>'; });
+          html += '</select>' + btn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>', "Increase Font Size", "ss-qe-inc-size") + btn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>', "Decrease Font Size", "ss-qe-dec-size") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.bold, "Bold (Ctrl+B)", "bold") + btn(icons.italic, "Italic (Ctrl+I)", "italic") + btn(icons.underline, "Underline (Ctrl+U)", "underline") + btn(icons.strikethrough, "Strikethrough", "strikethrough") + btn(icons.sup, "Superscript", "superscript") + btn(icons.sub, "Subscript", "subscript") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group"><div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-font-color-btn" title="Text Color">' + icons.fontColor + '</button><input type="color" class="ss-qe-color-input" value="#ff0000" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div><div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-highlight-btn" title="Highlight Color">' + icons.highlight + '</button><input type="color" class="ss-qe-color-input" value="#ffff00" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div>' + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.alignL, "Align Left", "justifyLeft") + btn(icons.alignC, "Center", "justifyCenter") + btn(icons.alignR, "Align Right", "justifyRight") + btn(icons.alignJ, "Justify", "justifyFull") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.bullets, "Bullets", "insertUnorderedList") + btn(icons.numbers, "Numbering", "insertOrderedList") + btn(icons.indent, "Increase Indent", "indent") + btn(icons.outdent, "Decrease Indent", "outdent") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.image, "Insert Image", "ss-qe-img") + btn(icons.table, "Insert Table", "ss-qe-table") + btn(icons.equation, "Math Equation", "ss-qe-equation") + btn(icons.spchar, "Special Characters", "ss-qe-spchar") + btn(icons.link, "Insert Link", "ss-qe-link") + btn(icons.hline, "Horizontal Line", "ss-qe-hline") + btn(icons.pagebreak, "Page Break", "ss-qe-pagebreak") + btn(icons.shapes, "Shapes", "ss-qe-shapes") + btn(icons.code, "Code Block", "formatBlock", "pre") + btn(icons.bringFwd, "Bring Forward", "ss-qe-bring-fwd") + btn(icons.sendBwd, "Send Backward", "ss-qe-send-bwd") + btn(icons.rtl, "Toggle RTL/LTR", "ss-qe-rtl") + '</div>';
           tb.innerHTML = html;
 
-          tb.querySelectorAll("[data-cmd]").forEach(function(btn) {
-            safeOn(btn, "click", function(e) {
+          tb.querySelectorAll("[data-cmd]").forEach(function(b) {
+            safeOn(b, "click", function(e) {
               e.preventDefault();
-              var cmd = btn.getAttribute("data-cmd");
-              var val = btn.getAttribute("data-val");
-              if (cmd === "bold" || cmd === "italic" || cmd === "underline" || cmd === "strikethrough" || cmd === "superscript" || cmd === "subscript") {
-                _qeExec(cmd);
-              } else if (cmd === "justifyLeft" || cmd === "justifyCenter" || cmd === "justifyRight" || cmd === "justifyFull") {
-                _qeExec(cmd);
-              } else if (cmd === "insertUnorderedList" || cmd === "insertOrderedList") {
-                _qeExec(cmd);
-              } else if (cmd === "indent" || cmd === "outdent") {
-                _qeExec(cmd);
-              } else if (cmd === "undo" || cmd === "redo") {
-                _qeExec(cmd);
-              } else if (cmd === "removeFormat") {
-                _qeExec("removeFormat");
-              } else if (cmd === "foreColor") {
-                _qeExec("foreColor", val);
-              } else if (cmd === "hiliteColor") {
-                _qeExec("hiliteColor", val);
-              } else if (cmd === "formatBlock") {
-                _qeExec("formatBlock", val);
-              } else if (cmd === "ss-qe-inc-size") {
-                _qeChangeFontSize(1);
-              } else if (cmd === "ss-qe-dec-size") {
-                _qeChangeFontSize(-1);
-              } else if (cmd === "ss-qe-img") {
-                document.getElementById("ssQEImgInput").click();
-              } else if (cmd === "ss-qe-table") {
-                _qeShowPanel(document.getElementById("ssQETablePanel"), btn);
-              } else if (cmd === "ss-qe-equation") {
-                _qeShowPanel(document.getElementById("ssQEEquationPanel"), btn);
-              } else if (cmd === "ss-qe-spchar") {
-                _qeShowPanel(document.getElementById("ssQESpCharPanel"), btn);
-              } else if (cmd === "ss-qe-link") {
-                _qeInsertLink();
-              } else if (cmd === "ss-qe-hline") {
-                _qeInsertHTML('<hr style="border:none;border-top:1px solid #b0bec5;margin:12px 0;">');
-              } else if (cmd === "ss-qe-pagebreak") {
-                _qeInsertHTML('<div style="page-break-after:always;border-top:2px dashed #b0bec5;margin:20px 0;padding-top:8px;font-size:11px;color:#90a4ae;text-align:center;">\u2014 Page Break \u2014</div><p><br></p>');
-              } else if (cmd === "ss-qe-shapes") {
-                _qeShowPanel(document.getElementById("ssQEShapesPanel"), btn);
-              } else if (cmd === "ss-qe-rtl") {
-                var isRTL = _qe.el.getAttribute("dir") === "rtl";
-                _qe.el.setAttribute("dir", isRTL ? "ltr" : "rtl");
-                _qe.el.style.textAlign = isRTL ? "left" : "right";
-              }
+              var cmd = b.getAttribute("data-cmd"), val = b.getAttribute("data-val");
+              if (["bold","italic","underline","strikethrough","superscript","subscript","justifyLeft","justifyCenter","justifyRight","justifyFull","insertUnorderedList","insertOrderedList","indent","outdent","undo","redo","removeFormat"].indexOf(cmd) >= 0) _qeExec(cmd, val);
+              else if (cmd === "formatBlock") _qeExec("formatBlock", val);
+              else if (cmd === "ss-qe-inc-size") _qeChangeFontSize(1);
+              else if (cmd === "ss-qe-dec-size") _qeChangeFontSize(-1);
+              else if (cmd === "ss-qe-img") document.getElementById("ssQEImgInput").click();
+              else if (cmd === "ss-qe-table") _qeShowPanel(document.getElementById("ssQETablePanel"), b);
+              else if (cmd === "ss-qe-equation") _qeShowPanel(document.getElementById("ssQEEquationPanel"), b);
+              else if (cmd === "ss-qe-spchar") _qeShowPanel(document.getElementById("ssQESpCharPanel"), b);
+              else if (cmd === "ss-qe-link") _qeInsertLink();
+              else if (cmd === "ss-qe-hline") _qeInsertHTML('<hr style="border:none;border-top:1px solid #b0bec5;margin:12px 0;">');
+              else if (cmd === "ss-qe-pagebreak") _qeInsertHTML('<div style="page-break-after:always;border-top:2px dashed #b0bec5;margin:20px 0;padding-top:8px;font-size:11px;color:#90a4ae;text-align:center;">\u2014 Page Break \u2014</div><p><br></p>');
+              else if (cmd === "ss-qe-shapes") _qeShowPanel(document.getElementById("ssQEShapesPanel"), b);
+              else if (cmd === "ss-qe-bring-fwd" && _qe.selectedEl) { _qe.selectedEl.style.zIndex = ++_qe.zCounter; }
+              else if (cmd === "ss-qe-send-bwd" && _qe.selectedEl) { _qe.selectedEl.style.zIndex = Math.max(1, (_qe.selectedEl.style.zIndex || 100) - 1); }
+              else if (cmd === "ss-qe-rtl") { var isRTL = _qe.el.getAttribute("dir") === "rtl"; _qe.el.setAttribute("dir", isRTL ? "ltr" : "rtl"); _qe.el.style.textAlign = isRTL ? "left" : "right"; }
             });
           });
 
           var fontSelect = tb.querySelector(".ss-qe-font-family");
           if (fontSelect) safeOn(fontSelect, "change", function() { _qeExec("fontName", fontSelect.value); });
-
           var sizeSelect = tb.querySelector(".ss-qe-font-size");
-          if (sizeSelect) safeOn(sizeSelect, "change", function() { _qeExec("fontSize", "7"); var fontElements = _qe.el.querySelectorAll("font[size='7']"); fontElements.forEach(function(el) { el.removeAttribute("size"); el.style.fontSize = sizeSelect.value + "pt"; }); });
-
-          var fontColorBtn = tb.querySelector(".ss-qe-font-color-btn");
-          var fontColorInput = tb.querySelector(".ss-qe-font-color-btn + .ss-qe-color-input") || (fontColorBtn && fontColorBtn.parentElement.querySelector(".ss-qe-color-input"));
-          if (fontColorBtn && fontColorInput) {
-            safeOn(fontColorInput, "input", function() { _qeExec("foreColor", fontColorInput.value); });
-            safeOn(fontColorBtn, "click", function(e) { e.preventDefault(); fontColorInput.click(); });
-          }
-
-          var hlBtn = tb.querySelector(".ss-qe-highlight-btn");
-          var hlInput = hlBtn && hlBtn.parentElement ? hlBtn.parentElement.querySelector(".ss-qe-color-input") : null;
-          if (hlBtn && hlInput) {
-            safeOn(hlInput, "input", function() { _qeExec("hiliteColor", hlInput.value); });
-            safeOn(hlBtn, "click", function(e) { e.preventDefault(); hlInput.click(); });
-          }
+          if (sizeSelect) safeOn(sizeSelect, "change", function() { _qeSetFontSize(parseInt(sizeSelect.value) || 12); });
+          var fcBtn = tb.querySelector(".ss-qe-font-color-btn"), fcInput = fcBtn && fcBtn.parentElement ? fcBtn.parentElement.querySelector(".ss-qe-color-input") : null;
+          if (fcBtn && fcInput) { safeOn(fcInput, "input", function() { _qeExec("foreColor", fcInput.value); }); safeOn(fcBtn, "click", function(e) { e.preventDefault(); fcInput.click(); }); }
+          var hlBtn = tb.querySelector(".ss-qe-highlight-btn"), hlInput = hlBtn && hlBtn.parentElement ? hlBtn.parentElement.querySelector(".ss-qe-color-input") : null;
+          if (hlBtn && hlInput) { safeOn(hlInput, "input", function() { _qeExec("hiliteColor", hlInput.value); }); safeOn(hlBtn, "click", function(e) { e.preventDefault(); hlInput.click(); }); }
         }
 
-        function _qeChangeFontSize(dir) {
-          var sel = window.getSelection();
-          if (!sel || !sel.rangeCount) return;
-          var node = sel.anchorNode;
-          if (node && node.nodeType === 3) node = node.parentNode;
-          var el = node && node.nodeType === 1 ? node : null;
-          var curSize = 12;
-          if (el) {
-            var cs = window.getComputedStyle(el);
-            curSize = parseFloat(cs.fontSize) || 12;
+        function _qeHandleKeydown(e) {
+          if (!_qe.el || !_qe.el.contains(e.target)) return;
+          var ctrl = e.ctrlKey || e.metaKey;
+          if (e.key === "Escape") { _qeClosePanels(); _qeDeselectAll(); return; }
+          if ((e.key === "Delete" || e.key === "Backspace") && _qe.selectedEl) {
+            e.preventDefault(); _qe.selectedEl.remove(); _qeDeselectAll(); _qeUpdateStatus(); return;
           }
-          var pt = Math.round(curSize * 72 / 96);
-          var idx = _qeFontSizes.indexOf(pt);
-          if (idx < 0) {
-            var best = 0;
-            _qeFontSizes.forEach(function(s) { if (s <= pt) best = s; });
-            idx = _qeFontSizes.indexOf(best);
+          if (ctrl && e.key === "c" && _qe.selectedEl) { e.preventDefault(); _qe.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType }; }
+          if (ctrl && e.key === "x" && _qe.selectedEl) { e.preventDefault(); _qe.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType }; _qe.selectedEl.remove(); _qeDeselectAll(); _qeUpdateStatus(); }
+          if (ctrl && e.key === "v" && _qe.clipboard) { if (_qe.selectedEl || document.activeElement === _qe.el) { e.preventDefault(); _qeInsertHTML(_qe.clipboard.html); } }
+          if (ctrl && e.key === "a" && document.activeElement === _qe.el) { e.preventDefault(); var range = document.createRange(); range.selectNodeContents(_qe.el); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); }
+          if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.key) >= 0 && _qe.selectedEl) {
+            e.preventDefault();
+            var step = e.shiftKey ? 1 : 5;
+            var curL = parseInt(_qe.selectedEl.style.left) || 0, curT = parseInt(_qe.selectedEl.style.top) || 0;
+            _qe.selectedEl.style.position = "relative";
+            if (e.key === "ArrowUp") _qe.selectedEl.style.top = (curT - step) + "px";
+            if (e.key === "ArrowDown") _qe.selectedEl.style.top = (curT + step) + "px";
+            if (e.key === "ArrowLeft") _qe.selectedEl.style.left = (curL - step) + "px";
+            if (e.key === "ArrowRight") _qe.selectedEl.style.left = (curL + step) + "px";
           }
-          var next = _qeFontSizes[Math.max(0, Math.min(_qeFontSizes.length - 1, idx + dir))];
-          _qeExec("fontSize", "7");
-          setTimeout(function() {
-            _qe.el.querySelectorAll("font[size='7']").forEach(function(f) {
-              f.removeAttribute("size");
-              f.style.fontSize = next + "pt";
-            });
-          }, 0);
-          var sizeSelect = _qe.toolbar.querySelector(".ss-qe-font-size");
-          if (sizeSelect) sizeSelect.value = next;
-        }
-
-        function _qeInsertLink() {
-          var url = prompt("Enter URL:", "https://");
-          if (url) _qeExec("createLink", url);
-        }
-
-        function _qeHandleImageUpload(files) {
-          Array.from(files).forEach(function(file) {
-            if (!file.type.startsWith("image/")) return;
-            var reader = new FileReader();
-            reader.onload = function() {
-              var wrap = '<figure class="ss-qe-figure ss-qe-image-figure" contenteditable="false" data-wrap="inline" style="display:inline-block;margin:8px 4px;position:relative;max-width:100%;"><div class="ss-qe-figure-inner" style="position:relative;display:inline-block;"><img src="' + reader.result + '" alt="" style="max-width:100%;height:auto;border-radius:4px;display:block;" onload="if(this.naturalWidth>600)this.style.width=\'600px\';"><div class="ss-qe-image-controls" style="display:none;position:absolute;top:-32px;right:0;background:rgba(255,255,255,0.95);border-radius:6px;padding:2px 4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);gap:2px;"><button type="button" class="ss-qe-fc-btn" data-action="img-delete" title="Delete">\u2715</button><button type="button" class="ss-qe-fc-btn" data-action="img-caption" title="Caption">\u270E</button><button type="button" class="ss-qe-fc-btn" data-action="img-alt" title="Alt Text">ALT</button></div></div><figcaption contenteditable="true" class="ss-qe-img-caption" style="text-align:center;font-size:0.8rem;color:#666;margin-top:4px;outline:none;"></figcaption></figure><p><br></p>';
-              _qeInsertHTML(wrap);
-              _qeWireFigures();
-            };
-            reader.readAsDataURL(file);
-          });
-        }
-
-        function _qeWireFigures() {
-          if (!_qe.el) return;
-          _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(fig) {
-            if (fig.getAttribute("data-wired")) return;
-            fig.setAttribute("data-wired", "1");
-            safeOn(fig, "click", function(e) {
-              e.stopPropagation();
-              _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(f) { f.classList.remove("ss-qe-selected"); });
-              fig.classList.add("ss-qe-selected");
-              var imgCtrl = fig.querySelector(".ss-qe-image-controls");
-              if (imgCtrl) imgCtrl.style.display = "flex";
-              var fcBtns = fig.querySelectorAll(".ss-qe-fc-btn[data-action]");
-              fcBtns.forEach(function(b) {
-                safeOn(b, "click", function(ev) {
-                  ev.stopPropagation();
-                  var action = b.getAttribute("data-action");
-                  if (action === "delete" || action === "img-delete") {
-                    fig.remove();
-                  } else if (action === "img-caption") {
-                    var cap = fig.querySelector("figcaption");
-                    if (cap) cap.style.display = cap.style.display === "none" ? "block" : (cap.textContent.trim() ? "block" : "block");
-                  } else if (action === "img-alt") {
-                    var img = fig.querySelector("img");
-                    if (img) {
-                      var alt = prompt("Alt text:", img.getAttribute("alt") || "");
-                      if (alt !== null) img.setAttribute("alt", alt);
-                    }
-                  }
-                });
-              });
-            });
-          });
-          safeOn(_qe.el, "click", function(e) {
-            if (!e.target.closest(".ss-qe-figure")) {
-              _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(f) {
-                f.classList.remove("ss-qe-selected");
-                var ic = f.querySelector(".ss-qe-image-controls");
-                if (ic) ic.style.display = "none";
-              });
-            }
-          });
         }
 
         function _qeWireEvents() {
           _qe.el.addEventListener("input", function() { _qeUpdateStatus(); });
           _qe.el.addEventListener("keyup", function() { _qeUpdateStatus(); _qeUpdateToolbar(); });
           _qe.el.addEventListener("mouseup", function() { _qeUpdateToolbar(); });
+          _qe.el.addEventListener("keydown", _qeHandleKeydown);
           _qe.el.addEventListener("paste", function(e) {
             var html = (e.clipboardData || window.clipboardData).getData("text/html");
-            var text = (e.clipboardData || window.clipboardData).getData("text/plain");
             if (html && html.length > 10) {
               e.preventDefault();
-              var cleaned = html.replace(/<meta[^>]*>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/class="[^"]*"/gi, "").replace(/<o:p[^>]*>[\s\S]*?<\/o:p>/gi, "");
+              var cleaned = html.replace(/<meta[^>]*>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/class="[^"]*"/gi, "").replace(/<o:p[^>]*>[\s\S]*?<\/o:p>/gi, "").replace(/<w:[^>]*>[\s\S]*?<\/w:[^>]*>/gi, "").replace(/<m:[^>]*>[\s\S]*?<\/m:[^>]*>/gi, "");
               _qeInsertHTML(cleaned);
             }
           });
@@ -16560,15 +16558,22 @@ ${allContent}
             var files = e.dataTransfer.files;
             if (files.length) { _qeHandleImageUpload(files); return; }
             var html = e.dataTransfer.getData("text/html");
-            if (html) _qeInsertHTML(html);
+            if (html && html.indexOf("ss-qe-figure") < 0) _qeInsertHTML(html);
           });
-          _qeWireFigures();
+          _qe.el.addEventListener("click", function(e) {
+            if (!e.target.closest(".ss-qe-figure") && !e.target.closest("table")) _qeDeselectAll();
+          });
+          _qeWireAllObjects();
+          safeOn(document, "keydown", function(e) {
+            if (e.key === "Escape") { _qeClosePanels(); _qeHideTableContextMenu(); }
+          });
         }
 
         function getEditorHtml() { return _qeGetHTML(); }
         function clearEditor() { _qeClear(); }
         function getEditorText() { return _qeGetText(); }
         function insertAtCursor(html) { _qeInsertHTML(html); }
+
 
         function renderSubjectSelect() {
           subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : `<option value="">Select class first</option>`;
