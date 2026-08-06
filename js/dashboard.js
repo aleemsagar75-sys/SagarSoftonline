@@ -15845,8 +15845,70 @@ ${allContent}
             <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Title*</label><input id="qpQuestionTitle" type="text" placeholder="e.g Choose the correct option" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
             <div style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Editor*</label>
-              <div class="question-rich-editor-shell" style="max-width:100%;overflow-x:hidden;">
-                <div id="qpEditorContainer"></div>
+              <div class="ss-editor-wrapper" style="max-width:100%;overflow-x:hidden;">
+                <div class="ss-editor-tabs" style="display:flex;gap:0;margin-bottom:0;">
+                  <button type="button" class="ss-editor-tab active" data-editor-tab="richtext">Rich Text</button>
+                  <button type="button" class="ss-editor-tab" data-editor-tab="drawing">Drawing Canvas</button>
+                </div>
+                <div class="ss-editor-panel active" data-editor-panel="richtext">
+                  <div id="qpEditorContainer"></div>
+                </div>
+                <div class="ss-editor-panel" data-editor-panel="drawing" style="display:none;">
+                  <div class="ss-drawing-toolbar" id="ssDrawingToolbar">
+                    <div class="ss-drawing-group">
+                      <button type="button" class="ss-draw-btn active" data-tool="select" title="Select / Move"><i class="fa-solid fa-arrow-pointer"></i></button>
+                      <button type="button" class="ss-draw-btn" data-tool="freehand" title="Free Draw"><i class="fa-solid fa-pen"></i></button>
+                    </div>
+                    <div class="ss-drawing-sep"></div>
+                    <div class="ss-drawing-group">
+                      <button type="button" class="ss-draw-btn" data-tool="rect" title="Rectangle"><i class="fa-regular fa-square"></i></button>
+                      <button type="button" class="ss-draw-btn" data-tool="circle" title="Circle"><i class="fa-regular fa-circle"></i></button>
+                      <button type="button" class="ss-draw-btn" data-tool="triangle" title="Triangle"><i class="fa-solid fa-play fa-rotate-270"></i></button>
+                      <button type="button" class="ss-draw-btn" data-tool="line" title="Line"><i class="fa-solid fa-minus"></i></button>
+                      <button type="button" class="ss-draw-btn" data-tool="arrow" title="Arrow"><i class="fa-solid fa-arrow-right-long"></i></button>
+                    </div>
+                    <div class="ss-drawing-sep"></div>
+                    <div class="ss-drawing-group">
+                      <button type="button" class="ss-draw-btn" data-tool="text" title="Add Text"><i class="fa-solid fa-font"></i></button>
+                      <button type="button" class="ss-draw-btn" data-tool="textbox" title="Add Text Box"><i class="fa-solid fa-comment"></i></button>
+                    </div>
+                    <div class="ss-drawing-sep"></div>
+                    <div class="ss-drawing-group">
+                      <button type="button" class="ss-draw-btn" data-tool="eraser" title="Eraser"><i class="fa-solid fa-eraser"></i></button>
+                    </div>
+                    <div class="ss-drawing-sep"></div>
+                    <div class="ss-drawing-group ss-drawing-colors">
+                      <label class="ss-color-label">Stroke</label>
+                      <input type="color" id="ssStrokeColor" value="#102542" class="ss-color-input" title="Stroke Color">
+                      <label class="ss-color-label">Fill</label>
+                      <input type="color" id="ssFillColor" value="#ffffff" class="ss-color-input" title="Fill Color">
+                      <label class="ss-color-label">Size</label>
+                      <input type="range" id="ssBrushSize" min="1" max="20" value="3" class="ss-brush-range" title="Brush / Stroke Size">
+                      <span id="ssBrushSizeLabel" class="ss-brush-label">3px</span>
+                    </div>
+                    <div class="ss-drawing-sep"></div>
+                    <div class="ss-drawing-group">
+                      <button type="button" class="ss-draw-btn" data-action="undo" title="Undo"><i class="fa-solid fa-rotate-left"></i></button>
+                      <button type="button" class="ss-draw-btn" data-action="redo" title="Redo"><i class="fa-solid fa-rotate-right"></i></button>
+                      <button type="button" class="ss-draw-btn" data-action="delete" title="Delete Selected"><i class="fa-solid fa-trash"></i></button>
+                      <button type="button" class="ss-draw-btn" data-action="clear" title="Clear Canvas"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="ss-drawing-sep"></div>
+                    <div class="ss-drawing-group">
+                      <button type="button" class="ss-draw-btn" data-action="bring-front" title="Bring to Front"><i class="fa-solid fa-layer-group"></i></button>
+                      <button type="button" class="ss-draw-btn" data-action="send-back" title="Send to Back"><i class="fa-solid fa-layer-group fa-flip-vertical"></i></button>
+                      <button type="button" class="ss-draw-btn" data-action="duplicate" title="Duplicate"><i class="fa-regular fa-copy"></i></button>
+                    </div>
+                    <div class="ss-drawing-sep"></div>
+                    <div class="ss-drawing-group">
+                      <button type="button" class="ss-draw-btn" data-action="grid" title="Toggle Grid"><i class="fa-solid fa-border-all"></i></button>
+                      <button type="button" class="ss-draw-btn" data-action="upload-image" title="Upload Image"><i class="fa-solid fa-image"></i></button>
+                    </div>
+                  </div>
+                  <div class="ss-canvas-container" id="ssCanvasContainer">
+                    <canvas id="ssFabricCanvas"></canvas>
+                  </div>
+                </div>
               </div>
             </div>
             <div id="qpMcqOptionsField" hidden style="margin:4px 0;">
@@ -15898,6 +15960,12 @@ ${allContent}
 
         var _ckEditorInstance = null;
         var _ckEditorReady = false;
+        var _fabricCanvas = null;
+        var _fabricHistory = [];
+        var _fabricHistoryIndex = -1;
+        var _fabricGridVisible = false;
+        var _fabricCurrentTool = "select";
+        var _fabricImageInput = null;
 
         function initCKEditor(callback) {
           if (_ckEditorInstance) {
@@ -15909,7 +15977,7 @@ ${allContent}
           if (!container) { if (callback) callback(null); return; }
           container.innerHTML = "";
           if (typeof ClassicEditor === "undefined") {
-            container.innerHTML = '<textarea id="qpEditorArea" class="question-rich-editor" style="width:100%;min-height:400px;" placeholder="Question editor loading..."></textarea>';
+            container.innerHTML = '<textarea id="qpEditorArea" class="question-rich-editor" style="width:100%;min-height:400px;" placeholder="Editor loading..."></textarea>';
             _ckEditorReady = false;
             if (callback) callback(null);
             return;
@@ -15928,8 +15996,7 @@ ${allContent}
                 "insertTable", "blockQuote", "codeBlock", "horizontalLine", "|",
                 "link", "insertImage", "mediaEmbed", "|",
                 "specialCharacters", "emoji", "|",
-                "sourceEditing", "pageBreak", "|",
-                "heading6"
+                "sourceEditing", "pageBreak"
               ],
               shouldNotGroupWhenFull: true
             },
@@ -15956,11 +16023,11 @@ ${allContent}
               tableCellProperties: { borderColors: "#0f2f58,#1b5f7a,#1d9c61,#d32f2f,#f9a825", backgroundColors: "#ffffff,#f6f7f9,#e8f0fe" }
             },
             link: { addTargetLinks: true, decorators: { openInNewTab: { mode: "manual", label: "Open in a new tab", attributes: { target: "_blank", rel: "noopener noreferrer" } } } },
-            placeholder: "Type your question here...",
+            placeholder: "Type your content here...",
             language: "en",
             wordCount: {
               onUpdate: function (stats) {
-                var wc = document.getElementById("qpWordCount");
+                var wc = document.getElementById("ssWordCount");
                 if (wc) wc.textContent = stats.words + " words | " + stats.characters + " chars";
               }
             }
@@ -15969,7 +16036,7 @@ ${allContent}
             _ckEditorReady = true;
             editor.model.document.on("change", function () {
               var data = editor.getData();
-              var ta = document.getElementById("qpEditorFallbackTA");
+              var ta = document.getElementById("qpEditorArea");
               if (ta) ta.value = data;
             });
             if (callback) callback(editor);
@@ -16002,6 +16069,381 @@ ${allContent}
           return qpStripHtml(getEditorHtml());
         }
 
+        function getCanvasJson() {
+          if (_fabricCanvas) {
+            try { return JSON.stringify(_fabricCanvas.toJSON(["name"])); } catch (e) { return "{}"; }
+          }
+          return "{}";
+        }
+
+        function loadCanvasJson(jsonStr) {
+          if (!_fabricCanvas) return;
+          try {
+            var json = typeof jsonStr === "string" ? JSON.parse(jsonStr) : jsonStr;
+            if (json && Object.keys(json).length > 0) {
+              _fabricCanvas.loadFromJSON(json, function () {
+                _fabricCanvas.renderAll();
+                _fabricSaveHistory();
+              });
+            }
+          } catch (e) { console.warn("[Canvas] Load JSON error:", e); }
+        }
+
+        function _fabricSaveHistory() {
+          if (!_fabricCanvas) return;
+          var state = JSON.stringify(_fabricCanvas.toJSON(["name"]));
+          _fabricHistory = _fabricHistory.slice(0, _fabricHistoryIndex + 1);
+          _fabricHistory.push(state);
+          _fabricHistoryIndex = _fabricHistory.length - 1;
+          if (_fabricHistory.length > 50) {
+            _fabricHistory.shift();
+            _fabricHistoryIndex--;
+          }
+        }
+
+        function _fabricUndo() {
+          if (_fabricHistoryIndex <= 0 || !_fabricCanvas) return;
+          _fabricHistoryIndex--;
+          _fabricCanvas.loadFromJSON(_fabricHistory[_fabricHistoryIndex], function () {
+            _fabricCanvas.renderAll();
+          });
+        }
+
+        function _fabricRedo() {
+          if (_fabricHistoryIndex >= _fabricHistory.length - 1 || !_fabricCanvas) return;
+          _fabricHistoryIndex++;
+          _fabricCanvas.loadFromJSON(_fabricHistory[_fabricHistoryIndex], function () {
+            _fabricCanvas.renderAll();
+          });
+        }
+
+        function initFabricCanvas() {
+          var container = document.getElementById("ssCanvasContainer");
+          var canvasEl = document.getElementById("ssFabricCanvas");
+          if (!container || !canvasEl || typeof fabric === "undefined") return;
+          var w = Math.min(container.clientWidth - 4, 900);
+          var h = Math.max(400, Math.min(container.clientHeight - 10, 600));
+          canvasEl.width = w;
+          canvasEl.height = h;
+          _fabricCanvas = new fabric.Canvas("ssFabricCanvas", {
+            width: w,
+            height: h,
+            backgroundColor: "#ffffff",
+            selection: true,
+            preserveObjectStacking: true
+          });
+          _fabricHistory = [];
+          _fabricHistoryIndex = -1;
+          _fabricSaveHistory();
+          _fabricCanvas.on("object:modified", function () { _fabricSaveHistory(); });
+          _fabricCanvas.on("path:created", function () { _fabricSaveHistory(); });
+          _fabricCanvas.on("selection:created", _updateDrawingUI);
+          _fabricCanvas.on("selection:updated", _updateDrawingUI);
+          _fabricCanvas.on("selection:cleared", _updateDrawingUI);
+          _setupDrawingToolbar();
+        }
+
+        function _setupDrawingToolbar() {
+          var toolbar = document.getElementById("ssDrawingToolbar");
+          if (!toolbar) return;
+          toolbar.querySelectorAll("[data-tool]").forEach(function (btn) {
+            safeOn(btn, "click", function () {
+              var tool = btn.getAttribute("data-tool");
+              _fabricCurrentTool = tool;
+              toolbar.querySelectorAll("[data-tool]").forEach(function (b) { b.classList.remove("active"); });
+              btn.classList.add("active");
+              if (tool === "select") {
+                _fabricCanvas.isDrawingMode = false;
+                _fabricCanvas.selection = true;
+                _fabricCanvas.forEachObject(function (o) { o.selectable = true; });
+              } else if (tool === "freehand") {
+                _fabricCanvas.isDrawingMode = true;
+                _fabricCanvas.freeDrawingBrush.color = document.getElementById("ssStrokeColor").value;
+                _fabricCanvas.freeDrawingBrush.width = parseInt(document.getElementById("ssBrushSize").value) || 3;
+                _fabricCanvas.selection = false;
+              } else if (tool === "eraser") {
+                _fabricCanvas.isDrawingMode = false;
+                _fabricCanvas.selection = false;
+                var active = _fabricCanvas.getActiveObject();
+                if (active) {
+                  _fabricCanvas.remove(active);
+                  _fabricCanvas.discardActiveObject();
+                  _fabricCanvas.renderAll();
+                  _fabricSaveHistory();
+                }
+              } else if (tool === "rect") {
+                _fabricCanvas.isDrawingMode = false;
+                _fabricCanvas.selection = false;
+                var rect = new fabric.Rect({
+                  left: 50, top: 50, width: 120, height: 80,
+                  fill: document.getElementById("ssFillColor").value,
+                  stroke: document.getElementById("ssStrokeColor").value,
+                  strokeWidth: parseInt(document.getElementById("ssBrushSize").value) || 2,
+                  strokeUniform: true
+                });
+                _fabricCanvas.add(rect);
+                _fabricCanvas.setActiveObject(rect);
+                _fabricSaveHistory();
+                _setTool("select");
+              } else if (tool === "circle") {
+                _fabricCanvas.isDrawingMode = false;
+                _fabricCanvas.selection = false;
+                var circ = new fabric.Circle({
+                  left: 80, top: 80, radius: 50,
+                  fill: document.getElementById("ssFillColor").value,
+                  stroke: document.getElementById("ssStrokeColor").value,
+                  strokeWidth: parseInt(document.getElementById("ssBrushSize").value) || 2,
+                  strokeUniform: true
+                });
+                _fabricCanvas.add(circ);
+                _fabricCanvas.setActiveObject(circ);
+                _fabricSaveHistory();
+                _setTool("select");
+              } else if (tool === "triangle") {
+                _fabricCanvas.isDrawingMode = false;
+                _fabricCanvas.selection = false;
+                var tri = new fabric.Triangle({
+                  left: 80, top: 80, width: 100, height: 80,
+                  fill: document.getElementById("ssFillColor").value,
+                  stroke: document.getElementById("ssStrokeColor").value,
+                  strokeWidth: parseInt(document.getElementById("ssBrushSize").value) || 2,
+                  strokeUniform: true
+                });
+                _fabricCanvas.add(tri);
+                _fabricCanvas.setActiveObject(tri);
+                _fabricSaveHistory();
+                _setTool("select");
+              } else if (tool === "line") {
+                _fabricCanvas.isDrawingMode = false;
+                _fabricCanvas.selection = false;
+                var ln = new fabric.Line([50, 50, 200, 50], {
+                  stroke: document.getElementById("ssStrokeColor").value,
+                  strokeWidth: parseInt(document.getElementById("ssBrushSize").value) || 2,
+                  strokeUniform: true
+                });
+                _fabricCanvas.add(ln);
+                _fabricCanvas.setActiveObject(ln);
+                _fabricSaveHistory();
+                _setTool("select");
+              } else if (tool === "arrow") {
+                _fabricCanvas.isDrawingMode = false;
+                _fabricCanvas.selection = false;
+                _drawArrow(50, 50, 200, 50);
+                _setTool("select");
+              } else if (tool === "text") {
+                _fabricCanvas.isDrawingMode = false;
+                _fabricCanvas.selection = false;
+                var txt = new fabric.IText("Type here", {
+                  left: 60, top: 60,
+                  fontFamily: "Segoe UI, SF Pro Text, Helvetica Neue, Arial, sans-serif",
+                  fontSize: 20, fill: document.getElementById("ssStrokeColor").value
+                });
+                _fabricCanvas.add(txt);
+                _fabricCanvas.setActiveObject(txt);
+                txt.enterEditing();
+                _fabricSaveHistory();
+                _setTool("select");
+              } else if (tool === "textbox") {
+                _fabricCanvas.isDrawingMode = false;
+                _fabricCanvas.selection = false;
+                var tb = new fabric.Textbox("Type here", {
+                  left: 60, top: 60, width: 200,
+                  fontFamily: "Segoe UI, SF Pro Text, Helvetica Neue, Arial, sans-serif",
+                  fontSize: 16, fill: document.getElementById("ssStrokeColor").value,
+                  splitByGrapheme: false
+                });
+                _fabricCanvas.add(tb);
+                _fabricCanvas.setActiveObject(tb);
+                tb.enterEditing();
+                _fabricSaveHistory();
+                _setTool("select");
+              }
+            });
+          });
+          toolbar.querySelectorAll("[data-action]").forEach(function (btn) {
+            safeOn(btn, "click", function () {
+              var action = btn.getAttribute("data-action");
+              if (action === "undo") _fabricUndo();
+              else if (action === "redo") _fabricRedo();
+              else if (action === "delete") {
+                var active = _fabricCanvas.getActiveObject();
+                if (active) {
+                  if (active.type === "activeSelection") {
+                    active.forEachObject(function (o) { _fabricCanvas.remove(o); });
+                    _fabricCanvas.discardActiveObject();
+                  } else {
+                    _fabricCanvas.remove(active);
+                  }
+                  _fabricCanvas.renderAll();
+                  _fabricSaveHistory();
+                }
+              } else if (action === "clear") {
+                if (confirm("Clear entire canvas?")) {
+                  _fabricCanvas.clear();
+                  _fabricCanvas.backgroundColor = "#ffffff";
+                  _fabricCanvas.renderAll();
+                  _fabricSaveHistory();
+                }
+              } else if (action === "bring-front") {
+                var obj = _fabricCanvas.getActiveObject();
+                if (obj) { _fabricCanvas.bringObjectToFront(obj); _fabricCanvas.renderAll(); _fabricSaveHistory(); }
+              } else if (action === "send-back") {
+                var obj2 = _fabricCanvas.getActiveObject();
+                if (obj2) { _fabricCanvas.sendObjectToBack(obj2); _fabricCanvas.renderAll(); _fabricSaveHistory(); }
+              } else if (action === "duplicate") {
+                var active = _fabricCanvas.getActiveObject();
+                if (active) {
+                  active.clone(function (cloned) {
+                    cloned.set({ left: (cloned.left || 0) + 20, top: (cloned.top || 0) + 20 });
+                    _fabricCanvas.add(cloned);
+                    _fabricCanvas.setActiveObject(cloned);
+                    _fabricCanvas.renderAll();
+                    _fabricSaveHistory();
+                  });
+                }
+              } else if (action === "grid") {
+                _fabricGridVisible = !_fabricGridVisible;
+                _toggleGrid();
+                btn.classList.toggle("active", _fabricGridVisible);
+              } else if (action === "upload-image") {
+                if (!_fabricImageInput) {
+                  _fabricImageInput = document.createElement("input");
+                  _fabricImageInput.type = "file";
+                  _fabricImageInput.accept = "image/*";
+                  _fabricImageInput.style.display = "none";
+                  document.body.appendChild(_fabricImageInput);
+                }
+                _fabricImageInput.value = "";
+                _fabricImageInput.onchange = function (e) {
+                  var file = e.target.files && e.target.files[0];
+                  if (!file) return;
+                  var reader = new FileReader();
+                  reader.onload = function (ev) {
+                    fabric.Image.fromURL(ev.target.result, function (img) {
+                      var maxW = _fabricCanvas.width * 0.6;
+                      var maxH = _fabricCanvas.height * 0.6;
+                      if (img.width > maxW || img.height > maxH) {
+                        var scale = Math.min(maxW / img.width, maxH / img.height);
+                        img.scale(scale);
+                      }
+                      img.set({ left: 40, top: 40 });
+                      _fabricCanvas.add(img);
+                      _fabricCanvas.setActiveObject(img);
+                      _fabricCanvas.renderAll();
+                      _fabricSaveHistory();
+                    });
+                  };
+                  reader.readAsDataURL(file);
+                };
+                _fabricImageInput.click();
+              }
+            });
+          });
+          var strokeColor = document.getElementById("ssStrokeColor");
+          var fillColor = document.getElementById("ssFillColor");
+          var brushSize = document.getElementById("ssBrushSize");
+          var brushLabel = document.getElementById("ssBrushSizeLabel");
+          if (strokeColor) safeOn(strokeColor, "input", function () {
+            if (_fabricCanvas.freeDrawingBrush) _fabricCanvas.freeDrawingBrush.color = strokeColor.value;
+            var active = _fabricCanvas.getActiveObject();
+            if (active && active.type !== "i-text" && active.type !== "textbox") {
+              active.set("stroke", strokeColor.value);
+              _fabricCanvas.renderAll();
+            }
+          });
+          if (fillColor) safeOn(fillColor, "input", function () {
+            var active = _fabricCanvas.getActiveObject();
+            if (active && ["rect", "circle", "triangle"].indexOf(active.type) !== -1) {
+              active.set("fill", fillColor.value);
+              _fabricCanvas.renderAll();
+            }
+          });
+          if (brushSize) safeOn(brushSize, "input", function () {
+            var val = parseInt(brushSize.value) || 3;
+            if (_fabricCanvas.freeDrawingBrush) _fabricCanvas.freeDrawingBrush.width = val;
+            if (brushLabel) brushLabel.textContent = val + "px";
+          });
+        }
+
+        function _setTool(toolName) {
+          _fabricCurrentTool = toolName;
+          var btn = document.querySelector('[data-editor-panel="drawing"] [data-tool="' + toolName + '"]');
+          if (btn) {
+            document.querySelectorAll('[data-editor-panel="drawing"] [data-tool]').forEach(function (b) { b.classList.remove("active"); });
+            btn.classList.add("active");
+          }
+          if (toolName === "select") {
+            _fabricCanvas.isDrawingMode = false;
+            _fabricCanvas.selection = true;
+            _fabricCanvas.forEachObject(function (o) { o.selectable = true; });
+          }
+        }
+
+        function _drawArrow(x1, y1, x2, y2) {
+          var headLen = 15;
+          var dx = x2 - x1;
+          var dy = y2 - y1;
+          var angle = Math.atan2(dy, dx);
+          var stroke = document.getElementById("ssStrokeColor").value;
+          var sw = parseInt(document.getElementById("ssBrushSize").value) || 2;
+          var line = new fabric.Line([x1, y1, x2, y2], {
+            stroke: stroke, strokeWidth: sw, strokeUniform: true
+          });
+          var head = new fabric.Triangle({
+            left: x2, top: y2, width: headLen, height: headLen,
+            fill: stroke, angle: (angle * 180 / Math.PI) + 90,
+            originX: "center", originY: "center", strokeUniform: true
+          });
+          var group = new fabric.Group([line, head], { left: x1, top: y1 });
+          _fabricCanvas.add(group);
+          _fabricCanvas.setActiveObject(group);
+          _fabricSaveHistory();
+        }
+
+        function _toggleGrid() {
+          if (!_fabricCanvas) return;
+          var objects = _fabricCanvas.getObjects("line").filter(function (o) { return o.name === "grid-line"; });
+          if (_fabricGridVisible && objects.length === 0) {
+            var step = 30;
+            var w = _fabricCanvas.width;
+            var h = _fabricCanvas.height;
+            for (var x = step; x < w; x += step) {
+              var vLine = new fabric.Line([x, 0, x, h], {
+                stroke: "#e0e4ea", strokeWidth: 0.5, selectable: false, evented: false, name: "grid-line"
+              });
+              _fabricCanvas.add(vLine);
+              _fabricCanvas.sendObjectToBack(vLine);
+            }
+            for (var y = step; y < h; y += step) {
+              var hLine = new fabric.Line([0, y, w, y], {
+                stroke: "#e0e4ea", strokeWidth: 0.5, selectable: false, evented: false, name: "grid-line"
+              });
+              _fabricCanvas.add(hLine);
+              _fabricCanvas.sendObjectToBack(hLine);
+            }
+          } else if (!_fabricGridVisible) {
+            _fabricCanvas.getObjects("line").filter(function (o) { return o.name === "grid-line"; }).forEach(function (o) {
+              _fabricCanvas.remove(o);
+            });
+          }
+          _fabricCanvas.renderAll();
+        }
+
+        function _updateDrawingUI() {
+          if (!_fabricCanvas) return;
+          var active = _fabricCanvas.getActiveObject();
+          var strokeInput = document.getElementById("ssStrokeColor");
+          var fillInput = document.getElementById("ssFillColor");
+          if (active && strokeInput) {
+            var stroke = active.stroke || "#102542";
+            if (typeof stroke === "string" && stroke.match(/^#[0-9a-f]{6}$/i)) strokeInput.value = stroke;
+          }
+          if (active && fillInput) {
+            var fill = active.fill || "#ffffff";
+            if (typeof fill === "string" && fill.match(/^#[0-9a-f]{6}$/i)) fillInput.value = fill;
+          }
+        }
+
         function insertAtCursor(html) {
           if (_ckEditorInstance && _ckEditorReady) {
             _ckEditorInstance.model.change(function (writer) {
@@ -16014,6 +16456,33 @@ ${allContent}
             if (ta) ta.value += html;
           }
         }
+
+        function setupEditorTabs() {
+          var tabs = document.querySelectorAll(".ss-editor-tab");
+          var panels = document.querySelectorAll(".ss-editor-panel");
+          tabs.forEach(function (tab) {
+            safeOn(tab, "click", function () {
+              var target = tab.getAttribute("data-editor-tab");
+              tabs.forEach(function (t) { t.classList.remove("active"); });
+              tab.classList.add("active");
+              panels.forEach(function (p) {
+                var panelName = p.getAttribute("data-editor-panel");
+                if (panelName === target) {
+                  p.style.display = "";
+                  p.classList.add("active");
+                } else {
+                  p.style.display = "none";
+                  p.classList.remove("active");
+                }
+              });
+              if (target === "drawing" && _fabricCanvas) {
+                setTimeout(function () { _fabricCanvas.renderAll(); }, 100);
+              }
+            });
+          });
+        }
+
+        setupEditorTabs();
 
         function renderSubjectSelect() {
           subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : `<option value="">Select class first</option>`;
@@ -16158,6 +16627,7 @@ ${allContent}
             marks: marks,
             questionHtml: questionHtml,
             questionText: questionText,
+            canvasJson: getCanvasJson(),
             options: options,
             correctAnswer: correctAnswer,
             answerLines: answerLines
@@ -16172,6 +16642,7 @@ ${allContent}
           existingChapterSelect.value = "";
           questionTitleInput.value = "";
           clearEditor();
+          if (_fabricCanvas) { _fabricCanvas.clear(); _fabricCanvas.backgroundColor = "#ffffff"; _fabricCanvas.renderAll(); _fabricSaveHistory(); }
           fillOpt1.value = "true";
           fillOpt2.value = "false";
           answerLinesInput.value = "3";
@@ -16194,74 +16665,17 @@ ${allContent}
               openAppMessageBox("Success", "Question deleted successfully.", "success");
             });
 
-        // ── CKEditor 5 initialization (replaces old custom editor) ──
-        // Question Paper Tools: custom template inserts
-        function insertQuestionTemplate(templateType) {
-          var templates = {
-            "section-a": '<h3>Section A — Objective Questions</h3><p><strong>Instructions:</strong> Attempt all questions. Each question carries 1 mark.</p><p><br></p>',
-            "section-b": '<h3>Section B — Short Questions</h3><p><strong>Instructions:</strong> Attempt any THREE questions. Each question carries 5 marks.</p><p><br></p>',
-            "section-c": '<h3>Section C — Long Questions</h3><p><strong>Instructions:</strong> Attempt any TWO questions. Each question carries 10 marks.</p><p><br></p>',
-            "mcq": '<p><strong>Q.___</strong> &nbsp;&nbsp; </p><p>a) Option 1 &nbsp;&nbsp; b) Option 2 &nbsp;&nbsp; c) Option 3 &nbsp;&nbsp; d) Option 4</p><p><br></p>',
-            "fill": '<p><strong>Q.___</strong> &nbsp;&nbsp; The __________ is used to __________.</p><p><br></p>',
-            "truefalse": '<p><strong>Q.___</strong> &nbsp;&nbsp; True / False: _______________________________</p><p><br></p>',
-            "short": '<p><strong>Q.___</strong> &nbsp;&nbsp; <em>[5 Marks]</em></p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p><br></p>',
-            "long": '<p><strong>Q.___</strong> &nbsp;&nbsp; <em>[10 Marks]</em></p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p><br></p>',
-            "answer-space": '<p><strong>Answer:</strong></p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p>_______________________________________________</p><p><br></p>',
-            "instructions": '<h3>Exam Instructions</h3><ul><li>Time Allowed: 2 Hours</li><li>Total Marks: 50</li><li>Attempt all questions.</li><li>Write neatly and clearly.</li><li>Do not use calculators unless permitted.</li></ul><p><br></p>',
-            "marks": '<p><em>[ ___ Marks]</em></p>',
-            "q-num": '<p><strong>Q.</strong></p>',
-            "roman": '<p><strong>(i)</strong> &nbsp;</p>',
-            "alpha": '<p><strong>(a)</strong> &nbsp;</p>',
-            "time-allowed": '<p><strong>Time Allowed:</strong> 2 Hours</p>',
-            "total-marks": '<p><strong>Total Marks:</strong> 50</p>',
-            "diagram": '<p><strong>Diagram:</strong></p><p>[Insert diagram here]</p><p><br></p>'
-          };
-          var html = templates[templateType] || "";
-          if (html) insertAtCursor(html);
-        }
-
-        // Initialize CKEditor 5
+        // ── CKEditor 5 + Fabric.js initialization ──
         initCKEditor(function (editor) {
           if (!editor) return;
-          // Add Question Paper Tools buttons to toolbar after init
-          var toolbarContainer = document.querySelector(".ck-toolbar__container") || document.querySelector(".ck-editor__top");
-          if (toolbarContainer) {
-            var qpToolsDiv = document.createElement("div");
-            qpToolsDiv.className = "ck-toolbar__separator";
-            toolbarContainer.appendChild(qpToolsDiv);
-            var qpGroup = document.createElement("div");
-            qpGroup.style.cssText = "display:flex;gap:2px;align-items:center;flex-wrap:wrap;padding:0 4px;";
-            qpGroup.innerHTML = '<span style="font-size:0.65rem;font-weight:700;color:#102542;white-space:nowrap;margin-right:4px;">QP Tools:</span>';
-            var qpButtons = [
-              { label: "Q.No", tpl: "q-num" }, { label: "(i)", tpl: "roman" }, { label: "(a)", tpl: "alpha" },
-              { label: "Marks", tpl: "marks" }, { label: "Sec A", tpl: "section-a" }, { label: "Sec B", tpl: "section-b" },
-              { label: "Sec C", tpl: "section-c" }, { label: "MCQ", tpl: "mcq" }, { label: "Fill", tpl: "fill" },
-              { label: "T/F", tpl: "truefalse" }, { label: "Short Q", tpl: "short" }, { label: "Long Q", tpl: "long" },
-              { label: "Diagram", tpl: "diagram" }, { label: "Answer", tpl: "answer-space" }, { label: "Instructions", tpl: "instructions" },
-              { label: "Time", tpl: "time-allowed" }, { label: "Total", tpl: "total-marks" }
-            ];
-            qpButtons.forEach(function (btn) {
-              var b = document.createElement("button");
-              b.type = "button";
-              b.className = "ck-button";
-              b.textContent = btn.label;
-              b.title = "Insert " + btn.label;
-              b.style.cssText = "font-size:0.65rem;padding:2px 5px;border:1px solid #d8deea;border-radius:4px;background:#f6f7f9;cursor:pointer;white-space:nowrap;";
-              b.addEventListener("click", function () { insertQuestionTemplate(btn.tpl); });
-              b.addEventListener("mouseenter", function () { b.style.background = "#e8f0fe"; });
-              b.addEventListener("mouseleave", function () { b.style.background = "#f6f7f9"; });
-              qpGroup.appendChild(b);
-            });
-            toolbarContainer.appendChild(qpGroup);
-          }
-          // Word count display
           var wcDiv = document.createElement("div");
-          wcDiv.id = "qpWordCount";
-          wcDiv.style.cssText = "font-size:0.68rem;color:#8a97a5;padding:4px 8px;text-align:right;";
+          wcDiv.id = "ssWordCount";
+          wcDiv.className = "ss-word-count";
           wcDiv.textContent = "0 words | 0 chars";
           var editorEl = document.querySelector(".ck-editor__main") || editor.ui.view.element;
           if (editorEl && editorEl.parentNode) editorEl.parentNode.appendChild(wcDiv);
         });
+        initFabricCanvas();
 
 
 
