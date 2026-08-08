@@ -4995,6 +4995,21 @@ body {
 .ss-qe-float-table table {
   width: 100%;
   border-collapse: collapse;
+  table-layout: fixed;
+}
+.ss-qe-float-table td, .ss-qe-float-table th {
+  border: 1px solid #b0bec5;
+  padding: 6px 8px;
+  min-width: 40px;
+  min-height: 24px;
+  vertical-align: top;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+.ss-qe-float-table td[contenteditable="true"]:focus {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+  background: rgba(37, 99, 235, 0.03);
 }
 
 /* Table move handle */
@@ -5052,6 +5067,11 @@ body {
   height: 100%;
   cursor: col-resize;
   z-index: 5;
+  pointer-events: none;
+}
+.ss-qe-col-resize:hover {
+  pointer-events: auto;
+  background: rgba(37, 99, 235, 0.3);
 }
 
 /* Row resize handle */
@@ -5063,6 +5083,11 @@ body {
   height: 6px;
   cursor: row-resize;
   z-index: 5;
+  pointer-events: none;
+}
+.ss-qe-row-resize:hover {
+  pointer-events: auto;
+  background: rgba(37, 99, 235, 0.3);
 }
 
 /* Context menu */

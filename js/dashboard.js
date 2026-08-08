@@ -16771,14 +16771,14 @@ ${allContent}
             _qeSetupTableRowResize(tbl);
             safeOn(ft, "mousedown", function(e) {
               if (e.target.closest("button") || e.target.closest(".ss-qe-table-move-handle") || e.target.closest(".ss-qe-table-resize-handle") || e.target.closest(".ss-qe-col-resize") || e.target.closest(".ss-qe-row-resize")) return;
-              // If clicking on a cell, let it focus for editing - just select the table object
+              // Clicking inside a cell: let the cell receive focus for typing
               var cell = e.target.closest("td, th");
               if (cell) {
-                e.stopPropagation();
+                // Do NOT stopPropagation - let the cell receive focus naturally
                 _qeSelect(ft, "table");
-                // Allow the cell to receive focus for typing
                 return;
               }
+              // Clicking on table border/wrapper: select table object, prevent default
               e.stopPropagation();
               _qeSelect(ft, "table");
             });
@@ -16919,15 +16919,9 @@ ${allContent}
         // ── Table Selection (click/double-click/triple-click) ──
         function _qeSetupTableSelection(ft, table) {
           if (!table) return;
-          // Single click on cell: select table, allow cell editing
-          table.addEventListener("mousedown", function(e) {
-            var cell = e.target.closest("td, th");
-            if (!cell) return;
-            e.stopPropagation();
-            _qeSelect(ft, "table");
-            // Let the cell receive focus for typing
-          });
-          // Double click on cell: focus for editing
+          // Click on cell: allow it to receive focus for typing
+          // Do NOT add mousedown handler here - it's handled by the ft mousedown above
+          // Double click on cell: ensure focus for editing
           table.addEventListener("dblclick", function(e) {
             var cell = e.target.closest("td, th");
             if (cell) { cell.focus(); }
@@ -17402,13 +17396,13 @@ ${allContent}
             var ae = document.activeElement;
             var isInEditable = false;
             if (ae && ae.getAttribute && ae.getAttribute("contenteditable") === "true") isInEditable = true;
-            if (ae && ae.closest && (ae.closest("td[contenteditable='true']") || ae.closest("th[contenteditable='true']") || ae.closest(".ss-qe-shape-text-editor") || ae.closest("#ssQEContent"))) isInEditable = true;
+            if (ae && ae.closest && (ae.closest("td") || ae.closest("th") || ae.closest(".ss-qe-shape-text-editor") || ae.closest("#ssQEContent"))) isInEditable = true;
             // Also check selection anchor node
             var sel = window.getSelection();
             if (sel && sel.anchorNode) {
               var an = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
               if (an && an.getAttribute && an.getAttribute("contenteditable") === "true") isInEditable = true;
-              if (an && an.closest && (an.closest("td[contenteditable='true']") || an.closest("th[contenteditable='true']") || an.closest(".ss-qe-shape-text-editor") || an.closest("#ssQEContent"))) isInEditable = true;
+              if (an && an.closest && (an.closest("td") || an.closest("th") || an.closest(".ss-qe-shape-text-editor") || an.closest("#ssQEContent"))) isInEditable = true;
             }
             // If we're inside an editable text area, let the browser handle the deletion
             if (isInEditable) return;
@@ -17597,6 +17591,16 @@ ${allContent}
             // Deselect all when clicking on empty editor space
             if (!e.target.closest(".ss-qe-figure") && !e.target.closest(".ss-qe-float-table") && !e.target.closest("table") && !e.target.closest(".ss-qe-resize-handle") && !e.target.closest(".ss-qe-rotate-handle")) {
               _qeDeselectAll();
+              // Reset font size to default when clicking in empty space (prevents font size leaking from objects)
+              try {
+                document.execCommand("fontSize", false, "3");
+                _qe.el.querySelectorAll("font[size='3']").forEach(function(f) {
+                  var span = document.createElement("span");
+                  span.style.fontSize = "14px";
+                  while (f.firstChild) span.appendChild(f.firstChild);
+                  f.parentNode.replaceChild(span, f);
+                });
+              } catch(ex) {}
             }
           });
           _qeWireAllObjects();
