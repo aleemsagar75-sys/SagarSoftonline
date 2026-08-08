@@ -16042,7 +16042,16 @@ ${allContent}
         }
 
         function _qeExec(cmd, val) {
+          // Save current selection before any DOM manipulation
+          var sel = window.getSelection();
+          var savedRanges = [];
+          if (sel && sel.rangeCount) { for (var i = 0; i < sel.rangeCount; i++) savedRanges.push(sel.getRangeAt(i).cloneRange()); }
           _qe.el && _qe.el.focus();
+          // Restore selection if it was lost
+          if (savedRanges.length && sel && (!sel.rangeCount || sel.isCollapsed)) {
+            sel.removeAllRanges();
+            savedRanges.forEach(function(r) { sel.addRange(r); });
+          }
           document.execCommand(cmd, false, val || null);
           _qeUpdateStatus();
           _qeUpdateToolbar();
@@ -16762,6 +16771,14 @@ ${allContent}
             _qeSetupTableRowResize(tbl);
             safeOn(ft, "mousedown", function(e) {
               if (e.target.closest("button") || e.target.closest(".ss-qe-table-move-handle") || e.target.closest(".ss-qe-table-resize-handle") || e.target.closest(".ss-qe-col-resize") || e.target.closest(".ss-qe-row-resize")) return;
+              // If clicking on a cell, let it focus for editing - just select the table object
+              var cell = e.target.closest("td, th");
+              if (cell) {
+                e.stopPropagation();
+                _qeSelect(ft, "table");
+                // Allow the cell to receive focus for typing
+                return;
+              }
               e.stopPropagation();
               _qeSelect(ft, "table");
             });
@@ -16831,40 +16848,57 @@ ${allContent}
         // ── Table Column Resize ──
         function _qeSetupTableColResize(table) {
           if (!table) return;
-          var thead = table.querySelector("thead");
-          if (!thead) return;
-          var headerCells = thead.querySelectorAll("th");
-          headerCells.forEach(function(th, idx) {
-            var handle = document.createElement("div");
-            handle.className = "ss-qe-col-resize";
-            th.style.position = "relative";
-            th.appendChild(handle);
-            safeOn(handle, "mousedown", function(e) {
-              e.preventDefault(); e.stopPropagation();
-              var startX = e.clientX, startW = th.offsetWidth;
-              var allRows = table.querySelectorAll("tr");
-              function onMove(ev) {
-                var newW = Math.max(30, startW + (ev.clientX - startX));
-                th.style.width = newW + "px"; th.style.minWidth = newW + "px"; th.style.maxWidth = newW + "px";
-                allRows.forEach(function(tr) {
-                  var cell = tr.children[idx];
-                  if (cell) { cell.style.width = newW + "px"; cell.style.minWidth = newW + "px"; cell.style.maxWidth = newW + "px"; }
-                });
-              }
-              function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
-              document.addEventListener("mousemove", onMove);
-              document.addEventListener("mouseup", onUp);
-            });
-          });
+          var firstRow = table.querySelector("tr");
+          if (!firstRow) return;
+          var cells = firstRow.querySelectorAll("td, th");
+          if (cells.length < 2) return;
+          // Add boundary handles between each pair of columns
+          for (var i = 0; i < cells.length - 1; i++) {
+            (function(idx) {
+              var handle = document.createElement("div");
+              handle.className = "ss-qe-col-resize";
+              handle.style.cssText = "position:absolute;right:-3px;top:0;width:6px;height:100%;cursor:col-resize;z-index:5;";
+              cells[idx].style.position = "relative";
+              cells[idx].appendChild(handle);
+              safeOn(handle, "mousedown", function(e) {
+                e.preventDefault(); e.stopPropagation();
+                var startX = e.clientX;
+                // Get widths of the two affected columns
+                var leftCell = cells[idx];
+                var rightCell = cells[idx + 1];
+                var startLeftW = leftCell.offsetWidth;
+                var startRightW = rightCell.offsetWidth;
+                var allRows = table.querySelectorAll("tr");
+                function onMove(ev) {
+                  var dx = ev.clientX - startX;
+                  var newLeftW = Math.max(30, startLeftW + dx);
+                  var newRightW = Math.max(30, startRightW - dx);
+                  // Apply to ALL rows at this column index
+                  allRows.forEach(function(tr) {
+                    var lc = tr.children[idx];
+                    var rc = tr.children[idx + 1];
+                    if (lc) { lc.style.width = newLeftW + "px"; lc.style.minWidth = newLeftW + "px"; }
+                    if (rc) { rc.style.width = newRightW + "px"; rc.style.minWidth = newRightW + "px"; }
+                  });
+                }
+                function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+                document.addEventListener("mousemove", onMove);
+                document.addEventListener("mouseup", onUp);
+              });
+            })(i);
+          }
         }
 
         // ── Table Row Resize ──
         function _qeSetupTableRowResize(table) {
           if (!table) return;
-          table.querySelectorAll("tr").forEach(function(tr) {
+          var rows = table.querySelectorAll("tr");
+          rows.forEach(function(tr, idx) {
+            if (idx >= rows.length - 1) return; // skip last row
             if (tr.querySelector(".ss-qe-row-resize")) return;
             var handle = document.createElement("div");
             handle.className = "ss-qe-row-resize";
+            handle.style.cssText = "position:absolute;bottom:-3px;left:0;width:100%;height:6px;cursor:row-resize;z-index:5;";
             tr.style.position = "relative";
             tr.appendChild(handle);
             safeOn(handle, "mousedown", function(e) {
@@ -16885,34 +16919,18 @@ ${allContent}
         // ── Table Selection (click/double-click/triple-click) ──
         function _qeSetupTableSelection(ft, table) {
           if (!table) return;
-          var clickCount = 0;
-          var clickTimer = null;
-          table.addEventListener("click", function(e) {
+          // Single click on cell: select table, allow cell editing
+          table.addEventListener("mousedown", function(e) {
             var cell = e.target.closest("td, th");
             if (!cell) return;
             e.stopPropagation();
-            clickCount++;
-            if (clickCount === 1) {
-              clickTimer = setTimeout(function() {
-                _qeSelect(ft, "table");
-                cell.style.background = "rgba(27, 95, 122, 0.1)";
-                clickCount = 0;
-              }, 250);
-            } else if (clickCount === 2) {
-              clearTimeout(clickTimer);
-              cell.setAttribute("contenteditable", "true");
-              cell.focus();
-              clickCount = 0;
-            } else {
-              clearTimeout(clickTimer);
-              var tr = cell.closest("tr");
-              if (tr) tr.querySelectorAll("td, th").forEach(function(c) { c.style.background = "rgba(27, 95, 122, 0.15)"; });
-              clickCount = 0;
-            }
+            _qeSelect(ft, "table");
+            // Let the cell receive focus for typing
           });
+          // Double click on cell: focus for editing
           table.addEventListener("dblclick", function(e) {
             var cell = e.target.closest("td, th");
-            if (cell) { cell.setAttribute("contenteditable", "true"); cell.focus(); }
+            if (cell) { cell.focus(); }
           });
         }
 
@@ -16935,25 +16953,14 @@ ${allContent}
           wrapper.appendChild(resizeHandle);
           var t = document.createElement("table");
           t.style.cssText = "width:100%;border-collapse:collapse;";
-          var thead = document.createElement("thead");
-          var htr = document.createElement("tr");
-          for (var c = 0; c < cols; c++) {
-            var th = document.createElement("th");
-            th.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;background:#f6f7f9;text-align:left;font-weight:600;";
-            th.setAttribute("contenteditable", "true");
-            th.textContent = "Header";
-            htr.appendChild(th);
-          }
-          thead.appendChild(htr);
-          t.appendChild(thead);
           var tbody = document.createElement("tbody");
           for (var r = 0; r < rows; r++) {
             var tr = document.createElement("tr");
-            for (var c2 = 0; c2 < cols; c2++) {
+            for (var c = 0; c < cols; c++) {
               var td = document.createElement("td");
               td.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;";
               td.setAttribute("contenteditable", "true");
-              td.innerHTML = "<br>";
+              td.innerHTML = "";
               tr.appendChild(td);
             }
             tbody.appendChild(tr);
@@ -17170,13 +17177,7 @@ ${allContent}
         function _qeSetFontSize(size) {
           var sel = window.getSelection();
           if (!sel || !sel.rangeCount) return;
-          // Save the selection ranges
-          var ranges = [];
-          for (var i = 0; i < sel.rangeCount; i++) {
-            ranges.push(sel.getRangeAt(i).cloneRange());
-          }
           if (sel.isCollapsed) {
-            // No selection - just apply to current typing state
             document.execCommand("fontSize", false, "7");
             _qe.el.querySelectorAll("font[size='7']").forEach(function(f) {
               var span = document.createElement("span");
@@ -17186,18 +17187,60 @@ ${allContent}
             });
             return;
           }
-          // Apply fontSize command
+          // Save selection as text offsets for robust restoration
+          var range = sel.getRangeAt(0);
+          var startContainer = range.startContainer;
+          var startOffset = range.startOffset;
+          var endContainer = range.endContainer;
+          var endOffset = range.endOffset;
+          // Compute text offsets relative to editor
+          function getTextOffset(node, offset) {
+            var walker = document.createTreeWalker(_qe.el, NodeFilter.SHOW_TEXT, null, false);
+            var total = 0;
+            var current;
+            while (current = walker.nextNode()) {
+              if (current === node) return total + offset;
+              total += current.textContent.length;
+            }
+            return total;
+          }
+          var startTextOffset = getTextOffset(startContainer, startOffset);
+          var endTextOffset = getTextOffset(endContainer, endOffset);
+          // Apply fontSize
           document.execCommand("fontSize", false, "7");
-          // Replace font[size=7] elements with styled spans
           _qe.el.querySelectorAll("font[size='7']").forEach(function(f) {
             var span = document.createElement("span");
             span.style.fontSize = size + "pt";
             while (f.firstChild) span.appendChild(f.firstChild);
             f.parentNode.replaceChild(span, f);
           });
-          // Restore selection
-          sel.removeAllRanges();
-          ranges.forEach(function(r) { sel.addRange(r); });
+          // Restore selection using text offsets
+          try {
+            var walker2 = document.createTreeWalker(_qe.el, NodeFilter.SHOW_TEXT, null, false);
+            var totalLen = 0;
+            var startNode = null, startOff = 0, endNode = null, endOff = 0;
+            var node;
+            while (node = walker2.nextNode()) {
+              var nodeLen = node.textContent.length;
+              if (!startNode && totalLen + nodeLen >= startTextOffset) {
+                startNode = node;
+                startOff = startTextOffset - totalLen;
+              }
+              if (totalLen + nodeLen >= endTextOffset) {
+                endNode = node;
+                endOff = endTextOffset - totalLen;
+                break;
+              }
+              totalLen += nodeLen;
+            }
+            if (startNode && endNode) {
+              var newRange = document.createRange();
+              newRange.setStart(startNode, startOff);
+              newRange.setEnd(endNode, endOff);
+              sel.removeAllRanges();
+              sel.addRange(newRange);
+            }
+          } catch(e) {}
         }
 
         function _qeChangeFontSize(dir) {
@@ -17276,6 +17319,8 @@ ${allContent}
           tb.innerHTML = html;
 
           tb.querySelectorAll("[data-cmd]").forEach(function(b) {
+            // Prevent toolbar buttons from stealing focus from the editor
+            safeOn(b, "mousedown", function(e) { e.preventDefault(); });
             safeOn(b, "click", function(e) {
               e.preventDefault();
               var cmd = b.getAttribute("data-cmd"), val = b.getAttribute("data-val");
@@ -17351,8 +17396,23 @@ ${allContent}
             if (_qeTextEditActive) { _qeExitTextEditMode(); return; }
             _qeClosePanels(); _qeDeselectAll(); _qeHideContextMenu(); return;
           }
-          // Delete/Backspace in Object Mode: delete selected object
+          // Delete/Backspace in Object Mode: delete selected object ONLY if not editing text inside something
           if ((e.key === "Delete" || e.key === "Backspace") && _qe.selectedEl) {
+            // Check if cursor is inside any contenteditable element (table cell, shape text, main editor)
+            var ae = document.activeElement;
+            var isInEditable = false;
+            if (ae && ae.getAttribute && ae.getAttribute("contenteditable") === "true") isInEditable = true;
+            if (ae && ae.closest && (ae.closest("td[contenteditable='true']") || ae.closest("th[contenteditable='true']") || ae.closest(".ss-qe-shape-text-editor") || ae.closest("#ssQEContent"))) isInEditable = true;
+            // Also check selection anchor node
+            var sel = window.getSelection();
+            if (sel && sel.anchorNode) {
+              var an = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
+              if (an && an.getAttribute && an.getAttribute("contenteditable") === "true") isInEditable = true;
+              if (an && an.closest && (an.closest("td[contenteditable='true']") || an.closest("th[contenteditable='true']") || an.closest(".ss-qe-shape-text-editor") || an.closest("#ssQEContent"))) isInEditable = true;
+            }
+            // If we're inside an editable text area, let the browser handle the deletion
+            if (isInEditable) return;
+            // Otherwise, delete the selected object
             e.preventDefault();
             e.stopPropagation();
             var obj = _qeGetObject(_qe.selectedEl);
