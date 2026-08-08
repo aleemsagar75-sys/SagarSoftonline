@@ -16026,14 +16026,18 @@ ${allContent}
           var el = obj.el;
           el.style.float = "";
           el.style.position = "relative";
+          el.style.display = "";
+          el.style.clear = "";
+          el.style.margin = "8px 4px";
           el.style.zIndex = obj.zIndex;
           switch (obj.wrapMode) {
             case "square": el.style.float = "left"; el.style.margin = "8px 12px 8px 0"; break;
             case "tight": el.style.float = "left"; el.style.margin = "4px 6px 4px 0"; break;
             case "topBottom": el.style.display = "block"; el.style.clear = "both"; el.style.margin = "8px auto"; break;
-            case "behind": el.style.position = "absolute"; el.style.zIndex = 0; el.style.pointerEvents = "none"; break;
-            case "front": el.style.position = "absolute"; el.style.zIndex = 9999; break;
-            default: el.style.float = ""; el.style.display = ""; el.style.clear = ""; el.style.margin = "8px 4px"; break;
+            case "behind": el.style.position = "relative"; el.style.zIndex = 0; break;
+            case "front": el.style.position = "relative"; el.style.zIndex = 99999; break;
+            case "through": el.style.float = "left"; el.style.margin = "4px 6px 4px 0"; break;
+            default: break;
           }
         }
 
@@ -16178,7 +16182,7 @@ ${allContent}
             html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
             html += '<div class="ss-qe-props-row"><label>Height</label><input type="number" data-prop="h" value="' + Math.round(obj.h) + '"></div>';
             html += '<div class="ss-qe-props-row"><label>Rotation</label><input type="number" data-prop="rotation" value="' + Math.round(obj.rotation) + '" step="15"></div>';
-            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="tight"' + (obj.wrapMode === "tight" ? " selected" : "") + '>Tight</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option><option value="behind"' + (obj.wrapMode === "behind" ? " selected" : "") + '>Behind Text</option><option value="front"' + (obj.wrapMode === "front" ? " selected" : "") + '>In Front</option></select></div>';
+            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="tight"' + (obj.wrapMode === "tight" ? " selected" : "") + '>Tight</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option><option value="behind"' + (obj.wrapMode === "behind" ? " selected" : "") + '>Behind Text</option><option value="front"' + (obj.wrapMode === "front" ? " selected" : "") + '>In Front</option><option value="through"' + (obj.wrapMode === "through" ? " selected" : "") + '>Through</option></select></div>';
             html += '<div class="ss-qe-props-row"><label>Transparency</label><input type="range" data-prop="opacity" min="0" max="100" value="' + ((obj.meta.opacity || 1) * 100) + '" style="flex:1;"></div>';
           } else if (obj.type === "shape") {
             html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
@@ -16187,7 +16191,7 @@ ${allContent}
             html += '<div class="ss-qe-props-row"><label>Fill</label><input type="color" data-prop="fill" value="' + (obj.meta.fill || "#4fc3f7") + '"></div>';
             html += '<div class="ss-qe-props-row"><label>Stroke</label><input type="color" data-prop="stroke" value="' + (obj.meta.stroke || "#0277bd") + '"></div>';
             html += '<div class="ss-qe-props-row"><label>Stroke W</label><input type="number" data-prop="strokeWidth" value="' + (obj.meta.strokeWidth || 2) + '" min="0" max="20"></div>';
-            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="tight"' + (obj.wrapMode === "tight" ? " selected" : "") + '>Tight</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option><option value="behind"' + (obj.wrapMode === "behind" ? " selected" : "") + '>Behind Text</option><option value="front"' + (obj.wrapMode === "front" ? " selected" : "") + '>In Front</option></select></div>';
+            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="tight"' + (obj.wrapMode === "tight" ? " selected" : "") + '>Tight</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option><option value="behind"' + (obj.wrapMode === "behind" ? " selected" : "") + '>Behind Text</option><option value="front"' + (obj.wrapMode === "front" ? " selected" : "") + '>In Front</option><option value="through"' + (obj.wrapMode === "through" ? " selected" : "") + '>Through</option></select></div>';
           } else if (obj.type === "table") {
             html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
             html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option></select></div>';
@@ -16259,13 +16263,16 @@ ${allContent}
                 { label: "Tight", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "tight"; _qeApplyWrapMode(obj.id); } } },
                 { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } },
                 { label: "Behind Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "behind"; _qeApplyWrapMode(obj.id); } } },
-                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } }
+                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Through", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "through"; _qeApplyWrapMode(obj.id); } } }
               ]},
               { label: "Replace", fn: function() { document.getElementById("ssQEImgInput").click(); } },
               { label: "Crop", fn: function() { _qeStartCrop(el); } },
               "---",
-              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); } } },
-              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } } },
+              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Bring To Front", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 99999; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send To Back", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 1; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
               "---",
               { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
               { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
@@ -16279,7 +16286,8 @@ ${allContent}
                 { label: "Tight", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "tight"; _qeApplyWrapMode(obj.id); } } },
                 { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } },
                 { label: "Behind Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "behind"; _qeApplyWrapMode(obj.id); } } },
-                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } }
+                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Through", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "through"; _qeApplyWrapMode(obj.id); } } }
               ]},
               { label: "Edit Text", fn: function() { var txt = el.querySelector(".ss-qe-shape-text-editor"); if (txt) _qeEnterTextEditMode(el, txt); } },
               "---",
@@ -16288,14 +16296,14 @@ ${allContent}
               { label: "Paste", fn: function() { if (_qeDoc.clipboard) _qeInsertHTML(_qeDoc.clipboard.html); } },
               { label: "Duplicate", fn: function() { _qeDuplicateObject(el); } },
               "---",
-              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); } } },
-              { label: "Bring To Front", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 99999; _qeSyncTransform(obj.id); } } },
-              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } } },
-              { label: "Send To Back", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 1; _qeSyncTransform(obj.id); } } },
+              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Bring To Front", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 99999; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send To Back", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 1; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
               "---",
               { label: "Fill Color", fn: function(e) { var obj = _qeGetObject(el); var cur = (obj && obj.meta.fill) || "#4fc3f7"; _qeShowColorPopup(e, "Fill Color", cur, function(color) { if (obj) { obj.meta.fill = color; _qeUpdateShapeStyle(obj); } }); } },
               { label: "Border Color", fn: function(e) { var obj = _qeGetObject(el); var cur = (obj && obj.meta.stroke) || "#0277bd"; _qeShowColorPopup(e, "Border Color", cur, function(color) { if (obj) { obj.meta.stroke = color; _qeUpdateShapeStyle(obj); } }); } },
-              { label: "Border Width", fn: function() { var w = prompt("Border width:", "2"); if (w && !isNaN(w)) { var obj = _qeGetObject(el); if (obj) { obj.meta.strokeWidth = parseInt(w); _qeUpdateShapeStyle(obj); } } } },
+              { label: "Border Width", fn: function() { var obj = _qeGetObject(el); var cur = (obj && obj.meta.strokeWidth) || 2; _qeShowInputPopup({ title: "Border Width", defaultValue: cur, unit: "px", min: 0, max: 50, onApply: function(v) { if (obj) { obj.meta.strokeWidth = v; _qeUpdateShapeStyle(obj); } } }); } },
               "---",
               { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
               { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
@@ -16306,8 +16314,15 @@ ${allContent}
               { label: "Wrap Text", submenu: [
                 { label: "Inline", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "inline"; _qeApplyWrapMode(obj.id); } } },
                 { label: "Square", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "square"; _qeApplyWrapMode(obj.id); } } },
-                { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } }
+                { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Behind Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "behind"; _qeApplyWrapMode(obj.id); } } },
+                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } }
               ]},
+              "---",
+              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Bring To Front", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 99999; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send To Back", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 1; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
               "---",
               { label: "Insert Row Above", fn: function() { _qeTableInsertRow(tbl, false); } },
               { label: "Insert Row Below", fn: function() { _qeTableInsertRow(tbl, true); } },
@@ -16724,7 +16739,7 @@ ${allContent}
                   if (cap) cap.style.display = "block";
                 } else if (action === "img-alt") {
                   var img = fig.querySelector("img");
-                  if (img) { var alt = prompt("Alt text:", img.getAttribute("alt") || ""); if (alt !== null) img.setAttribute("alt", alt); }
+                  if (img) { _qeShowUrlPopup("Alt Text", img.getAttribute("alt") || "", function(v) { img.setAttribute("alt", v); }); }
                 }
               });
             });
@@ -17154,16 +17169,35 @@ ${allContent}
 
         function _qeSetFontSize(size) {
           var sel = window.getSelection();
-          if (!sel || sel.isCollapsed || !sel.rangeCount) return;
-          document.execCommand("fontSize", false, "7");
-          setTimeout(function() {
+          if (!sel || !sel.rangeCount) return;
+          // Save the selection ranges
+          var ranges = [];
+          for (var i = 0; i < sel.rangeCount; i++) {
+            ranges.push(sel.getRangeAt(i).cloneRange());
+          }
+          if (sel.isCollapsed) {
+            // No selection - just apply to current typing state
+            document.execCommand("fontSize", false, "7");
             _qe.el.querySelectorAll("font[size='7']").forEach(function(f) {
               var span = document.createElement("span");
               span.style.fontSize = size + "pt";
               while (f.firstChild) span.appendChild(f.firstChild);
               f.parentNode.replaceChild(span, f);
             });
-          }, 0);
+            return;
+          }
+          // Apply fontSize command
+          document.execCommand("fontSize", false, "7");
+          // Replace font[size=7] elements with styled spans
+          _qe.el.querySelectorAll("font[size='7']").forEach(function(f) {
+            var span = document.createElement("span");
+            span.style.fontSize = size + "pt";
+            while (f.firstChild) span.appendChild(f.firstChild);
+            f.parentNode.replaceChild(span, f);
+          });
+          // Restore selection
+          sel.removeAllRanges();
+          ranges.forEach(function(r) { sel.addRange(r); });
         }
 
         function _qeChangeFontSize(dir) {
@@ -17183,8 +17217,7 @@ ${allContent}
         }
 
         function _qeInsertLink() {
-          var url = prompt("Enter URL:", "https://");
-          if (url) _qeExec("createLink", url);
+          _qeShowUrlPopup("Insert Link", "https://", function(url) { _qeExec("createLink", url); });
         }
 
         // ── Toolbar ──
@@ -17269,10 +17302,32 @@ ${allContent}
           if (fontSelect) safeOn(fontSelect, "change", function() { _qeExec("fontName", fontSelect.value); });
           var sizeSelect = tb.querySelector(".ss-qe-font-size");
           if (sizeSelect) safeOn(sizeSelect, "change", function() { _qeSetFontSize(parseInt(sizeSelect.value) || 12); });
-          var fcBtn = tb.querySelector(".ss-qe-font-color-btn"), fcInput = fcBtn && fcBtn.parentElement ? fcBtn.parentElement.querySelector(".ss-qe-color-input") : null;
-          if (fcBtn && fcInput) { safeOn(fcInput, "input", function() { _qeExec("foreColor", fcInput.value); }); safeOn(fcBtn, "click", function(e) { e.preventDefault(); fcInput.click(); }); }
-          var hlBtn = tb.querySelector(".ss-qe-highlight-btn"), hlInput = hlBtn && hlBtn.parentElement ? hlBtn.parentElement.querySelector(".ss-qe-color-input") : null;
-          if (hlBtn && hlInput) { safeOn(hlInput, "input", function() { _qeExec("hiliteColor", hlInput.value); }); safeOn(hlBtn, "click", function(e) { e.preventDefault(); hlInput.click(); }); }
+          var fcBtn = tb.querySelector(".ss-qe-font-color-btn");
+          if (fcBtn) { safeOn(fcBtn, "click", function(e) {
+            e.preventDefault();
+            // Save selection
+            var sel = window.getSelection();
+            var savedRanges = [];
+            if (sel && sel.rangeCount) { for (var si = 0; si < sel.rangeCount; si++) savedRanges.push(sel.getRangeAt(si).cloneRange()); }
+            _qeShowColorPopup(e, "Text Color", "#ff0000", function(color) {
+              _qe.el.focus();
+              // Restore selection
+              if (savedRanges.length) { var ns = window.getSelection(); ns.removeAllRanges(); savedRanges.forEach(function(r) { ns.addRange(r); }); }
+              _qeExec("foreColor", color);
+            });
+          }); }
+          var hlBtn = tb.querySelector(".ss-qe-highlight-btn");
+          if (hlBtn) { safeOn(hlBtn, "click", function(e) {
+            e.preventDefault();
+            var sel = window.getSelection();
+            var savedRanges = [];
+            if (sel && sel.rangeCount) { for (var si = 0; si < sel.rangeCount; si++) savedRanges.push(sel.getRangeAt(si).cloneRange()); }
+            _qeShowColorPopup(e, "Highlight Color", "#ffff00", function(color) {
+              _qe.el.focus();
+              if (savedRanges.length) { var ns = window.getSelection(); ns.removeAllRanges(); savedRanges.forEach(function(r) { ns.addRange(r); }); }
+              _qeExec("hiliteColor", color);
+            });
+          }); }
         }
 
         // ── Keyboard Shortcuts ──
@@ -17494,7 +17549,21 @@ ${allContent}
         var _qeTableContextMenu = null;
         function _qeHideTableContextMenu() {}
 
-        function getEditorHtml() { return _qeGetHTML(); }
+        function getEditorHtml() {
+          var html = _qeGetHTML();
+          // Final safety strip: remove any remaining editing artifacts
+          var tmp = document.createElement("div");
+          tmp.innerHTML = html;
+          // Remove editing controls, handles, panels
+          tmp.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-figure-controls, .ss-qe-image-controls, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize, .ss-qe-props-panel, .ss-qe-context-menu, .ss-qe-color-popup, .ss-qe-crop-overlay").forEach(function(el) { el.remove(); });
+          // Remove selection classes
+          tmp.querySelectorAll(".ss-qe-selected, .ss-qe-table-selected, .ss-qe-text-edit-mode").forEach(function(el) { el.classList.remove("ss-qe-selected", "ss-qe-table-selected", "ss-qe-text-edit-mode"); });
+          // Strip data-wired and other editing attributes
+          tmp.querySelectorAll("[data-obj-id]").forEach(function(el) {
+            el.removeAttribute("data-drag-wired");
+          });
+          return tmp.innerHTML;
+        }
         function clearEditor() { _qeClear(); }
         function getEditorText() { return _qeGetText(); }
         function insertAtCursor(html) { _qeInsertHTML(html); }
