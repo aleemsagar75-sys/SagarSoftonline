@@ -15905,6 +15905,149 @@ ${allContent}
         const message = document.getElementById("qpChapterMessage");
         const tableBody = document.getElementById("qpChapterBody");
 
+        // ── Question Type UI Functions (subject-chapters route) ──
+        function renderSubjectSelect() {
+          subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : '<option value="">Select class first</option>';
+        }
+        function renderExistingChapterSelect() {
+          var className = classSelect.value;
+          var subject = subjectSelect.value;
+          var chapters = (settings.questionChapters || []).filter(function(row) {
+            return row.className === className && row.subject === subject;
+          }).map(function(row) { return row.chapterName || ""; }).filter(Boolean);
+          var unique = chapters.filter(function(v, i, a) { return a.indexOf(v) === i; });
+          existingChapterSelect.innerHTML = '<option value="">Select Existing Chapter</option>' + unique.map(function(name) {
+            return '<option value="' + name.replace(/"/g, '&quot;') + '">' + escapeHtml(name) + '</option>';
+          }).join("");
+        }
+        function renderTypeMode() {
+          var val = typeSelect.value;
+          mcqField.hidden = val !== "mcq";
+          fillField.hidden = val !== "fill" && val !== "truefalse";
+          linesField.hidden = val !== "short" && val !== "long";
+          if (val === "fill") { fillOpt1.value = "true"; fillOpt2.value = "false"; }
+          if (val === "truefalse") { fillOpt1.value = "True"; fillOpt2.value = "False"; }
+          if (val === "short") { answerLinesInput.value = 3; }
+          if (val === "long") { answerLinesInput.value = 6; }
+        }
+        var mcqOptions = ["", ""];
+        function renderMcqRows() {
+          mcqRows.innerHTML = mcqOptions.map(function(opt, idx) {
+            var labels = ["A", "B", "C", "D", "E", "F", "G", "H"];
+            return '<div class="question-option-row" style="display:flex;align-items:center;gap:4px;flex:1 1 180px;min-width:140px;">' +
+              '<span style="font-weight:700;font-size:0.78rem;min-width:18px;">' + (labels[idx] || "O" + (idx + 1)) + '.</span>' +
+              '<input type="text" class="mcq-opt-input" data-idx="' + idx + '" value="' + escapeHtml(opt) + '" placeholder="Option ' + (labels[idx] || idx + 1) + '" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid #dde4ea;border-radius:4px;font-size:0.78rem;">' +
+            '</div>';
+          }).join("");
+          mcqRows.querySelectorAll(".mcq-opt-input").forEach(function(inp) {
+            safeOn(inp, "input", function() { mcqOptions[parseInt(inp.getAttribute("data-idx"))] = inp.value; });
+          });
+        }
+        function renderChapterRows() {
+          var className = classSelect.value;
+          var subject = subjectSelect.value;
+          var rows = (settings.questionChapters || []).filter(function(row) {
+            return row.className === className && row.subject === subject;
+          });
+          if (!rows.length) { tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:16px;color:#888;">No questions saved yet.</td></tr>'; return; }
+          tableBody.innerHTML = rows.map(function(row, idx) {
+            var text = qpStripHtml(row.questionHtml || row.questionText || "");
+            var preview = text.length > 80 ? text.substring(0, 80) + "..." : text;
+            return '<tr style="border-bottom:1px solid #eee;">' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.className || "-") + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.subject || "-") + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.chapterName || "-") + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.section || "-") + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(qpTypeLabel(row.questionType)) + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(String(row.marks || "-")) + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.questionTitle || "-") + '</td>' +
+              '<td style="padding:4px 6px;font-size:0.75rem;color:#556;">' + escapeHtml(preview) + '</td>' +
+              '<td style="padding:4px 6px;"><button class="table-action-btn danger" type="button" data-delete-qidx="' + idx + '">Delete</button></td>' +
+            '</tr>';
+          }).join("");
+          tableBody.querySelectorAll("[data-delete-qidx]").forEach(function(btn) {
+            safeOn(btn, "click", function() {
+              var delIdx = parseInt(btn.getAttribute("data-delete-qidx"));
+              var allRows = (settings.questionChapters || []).filter(function(r) {
+                return r.className === className && r.subject === subject;
+              });
+              var target = allRows[delIdx];
+              if (!target) return;
+              settings.questionChapters = (settings.questionChapters || []).filter(function(r) { return r !== target; });
+              saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+              renderChapterRows();
+              openAppMessageBox("Deleted", "Question deleted successfully.", "success");
+            });
+          });
+        }
+
+        // ── Save Question Button Handler ──
+        safeOn(document.getElementById("qpSaveQuestion"), "click", function() {
+          var className = classSelect.value;
+          var subject = subjectSelect.value;
+          var section = sectionSelect.value;
+          var qType = typeSelect.value;
+          var marks = marksInput.value;
+          var chapterName = existingChapterSelect.value || chapterNameInput.value;
+          var qTitle = questionTitleInput.value;
+          var editorHtml = getEditorHtml();
+          var editorText = getEditorText();
+          if (!className) { openAppMessageBox("Missing Field", "Please select a Class.", "warning"); return; }
+          if (!subject) { openAppMessageBox("Missing Field", "Please select a Subject.", "warning"); return; }
+          if (!chapterName) { openAppMessageBox("Missing Field", "Please enter or select a Chapter Name.", "warning"); return; }
+          if (!qType) { openAppMessageBox("Missing Field", "Please select a Question Type.", "warning"); return; }
+          if (!marks || parseInt(marks) < 1) { openAppMessageBox("Missing Field", "Please enter valid Marks.", "warning"); return; }
+          if (!editorText.trim() && qType !== "mcq") { openAppMessageBox("Missing Content", "Please enter question content in the editor.", "warning"); return; }
+          var questionData = {
+            id: "QC-" + Date.now().toString(36) + "-" + Math.random().toString(36).substr(2, 4),
+            className: className,
+            subject: subject,
+            chapterName: chapterName,
+            section: section || "Section A",
+            questionType: qType,
+            marks: parseInt(marks) || 1,
+            questionTitle: qTitle || "",
+            questionHtml: editorHtml,
+            questionText: editorText,
+            options: [],
+            answerLines: 0,
+            createdAt: new Date().toISOString()
+          };
+          if (qType === "mcq") {
+            questionData.options = mcqOptions.filter(function(o) { return String(o).trim() !== ""; });
+            if (questionData.options.length < 2) { openAppMessageBox("MCQ Error", "Please enter at least 2 MCQ options.", "warning"); return; }
+          }
+          if (qType === "fill" || qType === "truefalse") {
+            questionData.options = [fillOpt1.value || "true", fillOpt2.value || "false"];
+          }
+          if (qType === "short" || qType === "long") {
+            questionData.answerLines = parseInt(answerLinesInput.value) || (qType === "short" ? 3 : 6);
+          }
+          settings.questionChapters = settings.questionChapters || [];
+          settings.questionChapters.push(questionData);
+          saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+          renderChapterRows();
+          clearEditor();
+          mcqOptions = ["", ""];
+          renderMcqRows();
+          questionTitleInput.value = "";
+          marksInput.value = "";
+          chapterNameInput.value = "";
+          openAppMessageBox("Saved", "Question saved successfully.", "success");
+        });
+
+        // ── MCQ Add/Remove Handlers ──
+        safeOn(document.getElementById("qpAddMcq"), "click", function() {
+          if (mcqOptions.length >= 8) return;
+          mcqOptions.push("");
+          renderMcqRows();
+        });
+        safeOn(document.getElementById("qpRemoveMcq"), "click", function() {
+          if (mcqOptions.length <= 2) return;
+          mcqOptions.pop();
+          renderMcqRows();
+        });
+
         // ── Document Object Model State Manager ──
         var _qeDoc = {
           objects: new Map(),
@@ -16096,27 +16239,25 @@ ${allContent}
 
         function _qeGetHTML() {
           if (!_qe.el) return "";
-          // Clone the editor content to strip editing controls
           var clone = _qe.el.cloneNode(true);
-          // Remove all editing UI from clone
-          clone.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize, .ss-qe-figure-controls, .ss-qe-image-controls, .ss-qe-crop-overlay, .ss-qe-selection-box, .ss-qe-props-panel").forEach(function(el) { el.remove(); });
+          // Remove all editing UI elements
+          clone.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize, .ss-qe-figure-controls, .ss-qe-image-controls, .ss-qe-crop-overlay, .ss-qe-selection-box, .ss-qe-props-panel, .ss-qe-context-menu, .ss-qe-color-popup, .ss-qe-marquee-box").forEach(function(el) { el.remove(); });
           // Remove selection classes
           clone.querySelectorAll(".ss-qe-selected, .ss-qe-table-selected, .ss-qe-text-edit-mode, .ss-qe-marquee-highlight").forEach(function(el) {
             el.classList.remove("ss-qe-selected", "ss-qe-table-selected", "ss-qe-text-edit-mode", "ss-qe-marquee-highlight");
           });
-          // Remove wiring attributes
-          clone.querySelectorAll("[data-wired], [data-drag-wired]").forEach(function(el) {
-            el.removeAttribute("data-wired");
-            el.removeAttribute("data-drag-wired");
-          });
-          // Remove temporary inline styles from editing
+          // Remove editing attributes
+          clone.querySelectorAll("[data-obj-id]").forEach(function(el) { el.removeAttribute("data-obj-id"); });
+          clone.querySelectorAll("[data-wired], [data-drag-wired]").forEach(function(el) { el.removeAttribute("data-wired"); el.removeAttribute("data-drag-wired"); });
+          clone.querySelectorAll("[contenteditable]").forEach(function(el) { el.removeAttribute("contenteditable"); });
+          clone.querySelectorAll("[draggable]").forEach(function(el) { el.removeAttribute("draggable"); });
+          // Remove editing-related inline styles
           clone.querySelectorAll("[style]").forEach(function(el) {
-            // Keep essential styles but remove editing artifacts
             var style = el.getAttribute("style");
             if (style) {
-              // Remove selection-related styles
               style = style.replace(/outline[^;]*;?/gi, "");
               style = style.replace(/box-shadow[^;]*;?/gi, "");
+              style = style.replace(/cursor[^;]*;?/gi, "");
               el.setAttribute("style", style);
             }
           });
@@ -16455,6 +16596,62 @@ ${allContent}
           if (px + 220 > window.innerWidth) popup.style.left = (px - 220) + "px";
           if (py + 200 > window.innerHeight) popup.style.top = (py - 200) + "px";
           // Close on outside click
+          setTimeout(function() {
+            document.addEventListener("mousedown", function handler(ev) {
+              if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener("mousedown", handler); }
+            });
+          }, 10);
+        }
+
+        function _qeShowInputPopup(opts) {
+          _qeHideContextMenu();
+          var popup = document.createElement("div");
+          popup.className = "ss-qe-color-popup";
+          var html = '<div class="ss-qe-color-popup-header">' + (opts.title || "Input") + '</div>';
+          html += '<div class="ss-qe-color-popup-row"><input type="number" class="ss-qe-color-popup-hex" value="' + (opts.defaultValue || 0) + '" min="' + (opts.min || 0) + '" max="' + (opts.max || 999) + '" style="width:100%;"> ' + (opts.unit || "") + '</div>';
+          html += '<div class="ss-qe-color-popup-actions"><button type="button" class="ss-qe-color-popup-apply">Apply</button><button type="button" class="ss-qe-color-popup-cancel">Cancel</button></div>';
+          popup.innerHTML = html;
+          document.body.appendChild(popup);
+          var inp = popup.querySelector("input");
+          popup.querySelector(".ss-qe-color-popup-apply").addEventListener("click", function() {
+            var v = parseFloat(inp.value);
+            if (!isNaN(v)) opts.onApply(v);
+            popup.remove();
+          });
+          popup.querySelector(".ss-qe-color-popup-cancel").addEventListener("click", function() { popup.remove(); });
+          popup.style.left = "50%";
+          popup.style.top = "50%";
+          popup.style.transform = "translate(-50%, -50%)";
+          inp.focus();
+          inp.select();
+          setTimeout(function() {
+            document.addEventListener("mousedown", function handler(ev) {
+              if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener("mousedown", handler); }
+            });
+          }, 10);
+        }
+
+        function _qeShowUrlPopup(title, defaultUrl, onApply) {
+          _qeHideContextMenu();
+          var popup = document.createElement("div");
+          popup.className = "ss-qe-color-popup";
+          var html = '<div class="ss-qe-color-popup-header">' + (title || "URL") + '</div>';
+          html += '<div class="ss-qe-color-popup-row"><input type="url" class="ss-qe-color-popup-hex" value="' + (defaultUrl || "") + '" placeholder="https://" style="width:100%;"></div>';
+          html += '<div class="ss-qe-color-popup-actions"><button type="button" class="ss-qe-color-popup-apply">Apply</button><button type="button" class="ss-qe-color-popup-cancel">Cancel</button></div>';
+          popup.innerHTML = html;
+          document.body.appendChild(popup);
+          var inp = popup.querySelector("input");
+          popup.querySelector(".ss-qe-color-popup-apply").addEventListener("click", function() {
+            var v = (inp.value || "").trim();
+            if (v) onApply(v);
+            popup.remove();
+          });
+          popup.querySelector(".ss-qe-color-popup-cancel").addEventListener("click", function() { popup.remove(); });
+          popup.style.left = "50%";
+          popup.style.top = "50%";
+          popup.style.transform = "translate(-50%, -50%)";
+          inp.focus();
+          inp.select();
           setTimeout(function() {
             document.addEventListener("mousedown", function handler(ev) {
               if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener("mousedown", handler); }
@@ -17548,40 +17745,32 @@ ${allContent}
           var ctrl = e.ctrlKey || e.metaKey;
           // TEXT MODE: If cursor is inside a text editor, let browser handle text editing
           if (_qeTextEditActive && _qeTextEditTarget && _qeTextEditTarget.contains(e.target)) {
-            // In text edit mode, only handle Escape to exit
-            if (e.key === "Escape") {
-              e.preventDefault();
-              _qeExitTextEditMode();
-              return;
-            }
-            // Let browser handle all other keys (Backspace, Delete, arrows, etc.)
+            if (e.key === "Escape") { e.preventDefault(); _qeExitTextEditMode(); return; }
             return;
           }
-          // OBJECT MODE: Object is selected but not in text edit mode
-          // Escape: close panels, deselect, exit text edit mode
+          // Check if cursor is inside any contenteditable element (table cell, shape text, main editor)
+          var ae = document.activeElement;
+          var isInEditable = false;
+          if (ae && ae.getAttribute && ae.getAttribute("contenteditable") === "true") isInEditable = true;
+          if (ae && ae.closest && (ae.closest("td") || ae.closest("th") || ae.closest(".ss-qe-shape-text-editor") || ae.closest("#ssQEContent"))) isInEditable = true;
+          var sel = window.getSelection();
+          if (sel && sel.anchorNode) {
+            var an = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
+            if (an && an.getAttribute && an.getAttribute("contenteditable") === "true") isInEditable = true;
+            if (an && an.closest && (an.closest("td") || an.closest("th") || an.closest(".ss-qe-shape-text-editor") || an.closest("#ssQEContent"))) isInEditable = true;
+          }
+          // If inside an editable text area, only handle Escape — let browser handle everything else
+          if (isInEditable) {
+            if (e.key === "Escape") { e.preventDefault(); _qeExitTextEditMode(); }
+            return;
+          }
+          // Escape: close panels, deselect
           if (e.key === "Escape") {
-            if (_qeTextEditActive) { _qeExitTextEditMode(); return; }
             _qeClosePanels(); _qeDeselectAll(); _qeHideContextMenu(); return;
           }
-          // Delete/Backspace in Object Mode: delete selected object ONLY if not editing text inside something
+          // Delete/Backspace: delete selected object only when NOT editing text
           if ((e.key === "Delete" || e.key === "Backspace") && _qe.selectedEl) {
-            // Check if cursor is inside any contenteditable element (table cell, shape text, main editor)
-            var ae = document.activeElement;
-            var isInEditable = false;
-            if (ae && ae.getAttribute && ae.getAttribute("contenteditable") === "true") isInEditable = true;
-            if (ae && ae.closest && (ae.closest("td") || ae.closest("th") || ae.closest(".ss-qe-shape-text-editor") || ae.closest("#ssQEContent"))) isInEditable = true;
-            // Also check selection anchor node
-            var sel = window.getSelection();
-            if (sel && sel.anchorNode) {
-              var an = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
-              if (an && an.getAttribute && an.getAttribute("contenteditable") === "true") isInEditable = true;
-              if (an && an.closest && (an.closest("td") || an.closest("th") || an.closest(".ss-qe-shape-text-editor") || an.closest("#ssQEContent"))) isInEditable = true;
-            }
-            // If we're inside an editable text area, let the browser handle the deletion
-            if (isInEditable) return;
-            // Otherwise, delete the selected object
-            e.preventDefault();
-            e.stopPropagation();
+            e.preventDefault(); e.stopPropagation();
             var obj = _qeGetObject(_qe.selectedEl);
             if (obj) _qeDoc.objects.delete(obj.id);
             _qe.selectedEl.remove();
@@ -17589,16 +17778,12 @@ ${allContent}
             _qeUpdateStatus();
             return;
           }
-          // Ctrl+Z: Undo (browser default)
           if (ctrl && e.key === "z" && !e.shiftKey) { return; }
-          // Ctrl+Y or Ctrl+Shift+Z: Redo (browser default)
           if (ctrl && (e.key === "y" || (e.key === "z" && e.shiftKey))) { return; }
-          // Ctrl+C: Copy
           if (ctrl && e.key === "c" && _qe.selectedEl) {
             e.preventDefault();
             _qeDoc.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType };
           }
-          // Ctrl+X: Cut
           if (ctrl && e.key === "x" && _qe.selectedEl) {
             e.preventDefault();
             _qeDoc.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType };
@@ -17608,19 +17793,16 @@ ${allContent}
             _qeDeselectAll();
             _qeUpdateStatus();
           }
-          // Ctrl+V: Paste
           if (ctrl && e.key === "v" && _qeDoc.clipboard) {
             if (_qe.selectedEl || document.activeElement === _qe.el) {
               e.preventDefault();
               _qeInsertHTML(_qeDoc.clipboard.html);
             }
           }
-          // Ctrl+D: Duplicate
           if (ctrl && e.key === "d" && _qe.selectedEl) {
             e.preventDefault();
             _qeDuplicateObject(_qe.selectedEl);
           }
-          // Ctrl+A: Select all editor content
           if (ctrl && e.key === "a" && document.activeElement === _qe.el) {
             e.preventDefault();
             var range = document.createRange();
@@ -17629,7 +17811,7 @@ ${allContent}
             sel.removeAllRanges();
             sel.addRange(range);
           }
-          // Arrow keys: move selected object
+          // Arrow keys: move selected object only when not in any editable
           if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.key) >= 0 && _qe.selectedEl) {
             e.preventDefault();
             var obj = _qeGetObject(_qe.selectedEl);
@@ -17788,16 +17970,17 @@ ${allContent}
 
         function getEditorHtml() {
           var html = _qeGetHTML();
-          // Final safety strip: remove any remaining editing artifacts
           var tmp = document.createElement("div");
           tmp.innerHTML = html;
-          // Remove editing controls, handles, panels
-          tmp.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-figure-controls, .ss-qe-image-controls, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize, .ss-qe-props-panel, .ss-qe-context-menu, .ss-qe-color-popup, .ss-qe-crop-overlay").forEach(function(el) { el.remove(); });
-          // Remove selection classes
+          tmp.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-figure-controls, .ss-qe-image-controls, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize, .ss-qe-props-panel, .ss-qe-context-menu, .ss-qe-color-popup, .ss-qe-crop-overlay, .ss-qe-marquee-box").forEach(function(el) { el.remove(); });
           tmp.querySelectorAll(".ss-qe-selected, .ss-qe-table-selected, .ss-qe-text-edit-mode").forEach(function(el) { el.classList.remove("ss-qe-selected", "ss-qe-table-selected", "ss-qe-text-edit-mode"); });
-          // Strip data-wired and other editing attributes
-          tmp.querySelectorAll("[data-obj-id]").forEach(function(el) {
-            el.removeAttribute("data-drag-wired");
+          tmp.querySelectorAll("[data-obj-id]").forEach(function(el) { el.removeAttribute("data-obj-id"); });
+          tmp.querySelectorAll("[data-wired], [data-drag-wired]").forEach(function(el) { el.removeAttribute("data-wired"); el.removeAttribute("data-drag-wired"); });
+          tmp.querySelectorAll("[contenteditable]").forEach(function(el) { el.removeAttribute("contenteditable"); });
+          tmp.querySelectorAll("[draggable]").forEach(function(el) { el.removeAttribute("draggable"); });
+          tmp.querySelectorAll("[style]").forEach(function(el) {
+            var s = el.getAttribute("style");
+            if (s) { s = s.replace(/outline[^;]*;?/gi, "").replace(/box-shadow[^;]*;?/gi, "").replace(/cursor[^;]*;?/gi, ""); el.setAttribute("style", s); }
           });
           return tmp.innerHTML;
         }
