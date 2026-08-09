@@ -1160,24 +1160,27 @@ body {
 
 .student-directory-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+  width: 100%;
 }
 
 .student-directory-card {
   display: grid;
   gap: 0.75rem;
-  padding: 1rem 1.15rem;
+  padding: 18px 20px;
   border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(15, 43, 63, 0.04);
+  background: linear-gradient(135deg, #ffffff, #f5f9fc);
+  border: 1px solid rgba(15, 72, 105, 0.12);
+  box-shadow: 0 6px 20px rgba(15, 45, 65, 0.08);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .student-directory-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(15, 43, 63, 0.08), 0 8px 24px rgba(15, 43, 63, 0.04);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(15, 45, 65, 0.12), 0 2px 8px rgba(15, 45, 65, 0.06);
 }
 
 .student-directory-card__top {
@@ -1187,18 +1190,18 @@ body {
 }
 
 .student-avatar {
-  width: 48px;
-  height: 48px;
-  min-width: 48px;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
   border-radius: 50%;
   background: linear-gradient(135deg, #0f2b3f, #1b5f7a 60%, #2fb08a);
   color: #fff;
   font-weight: 700;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 6px rgba(15, 43, 63, 0.12);
+  box-shadow: 0 3px 10px rgba(15, 43, 63, 0.15);
 }
 
 .student-avatar--image {
@@ -1221,15 +1224,16 @@ body {
 }
 
 .student-directory-meta h4 {
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 700;
   color: #0f2b3f;
   line-height: 1.3;
 }
 
 .student-directory-meta p {
-  font-size: 0.8rem;
+  font-size: 0.82rem;
   color: #5f7394;
+  margin-top: 2px;
 }
 
 .student-directory-actions {
@@ -3184,16 +3188,28 @@ body {
 }
 
 #allStudentsShell .student-directory-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #ffffff, #f5f9fc);
+  border: 1px solid rgba(15, 72, 105, 0.12);
 }
 
 #allStudentsShell .student-directory-card .table-action-btn {
   border-color: rgba(27, 95, 122, 0.2);
-  min-height: 32px;
-  padding: 0.3rem 0.6rem;
-  font-size: 0.75rem;
+  min-height: 34px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
   border-radius: 8px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+#allStudentsShell .student-directory-card .table-action-btn:hover {
+  border-color: rgba(27, 95, 122, 0.4);
+  background: rgba(27, 95, 122, 0.04);
+}
+#allStudentsShell .student-directory-card .table-action-btn.danger {
+  border-color: rgba(180, 60, 60, 0.2);
+}
+#allStudentsShell .student-directory-card .table-action-btn.danger:hover {
+  border-color: rgba(180, 60, 60, 0.4);
+  background: rgba(180, 60, 60, 0.04);
 }
 
 .view.module--employee #moduleSummary > article:first-child {
@@ -5677,13 +5693,16 @@ th {
   .dashboard-grid,
   .split-grid,
   .student-layout,
-  .student-directory-grid,
   .class-subjects-grid,
   .admission-letter-layout,
   .id-cards-grid,
   .report-grid,
   .report-cards {
     grid-template-columns: 1fr;
+  }
+
+  .student-directory-grid {
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   }
 }
 
@@ -5719,7 +5738,7 @@ th {
   .form-grid,
   .student-directory-grid,
   .stats-grid--students {
-    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   }
 
   .topbar {
@@ -6622,9 +6641,9 @@ select:focus, input:focus, textarea:focus {
 
 /* ===== STUDENT DIRECTORY CARDS PREMIUM (dashboard-style) ===== */
 .student-directory-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(15, 43, 63, 0.04);
+  background: linear-gradient(135deg, #ffffff, #f5f9fc);
+  border: 1px solid rgba(15, 72, 105, 0.12);
+  box-shadow: 0 6px 20px rgba(15, 45, 65, 0.08);
 }
 .student-status-card {
   background: linear-gradient(135deg, #ccf0db 0%, #99e1b7 50%, #66d293 100%) !important;
@@ -6635,7 +6654,7 @@ select:focus, input:focus, textarea:focus {
   padding: 1.15rem;
 }
 .student-avatar {
-  box-shadow: 0 2px 6px rgba(15, 43, 63, 0.12);
+  box-shadow: 0 3px 10px rgba(15, 43, 63, 0.15);
 }
 
 /* ===== CLASS-SUBJECT CARDS PREMIUM (dashboard-style) ===== */
@@ -6775,8 +6794,8 @@ select:focus, input:focus, textarea:focus {
 .salary-circle-card:hover,
 .super-admin-card:hover,
 .offline-registry-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(15, 43, 63, 0.08), 0 8px 24px rgba(15, 43, 63, 0.04);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(15, 45, 65, 0.12), 0 2px 8px rgba(15, 45, 65, 0.06);
 }
 
 /* ===== QR SCANNER MODAL ===== */
