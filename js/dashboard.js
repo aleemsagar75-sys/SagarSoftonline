@@ -16082,7 +16082,7 @@ ${allContent}
               if (shape) {
                 svgMeta.fill = shape.getAttribute("fill") || "#4fc3f7";
                 svgMeta.stroke = shape.getAttribute("stroke") || "#0277bd";
-                svgMeta.strokeWidth = parseInt(shape.getAttribute("stroke-width")) || 2;
+                svgMeta.strokeWidth = parseInt(shape.getAttribute("stroke-width")) || 1;
               }
             }
           }
@@ -16368,7 +16368,7 @@ ${allContent}
             html += '<div class="ss-qe-props-row"><label>Rotation</label><input type="number" data-prop="rotation" value="' + Math.round(obj.rotation) + '" step="15"></div>';
             html += '<div class="ss-qe-props-row"><label>Fill</label><input type="color" data-prop="fill" value="' + (obj.meta.fill || "#4fc3f7") + '"></div>';
             html += '<div class="ss-qe-props-row"><label>Stroke</label><input type="color" data-prop="stroke" value="' + (obj.meta.stroke || "#0277bd") + '"></div>';
-            html += '<div class="ss-qe-props-row"><label>Stroke W</label><input type="number" data-prop="strokeWidth" value="' + (obj.meta.strokeWidth || 2) + '" min="0" max="20"></div>';
+            html += '<div class="ss-qe-props-row"><label>Stroke W</label><input type="number" data-prop="strokeWidth" value="' + (obj.meta.strokeWidth || 1) + '" min="0" max="20"></div>';
             html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="tight"' + (obj.wrapMode === "tight" ? " selected" : "") + '>Tight</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option><option value="behind"' + (obj.wrapMode === "behind" ? " selected" : "") + '>Behind Text</option><option value="front"' + (obj.wrapMode === "front" ? " selected" : "") + '>In Front</option><option value="through"' + (obj.wrapMode === "through" ? " selected" : "") + '>Through</option></select></div>';
           } else if (obj.type === "table") {
             html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
@@ -16393,7 +16393,7 @@ ${allContent}
               else if (prop === "wrapMode") { obj.wrapMode = inp.value; _qeApplyWrapMode(obj.id); }
               else if (prop === "fill") { obj.meta.fill = inp.value; _qeUpdateShapeStyle(obj); }
               else if (prop === "stroke") { obj.meta.stroke = inp.value; _qeUpdateShapeStyle(obj); }
-              else if (prop === "strokeWidth") { obj.meta.strokeWidth = parseInt(inp.value) || 2; _qeUpdateShapeStyle(obj); }
+              else if (prop === "strokeWidth") { obj.meta.strokeWidth = parseInt(inp.value) || 1; _qeUpdateShapeStyle(obj); }
               else if (prop === "opacity") { obj.meta.opacity = parseInt(inp.value) / 100; obj.el.style.opacity = obj.meta.opacity; }
             });
           });
@@ -16481,7 +16481,7 @@ ${allContent}
               "---",
               { label: "Fill Color", fn: function(e) { var obj = _qeGetObject(el); var cur = (obj && obj.meta.fill) || "#4fc3f7"; _qeShowColorPopup(e, "Fill Color", cur, function(color) { if (obj) { obj.meta.fill = color; _qeUpdateShapeStyle(obj); } }); } },
               { label: "Border Color", fn: function(e) { var obj = _qeGetObject(el); var cur = (obj && obj.meta.stroke) || "#0277bd"; _qeShowColorPopup(e, "Border Color", cur, function(color) { if (obj) { obj.meta.stroke = color; _qeUpdateShapeStyle(obj); } }); } },
-              { label: "Border Width", fn: function() { var obj = _qeGetObject(el); var cur = (obj && obj.meta.strokeWidth) || 2; _qeShowInputPopup({ title: "Border Width", defaultValue: cur, unit: "px", min: 0, max: 50, onApply: function(v) { if (obj) { obj.meta.strokeWidth = v; _qeUpdateShapeStyle(obj); } } }); } },
+              { label: "Border Width", fn: function() { var obj = _qeGetObject(el); var cur = (obj && obj.meta.strokeWidth) || 1; _qeShowInputPopup({ title: "Border Width", defaultValue: cur, unit: "px", min: 0, max: 50, onApply: function(v) { if (obj) { obj.meta.strokeWidth = v; _qeUpdateShapeStyle(obj); } } }); } },
               "---",
               { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
               { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
@@ -16936,7 +16936,7 @@ ${allContent}
               if (shape) {
                 if (!obj.meta.fill) obj.meta.fill = shape.getAttribute("fill") || "#4fc3f7";
                 if (!obj.meta.stroke) obj.meta.stroke = shape.getAttribute("stroke") || "#0277bd";
-                if (!obj.meta.strokeWidth) obj.meta.strokeWidth = parseInt(shape.getAttribute("stroke-width")) || 2;
+                if (!obj.meta.strokeWidth) obj.meta.strokeWidth = parseInt(shape.getAttribute("stroke-width")) || 1;
               }
             }
             _qeSyncTransform(obj.id);
@@ -17390,19 +17390,19 @@ ${allContent}
 
         // ── Shape Library ──
         var _qeShapeLibrary = {
-          rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          circle: { label: "Circle", svg: '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><circle cx="50" cy="50" r="47" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          ellipse: { label: "Ellipse", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><ellipse cx="60" cy="40" rx="57" ry="37" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          triangle: { label: "Triangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="60,3 117,77 3,77" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          diamond: { label: "Diamond", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="60,3 117,40 60,77 3,40" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowRight: { label: "Arrow Right", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="2,15 70,15 70,2 118,40 70,78 70,65 2,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowLeft: { label: "Arrow Left", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="118,15 50,15 50,2 2,40 50,78 50,65 118,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowUp: { label: "Arrow Up", svg: '<svg viewBox="0 0 80 120" preserveAspectRatio="none"><polygon points="65,118 40,50 15,118" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="2" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          arrowDown: { label: "Arrow Down", svg: '<svg viewBox="0 0 80 120" preserveAspectRatio="none"><polygon points="65,2 40,70 15,2" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><rect x="32" y="63" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/></svg>' },
-          line: { label: "Line", svg: '<svg viewBox="0 0 120 20" preserveAspectRatio="none"><line x1="5" y1="10" x2="115" y2="10" stroke="#0277bd" stroke-width="3" stroke-linecap="round"/></svg>' },
-          callout: { label: "Callout", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="90" height="55" rx="6" fill="#4fc3f7" stroke="#0277bd" stroke-width="2"/><polygon points="30,57 40,77 55,57" fill="#4fc3f7" stroke="#0277bd" stroke-width="2" stroke-linejoin="round"/></svg>' },
-          textBox: { label: "Text Box", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="2" stroke-dasharray="6,3"/></svg>' }
+          rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          circle: { label: "Circle", svg: '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><circle cx="50" cy="50" r="47" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          ellipse: { label: "Ellipse", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><ellipse cx="60" cy="40" rx="57" ry="37" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          triangle: { label: "Triangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="60,3 117,77 3,77" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          diamond: { label: "Diamond", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="60,3 117,40 60,77 3,40" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          arrowRight: { label: "Arrow Right", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="2,15 70,15 70,2 118,40 70,78 70,65 2,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          arrowLeft: { label: "Arrow Left", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="118,15 50,15 50,2 2,40 50,78 50,65 118,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          arrowUp: { label: "Arrow Up", svg: '<svg viewBox="0 0 80 120" preserveAspectRatio="none"><polygon points="65,118 40,50 15,118" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/><rect x="32" y="2" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          arrowDown: { label: "Arrow Down", svg: '<svg viewBox="0 0 80 120" preserveAspectRatio="none"><polygon points="65,2 40,70 15,2" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/><rect x="32" y="63" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          line: { label: "Line", svg: '<svg viewBox="0 0 120 20" preserveAspectRatio="none"><line x1="5" y1="10" x2="115" y2="10" stroke="#0277bd" stroke-width="1" stroke-linecap="round"/></svg>' },
+          callout: { label: "Callout", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="90" height="55" rx="6" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/><polygon points="30,57 40,77 55,57" fill="#4fc3f7" stroke="#0277bd" stroke-width="1" stroke-linejoin="round"/></svg>' },
+          textBox: { label: "Text Box", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="1" stroke-dasharray="6,3"/></svg>' }
         };
 
         function _qeBuildShapesPanel() {
