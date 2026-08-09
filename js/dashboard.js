@@ -14250,6 +14250,56 @@ ${allContent}
                   padding: 0;
                 }
               }
+              .qp-question-rich {
+                position: relative;
+                overflow: visible;
+                height: auto;
+                min-height: 0;
+                max-height: none;
+              }
+              .qp-question-rich img {
+                max-width: 100%;
+                height: auto;
+                display: block;
+              }
+              .qp-question-rich table {
+                border-collapse: collapse;
+                max-width: 100%;
+                margin: 6px 0;
+                height: auto;
+              }
+              .qp-question-rich td,
+              .qp-question-rich th {
+                border: 1px solid #1f2f45;
+                padding: 4px 6px;
+                vertical-align: top;
+                height: auto;
+              }
+              .qp-question-rich figure {
+                margin: 6px 0;
+                max-width: 100%;
+                overflow: visible;
+                height: auto;
+              }
+              .qp-question-rich svg {
+                max-width: 100%;
+                height: auto;
+              }
+              .qp-question-rich .ss-qe-obj,
+              .qp-question-rich .ss-qe-figure {
+                height: auto;
+                min-height: 0;
+                position: relative;
+                top: auto;
+                left: auto;
+                overflow: visible;
+              }
+              .report-content .qp-question-rich,
+              .report-card .qp-question-rich {
+                height: auto;
+                min-height: 0;
+                max-height: none;
+              }
             </style>
           </head>
           <body class="${config.compactPrint ? "compact-print" : ""}">
@@ -15776,7 +15826,6 @@ ${allContent}
         const html = String(row.questionHtml || "").trim();
         const text = qpStripHtml(row.questionText || row.questionHtml || "");
           if (html) {
-            const hasAbsoluteLayout = /position\s*:\s*absolute/i.test(html);
             return `
               <div style="margin:0 0 8px;">
                 <style>
@@ -15786,7 +15835,7 @@ ${allContent}
                 </style>
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                   <strong style="flex:0 0 auto;line-height:1.55;">Q${qNo}.</strong>
-                  <div class="qp-question-rich" style="flex:1;position:relative;overflow:visible;min-height:${hasAbsoluteLayout ? 180 : 0}px;">${html}</div>
+                  <div class="qp-question-rich" style="flex:1;overflow:visible;">${html}</div>
                 </div>
             </div>
           `;
