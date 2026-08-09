@@ -18134,7 +18134,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
             <div style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Chapters (Multi Select)*</label>
               <select id="qpBankChapters" multiple size="6" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></select>
-              <div id="qpBankChapterActions" class="compact-list" style="margin-top:8px;"></div>
+              <div id="qpBankQuestionListing" style="margin-top:8px;"></div>
             </div>
             <div style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Type and Number</label>
@@ -18158,7 +18158,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
         const chapterSelect = document.getElementById("qpBankChapters");
         const typeRows = document.getElementById("qpBankTypeRows");
         const preview = document.getElementById("qpBankPreview");
-        const chapterActions = document.getElementById("qpBankChapterActions");
+        const questionListing = document.getElementById("qpBankQuestionListing");
         const message = document.getElementById("qpBankMessage");
         const titleInput = document.getElementById("qpBankTitle");
         const dateInput = document.getElementById("qpBankDate");
@@ -18179,7 +18179,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
         function renderSubjectSelect() {
           subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : `<option value="">Select class first</option>`;
           chapterSelect.innerHTML = "";
-          chapterActions.innerHTML = "";
+          questionListing.innerHTML = "";
           loadedRows = [];
           renderPreview();
         }
@@ -18195,15 +18195,53 @@ classSelect.addEventListener("change", renderSubjectSelect);
           chapterSelect.innerHTML = chapterNames.map(function (name) {
             return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
           }).join("");
-          chapterActions.innerHTML = chapterNames.length ? chapterNames.map(function (name) {
-            return `<article style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-              <span>${escapeHtml(name)}</span>
-              <span class="table-actions">
-                <button class="table-action-btn" type="button" data-qp-edit-chapter="${escapeAttr(name)}">Edit</button>
-                <button class="table-action-btn danger" type="button" data-qp-delete-chapter="${escapeAttr(name)}">Delete</button>
-              </span>
-            </article>`;
-          }).join("") : `<p class="empty-state">No chapter created for this class and subject.</p>`;
+        }
+
+        function renderQuestionListing() {
+          const className = classSelect.value;
+          const subject = subjectSelect.value;
+          const chapters = selectedChapters();
+          if (!className || !subject || !chapters.length) {
+            questionListing.innerHTML = "";
+            return;
+          }
+          const pool = qpQuestionPool({ className: className, subject: subject, chapterNames: chapters });
+          if (!pool.length) {
+            questionListing.innerHTML = `<p class="empty-state">No questions found for selected chapters. Add questions in Subject Chapters first.</p>`;
+            return;
+          }
+          const typeGroups = {};
+          pool.forEach(function (row) {
+            const type = row.questionType || "other";
+            if (!typeGroups[type]) {
+              typeGroups[type] = [];
+            }
+            typeGroups[type].push(row);
+          });
+          const typeOrder = ["mcq", "fill", "truefalse", "short", "long"];
+          const sortedTypes = typeOrder.filter(function (t) { return typeGroups[t] && typeGroups[t].length; });
+          Object.keys(typeGroups).forEach(function (t) {
+            if (!sortedTypes.includes(t)) {
+              sortedTypes.push(t);
+            }
+          });
+          let html = sortedTypes.map(function (type) {
+            const rows = typeGroups[type];
+            const cards = rows.map(function (row) {
+              const preview = qpStripHtml(row.questionHtml || row.questionText || "");
+              const display = preview.length > 80 ? preview.substring(0, 80) + "..." : preview;
+              return `<article class="module-preview-card" style="margin:6px 0;padding:8px 10px;">
+                <div style="font-size:0.8rem;color:#0f2748;margin-bottom:4px;"><strong>${escapeHtml(row.chapterName || "-")}</strong> | ${Number(row.marks || 0)} marks</div>
+                <p style="margin:0 0 6px;color:#4b5f84;font-size:0.78rem;">${escapeHtml(display) || "<em>No preview</em>"}</p>
+                <div class="form-actions" style="justify-content:flex-start;">
+                  <button class="table-action-btn" type="button" data-qp-listing-edit="${escapeAttr(row.id)}">Edit</button>
+                  <button class="table-action-btn danger" type="button" data-qp-listing-delete="${escapeAttr(row.id)}">Delete</button>
+                </div>
+              </article>`;
+            }).join("");
+            return `<div style="margin-bottom:10px;"><h4 style="margin:8px 0 4px;font-size:0.85rem;color:#0f2748;">${escapeHtml(qpTypeLabel(type))} (${rows.length})</h4>${cards}</div>`;
+          }).join("");
+          questionListing.innerHTML = html;
         }
 
         function selectedChapters() {
@@ -18218,65 +18256,6 @@ classSelect.addEventListener("change", renderSubjectSelect);
           }
         });
 
-        function openBrandedInputDialog(options) {
-          const config = options || {};
-          const overlay = document.createElement("div");
-          overlay.className = "app-modal-overlay";
-          overlay.style.position = "fixed";
-          overlay.style.inset = "0";
-          overlay.style.background = "rgba(12, 25, 44, 0.48)";
-          overlay.style.display = "flex";
-          overlay.style.alignItems = "center";
-          overlay.style.justifyContent = "center";
-          overlay.style.zIndex = "99999";
-          const panel = document.createElement("section");
-          panel.className = "app-modal app-modal--compact";
-          panel.style.width = "min(92vw, 430px)";
-          panel.style.background = "#f7fbff";
-          panel.style.border = "1px solid #c8d5e2";
-          panel.style.borderRadius = "16px";
-          panel.style.boxShadow = "0 18px 45px rgba(12, 25, 44, 0.28)";
-          panel.style.padding = "18px";
-          panel.innerHTML = `
-            <h3 style="margin:0 0 6px;color:#0f2748;font-size:1.05rem;">${escapeHtml(config.title || "Edit")}</h3>
-            <p style="margin:0 0 14px;color:#5f7394;font-size:0.9rem;">${escapeHtml(config.detail || "Update value below.")}</p>
-            <div class="field-group">
-              <label for="brandedInputDialogField">${escapeHtml(config.label || "Value")}</label>
-              <input id="brandedInputDialogField" type="text" value="${escapeAttr(config.value || "")}">
-            </div>
-            <p class="form-message" id="brandedInputDialogMessage"></p>
-            <div class="form-actions" style="justify-content:flex-end;margin-top:14px;">
-              <button type="button" class="table-action-btn" id="brandedInputCancel">Cancel</button>
-              <button type="button" class="table-action-btn success" id="brandedInputSave">Save</button>
-            </div>
-          `;
-          overlay.appendChild(panel);
-          document.body.appendChild(overlay);
-          const input = panel.querySelector("#brandedInputDialogField");
-          const messageBox = panel.querySelector("#brandedInputDialogMessage");
-          function close() {
-            overlay.remove();
-          }
-          panel.querySelector("#brandedInputCancel").addEventListener("click", close);
-          overlay.addEventListener("click", function (event) {
-            if (event.target === overlay) close();
-          });
-          panel.querySelector("#brandedInputSave").addEventListener("click", function () {
-            const nextValue = String(input.value || "").trim();
-            if (!nextValue) {
-              messageBox.textContent = "Please enter a chapter name.";
-              messageBox.className = "form-message error";
-              return;
-            }
-            close();
-            if (typeof config.onSave === "function") {
-              config.onSave(nextValue);
-            }
-          });
-          input.focus();
-          input.select();
-        }
-
         function selectedTypeCounts() {
           return Array.from(typeRows.querySelectorAll("[data-qp-type]")).map(function (checkbox) {
             const type = checkbox.getAttribute("data-qp-type");
@@ -18288,46 +18267,43 @@ classSelect.addEventListener("change", renderSubjectSelect);
           });
         }
 
-        chapterActions.addEventListener("click", function (event) {
-          const editButton = event.target.closest("[data-qp-edit-chapter]");
-          const deleteButton = event.target.closest("[data-qp-delete-chapter]");
-          const className = classSelect.value;
-          const subject = subjectSelect.value;
+        questionListing.addEventListener("click", function (event) {
+          const editButton = event.target.closest("[data-qp-listing-edit]");
           if (editButton) {
-            const oldName = editButton.getAttribute("data-qp-edit-chapter");
-            openBrandedInputDialog({
-              title: "Edit Chapter",
-              detail: "Rename this chapter for the selected class and subject.",
-              label: "Chapter Name",
-              value: oldName,
-              onSave: function (cleanName) {
-                (settings.questionChapters || []).forEach(function (row) {
-                  if (row.className === className && row.subject === subject && String(row.chapterName || "") === oldName) {
-                    row.chapterName = cleanName;
-                  }
-                });
-                saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-                renderChapterSelect();
-                loadedRows = [];
-                renderPreview();
-                openAppMessageBox("Success", "Chapter updated successfully.", "success");
-              }
+            const rowId = editButton.getAttribute("data-qp-listing-edit");
+            const row = (settings.questionChapters || []).find(function (item) {
+              return String(item.id) === String(rowId);
             });
+            if (!row) {
+              openAppMessageBox("Error", "Question not found.", "error");
+              return;
+            }
+            sessionStorage.setItem("sagarsoft_edit_question_id", row.id);
+            setRoute("subject-chapters");
             return;
           }
+          const deleteButton = event.target.closest("[data-qp-listing-delete]");
           if (deleteButton) {
-            const chapterName = deleteButton.getAttribute("data-qp-delete-chapter");
-            showStyledDeleteConfirmation(chapterName, function () {
-              trackDeletion(chapterName);
-              settings.questionChapters = (settings.questionChapters || []).filter(function (row) {
-                return !(row.className === className && row.subject === subject && String(row.chapterName || "") === chapterName);
+            const rowId = deleteButton.getAttribute("data-qp-listing-delete");
+            const row = (settings.questionChapters || []).find(function (item) {
+              return String(item.id) === String(rowId);
+            });
+            if (!row) {
+              openAppMessageBox("Error", "Question not found.", "error");
+              return;
+            }
+            showStyledDeleteConfirmation(String(row.questionTitle || row.chapterName || "Question"), function () {
+              trackDeletion(rowId);
+              settings.questionChapters = (settings.questionChapters || []).filter(function (item) {
+                return String(item.id) !== String(rowId);
               });
-              loadedRows = loadedRows.filter(function (row) { return String(row.chapterName || "") !== chapterName; });
-              filterPool = filterPool.filter(function (row) { return String(row.chapterName || "") !== chapterName; });
+              loadedRows = loadedRows.filter(function (item) { return String(item.id) !== String(rowId); });
+              filterPool = filterPool.filter(function (item) { return String(item.id) !== String(rowId); });
               saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               renderChapterSelect();
+              renderQuestionListing();
               renderPreview();
-              openAppMessageBox("Success", "Chapter deleted successfully.", "success");
+              openAppMessageBox("Success", "Question deleted successfully.", "success");
             });
           }
         });
@@ -18457,6 +18433,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
               filterPool = filterPool.filter(function (item) { return String(item.id) !== String(rowId); });
               saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               renderChapterSelect();
+              renderQuestionListing();
               renderPreview();
               openAppMessageBox("Success", "Question deleted successfully.", "success");
             });
@@ -18518,8 +18495,13 @@ classSelect.addEventListener("change", renderSubjectSelect);
         classSelect.addEventListener("change", function () {
           renderSubjectSelect();
           renderChapterSelect();
+          renderQuestionListing();
         });
-        subjectSelect.addEventListener("change", renderChapterSelect);
+        subjectSelect.addEventListener("change", function () {
+          renderChapterSelect();
+          renderQuestionListing();
+        });
+        chapterSelect.addEventListener("change", renderQuestionListing);
         renderTypeRows();
         renderSubjectSelect();
         return;
