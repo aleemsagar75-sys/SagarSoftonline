@@ -15906,6 +15906,16 @@ ${allContent}
         const tableBody = document.getElementById("qpChapterBody");
 
         // ── Question Type UI Functions (subject-chapters route) ──
+        var _qpAutoTitleDefaults = {
+          mcq: "Choose The Correct Option",
+          fill: "Fill In The Blanks",
+          truefalse: "Tick The Correct Option",
+          short: "Answer The Following Question",
+          long: "Answer The Following Question In Detail"
+        };
+        var _lastAutoTitle = "";
+        var _isEditing = false;
+        var _editingQuestionId = null;
         function renderSubjectSelect() {
           subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : '<option value="">Select class first</option>';
         }
@@ -15929,6 +15939,13 @@ ${allContent}
           if (val === "truefalse") { fillOpt1.value = "True"; fillOpt2.value = "False"; }
           if (val === "short") { answerLinesInput.value = 3; }
           if (val === "long") { answerLinesInput.value = 6; }
+          // Auto-fill question title based on type
+          var currentTitle = (questionTitleInput.value || "").trim();
+          var newDefault = _qpAutoTitleDefaults[val] || "";
+          if (!currentTitle || currentTitle === _lastAutoTitle) {
+            questionTitleInput.value = newDefault;
+          }
+          _lastAutoTitle = newDefault;
         }
         var mcqOptions = ["", ""];
         function renderMcqRows() {
@@ -15999,7 +16016,6 @@ ${allContent}
           if (!marks || parseInt(marks) < 1) { openAppMessageBox("Missing Field", "Please enter valid Marks.", "warning"); return; }
           if (!editorText.trim() && qType !== "mcq") { openAppMessageBox("Missing Content", "Please enter question content in the editor.", "warning"); return; }
           var questionData = {
-            id: "QC-" + Date.now().toString(36) + "-" + Math.random().toString(36).substr(2, 4),
             className: className,
             subject: subject,
             chapterName: chapterName,
@@ -16010,8 +16026,7 @@ ${allContent}
             questionHtml: editorHtml,
             questionText: editorText,
             options: [],
-            answerLines: 0,
-            createdAt: new Date().toISOString()
+            answerLines: 0
           };
           if (qType === "mcq") {
             questionData.options = mcqOptions.filter(function(o) { return String(o).trim() !== ""; });
@@ -16024,16 +16039,39 @@ ${allContent}
             questionData.answerLines = parseInt(answerLinesInput.value) || (qType === "short" ? 3 : 6);
           }
           settings.questionChapters = settings.questionChapters || [];
-          settings.questionChapters.push(questionData);
-          saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          renderChapterRows();
-          clearEditor();
-          mcqOptions = ["", ""];
-          renderMcqRows();
-          questionTitleInput.value = "";
-          marksInput.value = "";
-          chapterNameInput.value = "";
-          openAppMessageBox("Saved", "Question saved successfully.", "success");
+          if (_isEditing && _editingQuestionId) {
+            // UPDATE existing question
+            var existing = settings.questionChapters.find(function(r) { return String(r.id) === String(_editingQuestionId); });
+            if (!existing) { openAppMessageBox("Error", "Question not found for update.", "error"); return; }
+            Object.keys(questionData).forEach(function(k) { existing[k] = questionData[k]; });
+            saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            _isEditing = false;
+            _editingQuestionId = null;
+            sessionStorage.removeItem("sagarsoft_edit_question_id");
+            document.getElementById("qpSaveQuestion").textContent = "Save Question";
+            renderChapterRows();
+            clearEditor();
+            mcqOptions = ["", ""];
+            renderMcqRows();
+            questionTitleInput.value = "";
+            marksInput.value = "";
+            chapterNameInput.value = "";
+            openAppMessageBox("Updated", "Question updated successfully.", "success");
+          } else {
+            // CREATE new question
+            questionData.id = "QC-" + Date.now().toString(36) + "-" + Math.random().toString(36).substr(2, 4);
+            questionData.createdAt = new Date().toISOString();
+            settings.questionChapters.push(questionData);
+            saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            renderChapterRows();
+            clearEditor();
+            mcqOptions = ["", ""];
+            renderMcqRows();
+            questionTitleInput.value = "";
+            marksInput.value = "";
+            chapterNameInput.value = "";
+            openAppMessageBox("Saved", "Question saved successfully.", "success");
+          }
         });
 
         // ── MCQ Add/Remove Handlers ──
@@ -18023,6 +18061,63 @@ classSelect.addEventListener("change", renderSubjectSelect);
         renderTypeMode();
         renderMcqRows();
         renderChapterRows();
+
+        // ── Edit Mode: Load question from Question Bank ──
+        var editQId = sessionStorage.getItem("sagarsoft_edit_question_id");
+        if (editQId) {
+          var editRow = (settings.questionChapters || []).find(function(r) { return String(r.id) === String(editQId); });
+          if (editRow) {
+            _isEditing = true;
+            _editingQuestionId = editRow.id;
+            document.getElementById("qpSaveQuestion").textContent = "Update Question";
+            // Populate class and trigger subject load
+            classSelect.value = editRow.className || "";
+            renderSubjectSelect();
+            subjectSelect.value = editRow.subject || "";
+            renderExistingChapterSelect();
+            // Populate section, type, marks
+            sectionSelect.value = editRow.section || "Section A";
+            typeSelect.value = editRow.questionType || "short";
+            marksInput.value = editRow.marks || "";
+            // Populate chapter
+            existingChapterSelect.value = editRow.chapterName || "";
+            chapterNameInput.value = editRow.chapterName || "";
+            // Populate question title
+            questionTitleInput.value = editRow.questionTitle || "";
+            _lastAutoTitle = _qpAutoTitleDefaults[editRow.questionType] || "";
+            // Render type-specific fields
+            renderTypeMode();
+            // Populate MCQ options
+            if (editRow.questionType === "mcq" && Array.isArray(editRow.options)) {
+              mcqOptions = editRow.options.slice();
+              while (mcqOptions.length < 2) mcqOptions.push("");
+              renderMcqRows();
+              // Fill MCQ input values
+              var mcqInps = mcqRows.querySelectorAll(".mcq-opt-input");
+              mcqInps.forEach(function(inp) {
+                var idx = parseInt(inp.getAttribute("data-idx"));
+                if (mcqOptions[idx] !== undefined) inp.value = mcqOptions[idx];
+              });
+            }
+            // Populate fill/truefalse options
+            if ((editRow.questionType === "fill" || editRow.questionType === "truefalse") && Array.isArray(editRow.options) && editRow.options.length >= 2) {
+              fillOpt1.value = editRow.options[0] || "";
+              fillOpt2.value = editRow.options[1] || "";
+            }
+            // Populate answer lines
+            if (editRow.questionType === "short" || editRow.questionType === "long") {
+              answerLinesInput.value = editRow.answerLines || (editRow.questionType === "short" ? 3 : 6);
+            }
+            // Load rich editor content
+            if (editRow.questionHtml) {
+              _qe.el.innerHTML = editRow.questionHtml;
+              _qeUpdateStatus();
+              setTimeout(function() { _qeWireAllObjects(); }, 0);
+            }
+          }
+          sessionStorage.removeItem("sagarsoft_edit_question_id");
+        }
+
         return;
       }
 
@@ -18338,27 +18433,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
               openAppMessageBox("Error", "Question not found.", "error");
               return;
             }
-            openStyledPrompt("Edit Chapter Name", String(row.chapterName || ""), function (nextChapter) {
-              if (nextChapter === null || nextChapter === undefined) return;
-              openStyledPrompt("Edit Question Title", String(row.questionTitle || ""), function (nextTitle) {
-                if (nextTitle === null || nextTitle === undefined) return;
-                openStyledPrompt("Edit Marks", String(Number(row.marks || 0)), function (nextMarksRaw) {
-                  if (nextMarksRaw === null || nextMarksRaw === undefined) return;
-                  var nextMarks = Number(nextMarksRaw);
-                  if (!(nextMarks > 0)) {
-                    openAppMessageBox("Error", "Marks must be greater than 0.", "error");
-                    return;
-                  }
-                  row.chapterName = String(nextChapter || "").trim() || row.chapterName || "";
-                  row.questionTitle = String(nextTitle || "").trim() || row.questionTitle || "";
-                  row.marks = nextMarks;
-        saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-        renderChapterSelect();
-                  renderPreview();
-                  openAppMessageBox("Success", "Question updated successfully.", "success");
-                });
-              });
-            });
+            sessionStorage.setItem("sagarsoft_edit_question_id", row.id);
+            setRoute("subject-chapters");
+            return;
           }
 
           const deleteButton = event.target.closest("[data-qp-delete]");
@@ -26092,6 +26169,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
 
       if (route === "employees-add-new") {
         sessionStorage.removeItem("sagarsoft_edit_employee_id");
+      }
+
+      if (route === "subject-chapters") {
+        sessionStorage.removeItem("sagarsoft_edit_question_id");
       }
 
       setRoute(route);
