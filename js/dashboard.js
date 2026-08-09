@@ -15786,7 +15786,7 @@ ${allContent}
                 </style>
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                   <strong style="flex:0 0 auto;line-height:1.55;">Q${qNo}.</strong>
-                  <div class="qp-question-rich" style="flex:1;position:relative;min-height:${hasAbsoluteLayout ? 180 : 0}px;">${html}</div>
+                  <div class="qp-question-rich" style="flex:1;position:relative;overflow:visible;min-height:${hasAbsoluteLayout ? 180 : 0}px;">${html}</div>
                 </div>
             </div>
           `;
@@ -18140,9 +18140,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Type and Number</label>
               <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:300px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Use</th><th style="white-space:nowrap;">Question Type</th><th style="white-space:nowrap;">Number</th></tr></thead><tbody id="qpBankTypeRows"></tbody></table></div>
             </div>
-            <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow-x:hidden;">
+            <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow:visible;">
               <strong>Loaded Questions Preview</strong>
-              <div id="qpBankPreview" class="module-preview-card" style="max-width:100%;overflow-x:auto;"><p>Select filters then click Load Questions.</p></div>
+              <div id="qpBankPreview" class="module-preview-card" style="max-width:100%;overflow:visible;"><p>Select filters then click Load Questions.</p></div>
             </article>
             <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 4px 0;">
               <button class="table-action-btn" type="button" id="qpLoadQuestions" style="padding:6px 14px;font-size:0.8rem;">Load Questions</button>
@@ -18164,6 +18164,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
         const dateInput = document.getElementById("qpBankDate");
         let loadedRows = [];
         let filterPool = [];
+        let usedQuestionIds = new Set();
 
         function shuffleRows(rows) {
           return rows.slice().sort(function () { return Math.random() - 0.5; });
@@ -18228,18 +18229,24 @@ classSelect.addEventListener("change", renderSubjectSelect);
           let html = sortedTypes.map(function (type) {
             const rows = typeGroups[type];
             const cards = rows.map(function (row) {
-              const preview = qpStripHtml(row.questionHtml || row.questionText || "");
-              const display = preview.length > 80 ? preview.substring(0, 80) + "..." : preview;
+              const qHtml = String(row.questionHtml || "").trim();
+              const qText = qpStripHtml(row.questionText || row.questionHtml || "");
+              let contentHtml;
+              if (qHtml) {
+                contentHtml = `<div class="qp-paper-content">${qHtml}</div>`;
+              } else {
+                contentHtml = `<p style="margin:0;color:#4b5f84;">${escapeHtml(qText || "No content")}</p>`;
+              }
               return `<article class="module-preview-card" style="margin:6px 0;padding:8px 10px;">
                 <div style="font-size:0.8rem;color:#0f2748;margin-bottom:4px;"><strong>${escapeHtml(row.chapterName || "-")}</strong> | ${Number(row.marks || 0)} marks</div>
-                <p style="margin:0 0 6px;color:#4b5f84;font-size:0.78rem;">${escapeHtml(display) || "<em>No preview</em>"}</p>
-                <div class="form-actions" style="justify-content:flex-start;">
+                ${contentHtml}
+                <div class="form-actions" style="justify-content:flex-start;margin-top:6px;">
                   <button class="table-action-btn" type="button" data-qp-listing-edit="${escapeAttr(row.id)}">Edit</button>
                   <button class="table-action-btn danger" type="button" data-qp-listing-delete="${escapeAttr(row.id)}">Delete</button>
                 </div>
               </article>`;
             }).join("");
-            return `<div style="margin-bottom:10px;"><h4 style="margin:8px 0 4px;font-size:0.85rem;color:#0f2748;">${escapeHtml(qpTypeLabel(type))} (${rows.length})</h4>${cards}</div>`;
+            return `<div style="margin-bottom:10px;"><h4 class="qp-question-listing-type">${escapeHtml(qpTypeLabel(type))} (${rows.length})</h4>${cards}</div>`;
           }).join("");
           questionListing.innerHTML = html;
         }
@@ -18299,6 +18306,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
               });
               loadedRows = loadedRows.filter(function (item) { return String(item.id) !== String(rowId); });
               filterPool = filterPool.filter(function (item) { return String(item.id) !== String(rowId); });
+              usedQuestionIds = new Set(loadedRows.map(function (r) { return String(r.id); }));
               saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               renderChapterSelect();
               renderQuestionListing();
@@ -18314,26 +18322,44 @@ classSelect.addEventListener("change", renderSubjectSelect);
             return;
           }
           let serial = 1;
-          preview.innerHTML = qpSections.map(function (sectionName) {
-            const rows = loadedRows.filter(function (row) {
-              return (row.section || "Section A") === sectionName;
-            });
-            if (!rows.length) {
-              return "";
+          preview.innerHTML = loadedRows.map(function (row) {
+            const qNo = serial++;
+            const type = row.questionType || "short";
+            const qHtml = String(row.questionHtml || "").trim();
+            const qText = qpStripHtml(row.questionText || row.questionHtml || "");
+            let questionContent;
+            if (qHtml) {
+              questionContent = `<div class="qp-paper-content">${qHtml}</div>`;
+            } else {
+              questionContent = `<p style="margin:0;">${escapeHtml(qText || "-")}</p>`;
             }
-            const cards = rows.map(function (row) {
-              const qNo = serial++;
-              return `<article class="module-preview-card" style="margin:8px 0;padding:10px;">
-                <div style="margin:0 0 6px;">${qpRenderQuestionForPaper(row, qNo)}</div>
-                <p style="margin:0 0 8px;color:#4b5f84;">${escapeHtml(qpTypeLabel(row.questionType))} | ${escapeHtml(row.chapterName || "-")} | ${Number(row.marks || 0)} marks</p>
-                <div class="form-actions" style="justify-content:flex-start;">
-                  <button class="table-action-btn" type="button" data-qp-change="${escapeAttr(row.id)}">Change</button>
-                  <button class="table-action-btn" type="button" data-qp-edit="${escapeAttr(row.id)}">Edit</button>
-                  <button class="table-action-btn danger" type="button" data-qp-delete="${escapeAttr(row.id)}">Delete</button>
-                </div>
-              </article>`;
-            }).join("");
-            return `<section><h4 style="text-align:center;margin:10px 0 6px;font-weight:800;">${escapeHtml(sectionName)}</h4>${cards}</section>`;
+            let typeExtra = "";
+            if (type === "mcq" && Array.isArray(row.options) && row.options.filter(Boolean).length) {
+              const labels = ["A", "B", "C", "D", "E", "F"];
+              const opts = row.options.filter(Boolean).map(function (opt, idx) {
+                return `<span style="display:inline-block;margin-right:14px;">${labels[idx] || "O" + (idx + 1)}) ${escapeHtml(opt)}</span>`;
+              }).join("");
+              typeExtra = `<div style="margin:6px 0 0 24px;">${opts}</div>`;
+            } else if (type === "fill" && Array.isArray(row.options) && row.options.length) {
+              typeExtra = `<div style="margin:6px 0 0 24px;">[${escapeHtml(row.options[0] || "true")}] &nbsp;&nbsp; [${escapeHtml(row.options[1] || "false")}]</div>`;
+            } else if (type === "truefalse") {
+              typeExtra = `<div style="margin:6px 0 0 24px;">[True] &nbsp;&nbsp; [False]</div>`;
+            } else if (type === "short" || type === "long") {
+              const lines = type === "long" ? Math.max(3, Number(row.answerLines || 6)) : Math.max(1, Number(row.answerLines || 3));
+              typeExtra = `<div style="margin:6px 0 0 24px;">${qpAnswerLines(lines)}</div>`;
+            }
+            const chapter = escapeHtml(row.chapterName || "-");
+            const marks = Number(row.marks || 0);
+            const typeLabel = escapeHtml(qpTypeLabel(type));
+            return `<div class="qp-paper-question" data-qp-loaded-id="${escapeAttr(row.id)}">
+              <div class="qp-paper-number">Q${qNo}.</div>
+              ${questionContent}
+              ${typeExtra}
+              <div class="qp-paper-meta">${typeLabel} | ${chapter} | ${marks} marks</div>
+              <div class="qp-paper-actions">
+                <button class="table-action-btn" type="button" data-qp-change="${escapeAttr(row.id)}">Change</button>
+              </div>
+            </div>`;
           }).join("");
         }
 
@@ -18386,6 +18412,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
             }
           });
           loadedRows = shuffleRows(selectedRows);
+          usedQuestionIds = new Set(loadedRows.map(function (r) { return String(r.id); }));
           if (!loadedRows.length) {
             message.textContent = "No question matched selected filters.";
             message.className = "form-message error";
@@ -18399,47 +18426,6 @@ classSelect.addEventListener("change", renderSubjectSelect);
         }
 
         preview.addEventListener("click", function (event) {
-          const editButton = event.target.closest("[data-qp-edit]");
-          if (editButton) {
-            const rowId = editButton.getAttribute("data-qp-edit");
-            const row = (settings.questionChapters || []).find(function (item) {
-              return String(item.id) === String(rowId);
-            });
-            if (!row) {
-              openAppMessageBox("Error", "Question not found.", "error");
-              return;
-            }
-            sessionStorage.setItem("sagarsoft_edit_question_id", row.id);
-            setRoute("subject-chapters");
-            return;
-          }
-
-          const deleteButton = event.target.closest("[data-qp-delete]");
-          if (deleteButton) {
-            const rowId = deleteButton.getAttribute("data-qp-delete");
-            const row = (settings.questionChapters || []).find(function (item) {
-              return String(item.id) === String(rowId);
-            });
-            if (!row) {
-              openAppMessageBox("Error", "Question not found.", "error");
-              return;
-            }
-            showStyledDeleteConfirmation(String(row.questionTitle || row.chapterName || "Question"), function () {
-              trackDeletion(rowId);
-              settings.questionChapters = (settings.questionChapters || []).filter(function (item) {
-                return String(item.id) !== String(rowId);
-              });
-              loadedRows = loadedRows.filter(function (item) { return String(item.id) !== String(rowId); });
-              filterPool = filterPool.filter(function (item) { return String(item.id) !== String(rowId); });
-              saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-              renderChapterSelect();
-              renderQuestionListing();
-              renderPreview();
-              openAppMessageBox("Success", "Question deleted successfully.", "success");
-            });
-            return;
-          }
-
           const button = event.target.closest("[data-qp-change]");
           if (!button) {
             return;
@@ -18452,17 +18438,36 @@ classSelect.addEventListener("change", renderSubjectSelect);
             return;
           }
           const current = loadedRows[rowIndex];
-          const usedIds = loadedRows.map(function (row) { return String(row.id); });
-          const alternatives = shuffleRows(filterPool.filter(function (row) {
-            return row.questionType === current.questionType && !usedIds.includes(String(row.id));
-          }));
-          if (!alternatives.length) {
-            openAppMessageBox("Error", "no more questions from selected chapter", "error");
+          const currentType = current.questionType || "short";
+          const currentChapter = current.chapterName || "";
+          const usedIds = new Set(loadedRows.map(function (r) { return String(r.id); }));
+          const className = classSelect.value;
+          const subject = subjectSelect.value;
+          const chapters = selectedChapters();
+          const eligible = filterPool.filter(function (row) {
+            return row.questionType === currentType && !usedIds.has(String(row.id));
+          });
+          const chapterEligible = chapters.length ? eligible.filter(function (row) {
+            return chapters.indexOf(row.chapterName || "") !== -1;
+          }) : eligible;
+          const pool = chapterEligible.length ? chapterEligible : eligible;
+          if (!pool.length) {
+            const container = button.closest(".qp-paper-question");
+            if (container) {
+              let notAvail = container.querySelector(".qp-paper-not-available");
+              if (!notAvail) {
+                notAvail = document.createElement("div");
+                notAvail.className = "qp-paper-not-available";
+                notAvail.textContent = "Not Available";
+                button.parentElement.insertBefore(notAvail, button);
+              }
+            }
             return;
           }
-          loadedRows[rowIndex] = alternatives[0];
+          const shuffled = shuffleRows(pool);
+          loadedRows[rowIndex] = shuffled[0];
+          usedQuestionIds = new Set(loadedRows.map(function (r) { return String(r.id); }));
           renderPreview();
-          openAppMessageBox("Success", "Question changed successfully.", "success");
         });
 
         safeOn(document.getElementById("qpLoadQuestions"), "click", loadQuestions);
@@ -18517,9 +18522,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
             <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date*</label><input id="qpPrintDate" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
           </div>
           <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Instructions</label><textarea id="qpPrintInstructions" rows="3" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;">Attempt all questions. Write neat and clean answers.</textarea></div>
-          <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow-x:hidden;">
+          <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow:visible;">
             <strong>Question Paper Preview</strong>
-            <div id="qpPrintPreview" class="module-preview-card" style="max-width:100%;overflow-x:auto;"><p>Select class, subject, paper title and click Load.</p></div>
+            <div id="qpPrintPreview" class="module-preview-card" style="max-width:100%;overflow:visible;"><p>Select class, subject, paper title and click Load.</p></div>
           </article>
           <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 4px 0;">
             <button class="table-action-btn" type="button" id="qpLoadSavedPaper" style="padding:6px 14px;font-size:0.8rem;">Load</button>
