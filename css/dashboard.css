@@ -4993,18 +4993,18 @@ body {
   box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.3);
 }
 .ss-qe-float-table table {
-  width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
 }
 .ss-qe-float-table td, .ss-qe-float-table th {
   border: 1px solid #b0bec5;
   padding: 6px 8px;
-  min-width: 40px;
-  min-height: 24px;
+  min-width: 20px;
+  min-height: 20px;
   vertical-align: top;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  word-break: break-word;
 }
 .ss-qe-float-table td[contenteditable="true"]:focus {
   outline: 2px solid #2563eb;
@@ -5058,37 +5058,9 @@ body {
   opacity: 1;
 }
 
-/* Column resize handle */
-.ss-qe-col-resize {
-  position: absolute;
-  right: -3px;
-  top: 0;
-  width: 6px;
-  height: 100%;
-  cursor: col-resize;
-  z-index: 5;
-  pointer-events: none;
-}
-.ss-qe-col-resize:hover {
-  pointer-events: auto;
-  background: rgba(37, 99, 235, 0.3);
-}
+/* Column resize - handled by cursor detection, no visible handles */
 
-/* Row resize handle */
-.ss-qe-row-resize {
-  position: absolute;
-  bottom: -3px;
-  left: 0;
-  width: 100%;
-  height: 6px;
-  cursor: row-resize;
-  z-index: 5;
-  pointer-events: none;
-}
-.ss-qe-row-resize:hover {
-  pointer-events: auto;
-  background: rgba(37, 99, 235, 0.3);
-}
+/* Row resize - handled by cursor detection, no visible handles */
 
 /* Context menu */
 .ss-qe-context-menu {

@@ -15943,12 +15943,22 @@ ${allContent}
               }
             }
           }
+          // For tables, read actual dimensions from the <table> element, not wrapper
+          var objW, objH;
+          if (type === "table") {
+            var tbl = el.querySelector("table");
+            objW = tbl ? tbl.offsetWidth : (rect.width || 120);
+            objH = tbl ? tbl.offsetHeight : (rect.height || 80);
+          } else {
+            objW = parseInt(el.style.width) || rect.width || 120;
+            objH = parseInt(el.style.height) || rect.height || 80;
+          }
           var obj = {
             id: id, el: el, type: type,
             x: parseInt(el.style.left) || 0,
             y: parseInt(el.style.top) || 0,
-            w: parseInt(el.style.width) || rect.width || 120,
-            h: parseInt(el.style.height) || rect.height || 80,
+            w: objW,
+            h: objH,
             rotation: parseFloat(el.getAttribute("data-rotation")) || 0,
             zIndex: parseInt(el.style.zIndex) || 100,
             wrapMode: el.getAttribute("data-wrap") || "inline",
@@ -15975,9 +15985,20 @@ ${allContent}
           obj.el.style.position = "relative";
           obj.el.style.left = obj.x + "px";
           obj.el.style.top = obj.y + "px";
-          obj.el.style.width = obj.w + "px";
-          obj.el.style.height = obj.h + "px";
           obj.el.style.zIndex = obj.zIndex;
+          // For tables, set <table> element dimensions, not wrapper
+          if (obj.type === "table") {
+            var tbl = obj.el.querySelector("table");
+            if (tbl) {
+              tbl.style.width = obj.w + "px";
+              tbl.style.height = obj.h + "px";
+              obj.el.style.width = "";
+              obj.el.style.height = "";
+            }
+          } else {
+            obj.el.style.width = obj.w + "px";
+            obj.el.style.height = obj.h + "px";
+          }
           if (obj.rotation) {
             obj.el.style.transform = "rotate(" + obj.rotation + "deg)";
           } else {
@@ -16013,10 +16034,17 @@ ${allContent}
               inner.style.height = "100%";
             }
           }
-          // Tables: fill container width
+          // Tables: set actual table dimensions from object
           if (obj.type === "table") {
             var tbl = obj.el.querySelector("table");
-            if (tbl) { tbl.style.width = "100%"; }
+            if (tbl) {
+              tbl.style.width = obj.w + "px";
+              if (obj.h) tbl.style.height = obj.h + "px";
+              tbl.style.borderCollapse = "collapse";
+            }
+            // Wrapper adapts to table — no fixed width/height on wrapper
+            obj.el.style.width = "";
+            obj.el.style.height = "";
           }
         }
 
@@ -16828,15 +16856,20 @@ ${allContent}
             e.preventDefault(); e.stopPropagation();
             var obj = _qeGetObject(ft);
             if (!obj) return;
+            var tbl = ft.querySelector("table");
+            if (!tbl) return;
             var startX = e.clientX, startY = e.clientY;
-            var origW = obj.w, origH = obj.h;
+            var startTableW = tbl.offsetWidth;
+            var startTableH = tbl.offsetHeight;
             function onMove(ev) {
-              var nW = Math.max(100, origW + (ev.clientX - startX));
-              var nH = Math.max(60, origH + (ev.clientY - startY));
-              obj.w = nW; obj.h = nH;
-              _qeSyncTransform(obj.id);
-              var tbl = ft.querySelector("table");
-              if (tbl) { tbl.style.width = "100%"; tbl.style.height = "100%"; }
+              var newW = Math.max(100, startTableW + (ev.clientX - startX));
+              var newH = Math.max(40, startTableH + (ev.clientY - startY));
+              // Update the actual table dimensions
+              tbl.style.width = newW + "px";
+              tbl.style.height = newH + "px";
+              // Store in object for save/load
+              obj.w = newW;
+              obj.h = newH;
               _qeShowPropsPanel();
             }
             function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
@@ -16845,74 +16878,212 @@ ${allContent}
           });
         }
 
-        // ── Table Column Resize ──
+        // ── Table Column Resize (Word-style border dragging) ──
         function _qeSetupTableColResize(table) {
           if (!table) return;
-          var firstRow = table.querySelector("tr");
-          if (!firstRow) return;
-          var cells = firstRow.querySelectorAll("td, th");
-          if (cells.length < 2) return;
-          // Add boundary handles between each pair of columns
-          for (var i = 0; i < cells.length - 1; i++) {
-            (function(idx) {
-              var handle = document.createElement("div");
-              handle.className = "ss-qe-col-resize";
-              handle.style.cssText = "position:absolute;right:-3px;top:0;width:6px;height:100%;cursor:col-resize;z-index:5;";
-              cells[idx].style.position = "relative";
-              cells[idx].appendChild(handle);
-              safeOn(handle, "mousedown", function(e) {
-                e.preventDefault(); e.stopPropagation();
-                var startX = e.clientX;
-                // Get widths of the two affected columns
-                var leftCell = cells[idx];
-                var rightCell = cells[idx + 1];
-                var startLeftW = leftCell.offsetWidth;
-                var startRightW = rightCell.offsetWidth;
-                var allRows = table.querySelectorAll("tr");
-                function onMove(ev) {
-                  var dx = ev.clientX - startX;
-                  var newLeftW = Math.max(30, startLeftW + dx);
-                  var newRightW = Math.max(30, startRightW - dx);
-                  // Apply to ALL rows at this column index
-                  allRows.forEach(function(tr) {
-                    var lc = tr.children[idx];
-                    var rc = tr.children[idx + 1];
-                    if (lc) { lc.style.width = newLeftW + "px"; lc.style.minWidth = newLeftW + "px"; }
-                    if (rc) { rc.style.width = newRightW + "px"; rc.style.minWidth = newRightW + "px"; }
-                  });
-                }
-                function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
-                document.addEventListener("mousemove", onMove);
-                document.addEventListener("mouseup", onUp);
+          var _colResizeActive = false;
+          var _colResizeIdx = -1;
+          var _colResizeStartX = 0;
+          var _colResizeStartLeftW = 0;
+          var _colResizeStartRightW = 0;
+          var _colResizeAllRows = null;
+
+          // Detect column boundary proximity and change cursor
+          safeOn(table, "mousemove", function(e) {
+            if (_colResizeActive) return;
+            var cell = e.target.closest("td, th");
+            if (!cell) { table.style.cursor = ""; return; }
+            var tr = cell.closest("tr");
+            if (!tr) return;
+            var cells = Array.from(tr.children);
+            var idx = cells.indexOf(cell);
+            if (idx < 0) return;
+            var rect = cell.getBoundingClientRect();
+            var x = e.clientX;
+            var threshold = 6;
+            // Check right boundary of this cell (unless it's the last cell)
+            if (idx < cells.length - 1) {
+              var distRight = Math.abs(x - rect.right);
+              if (distRight <= threshold) {
+                table.style.cursor = "col-resize";
+                return;
+              }
+            }
+            // Check left boundary of this cell (unless it's the first cell)
+            if (idx > 0) {
+              var distLeft = Math.abs(x - rect.left);
+              if (distLeft <= threshold) {
+                table.style.cursor = "col-resize";
+                return;
+              }
+            }
+            table.style.cursor = "";
+          });
+
+          safeOn(table, "mousedown", function(e) {
+            var cell = e.target.closest("td, th");
+            if (!cell) return;
+            var tr = cell.closest("tr");
+            if (!tr) return;
+            var cells = Array.from(tr.children);
+            var idx = cells.indexOf(cell);
+            if (idx < 0) return;
+            var rect = cell.getBoundingClientRect();
+            var x = e.clientX;
+            var threshold = 6;
+            var boundaryIdx = -1;
+            var startLeftW = 0, startRightW = 0;
+            // Determine which boundary was clicked
+            if (idx < cells.length - 1 && Math.abs(x - rect.right) <= threshold) {
+              boundaryIdx = idx; // Right boundary of cell idx = left boundary of cell idx+1
+              startLeftW = cells[idx].offsetWidth;
+              startRightW = cells[idx + 1].offsetWidth;
+            } else if (idx > 0 && Math.abs(x - rect.left) <= threshold) {
+              boundaryIdx = idx - 1; // Left boundary of cell idx = right boundary of cell idx-1
+              startLeftW = cells[idx - 1].offsetWidth;
+              startRightW = cells[idx].offsetWidth;
+            }
+            if (boundaryIdx < 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _colResizeActive = true;
+            _colResizeIdx = boundaryIdx;
+            _colResizeStartX = x;
+            _colResizeStartLeftW = startLeftW;
+            _colResizeStartRightW = startRightW;
+            _colResizeAllRows = table.querySelectorAll("tr");
+            table.style.cursor = "col-resize";
+            document.body.style.cursor = "col-resize";
+            document.body.style.userSelect = "none";
+
+            function onMove(ev) {
+              var dx = ev.clientX - _colResizeStartX;
+              var newLeftW = Math.max(20, _colResizeStartLeftW + dx);
+              var newRightW = Math.max(20, _colResizeStartRightW - dx);
+              _colResizeAllRows.forEach(function(r) {
+                var lc = r.children[_colResizeIdx];
+                var rc = r.children[_colResizeIdx + 1];
+                if (lc) { lc.style.width = newLeftW + "px"; lc.style.minWidth = newLeftW + "px"; lc.style.maxWidth = newLeftW + "px"; }
+                if (rc) { rc.style.width = newRightW + "px"; rc.style.minWidth = newRightW + "px"; rc.style.maxWidth = newRightW + "px"; }
               });
-            })(i);
-          }
+              // Update table width to match
+              var tbl = table;
+              tbl.style.width = "";
+              // Force reflow to get natural width
+              var totalW = 0;
+              var firstRow = tbl.querySelector("tr");
+              if (firstRow) Array.from(firstRow.children).forEach(function(c) { totalW += c.offsetWidth; });
+              if (totalW > 0) tbl.style.width = totalW + "px";
+            }
+            function onUp() {
+              _colResizeActive = false;
+              table.style.cursor = "";
+              document.body.style.cursor = "";
+              document.body.style.userSelect = "";
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              // Update object dimensions
+              var obj = _qeGetObject(table.closest(".ss-qe-float-table"));
+              if (obj) { obj.w = table.offsetWidth; obj.h = table.offsetHeight; }
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
         }
 
-        // ── Table Row Resize ──
+        // ── Table Row Resize (Word-style border dragging) ──
         function _qeSetupTableRowResize(table) {
           if (!table) return;
-          var rows = table.querySelectorAll("tr");
-          rows.forEach(function(tr, idx) {
-            if (idx >= rows.length - 1) return; // skip last row
-            if (tr.querySelector(".ss-qe-row-resize")) return;
-            var handle = document.createElement("div");
-            handle.className = "ss-qe-row-resize";
-            handle.style.cssText = "position:absolute;bottom:-3px;left:0;width:100%;height:6px;cursor:row-resize;z-index:5;";
-            tr.style.position = "relative";
-            tr.appendChild(handle);
-            safeOn(handle, "mousedown", function(e) {
-              e.preventDefault(); e.stopPropagation();
-              var startY = e.clientY, startH = tr.offsetHeight;
-              function onMove(ev) {
-                var newH = Math.max(20, startH + (ev.clientY - startY));
-                tr.style.height = newH + "px";
-                tr.querySelectorAll("td, th").forEach(function(cell) { cell.style.height = newH + "px"; });
+          var _rowResizeActive = false;
+          var _rowResizeStartY = 0;
+          var _rowResizeStartH = 0;
+          var _rowResizeTarget = null;
+
+          // Detect row boundary proximity and change cursor
+          safeOn(table, "mousemove", function(e) {
+            if (_rowResizeActive) return;
+            var cell = e.target.closest("td, th");
+            if (!cell) { table.style.cursor = ""; return; }
+            var tr = cell.closest("tr");
+            if (!tr) return;
+            var rows = Array.from(table.querySelectorAll("tr"));
+            var rowIdx = rows.indexOf(tr);
+            if (rowIdx < 0) return;
+            var rect = tr.getBoundingClientRect();
+            var y = e.clientY;
+            var threshold = 6;
+            // Check bottom boundary of this row (unless it's the last row)
+            if (rowIdx < rows.length - 1) {
+              var distBottom = Math.abs(y - rect.bottom);
+              if (distBottom <= threshold) {
+                table.style.cursor = "row-resize";
+                return;
               }
-              function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
-              document.addEventListener("mousemove", onMove);
-              document.addEventListener("mouseup", onUp);
-            });
+            }
+            // Check top boundary of this row (unless it's the first row)
+            if (rowIdx > 0) {
+              var distTop = Math.abs(y - rect.top);
+              if (distTop <= threshold) {
+                table.style.cursor = "row-resize";
+                return;
+              }
+            }
+            table.style.cursor = "";
+          });
+
+          safeOn(table, "mousedown", function(e) {
+            var cell = e.target.closest("td, th");
+            if (!cell) return;
+            var tr = cell.closest("tr");
+            if (!tr) return;
+            var rows = Array.from(table.querySelectorAll("tr"));
+            var rowIdx = rows.indexOf(tr);
+            if (rowIdx < 0) return;
+            var rect = tr.getBoundingClientRect();
+            var y = e.clientY;
+            var threshold = 6;
+            var targetRow = null;
+            var startY = 0, startH = 0;
+            // Determine which boundary was clicked
+            if (rowIdx < rows.length - 1 && Math.abs(y - rect.bottom) <= threshold) {
+              targetRow = tr; // Bottom boundary of this row
+              startY = y;
+              startH = tr.offsetHeight;
+            } else if (rowIdx > 0 && Math.abs(y - rect.top) <= threshold) {
+              targetRow = rows[rowIdx - 1]; // Top boundary = bottom of previous row
+              startY = y;
+              startH = targetRow.offsetHeight;
+            }
+            if (!targetRow) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _rowResizeActive = true;
+            _rowResizeTarget = targetRow;
+            _rowResizeStartY = startY;
+            _rowResizeStartH = startH;
+            table.style.cursor = "row-resize";
+            document.body.style.cursor = "row-resize";
+            document.body.style.userSelect = "none";
+
+            function onMove(ev) {
+              var dy = ev.clientY - _rowResizeStartY;
+              var newH = Math.max(20, _rowResizeStartH + dy);
+              _rowResizeTarget.style.height = newH + "px";
+              _rowResizeTarget.querySelectorAll("td, th").forEach(function(c) { c.style.height = newH + "px"; });
+            }
+            function onUp() {
+              _rowResizeActive = false;
+              _rowResizeTarget = null;
+              table.style.cursor = "";
+              document.body.style.cursor = "";
+              document.body.style.userSelect = "";
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              var obj = _qeGetObject(table.closest(".ss-qe-float-table"));
+              if (obj) { obj.w = table.offsetWidth; obj.h = table.offsetHeight; }
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
           });
         }
 
@@ -16946,13 +17117,15 @@ ${allContent}
           resizeHandle.className = "ss-qe-table-resize-handle";
           wrapper.appendChild(resizeHandle);
           var t = document.createElement("table");
-          t.style.cssText = "width:100%;border-collapse:collapse;";
+          var initW = Math.max(300, cols * 120);
+          var colW = Math.floor(initW / cols);
+          t.style.cssText = "border-collapse:collapse;width:" + initW + "px;table-layout:fixed;";
           var tbody = document.createElement("tbody");
           for (var r = 0; r < rows; r++) {
             var tr = document.createElement("tr");
             for (var c = 0; c < cols; c++) {
               var td = document.createElement("td");
-              td.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;";
+              td.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;width:" + colW + "px;min-height:24px;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;";
               td.setAttribute("contenteditable", "true");
               td.innerHTML = "";
               tr.appendChild(td);
