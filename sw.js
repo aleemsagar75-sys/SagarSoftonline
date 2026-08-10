@@ -1,10 +1,10 @@
-var CACHE = "sagarsoft-v69";
+var CACHE = "sagarsoft-v70";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
   "./dashboard.html",
-  "./css/base.css?v=20260810",
-  "./css/dashboard.css?v=20260810",
+  "./css/base.css?v=202608101",
+  "./css/dashboard.css?v=202608101",
   "./js/online-config.js?v=20260810",
   "./js/crypto-utils.js?v=20260810",
   "./js/utils.js?v=20260810",

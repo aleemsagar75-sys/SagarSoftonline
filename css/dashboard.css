@@ -3191,8 +3191,9 @@ body {
 }
 
 #allStudentsShell .student-directory-card {
-  background: linear-gradient(135deg, #ffffff, #f5f9fc);
-  border: 1px solid rgba(15, 72, 105, 0.12);
+  background: linear-gradient(135deg, #eef8fb 0%, #e7f5f2 100%);
+  border: 1px solid rgba(20, 80, 110, 0.15);
+  box-shadow: 0 8px 24px rgba(15, 50, 70, 0.10);
 }
 
 #allStudentsShell .student-directory-card .table-action-btn {
@@ -6644,9 +6645,9 @@ select:focus, input:focus, textarea:focus {
 
 /* ===== STUDENT DIRECTORY CARDS PREMIUM (dashboard-style) ===== */
 .student-directory-card {
-  background: linear-gradient(135deg, #ffffff, #f5f9fc);
-  border: 1px solid rgba(15, 72, 105, 0.12);
-  box-shadow: 0 6px 20px rgba(15, 45, 65, 0.08);
+  background: linear-gradient(135deg, #eef8fb 0%, #e7f5f2 100%);
+  border: 1px solid rgba(20, 80, 110, 0.15);
+  box-shadow: 0 8px 24px rgba(15, 50, 70, 0.10);
 }
 .student-status-card {
   background: linear-gradient(135deg, #ccf0db 0%, #99e1b7 50%, #66d293 100%) !important;
