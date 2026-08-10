@@ -2955,9 +2955,9 @@ document.addEventListener("DOMContentLoaded", function () {
         resolve("");
         return;
       }
-      const image = new Image();
-      let isSettled = false;
-      const done = function (value) {
+      var image = new Image();
+      var isSettled = false;
+      var done = function (value) {
         if (isSettled) {
           return;
         }
@@ -2966,12 +2966,12 @@ document.addEventListener("DOMContentLoaded", function () {
       };
       image.onload = function () {
         try {
-          const canvas = document.createElement("canvas");
-          const width = Math.max(1, image.naturalWidth || image.width || 1);
-          const height = Math.max(1, image.naturalHeight || image.height || 1);
+          var canvas = document.createElement("canvas");
+          var width = Math.max(1, image.naturalWidth || image.width || 1);
+          var height = Math.max(1, image.naturalHeight || image.height || 1);
           canvas.width = width;
           canvas.height = height;
-          const ctx = canvas.getContext("2d");
+          var ctx = canvas.getContext("2d");
           if (!ctx) {
             done(src);
             return;
@@ -2979,19 +2979,18 @@ document.addEventListener("DOMContentLoaded", function () {
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, width, height);
           ctx.drawImage(image, 0, 0, width, height);
-          done(canvas.toDataURL("image/png", 1));
+          var result = canvas.toDataURL("image/png");
+          done(result);
         } catch (error) {
-          done(src);
+          done("");
         }
       };
       image.onerror = function () {
-        done(src);
+        done("");
       };
       setTimeout(function () {
-        done(src);
-      }, 2500);
-      image.crossOrigin = "anonymous";
-      image.referrerPolicy = "no-referrer";
+        done("");
+      }, 5000);
       image.src = src;
     });
   }
@@ -3001,9 +3000,10 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!src) { return Promise.resolve(""); }
     if (_logoCache[src]) { return Promise.resolve(_logoCache[src]); }
     return normalizeImageForPrintShared(src).then(function (result) {
-      var final = result || src;
-      _logoCache[src] = final;
-      return final;
+      if (result && result !== src) {
+        _logoCache[src] = result;
+      }
+      return result || src;
     });
   }
 
@@ -3318,15 +3318,8 @@ document.addEventListener("DOMContentLoaded", function () {
             ${contentMarkup}
             ${tableMarkup}
             ${config.footerHtml || ""}
-          </main>
-          <script>
-            window.addEventListener("load", function () {
-              setTimeout(function () {
-                window.print();
-              }, 500);
-            });
-          </script>
-        </body>
+        </main>
+      </body>
       </html>
     `;
     if (config.returnHtml) {
@@ -3336,12 +3329,47 @@ document.addEventListener("DOMContentLoaded", function () {
       await openPrintHtmlWindow(printHtml, "width=1200,height=900");
       return;
     }
-    const popup = popupWindow;
+    var popup = popupWindow;
     popup.document.write(printHtml);
     popup.document.close();
     popup.focus();
+    setupPrintCleanup(popup);
     await waitForPrintResources(popup);
-    popup.print();
+    try { popup.print(); } catch (e) {}
+  }
+
+  function setupPrintCleanup(popup) {
+    var cleaned = false;
+    function safeClose() {
+      if (cleaned) return;
+      cleaned = true;
+      try { if (popup && !popup.closed) popup.close(); } catch (e) {}
+    }
+    try {
+      popup.addEventListener("afterprint", safeClose);
+    } catch (e) {}
+    try {
+      popup.addEventListener("beforeunload", safeClose);
+    } catch (e) {}
+    var printDetected = false;
+    var pollTimer = setInterval(function () {
+      try {
+        if (!popup || popup.closed) { clearInterval(pollTimer); return; }
+        if (popup.matchMedia && popup.matchMedia("print").matches) {
+          printDetected = true;
+        }
+        if (printDetected && popup.matchMedia && !popup.matchMedia("print").matches) {
+          clearInterval(pollTimer);
+          safeClose();
+        }
+      } catch (e) {
+        clearInterval(pollTimer);
+      }
+    }, 300);
+    setTimeout(function () {
+      clearInterval(pollTimer);
+      safeClose();
+    }, 45000);
   }
 
   async function openPrintHtmlWindow(html, popupOptions, popupErrorMessage) {
@@ -3357,7 +3385,7 @@ document.addEventListener("DOMContentLoaded", function () {
         popupFeatures = popupOptions;
       }
     }
-    const popup = window.open("", "_blank", popupFeatures);
+    var popup = window.open("", "_blank", popupFeatures);
     if (!popup) {
       openAppMessageBox("Error", popupErrorMessage || "Please allow popups to print.", "error");
       return;
@@ -3365,19 +3393,9 @@ document.addEventListener("DOMContentLoaded", function () {
     popup.document.write(html);
     popup.document.close();
     popup.focus();
+    setupPrintCleanup(popup);
     await waitForPrintResources(popup);
-    popup.print();
-    var dialogOpened = false;
-    var closeTimer = setInterval(function() {
-      try {
-        if (popup.closed) { clearInterval(closeTimer); return; }
-        if (popup.matchMedia('print').matches) dialogOpened = true;
-        if (dialogOpened && !popup.matchMedia('print').matches) {
-          clearInterval(closeTimer);
-          popup.close();
-        }
-      } catch(e) { clearInterval(closeTimer); }
-    }, 200);
+    try { popup.print(); } catch (e) {}
   }
 
   async function openThermalPrintWindow(html, popupOptions, popupErrorMessage) {
@@ -7638,7 +7656,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const copyLabel = getCopyLabel(copyType);
 
         const headerHtml = `<section style="text-align:center;margin-bottom:0.5mm;padding:0.5mm 0;">
-          ${printableLogo ? `<img src="${printableLogo}" style="width:5mm;height:5mm;border-radius:0.5mm;object-fit:cover;">` : `<span style="display:inline-flex;width:5mm;height:5mm;border-radius:0.5mm;background:linear-gradient(135deg,#1e5eff,#30b59c);color:#fff;align-items:center;justify-content:center;font-size:4pt;font-weight:700;">${getInitials(profile.name || "S")}</span>`}
+          ${printableLogo ? `<img src="${printableLogo}" style="width:5mm;height:5mm;border-radius:0.5mm;object-fit:cover;background-color:#fff;">` : `<span style="display:inline-flex;width:5mm;height:5mm;border-radius:0.5mm;background:linear-gradient(135deg,#1e5eff,#30b59c);color:#fff;align-items:center;justify-content:center;font-size:4pt;font-weight:700;">${getInitials(profile.name || "S")}</span>`}
           <div style="font-size:6.5pt;font-weight:700;margin:0.2mm 0;">${escapeHtml(profile.name || "-")}</div>
           <div style="font-size:4pt;color:#4e678f;margin:0;">${escapeHtml(profile.slogan || "School Management System")}</div>
           <div style="font-size:3.5pt;color:#4e678f;margin-top:0.2mm;">${escapeHtml(profile.phone || "-")} | PSRA ${escapeHtml(profile.psra || "-")}</div>
@@ -8194,11 +8212,6 @@ ${allContent}
                   <p><strong>Remaining:</strong> ${escapeHtml(latestReceiptData.remaining || "-")}</p>
                 </section>
               </main>
-              <script>
-                window.addEventListener("load", function () {
-                  setTimeout(function () { window.print(); }, 300);
-                });
-              </script>
             </body>
           </html>
         `;
@@ -9282,11 +9295,6 @@ ${allContent}
                     <p>${escapeHtml(profile.name || database.school.name || "School Name")}</p>
                   </section>
                 </main>
-                <script>
-                  window.addEventListener("load", function () {
-                    setTimeout(function () { window.print(); }, 300);
-                  });
-                </script>
               </body>
             </html>
           `;
@@ -11258,6 +11266,7 @@ ${allContent}
                   height: 64px;
                   border-radius: 12px;
                   object-fit: cover;
+                  background-color: #fff;
                   filter: none !important;
                   mix-blend-mode: normal !important;
                   -webkit-print-color-adjust: exact;
@@ -13506,13 +13515,6 @@ ${allContent}
           </head>
           <body>
             <div class="pvc-grid">${cardsMarkup.join("")}</div>
-            <script>
-              window.addEventListener("load", function () {
-                setTimeout(function () {
-                  window.print();
-                }, 500);
-              });
-            </script>
           </body></html>
         `;
       }
@@ -14300,13 +14302,6 @@ ${allContent}
             ${tableMarkup}
             ${config.footerHtml || ""}
           </main>
-          <script>
-            window.addEventListener("load", function () {
-              setTimeout(function () {
-                window.print();
-              }, 500);
-            });
-          </script>
           </body>
         </html>
       `;
@@ -23623,13 +23618,6 @@ classSelect.addEventListener("change", renderSubjectSelect);
       </head>
       <body>
         <div class="pvc-grid">${cardsMarkup}</div>
-        <script>
-          window.addEventListener("load", function () {
-            setTimeout(function () {
-              window.print();
-            }, 500);
-          });
-        </script>
       </body>
       </html>
       `;
@@ -23777,13 +23765,6 @@ classSelect.addEventListener("change", renderSubjectSelect);
           </footer>
           <img src="${singleQrUrl}" alt="QR" class="pvc-card__qr">
         </article>
-        <script>
-          window.addEventListener("load", function () {
-            setTimeout(function () {
-              window.print();
-            }, 500);
-          });
-        </script>
       </body>
       </html>
     `;
@@ -23969,13 +23950,6 @@ classSelect.addEventListener("change", renderSubjectSelect);
             <tbody>${rows}</tbody>
           </table>
         </main>
-        <script>
-          window.addEventListener("load", function () {
-            setTimeout(function () {
-              window.print();
-            }, 500);
-          });
-        </script>
       </body>
       </html>
       `;
@@ -24403,13 +24377,6 @@ classSelect.addEventListener("change", renderSubjectSelect);
             </div>
           </div>
         </main>
-        <script>
-          window.addEventListener("load", function () {
-            setTimeout(function () {
-              window.print();
-            }, 500);
-          });
-        </script>
       </body>
       </html>
     `;
