@@ -3337,16 +3337,23 @@ document.addEventListener("DOMContentLoaded", function () {
     popup.focus();
     setupPrintCleanup(popup);
     await waitForPrintResources(popup);
-    document.documentElement.style.visibility = "hidden";
+    hideOpenerForPrint();
     try { popup.print(); } catch (e) {}
   }
 
   function setupPrintCleanup(popup) {
     var cleaned = false;
+    function restoreOpener() {
+      try {
+        var el = document.documentElement;
+        el.style.visibility = "";
+        el.style.opacity = "";
+      } catch (e) {}
+    }
     function safeClose() {
       if (cleaned) return;
       cleaned = true;
-      try { document.documentElement.style.visibility = ""; } catch (e) {}
+      restoreOpener();
       try { if (popup && !popup.closed) popup.close(); } catch (e) {}
     }
     try {
@@ -3376,6 +3383,14 @@ document.addEventListener("DOMContentLoaded", function () {
     }, 45000);
   }
 
+  function hideOpenerForPrint() {
+    try {
+      var el = document.documentElement;
+      el.style.visibility = "hidden";
+      el.style.opacity = "0";
+    } catch (e) {}
+  }
+
   async function openPrintHtmlWindow(html, popupOptions, popupErrorMessage) {
     if (window.SagarSoftDesktop && typeof window.SagarSoftDesktop.openPrintHtml === "function") {
       await window.SagarSoftDesktop.openPrintHtml({ html: html });
@@ -3399,7 +3414,7 @@ document.addEventListener("DOMContentLoaded", function () {
     popup.focus();
     setupPrintCleanup(popup);
     await waitForPrintResources(popup);
-    document.documentElement.style.visibility = "hidden";
+    hideOpenerForPrint();
     try { popup.print(); } catch (e) {}
   }
 
@@ -5283,6 +5298,122 @@ document.addEventListener("DOMContentLoaded", function () {
       }).catch(function (err) { console.warn("Scanner stop error:", err); });
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
     });
+  }
+
+  function processScannedIdentifier(scannedText, dateValue) {
+    var text = String(scannedText || "").trim();
+    if (!text) return null;
+    var parts = text.split(":");
+    var entityType = null;
+    var scannedId = text;
+    if (parts.length >= 2) {
+      var prefix = parts[0].toUpperCase();
+      if (prefix === "ATTEND") {
+        entityType = (parts[1] || "").toUpperCase() === "EMPLOYEE" ? "employee" : "student";
+        scannedId = parts.slice(2).join(":");
+      } else if (prefix === "STUDENT") {
+        entityType = "student";
+        scannedId = parts.slice(1).join(":");
+      } else if (prefix === "EMPLOYEE") {
+        entityType = "employee";
+        scannedId = parts.slice(1).join(":");
+      }
+    }
+    if (!entityType) {
+      var studentMatch = (database.students || []).find(function (s) { return String(s.admissionNo || "") === text || String(s.id || "") === text; });
+      if (studentMatch) { entityType = "student"; scannedId = text; }
+      else {
+        var empMatch = (getEmployees() || []).find(function (e) { return String(e.id || "") === text || String(e.employeeId || "") === text; });
+        if (empMatch) { entityType = "employee"; scannedId = text; }
+      }
+    }
+    if (!entityType) return { found: false, scannedId: scannedId, entityType: null, person: null };
+    var person = null;
+    if (entityType === "student") {
+      person = (database.students || []).find(function (s) { return String(s.admissionNo || "") === scannedId || String(s.id || "") === scannedId; });
+    } else {
+      person = (getEmployees() || []).find(function (e) { return String(e.id || "") === scannedId || String(e.employeeId || "") === scannedId; });
+    }
+    if (!person) return { found: false, scannedId: scannedId, entityType: entityType, person: null };
+    var targetDate = dateValue || getTodayDateISO();
+    var existing = getAttendanceRecordFor(entityType, person.id, targetDate);
+    if (existing && normalizeAttendanceStatus(existing.status) === "Present") {
+      return { found: true, alreadyPresent: true, entityType: entityType, person: person, date: targetDate, existingRecord: existing };
+    }
+    saveAttendanceRecord(entityType, person.id, targetDate, "Present", entityType === "student" ? { className: person.className } : { role: person.role || person.designation });
+    saveDatabase("Scanner attendance...");
+    return { found: true, alreadyPresent: false, entityType: entityType, person: person, date: targetDate };
+  }
+
+  var _scannerBuffer = "";
+  var _scannerTimer = null;
+  var _scannerActive = false;
+
+  function initKeyboardScanner() {
+    if (_scannerActive) return;
+    _scannerActive = true;
+    document.addEventListener("keydown", function (e) {
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      var tag = (e.target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || e.target.isContentEditable) return;
+      if (e.key === "Enter" && _scannerBuffer.length >= 3) {
+        e.preventDefault();
+        var scannedText = _scannerBuffer;
+        _scannerBuffer = "";
+        clearTimeout(_scannerTimer);
+        _scannerTimer = null;
+        handleKeyboardScan(scannedText);
+        return;
+      }
+      if (e.key.length === 1) {
+        _scannerBuffer += e.key;
+        clearTimeout(_scannerTimer);
+        _scannerTimer = setTimeout(function () { _scannerBuffer = ""; }, 150);
+      }
+    });
+  }
+
+  function handleKeyboardScan(scannedText) {
+    var result = processScannedIdentifier(scannedText, getTodayDateISO());
+    if (!result) return;
+    var overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;top:20px;right:20px;z-index:10000;min-width:300px;max-width:400px;padding:16px 20px;border-radius:12px;font-family:'Segoe UI',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.18);animation:slideUp 0.3s ease;";
+    if (!result.found) {
+      overlay.style.background = "#fff";
+      overlay.style.border = "2px solid #ef4444";
+      overlay.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<span style="font-size:24px;color:#ef4444;">&#10006;</span>' +
+        '<strong style="color:#102542;font-size:14px;">Not Found</strong></div>' +
+        '<p style="margin:0;font-size:13px;color:#5a7a96;">Scanned ID: <strong style="color:#102542;">' + result.scannedId + '</strong></p>';
+    } else if (result.alreadyPresent) {
+      var personName = result.person.name || "-";
+      var timeStr = result.existingRecord && result.existingRecord.createdAt ? new Date(result.existingRecord.createdAt).toLocaleTimeString() : "earlier today";
+      overlay.style.background = "#fff";
+      overlay.style.border = "2px solid #f59e0b";
+      overlay.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<span style="font-size:24px;color:#f59e0b;">&#9888;</span>' +
+        '<strong style="color:#102542;font-size:14px;">Already Marked</strong></div>' +
+        '<p style="margin:0 0 4px;font-size:13px;color:#102542;"><strong>' + personName + '</strong></p>' +
+        '<p style="margin:0;font-size:12px;color:#5a7a96;">Already present ' + timeStr + '</p>';
+    } else {
+      var pName = result.person.name || "-";
+      var pId = result.entityType === "student" ? (result.person.admissionNo || result.person.id) : (result.person.employeeId || result.person.id);
+      var now = new Date();
+      var timeNow = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      overlay.style.background = "#fff";
+      overlay.style.border = "2px solid #10b981";
+      overlay.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<span style="font-size:24px;color:#10b981;">&#10004;</span>' +
+        '<strong style="color:#102542;font-size:14px;">Attendance Marked</strong></div>' +
+        '<p style="margin:0 0 2px;font-size:13px;color:#102542;"><strong>' + pName + '</strong></p>' +
+        '<p style="margin:0 0 2px;font-size:12px;color:#5a7a96;">' + result.entityType.charAt(0).toUpperCase() + result.entityType.slice(1) + ' ID: ' + pId + '</p>' +
+        '<p style="margin:0;font-size:12px;color:#10b981;">Present &middot; ' + timeNow + '</p>';
+    }
+    document.body.appendChild(overlay);
+    setTimeout(function () { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 3500);
   }
 
   function openMobileAppDownloadModal() {
@@ -13212,7 +13343,11 @@ ${allContent}
             <button class="primary-button" id="printAllEmployeeCardsBtn" type="button">Print All Cards</button>
           </div>
           <div class="id-cards-grid" id="employeeIdCardsGrid"></div>
-          <p class="empty-state" id="employeeIdCardsEmptyState" hidden>No employee found.</p>
+          <div class="empty-state" id="employeeIdCardsEmptyState" hidden style="text-align:center;padding:2rem 1rem;">
+            <div style="font-size:2.5rem;margin-bottom:0.5rem;opacity:0.4;">&#128269;</div>
+            <strong style="display:block;font-size:1rem;color:#102542;margin-bottom:0.25rem;">No employees found</strong>
+            <span style="font-size:0.85rem;color:#5a7a96;">Try another name or phone number.</span>
+          </div>
         </article>
       `;
 
@@ -26646,6 +26781,8 @@ classSelect.addEventListener("change", renderSubjectSelect);
       backupToSupabaseSilent();
     }
   }, 30 * 60 * 1000);
+
+  initKeyboardScanner();
 
   /* ===================================================================
      NUCLEAR MOBILE RESPONSIVE FIX � JS-based, runs after every render

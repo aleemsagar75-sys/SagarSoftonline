@@ -2082,30 +2082,34 @@ body {
 
 .id-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
 }
 
 .id-card-modern {
   position: relative;
   overflow: hidden;
-  border-radius: 24px;
-  border: 1px solid rgba(16, 37, 66, 0.08);
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.24), transparent 34%),
-    linear-gradient(135deg, #0f2b3f 0%, #1b5f7a 65%, #2fb08a 100%);
-  color: #fff;
-  box-shadow: 0 20px 34px rgba(16, 37, 66, 0.22);
+  border-radius: 16px;
+  border: 1px solid rgba(16, 37, 66, 0.1);
+  background: #fff;
+  color: #102542;
+  box-shadow: 0 2px 12px rgba(16, 37, 66, 0.08), 0 1px 3px rgba(16, 37, 66, 0.06);
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.id-card-modern:hover {
+  box-shadow: 0 8px 24px rgba(16, 37, 66, 0.14), 0 2px 6px rgba(16, 37, 66, 0.08);
+  transform: translateY(-2px);
 }
 
 .id-card-modern::after {
   content: "";
   position: absolute;
-  inset: auto -20% -35% auto;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #0f2f58 0%, #1b5f7a 60%, #1d9c61 100%);
 }
 
 .id-card-modern__inner {
@@ -2113,7 +2117,7 @@ body {
   z-index: 1;
   display: grid;
   gap: 0.85rem;
-  padding: 1rem;
+  padding: 1.25rem 1rem 1rem;
 }
 
 .id-card-modern__head {
@@ -2121,11 +2125,14 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(16, 37, 66, 0.08);
 }
 
 .id-card-modern__school {
-  font-size: 0.9rem;
+  font-size: 0.88rem;
   font-weight: 700;
+  color: #0f2f58;
 }
 
 .id-card-modern__logo {
@@ -2170,11 +2177,12 @@ body {
 
 .id-card-modern__profile img,
 .id-card-modern__profile .student-avatar {
-  width: 86px;
-  height: 86px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
-  border: 2px solid rgba(255, 255, 255, 0.28);
+  border: 3px solid #e8eef4;
   object-fit: cover;
+  background: #f0f4f8;
 }
 
 .id-card-modern__meta {
@@ -2184,12 +2192,13 @@ body {
 }
 
 .id-card-modern__meta strong {
-  font-size: 1rem;
+  font-size: 0.95rem;
+  color: #102542;
 }
 
 .id-card-modern__meta span,
 .id-card-modern__rows span {
-  color: rgba(255, 255, 255, 0.86);
+  color: #5a7a96;
 }
 
 .id-card-modern__rows {
@@ -2202,18 +2211,21 @@ body {
   grid-template-columns: minmax(82px, auto) 1fr;
   align-items: center;
   gap: 0.8rem;
-  font-size: 0.84rem;
-  background: rgba(31, 91, 122, 0.4);
-  padding: 0.5rem 0.6rem;
-  border-radius: 6px;
+  font-size: 0.82rem;
+  background: #f5f7fa;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid rgba(16, 37, 66, 0.05);
 }
 
 .id-card-modern__rows article span {
   text-align: right;
+  color: #3a5a7c;
 }
 
 .id-card-modern__rows article strong {
-  color: #fff;
+  color: #102542;
+  font-weight: 600;
 }
 
 .student-modal {
@@ -3232,9 +3244,7 @@ body {
 }
 
 .view.module--employee .id-card-modern {
-  background:
-    radial-gradient(circle at top right, rgba(255, 255, 255, 0.24), transparent 34%),
-    linear-gradient(135deg, #0f2b3f 0%, #1b5f7a 65%, #2fb08a 100%);
+  background: #fff;
 }
 
 .view.module--employee #moduleSummary {
@@ -12014,4 +12024,9 @@ button.ss-btn-loading {
   top: auto !important;
   left: auto !important;
   overflow: visible;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(-12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
