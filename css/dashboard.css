@@ -1160,27 +1160,30 @@ body {
 
 .student-directory-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 340px));
   gap: 18px;
-  width: 100%;
+  align-items: start;
+  justify-content: start;
+  width: auto;
+  max-width: 100%;
 }
 
 .student-directory-card {
   display: grid;
   gap: 0.75rem;
   padding: 18px 20px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #ffffff, #f5f9fc);
-  border: 1px solid rgba(15, 72, 105, 0.12);
-  box-shadow: 0 6px 20px rgba(15, 45, 65, 0.08);
+  border-radius: 18px;
+  background: linear-gradient(135deg, #eef8fb 0%, #e7f5f2 100%);
+  border: 1px solid rgba(20, 80, 110, 0.15);
+  box-shadow: 0 8px 24px rgba(15, 50, 70, 0.10);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
-  width: 100%;
+  max-width: 340px;
   box-sizing: border-box;
 }
 
 .student-directory-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(15, 45, 65, 0.12), 0 2px 8px rgba(15, 45, 65, 0.06);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(15, 50, 70, 0.14);
 }
 
 .student-directory-card__top {
@@ -1190,11 +1193,11 @@ body {
 }
 
 .student-avatar {
-  width: 52px;
-  height: 52px;
-  min-width: 52px;
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0f2b3f, #1b5f7a 60%, #2fb08a);
+  background: linear-gradient(135deg, #123d56, #159b9b);
   color: #fff;
   font-weight: 700;
   font-size: 0.9rem;
@@ -5702,7 +5705,7 @@ th {
   }
 
   .student-directory-grid {
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 320px));
   }
 }
 
@@ -5738,7 +5741,7 @@ th {
   .form-grid,
   .student-directory-grid,
   .stats-grid--students {
-    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(260px, 300px));
   }
 
   .topbar {
