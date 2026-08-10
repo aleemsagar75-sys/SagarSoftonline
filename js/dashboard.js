@@ -1963,13 +1963,15 @@ document.addEventListener("DOMContentLoaded", function () {
     if (currentUser.role !== superAdminRole && license.activated) {
       displayName = profile.name || license.schoolName || database.school.name || displayName;
       if (profile.logo) {
-        displayAvatarHtml = `<img src="${escapeAttr(profile.logo)}" alt="School logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background-color:#fff;">`;
+        profileAvatar.style.background = "#fff";
+        displayAvatarHtml = `<img src="${escapeAttr(profile.logo)}" alt="School logo" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">`;
         getNormalizedLogo(profile.logo).then(function (normalized) {
           if (normalized && normalized !== profile.logo) {
-            profileAvatar.innerHTML = `<img src="${escapeAttr(normalized)}" alt="School logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background-color:#fff;">`;
+            profileAvatar.innerHTML = `<img src="${escapeAttr(normalized)}" alt="School logo" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">`;
           }
         });
       } else {
+        profileAvatar.style.background = "";
         displayAvatarHtml = getInitials(displayName);
       }
     }
@@ -3335,6 +3337,7 @@ document.addEventListener("DOMContentLoaded", function () {
     popup.focus();
     setupPrintCleanup(popup);
     await waitForPrintResources(popup);
+    document.documentElement.style.visibility = "hidden";
     try { popup.print(); } catch (e) {}
   }
 
@@ -3343,6 +3346,7 @@ document.addEventListener("DOMContentLoaded", function () {
     function safeClose() {
       if (cleaned) return;
       cleaned = true;
+      try { document.documentElement.style.visibility = ""; } catch (e) {}
       try { if (popup && !popup.closed) popup.close(); } catch (e) {}
     }
     try {
@@ -3354,7 +3358,7 @@ document.addEventListener("DOMContentLoaded", function () {
     var printDetected = false;
     var pollTimer = setInterval(function () {
       try {
-        if (!popup || popup.closed) { clearInterval(pollTimer); return; }
+        if (!popup || popup.closed) { clearInterval(pollTimer); safeClose(); return; }
         if (popup.matchMedia && popup.matchMedia("print").matches) {
           printDetected = true;
         }
@@ -3395,6 +3399,7 @@ document.addEventListener("DOMContentLoaded", function () {
     popup.focus();
     setupPrintCleanup(popup);
     await waitForPrintResources(popup);
+    document.documentElement.style.visibility = "hidden";
     try { popup.print(); } catch (e) {}
   }
 
@@ -23465,13 +23470,14 @@ classSelect.addEventListener("change", renderSubjectSelect);
     });
   }
 
-  function buildStudentIdCardsPrintHtml(students) {
+  async function buildStudentIdCardsPrintHtml(students) {
     const sourceStudents = Array.isArray(students) ? students : [];
     if (!sourceStudents.length) {
       return "";
     }
     const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-    const logo = String(profile.logo || "");
+    const rawLogo = String(profile.logo || "");
+    const logo = rawLogo ? (await normalizeImageForPrintShared(rawLogo)) || rawLogo : "";
     const safeAttr = function (value) {
       try { return escapePrintAttr(value); } catch (_error) { return ""; }
     };
@@ -23623,9 +23629,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
       `;
   }
 
-  function printStudentIdCardsByList(students, title) {
+  async function printStudentIdCardsByList(students, title) {
     try {
-      const printHtml = buildStudentIdCardsPrintHtml(students);
+      const printHtml = await buildStudentIdCardsPrintHtml(students);
       if (!printHtml) {
         return;
       }
@@ -23636,13 +23642,14 @@ classSelect.addEventListener("change", renderSubjectSelect);
     }
   }
 
-  function printSingleStudentIdCard(student) {
+  async function printSingleStudentIdCard(student) {
     if (!student) {
       return;
     }
     const normalizedStudent = normalizeStudentForPrint(student);
     const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-    const logo = String(profile.logo || "");
+    const rawLogo = String(profile.logo || "");
+    const logo = rawLogo ? (await normalizeImageForPrintShared(rawLogo)) || rawLogo : "";
     const photo = String(normalizedStudent.picture || "");
     const singleQrData = encodeURIComponent("ATTEND:STUDENT:" + normalizedStudent.admissionNo);
     const singleQrUrl = "https://quickchart.io/qr?text=" + singleQrData + "&size=80&margin=1&ecLevel=H&dark=102542";
