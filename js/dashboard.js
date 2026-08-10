@@ -1964,6 +1964,11 @@ document.addEventListener("DOMContentLoaded", function () {
       displayName = profile.name || license.schoolName || database.school.name || displayName;
       if (profile.logo) {
         displayAvatarHtml = `<img src="${escapeAttr(profile.logo)}" alt="School logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background-color:#fff;">`;
+        getNormalizedLogo(profile.logo).then(function (normalized) {
+          if (normalized && normalized !== profile.logo) {
+            profileAvatar.innerHTML = `<img src="${escapeAttr(normalized)}" alt="School logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background-color:#fff;">`;
+          }
+        });
       } else {
         displayAvatarHtml = getInitials(displayName);
       }
@@ -2991,6 +2996,17 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  var _logoCache = {};
+  function getNormalizedLogo(src) {
+    if (!src) { return Promise.resolve(""); }
+    if (_logoCache[src]) { return Promise.resolve(_logoCache[src]); }
+    return normalizeImageForPrintShared(src).then(function (result) {
+      var final = result || src;
+      _logoCache[src] = final;
+      return final;
+    });
+  }
+
   function waitForPrintResources(printWindow) {
     return new Promise(function (resolve) {
       if (!printWindow || !printWindow.document) {
@@ -3293,44 +3309,9 @@ document.addEventListener("DOMContentLoaded", function () {
                 padding: 1px 2px;
               }
             }
-            .mobile-print-toolbar {
-              display: flex;
-              position: sticky;
-              top: 0;
-              z-index: 9999;
-              gap: 8px;
-              padding: 10px;
-              background: #0b1f3a;
-              box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-            }
-            .mobile-print-toolbar button {
-              flex: 1;
-              min-height: 42px;
-              border: 0;
-              border-radius: 8px;
-              font-weight: 800;
-              color: #0b1f3a;
-              background: #fff;
-              cursor: pointer;
-            }
-            .mobile-print-toolbar .print-now {
-              color: #fff;
-              background: #0e8a72;
-            }
-            .mobile-print-toolbar .print-cancel {
-              color: #fff;
-              background: #dc3545;
-            }
-            @media print {
-              .mobile-print-toolbar { display: none !important; }
-            }
           </style>
         </head>
         <body class="${paperSize ? 'print-' + paperSize : ''}">
-          <nav class="mobile-print-toolbar">
-            <button type="button" class="print-cancel" onclick="window.close();">Cancel</button>
-            <button class="print-now" type="button" onclick="window.print();">Print</button>
-          </nav>
           <main class="print-wrap">
             ${reportHeaderHtml}
             ${config.subtitle ? `<p class="report-subtitle">${config.subtitle}</p>` : ""}
@@ -14309,44 +14290,9 @@ ${allContent}
                 min-height: 0;
                 max-height: none;
               }
-              .mobile-print-toolbar {
-                display: flex;
-                position: sticky;
-                top: 0;
-                z-index: 9999;
-                gap: 8px;
-                padding: 10px;
-                background: #0b1f3a;
-                box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-              }
-              .mobile-print-toolbar button {
-                flex: 1;
-                min-height: 42px;
-                border: 0;
-                border-radius: 8px;
-                font-weight: 800;
-                color: #0b1f3a;
-                background: #fff;
-                cursor: pointer;
-              }
-              .mobile-print-toolbar .print-now {
-                color: #fff;
-                background: #0e8a72;
-              }
-              .mobile-print-toolbar .print-cancel {
-                color: #fff;
-                background: #dc3545;
-              }
-              @media print {
-                .mobile-print-toolbar { display: none !important; }
-              }
             </style>
           </head>
           <body class="${config.compactPrint ? "compact-print" : ""}">
-          <nav class="mobile-print-toolbar">
-            <button type="button" class="print-cancel" onclick="window.close();">Cancel</button>
-            <button class="print-now" type="button" onclick="window.print();">Print</button>
-          </nav>
           <main class="print-wrap">
             ${reportHeaderHtml}
             ${config.subtitle ? `<p class="report-subtitle">${config.subtitle}</p>` : ""}
@@ -23966,7 +23912,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
     promoteStudentsEmptyState.hidden = students.length !== 0;
   }
 
-  function printBasicList() {
+  async function printBasicList() {
     try {
       const students = getPrintBasicListStudents();
       if (students.length === 0) {
@@ -23977,6 +23923,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
       const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
       const schoolName = profile.name || database.school.name || "School Name";
       const logo = String(profile.logo || "");
+      const normalizedLogo = logo ? await normalizeImageForPrintShared(logo) : "";
       const rows = students.map(function (student, index) {
         const normalizedStudent = normalizeStudentForPrint(student);
         return `<tr>
@@ -24007,21 +23954,12 @@ classSelect.addEventListener("change", renderSubjectSelect);
           th, td { border:1px solid #000; padding:8px; text-align:left; background:#fff; }
           th { font-size:.78rem; text-transform:uppercase; }
           @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-          .mobile-print-toolbar { display:flex; position:sticky; top:0; z-index:9999; gap:8px; padding:10px; background:#0b1f3a; box-shadow:0 4px 14px rgba(0,0,0,0.18); }
-          .mobile-print-toolbar button { flex:1; min-height:42px; border:0; border-radius:8px; font-weight:800; cursor:pointer; }
-          .mobile-print-toolbar .print-cancel { color:#fff; background:#dc3545; }
-          .mobile-print-toolbar .print-now { color:#fff; background:#0e8a72; }
-          @media print { .mobile-print-toolbar { display:none !important; } }
         </style>
       </head>
       <body>
-        <nav class="mobile-print-toolbar">
-          <button type="button" class="print-cancel" onclick="window.close();">Cancel</button>
-          <button class="print-now" type="button" onclick="window.print();">Print</button>
-        </nav>
         <main class="wrap">
           <section class="head">
-            ${logo ? `<img src="${escapePrintAttr(logo)}" alt="School logo" style="background-color:#fff;">` : ""}
+            ${normalizedLogo ? `<img src="${normalizedLogo}" alt="School logo">` : ""}
             <h1>${escapePrintHtml(schoolName)}</h1>
             <p>${escapePrintHtml(profile.slogan || "School Management System")}</p>
           </section>
@@ -24271,7 +24209,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
         openAppMessageBox("Success", "Admission confirmation SMS sent successfully to " + normalizedStudent.name + ".", "success");
         return;
       }
-      const pdfHtml = printAdmissionLetter(true);
+      const pdfHtml = await printAdmissionLetter(true);
       const pdfResult = await saveCommunicationPdf(pdfHtml, `Admission-Letter-${normalizedStudent.name || normalizedStudent.admissionNo || "Student"}.pdf`);
       const whatsappText = pdfResult && pdfResult.success ? `${messageText}\nPDF: ${pdfResult.filePath}` : messageText;
       const logged = logWhatsappCommunication({
@@ -24335,7 +24273,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
     }
   }
 
-  function printAdmissionLetter(returnHtml) {
+  async function printAdmissionLetter(returnHtml) {
     try {
       if (!selectedAdmissionStudentId) {
         return;
@@ -24399,6 +24337,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
       }
       const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
       const schoolName = profile.name || database.school.name || "School Name";
+      const normalizedLogo = profile.logo ? await normalizeImageForPrintShared(profile.logo) : "";
       const printHtml = `
       <!DOCTYPE html>
       <html>
@@ -24428,21 +24367,12 @@ classSelect.addEventListener("change", renderSubjectSelect);
           .sign-box { text-align:center; min-width:170px; }
           .sign-line { border-top:1px solid #000; margin-bottom:4px; height:10px; }
           @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-          .mobile-print-toolbar { display:flex; position:sticky; top:0; z-index:9999; gap:8px; padding:10px; background:#0b1f3a; box-shadow:0 4px 14px rgba(0,0,0,0.18); }
-          .mobile-print-toolbar button { flex:1; min-height:42px; border:0; border-radius:8px; font-weight:800; cursor:pointer; }
-          .mobile-print-toolbar .print-cancel { color:#fff; background:#dc3545; }
-          .mobile-print-toolbar .print-now { color:#fff; background:#0e8a72; }
-          @media print { .mobile-print-toolbar { display:none !important; } }
         </style>
       </head>
       <body>
-        <nav class="mobile-print-toolbar">
-          <button type="button" class="print-cancel" onclick="window.close();">Cancel</button>
-          <button class="print-now" type="button" onclick="window.print();">Print</button>
-        </nav>
         <main class="wrap" style="display: flex; flex-direction: column; height: 282mm;">
           <section class="head">
-            ${profile.logo ? `<img src="${escapePrintAttr(profile.logo)}" alt="School logo" style="background-color:#fff;">` : ""}
+            ${normalizedLogo ? `<img src="${normalizedLogo}" alt="School logo">` : ""}
             <h1>${escapePrintHtml(schoolName)}</h1>
             <p>${escapePrintHtml(profile.slogan || "School Management System")}</p>
           </section>
@@ -26458,8 +26388,8 @@ classSelect.addEventListener("change", renderSubjectSelect);
     printAdmissionLetter();
   });
   if (downloadAdmissionPdfBtn) {
-    downloadAdmissionPdfBtn.addEventListener("click", function () {
-      var html = printAdmissionLetter(true);
+    downloadAdmissionPdfBtn.addEventListener("click", async function () {
+      var html = await printAdmissionLetter(true);
       if (html) {
         var blob = new Blob([html], { type: "text/html" });
         var url = URL.createObjectURL(blob);
