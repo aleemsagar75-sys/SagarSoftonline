@@ -1963,7 +1963,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (currentUser.role !== superAdminRole && license.activated) {
       displayName = profile.name || license.schoolName || database.school.name || displayName;
       if (profile.logo) {
-        displayAvatarHtml = `<img src="${escapeAttr(profile.logo)}" alt="School logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        displayAvatarHtml = `<img src="${escapeAttr(profile.logo)}" alt="School logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;background-color:#fff;">`;
       } else {
         displayAvatarHtml = getInitials(displayName);
       }
@@ -3115,6 +3115,7 @@ document.addEventListener("DOMContentLoaded", function () {
               height: 64px;
               border-radius: 12px;
               object-fit: cover;
+              background-color: #fff;
               filter: none !important;
               mix-blend-mode: normal !important;
               -webkit-print-color-adjust: exact;
@@ -3293,7 +3294,7 @@ document.addEventListener("DOMContentLoaded", function () {
               }
             }
             .mobile-print-toolbar {
-              display: none;
+              display: flex;
               position: sticky;
               top: 0;
               z-index: 9999;
@@ -3310,15 +3311,15 @@ document.addEventListener("DOMContentLoaded", function () {
               font-weight: 800;
               color: #0b1f3a;
               background: #fff;
+              cursor: pointer;
             }
             .mobile-print-toolbar .print-now {
               color: #fff;
               background: #0e8a72;
             }
-            @media screen and (max-width: 760px) {
-              body { background: #eef6f8; }
-              .mobile-print-toolbar { display: flex; }
-              .print-wrap { padding: 10px; }
+            .mobile-print-toolbar .print-cancel {
+              color: #fff;
+              background: #dc3545;
             }
             @media print {
               .mobile-print-toolbar { display: none !important; }
@@ -3327,8 +3328,7 @@ document.addEventListener("DOMContentLoaded", function () {
         </head>
         <body class="${paperSize ? 'print-' + paperSize : ''}">
           <nav class="mobile-print-toolbar">
-            <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.close(); }">Back</button>
-            <button type="button" onclick="window.close();">Cancel</button>
+            <button type="button" class="print-cancel" onclick="window.close();">Cancel</button>
             <button class="print-now" type="button" onclick="window.print();">Print</button>
           </nav>
           <main class="print-wrap">
@@ -3368,7 +3368,15 @@ document.addEventListener("DOMContentLoaded", function () {
       await window.SagarSoftDesktop.openPrintHtml({ html: html });
       return;
     }
-    const popup = window.open("", "_blank", popupOptions || "width=1200,height=900");
+    var popupFeatures = "width=" + screen.availWidth + ",height=" + screen.availHeight + ",left=0,top=0";
+    if (popupOptions && /width=\d+/i.test(popupOptions)) {
+      var wMatch = popupOptions.match(/width=(\d+)/i);
+      var w = parseInt(wMatch && wMatch[1], 10) || 0;
+      if (w > 0 && w < 1200) {
+        popupFeatures = popupOptions;
+      }
+    }
+    const popup = window.open("", "_blank", popupFeatures);
     if (!popup) {
       openAppMessageBox("Error", popupErrorMessage || "Please allow popups to print.", "error");
       return;
@@ -9206,7 +9214,7 @@ ${allContent}
           <div style="position:relative;display:grid;gap:10px;padding:10px;background:#fff;border:1px solid #dce5f4;border-radius:12px;overflow:hidden;">
             <span style="position:absolute;inset:42% auto auto 50%;transform:translate(-50%,-50%) rotate(-18deg);font-size:1.2rem;font-weight:800;color:rgba(29,156,97,0.24);white-space:nowrap;pointer-events:none;z-index:0;">Computer Generated Paid Slip</span>
             <div style="position:relative;z-index:1;display:grid;grid-template-columns:70px 1fr;gap:10px;align-items:center;">
-              ${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : `<span style="width:62px;height:62px;border-radius:10px;background:#1e5eff;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">SS</span>`}
+              ${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;background-color:#fff;">` : `<span style="width:62px;height:62px;border-radius:10px;background:#1e5eff;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">SS</span>`}
               <div>
                 <h3 style="margin:0;font-size:1.02rem;">${escapeHtml(profile.name || database.school.name || "School Name")}</h3>
                 <p style="margin:2px 0;">${escapeHtml(profile.slogan || "-")}</p>
@@ -13289,7 +13297,7 @@ ${allContent}
               <div class="pvc-card__topband"></div>
               <header class="pvc-card__header">
                 <div class="pvc-card__logo-wrap">
-                  ${printableLogo ? `<img src="${printableLogo}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
+                  ${printableLogo ? `<img src="${printableLogo}" alt="Logo" class="pvc-card__logo" style="background-color:#fff;">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
                 </div>
                 <div class="pvc-card__header-text">
                   <strong class="pvc-card__school">${escapeHtml(profile.name || database.school.name || "School")}</strong>
@@ -14103,6 +14111,7 @@ ${allContent}
                 height: 64px;
                 border-radius: 12px;
                 object-fit: cover;
+                background-color: #fff;
                 filter: none !important;
                 mix-blend-mode: normal !important;
                 -webkit-print-color-adjust: exact;
@@ -14300,9 +14309,44 @@ ${allContent}
                 min-height: 0;
                 max-height: none;
               }
+              .mobile-print-toolbar {
+                display: flex;
+                position: sticky;
+                top: 0;
+                z-index: 9999;
+                gap: 8px;
+                padding: 10px;
+                background: #0b1f3a;
+                box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+              }
+              .mobile-print-toolbar button {
+                flex: 1;
+                min-height: 42px;
+                border: 0;
+                border-radius: 8px;
+                font-weight: 800;
+                color: #0b1f3a;
+                background: #fff;
+                cursor: pointer;
+              }
+              .mobile-print-toolbar .print-now {
+                color: #fff;
+                background: #0e8a72;
+              }
+              .mobile-print-toolbar .print-cancel {
+                color: #fff;
+                background: #dc3545;
+              }
+              @media print {
+                .mobile-print-toolbar { display: none !important; }
+              }
             </style>
           </head>
           <body class="${config.compactPrint ? "compact-print" : ""}">
+          <nav class="mobile-print-toolbar">
+            <button type="button" class="print-cancel" onclick="window.close();">Cancel</button>
+            <button class="print-now" type="button" onclick="window.print();">Print</button>
+          </nav>
           <main class="print-wrap">
             ${reportHeaderHtml}
             ${config.subtitle ? `<p class="report-subtitle">${config.subtitle}</p>` : ""}
@@ -23513,7 +23557,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
           <div class="pvc-card__topband"></div>
           <header class="pvc-card__header">
             <div class="pvc-card__logo-wrap">
-              ${logo ? `<img src="${safeAttr(logo)}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
+              ${logo ? `<img src="${safeAttr(logo)}" alt="Logo" class="pvc-card__logo" style="background-color:#fff;">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
             </div>
             <div class="pvc-card__header-text">
               <strong class="pvc-card__school">${safeHtml(profile.name || database.school.name || "School", "School")}</strong>
@@ -23765,7 +23809,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
           <div class="pvc-card__topband"></div>
           <header class="pvc-card__header">
             <div class="pvc-card__logo-wrap">
-              ${logo ? `<img src="${escapePrintAttr(logo)}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
+              ${logo ? `<img src="${escapePrintAttr(logo)}" alt="Logo" class="pvc-card__logo" style="background-color:#fff;">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
             </div>
             <div class="pvc-card__header-text">
               <strong class="pvc-card__school">${escapePrintHtml(profile.name || database.school.name || "School")}</strong>
@@ -23955,7 +23999,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
           body { margin:0; font-family:"Segoe UI",Arial,sans-serif; color:#102542; background:#fff; }
           .wrap { padding:22px; }
           .head { text-align:center; margin-bottom:10px; }
-          .head img { width:62px; height:62px; border-radius:12px; object-fit:cover; }
+          .head img { width:62px; height:62px; border-radius:12px; object-fit:cover; background-color:#fff; }
           .head h1 { margin:6px 0 2px; font-size:1.45rem; }
           .head p { margin:0; color:#4e678f; }
           .sub { text-align:center; margin:8px 0 12px; color:#5f7394; }
@@ -23963,12 +24007,21 @@ classSelect.addEventListener("change", renderSubjectSelect);
           th, td { border:1px solid #000; padding:8px; text-align:left; background:#fff; }
           th { font-size:.78rem; text-transform:uppercase; }
           @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+          .mobile-print-toolbar { display:flex; position:sticky; top:0; z-index:9999; gap:8px; padding:10px; background:#0b1f3a; box-shadow:0 4px 14px rgba(0,0,0,0.18); }
+          .mobile-print-toolbar button { flex:1; min-height:42px; border:0; border-radius:8px; font-weight:800; cursor:pointer; }
+          .mobile-print-toolbar .print-cancel { color:#fff; background:#dc3545; }
+          .mobile-print-toolbar .print-now { color:#fff; background:#0e8a72; }
+          @media print { .mobile-print-toolbar { display:none !important; } }
         </style>
       </head>
       <body>
+        <nav class="mobile-print-toolbar">
+          <button type="button" class="print-cancel" onclick="window.close();">Cancel</button>
+          <button class="print-now" type="button" onclick="window.print();">Print</button>
+        </nav>
         <main class="wrap">
           <section class="head">
-            ${logo ? `<img src="${escapePrintAttr(logo)}" alt="School logo">` : ""}
+            ${logo ? `<img src="${escapePrintAttr(logo)}" alt="School logo" style="background-color:#fff;">` : ""}
             <h1>${escapePrintHtml(schoolName)}</h1>
             <p>${escapePrintHtml(profile.slogan || "School Management System")}</p>
           </section>
@@ -24358,7 +24411,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
           body { font-family:"Segoe UI",Arial,sans-serif; background:#fff; color:#102542; font-size:10px; line-height:1.2; }
           .wrap { max-height: 282mm; overflow: hidden; padding: 1mm; box-sizing: border-box; }
           .head { text-align:center; margin-bottom:6px; }
-          .head img { width:52px; height:52px; border-radius:10px; object-fit:cover; }
+          .head img { width:52px; height:52px; border-radius:10px; object-fit:cover; background-color:#fff; }
           .head h1 { margin:4px 0 1px; font-size:18px; }
           .head p { margin:0; color:#4e678f; font-size:11px; }
           .title { text-align:center; margin:6px 0; font-size:13px; font-weight:700; color:#173a6b; }
@@ -24375,12 +24428,21 @@ classSelect.addEventListener("change", renderSubjectSelect);
           .sign-box { text-align:center; min-width:170px; }
           .sign-line { border-top:1px solid #000; margin-bottom:4px; height:10px; }
           @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+          .mobile-print-toolbar { display:flex; position:sticky; top:0; z-index:9999; gap:8px; padding:10px; background:#0b1f3a; box-shadow:0 4px 14px rgba(0,0,0,0.18); }
+          .mobile-print-toolbar button { flex:1; min-height:42px; border:0; border-radius:8px; font-weight:800; cursor:pointer; }
+          .mobile-print-toolbar .print-cancel { color:#fff; background:#dc3545; }
+          .mobile-print-toolbar .print-now { color:#fff; background:#0e8a72; }
+          @media print { .mobile-print-toolbar { display:none !important; } }
         </style>
       </head>
       <body>
+        <nav class="mobile-print-toolbar">
+          <button type="button" class="print-cancel" onclick="window.close();">Cancel</button>
+          <button class="print-now" type="button" onclick="window.print();">Print</button>
+        </nav>
         <main class="wrap" style="display: flex; flex-direction: column; height: 282mm;">
           <section class="head">
-            ${profile.logo ? `<img src="${escapePrintAttr(profile.logo)}" alt="School logo">` : ""}
+            ${profile.logo ? `<img src="${escapePrintAttr(profile.logo)}" alt="School logo" style="background-color:#fff;">` : ""}
             <h1>${escapePrintHtml(schoolName)}</h1>
             <p>${escapePrintHtml(profile.slogan || "School Management System")}</p>
           </section>
