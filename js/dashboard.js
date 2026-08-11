@@ -13513,14 +13513,14 @@ ${allContent}
           '.pvc-card__header-text{flex:1;min-width:0}' +
           '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
           '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
-          '.pvc-card__body{display:flex;gap:2.5mm;padding:2mm 3mm;flex:1;min-height:0}' +
-          '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:flex-start;padding-top:.5mm}' +
-          '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
-          '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:14mm;height:14mm;border-radius:50%}' +
-          '.pvc-card__info-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3mm}' +
-          '.pvc-card__name{font-size:2.8mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-          '.pvc-card__type-label{font-size:1.6mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm}' +
-          '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm .8mm;font-size:1.6mm;color:#3a5a7c}' +
+      '.pvc-card__body{display:flex;flex-direction:column;align-items:center;gap:.5mm;padding:1.5mm 3mm;flex:1;min-height:0}' +
+      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0}' +
+      '.pvc-card__photo{width:13mm;height:13mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:13mm;height:13mm;border-radius:50%}' +
+      '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
+      '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
+      '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
+      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm 1mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
           '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
           '.pvc-card__info-grid strong{color:#0f2f58}' +
           '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
@@ -23583,14 +23583,14 @@ classSelect.addEventListener("change", renderSubjectSelect);
       '.pvc-card__header-text{flex:1;min-width:0}' +
       '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
       '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
-      '.pvc-card__body{display:flex;gap:2.5mm;padding:2mm 3mm;flex:1;min-height:0}' +
-      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:flex-start;padding-top:.5mm}' +
-      '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
-      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:14mm;height:14mm;border-radius:50%}' +
-      '.pvc-card__info-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3mm}' +
-      '.pvc-card__name{font-size:2.8mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.pvc-card__type-label{font-size:1.6mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm}' +
-      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm .8mm;font-size:1.6mm;color:#3a5a7c}' +
+      '.pvc-card__body{display:flex;flex-direction:column;align-items:center;gap:.5mm;padding:1.5mm 3mm;flex:1;min-height:0}' +
+      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0}' +
+      '.pvc-card__photo{width:13mm;height:13mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:13mm;height:13mm;border-radius:50%}' +
+      '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
+      '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
+      '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
+      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm 1mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
       '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.pvc-card__info-grid strong{color:#0f2f58}' +
       '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
@@ -23642,14 +23642,14 @@ classSelect.addEventListener("change", renderSubjectSelect);
       '.pvc-card__header-text{flex:1;min-width:0}' +
       '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
       '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
-      '.pvc-card__body{display:flex;gap:2.5mm;padding:2mm 3mm;flex:1;min-height:0}' +
-      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:flex-start;padding-top:.5mm}' +
-      '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
-      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:14mm;height:14mm;border-radius:50%}' +
-      '.pvc-card__info-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3mm}' +
-      '.pvc-card__name{font-size:2.8mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.pvc-card__type-label{font-size:1.6mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm}' +
-      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm .8mm;font-size:1.6mm;color:#3a5a7c}' +
+      '.pvc-card__body{display:flex;flex-direction:column;align-items:center;gap:.5mm;padding:1.5mm 3mm;flex:1;min-height:0}' +
+      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0}' +
+      '.pvc-card__photo{width:13mm;height:13mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:13mm;height:13mm;border-radius:50%}' +
+      '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
+      '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
+      '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
+      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm 1mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
       '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.pvc-card__info-grid strong{color:#0f2f58}' +
       '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
