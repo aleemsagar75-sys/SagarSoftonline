@@ -2228,6 +2228,18 @@ body {
   font-weight: 600;
 }
 
+.id-card-modern__barcode {
+  margin-top: 0.4rem;
+  text-align: center;
+}
+
+.id-card-modern__barcode-img {
+  width: 100%;
+  max-width: 180px;
+  height: auto;
+  display: inline-block;
+}
+
 .student-modal {
   position: fixed;
   inset: 0;

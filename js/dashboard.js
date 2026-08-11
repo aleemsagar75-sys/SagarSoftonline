@@ -13400,6 +13400,9 @@ ${allContent}
                   <article><strong>Date of Joining</strong><span style="color:inherit;">${escapeHtml(employee.dateOfJoining || "-")}</span></article>
                   <article><strong>Employee Role</strong><span style="color:inherit;">${escapeHtml(employee.role || "-")}</span></article>
                 </div>
+                <div class="id-card-modern__barcode">
+                  <img src="https://quickchart.io/barcode?text=${encodeURIComponent(employee.id || "-")}&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace" alt="Barcode" class="id-card-modern__barcode-img">
+                </div>
                 <div class="form-actions">
                   <button class="table-action-btn" type="button" data-emp-action="sms" data-id="${employee.id}">SMS</button>
                   <button class="table-action-btn" type="button" data-emp-action="whatsapp" data-id="${employee.id}">WhatsApp</button>
@@ -13420,8 +13423,8 @@ ${allContent}
         const printableLogo = await normalizeImageForPrintShared(profile.logo || instituteLogo || "");
         const cardsMarkup = await Promise.all(employees.map(async function (employee) {
           const printablePhoto = employee.picture ? await normalizeImageForPrintShared(employee.picture) : "";
-          const qrData = encodeURIComponent("ATTEND:EMPLOYEE:" + employee.id);
-          const employeeQrUrl = "https://quickchart.io/qr?text=" + qrData + "&size=80&margin=1&ecLevel=H&dark=102542";
+          const barcodeValue = employee.id || "-";
+          const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
           return `
             <article class="pvc-card pvc-card--employee">
               <div class="pvc-card__topband"></div>
@@ -13443,11 +13446,10 @@ ${allContent}
                   <span class="pvc-card__line">Joined: ${escapeHtml(employee.dateOfJoining || "-")}</span>
                 </div>
               </section>
-              <footer class="pvc-card__footer">
-                <span class="pvc-card__footer-id">ID: ${escapeHtml(employee.id || "-")}</span>
-                <span class="pvc-card__footer-contact">${escapeHtml((profile.phone || database.school.phone || "-"))}</span>
-              </footer>
-              <img src="${employeeQrUrl}" alt="QR" class="pvc-card__qr">
+              <div class="pvc-card__barcode">
+                <img src="${barcodeUrl}" alt="Barcode" class="pvc-card__barcode-img">
+                <span class="pvc-card__barcode-label">${escapeHtml(barcodeValue)}</span>
+              </div>
             </article>
           `;
         }));
@@ -13612,37 +13614,30 @@ ${allContent}
                 text-overflow: ellipsis;
               }
 
-              .pvc-card__qr {
-                position: absolute;
-                right: 3mm;
-                bottom: 8mm;
-                width: 9.5mm;
-                height: 9.5mm;
-                border-radius: 1mm;
-                border: 0.2mm solid rgba(16,37,66,0.08);
-              }
-
-              .pvc-card__footer {
+              .pvc-card__barcode {
                 position: absolute;
                 left: 3.5mm;
                 right: 3.5mm;
-                bottom: 2.8mm;
+                bottom: 2mm;
                 display: flex;
-                justify-content: space-between;
+                flex-direction: column;
                 align-items: center;
-                gap: 2mm;
-                padding-top: 1.5mm;
-                border-top: 0.2mm solid rgba(16,37,66,0.08);
+                gap: 0.5mm;
+                background: #fff;
+                padding: 1mm 0;
               }
-              .pvc-card__footer-id {
-                font-size: 2.1mm;
+              .pvc-card__barcode-img {
+                width: 50mm;
+                height: 9mm;
+                object-fit: contain;
+                display: block;
+              }
+              .pvc-card__barcode-label {
+                font-size: 1.8mm;
                 font-weight: 600;
                 color: #102542;
-                letter-spacing: 0.03mm;
-              }
-              .pvc-card__footer-contact {
-                font-size: 2mm;
-                color: #5a7a96;
+                letter-spacing: 0.1mm;
+                font-family: "Courier New", monospace;
               }
 
               @media print {
@@ -23560,6 +23555,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
               <article><strong>Class</strong><span>${student.className || "-"}</span></article>
               <article><strong>Mobile</strong><span>${getStudentDisplayPhone(student)}</span></article>
             </div>
+            <div class="id-card-modern__barcode">
+              <img src="https://quickchart.io/barcode?text=${encodeURIComponent(student.admissionNo || "-")}&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace" alt="Barcode" class="id-card-modern__barcode-img">
+            </div>
             <div class="form-actions">
               <button class="table-action-btn" type="button" data-action="sms-student-id-card" data-id="${student.id}">SMS</button>
               <button class="table-action-btn" type="button" data-action="whatsapp-student-id-card" data-id="${student.id}">WhatsApp</button>
@@ -23632,8 +23630,8 @@ classSelect.addEventListener("change", renderSubjectSelect);
     });
     const cardsMarkup = safeStudents.map(function (student) {
       const photo = student.picture;
-      const qrData = encodeURIComponent("ATTEND:STUDENT:" + student.admissionNo);
-      const studentQrUrl = "https://quickchart.io/qr?text=" + qrData + "&size=80&margin=1&ecLevel=H&dark=102542";
+      const barcodeValue = student.admissionNo || "-";
+      const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
       return `
         <article class="pvc-card pvc-card--student">
           <div class="pvc-card__topband"></div>
@@ -23655,11 +23653,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
               <span class="pvc-card__line">Father: ${safeHtml(student.fatherName || "-", "-")}</span>
             </div>
           </section>
-          <footer class="pvc-card__footer">
-            <span class="pvc-card__footer-id">Mobile: ${safeHtml(student.phone || "-", "-")}</span>
-            <span class="pvc-card__footer-contact">${safeHtml(profile.name || database.school.name || "School", "School")}</span>
-          </footer>
-          <img src="${studentQrUrl}" alt="QR" class="pvc-card__qr">
+          <div class="pvc-card__barcode">
+            <img src="${barcodeUrl}" alt="Barcode" class="pvc-card__barcode-img">
+            <span class="pvc-card__barcode-label">${safeHtml(barcodeValue)}</span>
+          </div>
         </article>
       `;
     }).join("");
@@ -23746,14 +23743,13 @@ classSelect.addEventListener("change", renderSubjectSelect);
           .pvc-card__meta { display: grid; gap: 0.5mm; justify-items: center; }
           .pvc-card__name { font-size: 3.2mm; line-height: 1.15; font-weight: 700; letter-spacing: 0.02mm; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .pvc-card__line { font-size: 2.2mm; line-height: 1.1; color: #3a5a7c; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .pvc-card__qr { position: absolute; right: 3mm; bottom: 8mm; width: 9.5mm; height: 9.5mm; border-radius: 1mm; border: 0.2mm solid rgba(16,37,66,0.08); }
-          .pvc-card__footer {
-            position: absolute; left: 3.5mm; right: 3.5mm; bottom: 2.8mm;
-            display: flex; justify-content: space-between; align-items: center; gap: 2mm;
-            padding-top: 1.5mm; border-top: 0.2mm solid rgba(16,37,66,0.08);
+          .pvc-card__barcode {
+            position: absolute; left: 3.5mm; right: 3.5mm; bottom: 2mm;
+            display: flex; flex-direction: column; align-items: center; gap: 0.5mm;
+            background: #fff; padding: 1mm 0;
           }
-          .pvc-card__footer-id { font-size: 2.1mm; font-weight: 600; color: #102542; letter-spacing: 0.03mm; }
-          .pvc-card__footer-contact { font-size: 2mm; color: #5a7a96; }
+          .pvc-card__barcode-img { width: 50mm; height: 9mm; object-fit: contain; display: block; }
+          .pvc-card__barcode-label { font-size: 1.8mm; font-weight: 600; color: #102542; letter-spacing: 0.1mm; font-family: "Courier New", monospace; }
           @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } @page { margin: 8mm; size: auto; } body { padding: 0; } .pvc-card { box-shadow: none; border: 0.3mm solid rgba(16,37,66,0.15); } }
         </style>
       </head>
@@ -23786,8 +23782,8 @@ classSelect.addEventListener("change", renderSubjectSelect);
     const rawLogo = String(profile.logo || "");
     const logo = rawLogo ? (await normalizeImageForPrintShared(rawLogo)) || rawLogo : "";
     const photo = String(normalizedStudent.picture || "");
-    const singleQrData = encodeURIComponent("ATTEND:STUDENT:" + normalizedStudent.admissionNo);
-    const singleQrUrl = "https://quickchart.io/qr?text=" + singleQrData + "&size=80&margin=1&ecLevel=H&dark=102542";
+    const barcodeValue = normalizedStudent.admissionNo || "-";
+    const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
     const printHtml = `
       <!DOCTYPE html>
       <html>
@@ -23869,14 +23865,13 @@ classSelect.addEventListener("change", renderSubjectSelect);
           .pvc-card__meta { display: grid; gap: 0.5mm; justify-items: center; }
           .pvc-card__name { font-size: 3.2mm; line-height: 1.15; font-weight: 700; letter-spacing: 0.02mm; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
           .pvc-card__line { font-size: 2.2mm; line-height: 1.1; color: #3a5a7c; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .pvc-card__qr { position: absolute; right: 3mm; bottom: 8mm; width: 9.5mm; height: 9.5mm; border-radius: 1mm; border: 0.2mm solid rgba(16,37,66,0.08); }
-          .pvc-card__footer {
-            position: absolute; left: 3.5mm; right: 3.5mm; bottom: 2.8mm;
-            display: flex; justify-content: space-between; align-items: center; gap: 2mm;
-            padding-top: 1.5mm; border-top: 0.2mm solid rgba(16,37,66,0.08);
+          .pvc-card__barcode {
+            position: absolute; left: 3.5mm; right: 3.5mm; bottom: 2mm;
+            display: flex; flex-direction: column; align-items: center; gap: 0.5mm;
+            background: #fff; padding: 1mm 0;
           }
-          .pvc-card__footer-id { font-size: 2.1mm; font-weight: 600; color: #102542; letter-spacing: 0.03mm; }
-          .pvc-card__footer-contact { font-size: 2mm; color: #5a7a96; }
+          .pvc-card__barcode-img { width: 50mm; height: 9mm; object-fit: contain; display: block; }
+          .pvc-card__barcode-label { font-size: 1.8mm; font-weight: 600; color: #102542; letter-spacing: 0.1mm; font-family: "Courier New", monospace; }
           @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } @page { margin: 8mm; size: auto; } body { padding: 0; } .pvc-card { box-shadow: none; border: 0.3mm solid rgba(16,37,66,0.15); } }
         </style>
       </head>
@@ -23901,11 +23896,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
               <span class="pvc-card__line">Father: ${escapePrintHtml(normalizedStudent.fatherName || "-")}</span>
             </div>
           </section>
-          <footer class="pvc-card__footer">
-            <span class="pvc-card__footer-id">Mobile: ${escapePrintHtml(normalizedStudent.phone || "-")}</span>
-            <span class="pvc-card__footer-contact">${escapePrintHtml(profile.name || database.school.name || "School")}</span>
-          </footer>
-          <img src="${singleQrUrl}" alt="QR" class="pvc-card__qr">
+          <div class="pvc-card__barcode">
+            <img src="${barcodeUrl}" alt="Barcode" class="pvc-card__barcode-img">
+            <span class="pvc-card__barcode-label">${escapePrintHtml(barcodeValue)}</span>
+          </div>
         </article>
       </body>
       </html>
