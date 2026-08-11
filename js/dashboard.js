@@ -13415,12 +13415,12 @@ ${allContent}
                   </div>
                 </div>
                 <div class="id-card-modern__footer">
-                  <div class="id-card-modern__qr-area">
-                    <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
-                  </div>
                   <div class="id-card-modern__barcode-area">
                     <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
                     <span class="id-card-modern__barcode-text">${barcodeValue}</span>
+                  </div>
+                  <div class="id-card-modern__qr-area">
+                    <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
                   </div>
                 </div>
               </div>
@@ -13491,11 +13491,11 @@ ${allContent}
               '</div>' +
             '</div>' +
             '<div class="pvc-card__footer">' +
-              '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
               '<div class="pvc-card__barcode-area">' +
                 '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
                 '<span class="pvc-card__barcode-text">' + safeHtml(barcodeValue) + '</span>' +
               '</div>' +
+              '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
             '</div>' +
           '</article>';
         }).join("");
@@ -13518,7 +13518,7 @@ ${allContent}
           '.pvc-card__info-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3mm}' +
           '.pvc-card__name{font-size:2.8mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
           '.pvc-card__type-label{font-size:1.6mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm}' +
-          '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;font-size:1.7mm;color:#3a5a7c}' +
+          '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm .8mm;font-size:1.6mm;color:#3a5a7c}' +
           '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
           '.pvc-card__info-grid strong{color:#0f2f58}' +
           '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
@@ -23446,12 +23446,12 @@ classSelect.addEventListener("change", renderSubjectSelect);
               </div>
             </div>
             <div class="id-card-modern__footer">
-              <div class="id-card-modern__qr-area">
-                <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
-              </div>
               <div class="id-card-modern__barcode-area">
                 <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
                 <span class="id-card-modern__barcode-text">${barcodeValue}</span>
+              </div>
+              <div class="id-card-modern__qr-area">
+                <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
               </div>
             </div>
           </div>
@@ -23559,11 +23559,11 @@ classSelect.addEventListener("change", renderSubjectSelect);
           '</div>' +
         '</div>' +
         '<div class="pvc-card__footer">' +
-          '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
           '<div class="pvc-card__barcode-area">' +
             '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
             '<span class="pvc-card__barcode-text">' + safeHtml(barcodeValue) + '</span>' +
           '</div>' +
+          '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
         '</div>' +
       '</article>';
     }).join("");
@@ -23586,7 +23586,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
       '.pvc-card__info-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3mm}' +
       '.pvc-card__name{font-size:2.8mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.pvc-card__type-label{font-size:1.6mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm}' +
-      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;font-size:1.7mm;color:#3a5a7c}' +
+      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm .8mm;font-size:1.6mm;color:#3a5a7c}' +
       '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.pvc-card__info-grid strong{color:#0f2f58}' +
       '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
@@ -23645,7 +23645,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
       '.pvc-card__info-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3mm}' +
       '.pvc-card__name{font-size:2.8mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.pvc-card__type-label{font-size:1.6mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm}' +
-      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;font-size:1.7mm;color:#3a5a7c}' +
+      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm .8mm;font-size:1.6mm;color:#3a5a7c}' +
       '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.pvc-card__info-grid strong{color:#0f2f58}' +
       '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
@@ -23680,11 +23680,11 @@ classSelect.addEventListener("change", renderSubjectSelect);
           '</div>' +
         '</div>' +
         '<div class="pvc-card__footer">' +
-          '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
           '<div class="pvc-card__barcode-area">' +
             '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
             '<span class="pvc-card__barcode-text">' + escapePrintHtml(barcodeValue) + '</span>' +
           '</div>' +
+          '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
         '</div>' +
       '</article>' +
       '</body></html>';
