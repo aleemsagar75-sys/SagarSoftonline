@@ -1,4 +1,4 @@
-/* Major section: Dashboard shell, routing, and student management module */
+﻿/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -6141,7 +6141,7 @@ document.addEventListener("DOMContentLoaded", function () {
         <article class="gs-form-section">
           <div class="gs-form-section__header">
             <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;">??</div>
-            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view � edits are managed in Fee Structure</p></div>
+            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view ï¿½ edits are managed in Fee Structure</p></div>
           </div>
           <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Fee Particulars for*</label><select class="gs-field__input" id="feeParticularClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
           <div id="feeParticularRows" class="gs-row-list" style="margin-top:1rem;"></div>
@@ -6541,7 +6541,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var assignedCount = database.students.filter(function (s) { return s.discountTypeId === dt.id; }).length;
             if (assignedCount > 0) {
               var msg = document.getElementById("dtMessage");
-              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" � it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
+              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" ï¿½ it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
               msg.querySelector(".gs-message__icon").textContent = "?";
               msg.className = "gs-message gs-message--error gs-message--visible";
               return;
@@ -6779,7 +6779,7 @@ document.addEventListener("DOMContentLoaded", function () {
           var percent = dt ? dt.percentage : (student.discountInFee || "-");
           return '<article style="padding:8px 10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">' +
             '<div><strong>' + escapeHtml(student.name) + '</strong> <small style="color:#888;">(' + escapeHtml(student.admissionNo || "-") + ')</small>' +
-            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' � <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
+            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' ï¿½ <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
             '</article>';
         }).join("");
       }
@@ -8273,9 +8273,9 @@ ${allContent}
           name: student.name || "-",
           status: status === "paid" ? "Paid" : "Due",
           feeMonth: feeMonth,
-          totalAmount: `₨ ${totalAmount}`,
-          deposit: `₨ ${deposit}`,
-          remaining: `₨ ${remaining}`
+          totalAmount: `â‚¨ ${totalAmount}`,
+          deposit: `â‚¨ ${deposit}`,
+          remaining: `â‚¨ ${remaining}`
         };
         latestReceiptData.totalAmount = `${currencySymbol} ${totalAmount}`;
         latestReceiptData.deposit = `${currencySymbol} ${deposit}`;
@@ -13381,33 +13381,44 @@ ${allContent}
 
       function renderEmployeeCards() {
         const employees = getFilteredEmployees();
+        const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+        const schoolName = profile.name || database.school.name || "School";
+        const schoolTagline = profile.slogan || "";
         cardsGrid.innerHTML = employees.map(function (employee) {
+          const barcodeValue = employee.id || "-";
+          const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+          const qrValue = "ATTEND:EMPLOYEE:" + barcodeValue;
+          const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
           return `
             <article class="id-card-modern">
               <div class="id-card-modern__inner">
-                <div class="id-card-modern__head">
-                  <div class="id-card-modern__school">${escapeHtml(database.school.name || "SagarSoft School")}</div>
+                <div class="id-card-modern__header">
                   ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
+                  <div class="id-card-modern__school-name">${schoolName}</div>
+                  ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
                 </div>
-                <div class="id-card-modern__profile">
+                <div class="id-card-modern__photo-area">
                   ${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" class="student-avatar student-avatar--image">` : `<span class="student-avatar">${getInitials(employee.name || "E")}</span>`}
-                  <div class="id-card-modern__meta">
-                    <strong>${escapeHtml(employee.name || "-")}</strong>
-                    <span>${escapeHtml(employee.role || "-")}</span>
-                  </div>
                 </div>
-                <div class="id-card-modern__rows">
-                  <article><strong>Date of Joining</strong><span style="color:inherit;">${escapeHtml(employee.dateOfJoining || "-")}</span></article>
-                  <article><strong>Employee Role</strong><span style="color:inherit;">${escapeHtml(employee.role || "-")}</span></article>
+                <div class="id-card-modern__barcode-area">
+                  <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
+                  <span class="id-card-modern__barcode-text">${barcodeValue}</span>
                 </div>
-                <div class="id-card-modern__barcode">
-                  <img src="https://quickchart.io/barcode?text=${encodeURIComponent(employee.id || "-")}&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace" alt="Barcode" class="id-card-modern__barcode-img">
+                <div class="id-card-modern__name">${escapeHtml(employee.name || "-")}</div>
+                <div class="id-card-modern__type-label">EMPLOYEE</div>
+                <dl class="id-card-modern__info-grid">
+                  <dt>ID</dt><dd>${escapeHtml(employee.id || "-")}</dd>
+                  <dt>Role</dt><dd>${escapeHtml(employee.role || "-")}</dd>
+                  <dt>Joined</dt><dd>${escapeHtml(employee.dateOfJoining || "-")}</dd>
+                </dl>
+                <div class="id-card-modern__qr-area">
+                  <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
                 </div>
-                <div class="form-actions">
-                  <button class="table-action-btn" type="button" data-emp-action="sms" data-id="${employee.id}">SMS</button>
-                  <button class="table-action-btn" type="button" data-emp-action="whatsapp" data-id="${employee.id}">WhatsApp</button>
-                  <button class="table-action-btn" type="button" data-emp-action="print-id-card" data-id="${employee.id}">Print Card</button>
-                </div>
+              </div>
+              <div class="form-actions">
+                <button class="table-action-btn" type="button" data-emp-action="sms" data-id="${employee.id}">SMS</button>
+                <button class="table-action-btn" type="button" data-emp-action="whatsapp" data-id="${employee.id}">WhatsApp</button>
+                <button class="table-action-btn" type="button" data-emp-action="print-id-card" data-id="${employee.id}">Print Card</button>
               </div>
             </article>
           `;
@@ -13415,243 +13426,96 @@ ${allContent}
         emptyState.hidden = employees.length !== 0;
       }
 
+
       async function buildEmployeeCardsPrintHtml(employees) {
-        if (!employees.length) {
+        const sourceEmployees = Array.isArray(employees) ? employees : [];
+        if (!sourceEmployees.length) {
           return "";
         }
         const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-        const printableLogo = await normalizeImageForPrintShared(profile.logo || instituteLogo || "");
-        const cardsMarkup = await Promise.all(employees.map(async function (employee) {
-          const printablePhoto = employee.picture ? await normalizeImageForPrintShared(employee.picture) : "";
+        const rawLogo = String(profile.logo || "");
+        const logo = rawLogo ? (await normalizeImageForPrintShared(rawLogo)) || rawLogo : "";
+        const schoolName = profile.name || database.school.name || "School";
+        const schoolTagline = profile.slogan || "";
+        const safeAttr = function (value) {
+          try { return escapePrintAttr(value); } catch (_error) { return ""; }
+        };
+        const safeHtml = function (value, fallback) {
+          try { return escapePrintHtml(value); } catch (_error) { return fallback || "-"; }
+        };
+        const safeEmployees = sourceEmployees.filter(Boolean).map(function (employee) {
+          return {
+            id: employee.id || "",
+            name: employee.name || "-",
+            picture: employee.picture || "",
+            role: employee.role || "-",
+            dateOfJoining: employee.dateOfJoining || ""
+          };
+        });
+        const cardsMarkup = safeEmployees.map(function (employee) {
+          const photo = employee.picture;
           const barcodeValue = employee.id || "-";
-          const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
-          return `
-            <article class="pvc-card pvc-card--employee">
-              <div class="pvc-card__topband"></div>
-              <header class="pvc-card__header">
-                <div class="pvc-card__logo-wrap">
-                  ${printableLogo ? `<img src="${printableLogo}" alt="Logo" class="pvc-card__logo" style="background-color:#fff;">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
-                </div>
-                <div class="pvc-card__header-text">
-                  <strong class="pvc-card__school">${escapeHtml(profile.name || database.school.name || "School")}</strong>
-                  <span class="pvc-card__type">EMPLOYEE ID CARD</span>
-                </div>
-              </header>
-              <section class="pvc-card__body">
-                ${printablePhoto ? `<img src="${printablePhoto}" alt="${escapeAttr(employee.name)}" class="pvc-card__photo">` : `<span class="pvc-card__photo pvc-card__photo--fallback">${getInitials(employee.name || "E")}</span>`}
-                <div class="pvc-card__meta">
-                  <strong class="pvc-card__name">${escapeHtml(employee.name || "-")}</strong>
-                  <span class="pvc-card__line">${escapeHtml(employee.role || "-")}</span>
-                  <span class="pvc-card__line">Phone: ${escapeHtml(getEmployeeDisplayPhone(employee))}</span>
-                  <span class="pvc-card__line">Joined: ${escapeHtml(employee.dateOfJoining || "-")}</span>
-                </div>
-              </section>
-              <div class="pvc-card__barcode">
-                <img src="${barcodeUrl}" alt="Barcode" class="pvc-card__barcode-img">
-                <span class="pvc-card__barcode-label">${escapeHtml(barcodeValue)}</span>
-              </div>
-            </article>
-          `;
-        }));
-
-        return `
-          <!DOCTYPE html>
-          <html><head><meta charset="utf-8"><title></title>
-            <style>
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              body { font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif; background: #fff; color: #102542; padding: 10mm; -webkit-font-smoothing: antialiased; }
-              .pvc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(85.6mm, 1fr)); gap: 8mm; justify-items: center; }
-
-              .pvc-card {
-                position: relative;
-                width: 85.6mm;
-                height: 54mm;
-                border-radius: 3.5mm;
-                border: 0.3mm solid rgba(16,37,66,0.12);
-                overflow: hidden;
-                background: #fff;
-                color: #102542;
-                break-inside: avoid;
-                box-shadow: 0 0.5mm 2mm rgba(16,37,66,0.08), 0 1mm 4mm rgba(16,37,66,0.04);
-              }
-
-              .pvc-card__topband {
-                height: 15mm;
-                background: linear-gradient(135deg, #0f2f58 0%, #14457a 40%, #1b5f7a 70%, #1d9c61 100%);
-                position: relative;
-              }
-              .pvc-card__topband::after {
-                content: "";
-                position: absolute;
-                inset: 0;
-                background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 60%);
-              }
-
-              .pvc-card__header {
-                position: absolute;
-                left: 3.5mm;
-                right: 3.5mm;
-                top: 2.5mm;
-                display: flex;
-                align-items: center;
-                gap: 3mm;
-                color: #fff;
-                z-index: 1;
-              }
-
-              .pvc-card__logo-wrap {
-                flex-shrink: 0;
-                width: 10.5mm;
-                height: 10.5mm;
-                background: #fff;
-                border: 0.3mm solid rgba(0,0,0,0.1);
-                border-radius: 2.5mm;
-                padding: 1.2mm;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                box-shadow: 0 0.8mm 2.5mm rgba(0,0,0,0.12);
-              }
-              .pvc-card__logo {
-                width: 100%;
-                height: 100%;
-                object-fit: contain;
-                display: block;
-              }
-              .pvc-card__logo--fallback {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 3mm;
-                font-weight: 700;
-                color: #0f2f58;
-                background: transparent;
-                border: none;
-                box-shadow: none;
-                width: 100%;
-                height: 100%;
-              }
-
-              .pvc-card__header-text {
-                flex: 1;
-                min-width: 0;
-                display: flex;
-                flex-direction: column;
-                gap: 0.3mm;
-              }
-              .pvc-card__school {
-                display: block;
-                font-size: 3mm;
-                line-height: 1.15;
-                font-weight: 700;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                letter-spacing: 0.02mm;
-              }
-              .pvc-card__type {
-                display: block;
-                font-size: 2mm;
-                font-weight: 400;
-                opacity: 0.88;
-                letter-spacing: 0.15mm;
-                text-transform: uppercase;
-              }
-
-              .pvc-card__body {
-                position: absolute;
-                left: 4mm;
-                right: 4mm;
-                top: 17mm;
-                display: grid;
-                justify-items: center;
-                gap: 1.8mm;
-                text-align: center;
-              }
-              .pvc-card__photo {
-                width: 20mm;
-                height: 20mm;
-                border-radius: 50%;
-                border: 0.4mm solid rgba(16,37,66,0.15);
-                object-fit: cover;
-                background: #f0f4f8;
-                box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
-              }
-              .pvc-card__photo--fallback {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 5mm;
-                font-weight: 700;
-                color: #17335b;
-                background: linear-gradient(135deg, #e8f0fe, #d2e3fc);
-                border: 0.4mm solid rgba(16,37,66,0.15);
-                box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
-              }
-
-              .pvc-card__meta {
-                display: grid;
-                gap: 0.5mm;
-                justify-items: center;
-              }
-              .pvc-card__name {
-                font-size: 3.2mm;
-                line-height: 1.15;
-                font-weight: 700;
-                letter-spacing: 0.02mm;
-                max-width: 55mm;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-              }
-              .pvc-card__line {
-                font-size: 2.2mm;
-                line-height: 1.1;
-                color: #3a5a7c;
-                max-width: 55mm;
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-              }
-
-              .pvc-card__barcode {
-                position: absolute;
-                left: 3.5mm;
-                right: 3.5mm;
-                bottom: 2mm;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                gap: 0.5mm;
-                background: #fff;
-                padding: 1mm 0;
-              }
-              .pvc-card__barcode-img {
-                width: 50mm;
-                height: 9mm;
-                object-fit: contain;
-                display: block;
-              }
-              .pvc-card__barcode-label {
-                font-size: 1.8mm;
-                font-weight: 600;
-                color: #102542;
-                letter-spacing: 0.1mm;
-                font-family: "Courier New", monospace;
-              }
-
-              @media print {
-                * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-                @page { margin: 8mm; size: auto; }
-                body { padding: 0; }
-                .pvc-card { box-shadow: none; border: 0.3mm solid rgba(16,37,66,0.15); }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="pvc-grid">${cardsMarkup.join("")}</div>
-          </body></html>
-        `;
+          const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+          const qrValue = "ATTEND:EMPLOYEE:" + barcodeValue;
+          const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
+          return '<article class="pvc-card">' +
+            '<div class="pvc-card__topband"></div>' +
+            '<div class="pvc-card__body">' +
+              '<div class="pvc-card__header">' +
+                (logo ? '<img src="' + safeAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
+                '<div class="pvc-card__header-text">' +
+                  '<strong class="pvc-card__school">' + safeHtml(schoolName) + '</strong>' +
+                  (schoolTagline ? '<span class="pvc-card__tagline">' + safeHtml(schoolTagline) + '</span>' : '') +
+                '</div>' +
+              '</div>' +
+              '<div class="pvc-card__photo-wrap">' +
+                (photo ? '<img src="' + safeAttr(photo) + '" alt="' + safeAttr(employee.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(employee.name || "E") + '</span>') +
+              '</div>' +
+              '<div class="pvc-card__barcode-wrap">' +
+                '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
+                '<span class="pvc-card__barcode-text">' + safeHtml(barcodeValue) + '</span>' +
+              '</div>' +
+              '<div class="pvc-card__name">' + safeHtml(employee.name || "-") + '</div>' +
+              '<div class="pvc-card__type-label">EMPLOYEE</div>' +
+              '<div class="pvc-card__info">' +
+                '<span><strong>ID</strong> ' + safeHtml(employee.id) + '</span>' +
+                '<span><strong>Role</strong> ' + safeHtml(employee.role) + '</span>' +
+                '<span><strong>Joined</strong> ' + safeHtml(employee.dateOfJoining) + '</span>' +
+              '</div>' +
+              '<div class="pvc-card__qr">' +
+                '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
+              '</div>' +
+            '</div>' +
+          '</article>';
+        }).join("");
+        return '<!DOCTYPE html><html><head><title></title><meta charset="utf-8"><style>' +
+          '*{box-sizing:border-box;margin:0;padding:0}' +
+          'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;color:#102542;padding:10mm;-webkit-font-smoothing:antialiased}' +
+          '.pvc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(85.6mm,1fr));gap:8mm;justify-items:center}' +
+          '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:3mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;break-inside:avoid}' +
+          '.pvc-card::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;background-image:radial-gradient(circle at 15% 20%,rgba(15,47,88,.5) .4mm,transparent .4mm),radial-gradient(circle at 85% 25%,rgba(15,47,88,.4) .4mm,transparent .4mm),radial-gradient(circle at 50% 80%,rgba(15,47,88,.3) .4mm,transparent .4mm),radial-gradient(circle at 25% 60%,rgba(27,95,122,.3) .4mm,transparent .4mm),radial-gradient(circle at 75% 70%,rgba(27,95,122,.3) .4mm,transparent .4mm);background-size:6mm 6mm}' +
+          '.pvc-card__topband{height:10mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 40%,#1b5f7a 70%,#1d9c61 100%)}' +
+          '.pvc-card__body{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 4mm;gap:.8mm}' +
+          '.pvc-card__header{display:flex;align-items:center;gap:2mm;width:100%;padding:1.5mm 0 1mm}' +
+          '.pvc-card__logo{width:8mm;height:8mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(16,37,66,.1);background:#fff}' +
+          '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2.5mm;font-weight:700;color:#0f2f58;width:8mm;height:8mm;border-radius:50%;background:#fff;border:.3mm solid rgba(16,37,66,.1)}' +
+          '.pvc-card__header-text{flex:1;min-width:0}' +
+          '.pvc-card__school{display:block;font-size:2.8mm;font-weight:700;color:#0f2f58;line-height:1.2}' +
+          '.pvc-card__tagline{display:block;font-size:1.8mm;color:#5a7a96;font-style:italic;line-height:1.2}' +
+          '.pvc-card__photo-wrap{display:flex;justify-content:center;padding:.5mm 0}' +
+          '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.5mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+          '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.5mm solid #0f2f58}' +
+          '.pvc-card__barcode-wrap{text-align:center;padding:.3mm 0}' +
+          '.pvc-card__barcode-img{width:38mm;height:7mm;object-fit:contain;display:block;margin:0 auto}' +
+          '.pvc-card__barcode-text{display:block;font-size:1.8mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.2mm}' +
+          '.pvc-card__name{font-size:3mm;font-weight:700;color:#102542;text-align:center;line-height:1.2}' +
+          '.pvc-card__type-label{font-size:1.8mm;font-weight:600;color:#5a7a96;text-align:center;text-transform:uppercase;letter-spacing:.4mm}' +
+          '.pvc-card__info{display:flex;gap:3mm;font-size:1.8mm;color:#3a5a7c;text-align:center}' +
+          '.pvc-card__info strong{color:#102542}' +
+          '.pvc-card__qr{position:absolute;bottom:2mm;right:2mm}' +
+          '.pvc-card__qr-img{width:10mm;height:10mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff}' +
+          '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:8mm;size:auto}body{padding:0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
+          '</style></head><body><div class="pvc-grid">' + cardsMarkup + '</div></body></html>';
       }
 
       async function printEmployeeCards(employees, title) {
@@ -16074,7 +15938,7 @@ ${allContent}
         const message = document.getElementById("qpChapterMessage");
         const tableBody = document.getElementById("qpChapterBody");
 
-        // ── Question Type UI Functions (subject-chapters route) ──
+        // â”€â”€ Question Type UI Functions (subject-chapters route) â”€â”€
         var _qpAutoTitleDefaults = {
           mcq: "Choose The Correct Option",
           fill: "Fill In The Blanks",
@@ -16167,7 +16031,7 @@ ${allContent}
           });
         }
 
-        // ── Save Question Button Handler ──
+        // â”€â”€ Save Question Button Handler â”€â”€
         safeOn(document.getElementById("qpSaveQuestion"), "click", function() {
           var className = classSelect.value;
           var subject = subjectSelect.value;
@@ -16243,7 +16107,7 @@ ${allContent}
           }
         });
 
-        // ── MCQ Add/Remove Handlers ──
+        // â”€â”€ MCQ Add/Remove Handlers â”€â”€
         safeOn(document.getElementById("qpAddMcq"), "click", function() {
           if (mcqOptions.length >= 8) return;
           mcqOptions.push("");
@@ -16255,7 +16119,7 @@ ${allContent}
           renderMcqRows();
         });
 
-        // ── Document Object Model State Manager ──
+        // â”€â”€ Document Object Model State Manager â”€â”€
         var _qeDoc = {
           objects: new Map(),
           selectedIds: new Set(),
@@ -16392,7 +16256,7 @@ ${allContent}
               if (obj.h) tbl.style.height = obj.h + "px";
               tbl.style.borderCollapse = "collapse";
             }
-            // Wrapper adapts to table — no fixed width/height on wrapper
+            // Wrapper adapts to table â€” no fixed width/height on wrapper
             obj.el.style.width = "";
             obj.el.style.height = "";
           }
@@ -16516,7 +16380,7 @@ ${allContent}
           }
         }
 
-        // ── Selection System ──
+        // â”€â”€ Selection System â”€â”€
         function _qeSelect(el, type) {
           // Exit text edit mode if selecting a different object
           if (_qeTextEditActive && _qeTextEditTarget && !el.contains(_qeTextEditTarget)) {
@@ -16554,7 +16418,7 @@ ${allContent}
           _qeHidePropsPanel();
         }
 
-        // ── Properties Panel ──
+        // â”€â”€ Properties Panel â”€â”€
         function _qeShowPropsPanel() {
           _qeHidePropsPanel();
           if (!_qe.selectedEl || !_qe.selectedType) return;
@@ -16632,7 +16496,7 @@ ${allContent}
           }
         }
 
-        // ── Context Menu System ──
+        // â”€â”€ Context Menu System â”€â”€
         function _qeShowContextMenu(e, type, el, extra) {
           e.preventDefault();
           e.stopPropagation();
@@ -16765,7 +16629,7 @@ ${allContent}
           if (_qe.contextMenu) { _qe.contextMenu.remove(); _qe.contextMenu = null; }
         }
 
-        // ── Color Picker Popup (for context menu) ──
+        // â”€â”€ Color Picker Popup (for context menu) â”€â”€
         function _qeShowColorPopup(e, title, currentColor, onApply) {
           _qeHideContextMenu();
           var popup = document.createElement("div");
@@ -16866,7 +16730,7 @@ ${allContent}
           }, 10);
         }
 
-        // ── Text Edit Mode ──
+        // â”€â”€ Text Edit Mode â”€â”€
         var _qeTextEditActive = false;
         var _qeTextEditTarget = null;
 
@@ -16906,7 +16770,7 @@ ${allContent}
           _qeTextEditTarget = null;
         }
 
-        // ── Object Manipulation ──
+        // â”€â”€ Object Manipulation â”€â”€
         function _qeSetupObjectDrag(el) {
           if (el.getAttribute("data-drag-wired")) return;
           el.setAttribute("data-drag-wired", "1");
@@ -17045,7 +16909,7 @@ ${allContent}
           _qeSetupRotateHandle(el);
         }
 
-        // ── Duplicate Object ──
+        // â”€â”€ Duplicate Object â”€â”€
         function _qeDuplicateObject(el) {
           var obj = _qeGetObject(el);
           if (!obj) return;
@@ -17101,7 +16965,7 @@ ${allContent}
           setTimeout(function() { _qeWireAllObjects(); }, 0);
         }
 
-        // ── Crop Image ──
+        // â”€â”€ Crop Image â”€â”€
         function _qeStartCrop(el) {
           var img = el.querySelector("img");
           if (!img) return;
@@ -17125,7 +16989,7 @@ ${allContent}
           });
         }
 
-        // ── Wire All Objects ──
+        // â”€â”€ Wire All Objects â”€â”€
         function _qeWireAllObjects() {
           if (!_qe.el) return;
           _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(fig) {
@@ -17225,7 +17089,7 @@ ${allContent}
           });
         }
 
-        // ── Table Move Handle ──
+        // â”€â”€ Table Move Handle â”€â”€
         function _qeSetupTableMoveHandle(ft) {
           if (ft.querySelector(".ss-qe-table-move-handle")) return;
           var handle = document.createElement("div");
@@ -17250,7 +17114,7 @@ ${allContent}
           });
         }
 
-        // ── Table Resize Handle ──
+        // â”€â”€ Table Resize Handle â”€â”€
         function _qeSetupTableResizeHandle(ft) {
           if (ft.querySelector(".ss-qe-table-resize-handle")) return;
           var handle = document.createElement("div");
@@ -17282,7 +17146,7 @@ ${allContent}
           });
         }
 
-        // ── Table Column Resize (Word-style border dragging) ──
+        // â”€â”€ Table Column Resize (Word-style border dragging) â”€â”€
         function _qeSetupTableColResize(table) {
           if (!table) return;
           var _colResizeActive = false;
@@ -17395,7 +17259,7 @@ ${allContent}
           });
         }
 
-        // ── Table Row Resize (Word-style border dragging) ──
+        // â”€â”€ Table Row Resize (Word-style border dragging) â”€â”€
         function _qeSetupTableRowResize(table) {
           if (!table) return;
           var _rowResizeActive = false;
@@ -17491,7 +17355,7 @@ ${allContent}
           });
         }
 
-        // ── Table Selection (click/double-click/triple-click) ──
+        // â”€â”€ Table Selection (click/double-click/triple-click) â”€â”€
         function _qeSetupTableSelection(ft, table) {
           if (!table) return;
           // Click on cell: allow it to receive focus for typing
@@ -17503,7 +17367,7 @@ ${allContent}
           });
         }
 
-        // ── Table Operations ──
+        // â”€â”€ Table Operations â”€â”€
         function _qeInsertTable(rows, cols) {
           var wrapper = document.createElement("figure");
           wrapper.className = "ss-qe-float-table";
@@ -17595,7 +17459,7 @@ ${allContent}
           }
         }
 
-        // ── Shape Library ──
+        // â”€â”€ Shape Library â”€â”€
         var _qeShapeLibrary = {
           rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
           roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
@@ -17834,7 +17698,7 @@ ${allContent}
           _qeShowUrlPopup("Insert Link", "https://", function(url) { _qeExec("createLink", url); });
         }
 
-        // ── Toolbar ──
+        // â”€â”€ Toolbar â”€â”€
         function _qeBuildToolbar() {
           var tb = _qe.toolbar; if (!tb) return;
           function btn(icon, title, cmd, val, cls) {
@@ -17946,7 +17810,7 @@ ${allContent}
           }); }
         }
 
-        // ── Keyboard Shortcuts ──
+        // â”€â”€ Keyboard Shortcuts â”€â”€
         function _qeHandleKeydown(e) {
           if (!_qe.el || !_qe.el.contains(e.target)) return;
           var ctrl = e.ctrlKey || e.metaKey;
@@ -17966,7 +17830,7 @@ ${allContent}
             if (an && an.getAttribute && an.getAttribute("contenteditable") === "true") isInEditable = true;
             if (an && an.closest && (an.closest("td") || an.closest("th") || an.closest(".ss-qe-shape-text-editor") || an.closest("#ssQEContent"))) isInEditable = true;
           }
-          // If inside an editable text area, only handle Escape — let browser handle everything else
+          // If inside an editable text area, only handle Escape â€” let browser handle everything else
           if (isInEditable) {
             if (e.key === "Escape") { e.preventDefault(); _qeExitTextEditMode(); }
             return;
@@ -18033,7 +17897,7 @@ ${allContent}
           }
         }
 
-        // ── Drag Selection (Marquee) ──
+        // â”€â”€ Drag Selection (Marquee) â”€â”€
         var _qeMarquee = null;
         var _qeMarqueeStart = null;
 
@@ -18115,7 +17979,7 @@ ${allContent}
           });
         }
 
-        // ── Wire Events ──
+        // â”€â”€ Wire Events â”€â”€
         function _qeWireEvents() {
           _qe.el.addEventListener("input", function() { _qeUpdateStatus(); });
           _qe.el.addEventListener("keyup", function() { _qeUpdateStatus(); _qeUpdateToolbar(); });
@@ -18196,7 +18060,7 @@ ${allContent}
         function insertAtCursor(html) { _qeInsertHTML(html); }
 
 
-        // ── Question Editor initialization ──
+        // â”€â”€ Question Editor initialization â”€â”€
         (function initQuestionEditor() {
           _qe.el = document.getElementById("ssQEContent");
           _qe.toolbar = document.getElementById("ssQEToolbar");
@@ -18231,7 +18095,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
         renderMcqRows();
         renderChapterRows();
 
-        // ── Edit Mode: Load question from Question Bank ──
+        // â”€â”€ Edit Mode: Load question from Question Bank â”€â”€
         var editQId = sessionStorage.getItem("sagarsoft_edit_question_id");
         if (editQId) {
           var editRow = (settings.questionChapters || []).find(function(r) { return String(r.id) === String(editQId); });
@@ -21401,8 +21265,8 @@ classSelect.addEventListener("change", renderSubjectSelect);
             <ol class="sms-guide-list" style="margin:6px 0 0;">
               <li>Install <strong>SagarSoft SMS Agent</strong> app on phone ? Login with school credentials.</li>
               <li>In app, go to <strong>SIM Registration</strong> ? enter SIM number ? tap <strong>Register SIM</strong>.</li>
-              <li>Tap <strong>Start Service</strong> � it will auto-send queued SMS.</li>
-              <li>Works from <strong>any network</strong> � WiFi, mobile data, different locations, no setup needed.</li>
+              <li>Tap <strong>Start Service</strong> ï¿½ it will auto-send queued SMS.</li>
+              <li>Works from <strong>any network</strong> ï¿½ WiFi, mobile data, different locations, no setup needed.</li>
             </ol>
           </div>
         </article>
@@ -23490,7 +23354,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
           <div class="admission-field"><strong>Admission Date</strong><span>${student.dateOfAdmission || "-"}</span></div>
           <div class="admission-field"><strong>Account Status</strong><span>${loginInfo.status}</span></div>
           <div class="admission-field"><strong>Username</strong><span>${loginInfo.username}</span></div>
-          <div class="admission-field"><strong>Password</strong><span>��������</span></div>
+          <div class="admission-field"><strong>Password</strong><span>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</span></div>
         </div>
       </article>
     `;
@@ -23529,46 +23393,55 @@ classSelect.addEventListener("change", renderSubjectSelect);
 
   function renderStudentIdCards() {
     const students = getIdCardStudents();
-      const instituteLogo = (database.generalSettings && database.generalSettings.instituteProfile && database.generalSettings.instituteProfile.logo) || "";
+    const instituteLogo = (database.generalSettings && database.generalSettings.instituteProfile && database.generalSettings.instituteProfile.logo) || "";
+    const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+    const schoolName = profile.name || database.school.name || "School";
+    const schoolTagline = profile.slogan || "";
 
     studentIdCardsGrid.innerHTML = students.map(function (student) {
       const profileMedia = student.picture
         ? `<img src="${student.picture}" alt="${student.name}" class="student-avatar student-avatar--image">`
         : `<span class="student-avatar">${getInitials(student.name)}</span>`;
+      const barcodeValue = student.admissionNo || "-";
+      const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+      const qrValue = "ATTEND:STUDENT:" + barcodeValue;
+      const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
 
       return `
         <article class="id-card-modern">
           <div class="id-card-modern__inner">
-            <div class="id-card-modern__head">
-              <div class="id-card-modern__school">${database.school.name}</div>
+            <div class="id-card-modern__header">
               ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
+              <div class="id-card-modern__school-name">${schoolName}</div>
+              ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
             </div>
-            <div class="id-card-modern__profile">
+            <div class="id-card-modern__photo-area">
               ${profileMedia}
-              <div class="id-card-modern__meta">
-                <strong>${student.name}</strong>
-                <span>Roll No: ${student.admissionNo || "-"}</span>
-              </div>
             </div>
-            <div class="id-card-modern__rows">
-              <article><strong>Father Name</strong><span>${student.fatherName || "-"}</span></article>
-              <article><strong>Class</strong><span>${student.className || "-"}</span></article>
-              <article><strong>Mobile</strong><span>${getStudentDisplayPhone(student)}</span></article>
+            <div class="id-card-modern__barcode-area">
+              <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
+              <span class="id-card-modern__barcode-text">${barcodeValue}</span>
             </div>
-            <div class="id-card-modern__barcode">
-              <img src="https://quickchart.io/barcode?text=${encodeURIComponent(student.admissionNo || "-")}&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace" alt="Barcode" class="id-card-modern__barcode-img">
+            <div class="id-card-modern__name">${student.name}</div>
+            <div class="id-card-modern__type-label">STUDENT</div>
+            <dl class="id-card-modern__info-grid">
+              <dt>ID</dt><dd>${student.admissionNo || "-"}</dd>
+              <dt>Class</dt><dd>${student.className || "-"}</dd>
+              <dt>DOA</dt><dd>${student.dateOfAdmission || "-"}</dd>
+            </dl>
+            <div class="id-card-modern__qr-area">
+              <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
             </div>
-            <div class="form-actions">
-              <button class="table-action-btn" type="button" data-action="sms-student-id-card" data-id="${student.id}">SMS</button>
-              <button class="table-action-btn" type="button" data-action="whatsapp-student-id-card" data-id="${student.id}">WhatsApp</button>
-              <button class="table-action-btn" type="button" data-action="print-student-id-card" data-id="${student.id}">Print Card</button>
-            </div>
+          </div>
+          <div class="form-actions">
+            <button class="table-action-btn" type="button" data-action="sms-student-id-card" data-id="${student.id}">SMS</button>
+            <button class="table-action-btn" type="button" data-action="whatsapp-student-id-card" data-id="${student.id}">WhatsApp</button>
+            <button class="table-action-btn" type="button" data-action="print-student-id-card" data-id="${student.id}">Print Card</button>
           </div>
         </article>
       `;
     }).join("");
 
-    // Ensure event listener is attached after HTML update
     if (!studentIdCardsGrid.__listenerAttached) {
       studentIdCardsGrid.addEventListener("click", handleTableActionClick);
       studentIdCardsGrid.__listenerAttached = true;
@@ -23584,24 +23457,24 @@ classSelect.addEventListener("change", renderSubjectSelect);
         : (fallback || "-");
     };
     return Array.from(studentIdCardsGrid.querySelectorAll(".id-card-modern")).map(function (card) {
-      const name = safeText(card.querySelector(".id-card-modern__meta strong"), "-");
-      const rollText = safeText(card.querySelector(".id-card-modern__meta span"), "");
-      const rowItems = Array.from(card.querySelectorAll(".id-card-modern__rows article"));
-      const fatherName = rowItems[0] ? safeText(rowItems[0].querySelector("span"), "-") : "-";
-      const className = rowItems[1] ? safeText(rowItems[1].querySelector("span"), "-") : "-";
-      const phone = rowItems[2] ? safeText(rowItems[2].querySelector("span"), "-") : "-";
-      const photo = (card.querySelector(".id-card-modern__profile img") && card.querySelector(".id-card-modern__profile img").src) || "";
-      const roll = rollText.replace(/^Roll No:\s*/i, "").trim() || "-";
+      const name = safeText(card.querySelector(".id-card-modern__name"), "-");
+      const barcodeText = safeText(card.querySelector(".id-card-modern__barcode-text"), "-");
+      const infoItems = Array.from(card.querySelectorAll(".id-card-modern__info-grid dd"));
+      const className = infoItems[1] ? safeText(infoItems[1], "-") : "-";
+      const doa = infoItems[2] ? safeText(infoItems[2], "-") : "-";
+      const photo = (card.querySelector(".id-card-modern__photo-area img") && card.querySelector(".id-card-modern__photo-area img").src) || "";
       return {
         name: String(name || "-").trim(),
         picture: String(photo || ""),
-        admissionNo: String(roll || "-"),
+        admissionNo: String(barcodeText || "-"),
         className: String(className || "-"),
-        fatherName: String(fatherName || "-"),
-        phone: String(phone || "-")
+        fatherName: "-",
+        phone: "-",
+        dateOfAdmission: String(doa || "-")
       };
     });
   }
+
 
   async function buildStudentIdCardsPrintHtml(students) {
     const sourceStudents = Array.isArray(students) ? students : [];
@@ -23611,6 +23484,8 @@ classSelect.addEventListener("change", renderSubjectSelect);
     const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
     const rawLogo = String(profile.logo || "");
     const logo = rawLogo ? (await normalizeImageForPrintShared(rawLogo)) || rawLogo : "";
+    const schoolName = profile.name || database.school.name || "School";
+    const schoolTagline = profile.slogan || "";
     const safeAttr = function (value) {
       try { return escapePrintAttr(value); } catch (_error) { return ""; }
     };
@@ -23625,139 +23500,74 @@ classSelect.addEventListener("change", renderSubjectSelect);
         admissionNo: normalized.admissionNo,
         className: normalized.className,
         fatherName: normalized.fatherName,
-        phone: normalized.phone
+        phone: normalized.phone,
+        dateOfAdmission: normalized.dateOfAdmission
       };
     });
     const cardsMarkup = safeStudents.map(function (student) {
       const photo = student.picture;
       const barcodeValue = student.admissionNo || "-";
-      const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
-      return `
-        <article class="pvc-card pvc-card--student">
-          <div class="pvc-card__topband"></div>
-          <header class="pvc-card__header">
-            <div class="pvc-card__logo-wrap">
-              ${logo ? `<img src="${safeAttr(logo)}" alt="Logo" class="pvc-card__logo" style="background-color:#fff;">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
-            </div>
-            <div class="pvc-card__header-text">
-              <strong class="pvc-card__school">${safeHtml(profile.name || database.school.name || "School", "School")}</strong>
-              <span class="pvc-card__type">STUDENT ID CARD</span>
-            </div>
-          </header>
-          <section class="pvc-card__body">
-            ${photo ? `<img src="${safeAttr(photo)}" alt="${safeAttr(student.name)}" class="pvc-card__photo">` : `<span class="pvc-card__photo pvc-card__photo--fallback">${getInitials(student.name || "S")}</span>`}
-            <div class="pvc-card__meta">
-              <strong class="pvc-card__name">${safeHtml(student.name || "-", "-")}</strong>
-              <span class="pvc-card__line">Roll: ${safeHtml(student.admissionNo || "-", "-")}</span>
-              <span class="pvc-card__line">Class: ${safeHtml(student.className || "-", "-")}</span>
-              <span class="pvc-card__line">Father: ${safeHtml(student.fatherName || "-", "-")}</span>
-            </div>
-          </section>
-          <div class="pvc-card__barcode">
-            <img src="${barcodeUrl}" alt="Barcode" class="pvc-card__barcode-img">
-            <span class="pvc-card__barcode-label">${safeHtml(barcodeValue)}</span>
-          </div>
-        </article>
-      `;
+      const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+      const qrValue = "ATTEND:STUDENT:" + barcodeValue;
+      const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
+      return '<article class="pvc-card">' +
+        '<div class="pvc-card__topband"></div>' +
+        '<div class="pvc-card__body">' +
+          '<div class="pvc-card__header">' +
+            (logo ? '<img src="' + safeAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
+            '<div class="pvc-card__header-text">' +
+              '<strong class="pvc-card__school">' + safeHtml(schoolName) + '</strong>' +
+              (schoolTagline ? '<span class="pvc-card__tagline">' + safeHtml(schoolTagline) + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="pvc-card__photo-wrap">' +
+            (photo ? '<img src="' + safeAttr(photo) + '" alt="' + safeAttr(student.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(student.name || "S") + '</span>') +
+          '</div>' +
+          '<div class="pvc-card__barcode-wrap">' +
+            '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
+            '<span class="pvc-card__barcode-text">' + safeHtml(barcodeValue) + '</span>' +
+          '</div>' +
+          '<div class="pvc-card__name">' + safeHtml(student.name || "-") + '</div>' +
+          '<div class="pvc-card__type-label">STUDENT</div>' +
+          '<div class="pvc-card__info">' +
+            '<span><strong>ID</strong> ' + safeHtml(student.admissionNo) + '</span>' +
+            '<span><strong>Class</strong> ' + safeHtml(student.className) + '</span>' +
+            '<span><strong>DOA</strong> ' + safeHtml(student.dateOfAdmission) + '</span>' +
+          '</div>' +
+          '<div class="pvc-card__qr">' +
+            '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
+          '</div>' +
+        '</div>' +
+      '</article>';
     }).join("");
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title></title>
-        <meta charset="utf-8">
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif; background: #fff; color: #102542; padding: 10mm; -webkit-font-smoothing: antialiased; }
-          .pvc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(85.6mm, 1fr)); gap: 8mm; justify-items: center; }
-          .pvc-card {
-            position: relative;
-            width: 85.6mm;
-            height: 54mm;
-            border-radius: 3.5mm;
-            border: 0.3mm solid rgba(16,37,66,0.12);
-            overflow: hidden;
-            background: #fff;
-            color: #102542;
-            break-inside: avoid;
-            box-shadow: 0 0.5mm 2mm rgba(16,37,66,0.08), 0 1mm 4mm rgba(16,37,66,0.04);
-          }
-          .pvc-card__topband {
-            height: 15mm;
-            background: linear-gradient(135deg, #0f2f58 0%, #14457a 40%, #1b5f7a 70%, #1d9c61 100%);
-            position: relative;
-          }
-          .pvc-card__topband::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 60%);
-          }
-          .pvc-card__header {
-            position: absolute;
-            left: 3.5mm;
-            right: 3.5mm;
-            top: 2.5mm;
-            display: flex;
-            align-items: center;
-            gap: 3mm;
-            color: #fff;
-            z-index: 1;
-          }
-          .pvc-card__logo-wrap {
-            flex-shrink: 0;
-            width: 10.5mm;
-            height: 10.5mm;
-            background: #fff;
-            border: 0.3mm solid rgba(0,0,0,0.1);
-            border-radius: 2.5mm;
-            padding: 1.2mm;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0.8mm 2.5mm rgba(0,0,0,0.12);
-          }
-          .pvc-card__logo { width: 100%; height: 100%; object-fit: contain; display: block; }
-          .pvc-card__logo--fallback {
-            display: inline-flex; align-items: center; justify-content: center;
-            font-size: 3mm; font-weight: 700; color: #0f2f58; background: transparent; border: none; box-shadow: none; width: 100%; height: 100%;
-          }
-          .pvc-card__header-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3mm; }
-          .pvc-card__school { display: block; font-size: 3mm; line-height: 1.15; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.02mm; }
-          .pvc-card__type { display: block; font-size: 2mm; font-weight: 400; opacity: 0.88; letter-spacing: 0.15mm; text-transform: uppercase; }
-          .pvc-card__body {
-            position: absolute; left: 4mm; right: 4mm; top: 17mm;
-            display: grid; justify-items: center; gap: 1.8mm; text-align: center;
-          }
-          .pvc-card__photo {
-            width: 20mm; height: 20mm; border-radius: 50%;
-            border: 0.4mm solid rgba(16,37,66,0.15); object-fit: cover; background: #f0f4f8;
-            box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
-          }
-          .pvc-card__photo--fallback {
-            display: inline-flex; align-items: center; justify-content: center;
-            font-size: 5mm; font-weight: 700; color: #17335b;
-            background: linear-gradient(135deg, #e8f0fe, #d2e3fc);
-            border: 0.4mm solid rgba(16,37,66,0.15); box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
-          }
-          .pvc-card__meta { display: grid; gap: 0.5mm; justify-items: center; }
-          .pvc-card__name { font-size: 3.2mm; line-height: 1.15; font-weight: 700; letter-spacing: 0.02mm; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .pvc-card__line { font-size: 2.2mm; line-height: 1.1; color: #3a5a7c; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .pvc-card__barcode {
-            position: absolute; left: 3.5mm; right: 3.5mm; bottom: 2mm;
-            display: flex; flex-direction: column; align-items: center; gap: 0.5mm;
-            background: #fff; padding: 1mm 0;
-          }
-          .pvc-card__barcode-img { width: 50mm; height: 9mm; object-fit: contain; display: block; }
-          .pvc-card__barcode-label { font-size: 1.8mm; font-weight: 600; color: #102542; letter-spacing: 0.1mm; font-family: "Courier New", monospace; }
-          @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } @page { margin: 8mm; size: auto; } body { padding: 0; } .pvc-card { box-shadow: none; border: 0.3mm solid rgba(16,37,66,0.15); } }
-        </style>
-      </head>
-      <body>
-        <div class="pvc-grid">${cardsMarkup}</div>
-      </body>
-      </html>
-      `;
+    return '<!DOCTYPE html><html><head><title></title><meta charset="utf-8"><style>' +
+      '*{box-sizing:border-box;margin:0;padding:0}' +
+      'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;color:#102542;padding:10mm;-webkit-font-smoothing:antialiased}' +
+      '.pvc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(85.6mm,1fr));gap:8mm;justify-items:center}' +
+      '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:3mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;break-inside:avoid}' +
+      '.pvc-card::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;background-image:radial-gradient(circle at 15% 20%,rgba(15,47,88,.5) .4mm,transparent .4mm),radial-gradient(circle at 85% 25%,rgba(15,47,88,.4) .4mm,transparent .4mm),radial-gradient(circle at 50% 80%,rgba(15,47,88,.3) .4mm,transparent .4mm),radial-gradient(circle at 25% 60%,rgba(27,95,122,.3) .4mm,transparent .4mm),radial-gradient(circle at 75% 70%,rgba(27,95,122,.3) .4mm,transparent .4mm);background-size:6mm 6mm}' +
+      '.pvc-card__topband{height:10mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 40%,#1b5f7a 70%,#1d9c61 100%)}' +
+      '.pvc-card__body{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 4mm;gap:.8mm}' +
+      '.pvc-card__header{display:flex;align-items:center;gap:2mm;width:100%;padding:1.5mm 0 1mm}' +
+      '.pvc-card__logo{width:8mm;height:8mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(16,37,66,.1);background:#fff}' +
+      '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2.5mm;font-weight:700;color:#0f2f58;width:8mm;height:8mm;border-radius:50%;background:#fff;border:.3mm solid rgba(16,37,66,.1)}' +
+      '.pvc-card__header-text{flex:1;min-width:0}' +
+      '.pvc-card__school{display:block;font-size:2.8mm;font-weight:700;color:#0f2f58;line-height:1.2}' +
+      '.pvc-card__tagline{display:block;font-size:1.8mm;color:#5a7a96;font-style:italic;line-height:1.2}' +
+      '.pvc-card__photo-wrap{display:flex;justify-content:center;padding:.5mm 0}' +
+      '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.5mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.5mm solid #0f2f58}' +
+      '.pvc-card__barcode-wrap{text-align:center;padding:.3mm 0}' +
+      '.pvc-card__barcode-img{width:38mm;height:7mm;object-fit:contain;display:block;margin:0 auto}' +
+      '.pvc-card__barcode-text{display:block;font-size:1.8mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.2mm}' +
+      '.pvc-card__name{font-size:3mm;font-weight:700;color:#102542;text-align:center;line-height:1.2}' +
+      '.pvc-card__type-label{font-size:1.8mm;font-weight:600;color:#5a7a96;text-align:center;text-transform:uppercase;letter-spacing:.4mm}' +
+      '.pvc-card__info{display:flex;gap:3mm;font-size:1.8mm;color:#3a5a7c;text-align:center}' +
+      '.pvc-card__info strong{color:#102542}' +
+      '.pvc-card__qr{position:absolute;bottom:2mm;right:2mm}' +
+      '.pvc-card__qr-img{width:10mm;height:10mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff}' +
+      '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:8mm;size:auto}body{padding:0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
+      '</style></head><body><div class="pvc-grid">' + cardsMarkup + '</div></body></html>';
   }
 
   async function printStudentIdCardsByList(students, title) {
@@ -23773,6 +23583,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
     }
   }
 
+
   async function printSingleStudentIdCard(student) {
     if (!student) {
       return;
@@ -23782,128 +23593,69 @@ classSelect.addEventListener("change", renderSubjectSelect);
     const rawLogo = String(profile.logo || "");
     const logo = rawLogo ? (await normalizeImageForPrintShared(rawLogo)) || rawLogo : "";
     const photo = String(normalizedStudent.picture || "");
+    const schoolName = profile.name || database.school.name || "School";
+    const schoolTagline = profile.slogan || "";
     const barcodeValue = normalizedStudent.admissionNo || "-";
-    const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&format=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
-    const printHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title></title>
-        <style>
-          * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif; background: #fff; padding: 14mm; display: flex; justify-content: center; -webkit-font-smoothing: antialiased; }
-          .pvc-card {
-            position: relative;
-            width: 85.6mm;
-            height: 54mm;
-            border-radius: 3.5mm;
-            border: 0.3mm solid rgba(16,37,66,0.12);
-            overflow: hidden;
-            background: #fff;
-            color: #102542;
-            box-shadow: 0 0.5mm 2mm rgba(16,37,66,0.08), 0 1mm 4mm rgba(16,37,66,0.04);
-          }
-          .pvc-card__topband {
-            height: 15mm;
-            background: linear-gradient(135deg, #0f2f58 0%, #14457a 40%, #1b5f7a 70%, #1d9c61 100%);
-            position: relative;
-          }
-          .pvc-card__topband::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 60%);
-          }
-          .pvc-card__header {
-            position: absolute;
-            left: 3.5mm;
-            right: 3.5mm;
-            top: 2.5mm;
-            display: flex;
-            align-items: center;
-            gap: 3mm;
-            color: #fff;
-            z-index: 1;
-          }
-          .pvc-card__logo-wrap {
-            flex-shrink: 0;
-            width: 10.5mm;
-            height: 10.5mm;
-            background: #fff;
-            border: 0.3mm solid rgba(0,0,0,0.1);
-            border-radius: 2.5mm;
-            padding: 1.2mm;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 0.8mm 2.5mm rgba(0,0,0,0.12);
-          }
-          .pvc-card__logo { width: 100%; height: 100%; object-fit: contain; display: block; }
-          .pvc-card__logo--fallback {
-            display: inline-flex; align-items: center; justify-content: center;
-            font-size: 3mm; font-weight: 700; color: #0f2f58; background: transparent; border: none; box-shadow: none; width: 100%; height: 100%;
-          }
-          .pvc-card__header-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.3mm; }
-          .pvc-card__school { display: block; font-size: 3mm; line-height: 1.15; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.02mm; }
-          .pvc-card__type { display: block; font-size: 2mm; font-weight: 400; opacity: 0.88; letter-spacing: 0.15mm; text-transform: uppercase; }
-          .pvc-card__body {
-            position: absolute; left: 4mm; right: 4mm; top: 17mm;
-            display: grid; justify-items: center; gap: 1.8mm; text-align: center;
-          }
-          .pvc-card__photo {
-            width: 20mm; height: 20mm; border-radius: 50%;
-            border: 0.4mm solid rgba(16,37,66,0.15); object-fit: cover; background: #f0f4f8;
-            box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
-          }
-          .pvc-card__photo--fallback {
-            display: inline-flex; align-items: center; justify-content: center;
-            font-size: 5mm; font-weight: 700; color: #17335b;
-            background: linear-gradient(135deg, #e8f0fe, #d2e3fc);
-            border: 0.4mm solid rgba(16,37,66,0.15); box-shadow: 0 1mm 3mm rgba(16,37,66,0.1);
-          }
-          .pvc-card__meta { display: grid; gap: 0.5mm; justify-items: center; }
-          .pvc-card__name { font-size: 3.2mm; line-height: 1.15; font-weight: 700; letter-spacing: 0.02mm; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .pvc-card__line { font-size: 2.2mm; line-height: 1.1; color: #3a5a7c; max-width: 55mm; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-          .pvc-card__barcode {
-            position: absolute; left: 3.5mm; right: 3.5mm; bottom: 2mm;
-            display: flex; flex-direction: column; align-items: center; gap: 0.5mm;
-            background: #fff; padding: 1mm 0;
-          }
-          .pvc-card__barcode-img { width: 50mm; height: 9mm; object-fit: contain; display: block; }
-          .pvc-card__barcode-label { font-size: 1.8mm; font-weight: 600; color: #102542; letter-spacing: 0.1mm; font-family: "Courier New", monospace; }
-          @media print { * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } @page { margin: 8mm; size: auto; } body { padding: 0; } .pvc-card { box-shadow: none; border: 0.3mm solid rgba(16,37,66,0.15); } }
-        </style>
-      </head>
-      <body>
-        <article class="pvc-card">
-          <div class="pvc-card__topband"></div>
-          <header class="pvc-card__header">
-            <div class="pvc-card__logo-wrap">
-              ${logo ? `<img src="${escapePrintAttr(logo)}" alt="Logo" class="pvc-card__logo" style="background-color:#fff;">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
-            </div>
-            <div class="pvc-card__header-text">
-              <strong class="pvc-card__school">${escapePrintHtml(profile.name || database.school.name || "School")}</strong>
-              <span class="pvc-card__type">STUDENT ID CARD</span>
-            </div>
-          </header>
-          <section class="pvc-card__body">
-            ${photo ? `<img src="${escapePrintAttr(photo)}" alt="${escapePrintAttr(normalizedStudent.name)}" class="pvc-card__photo">` : `<span class="pvc-card__photo pvc-card__photo--fallback">${getInitials(normalizedStudent.name || "S")}</span>`}
-            <div class="pvc-card__meta">
-              <strong class="pvc-card__name">${escapePrintHtml(normalizedStudent.name || "-")}</strong>
-              <span class="pvc-card__line">Roll: ${escapePrintHtml(normalizedStudent.admissionNo || "-")}</span>
-              <span class="pvc-card__line">Class: ${escapePrintHtml(normalizedStudent.className || "-")}</span>
-              <span class="pvc-card__line">Father: ${escapePrintHtml(normalizedStudent.fatherName || "-")}</span>
-            </div>
-          </section>
-          <div class="pvc-card__barcode">
-            <img src="${barcodeUrl}" alt="Barcode" class="pvc-card__barcode-img">
-            <span class="pvc-card__barcode-label">${escapePrintHtml(barcodeValue)}</span>
-          </div>
-        </article>
-      </body>
-      </html>
-    `;
+    const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+    const qrValue = "ATTEND:STUDENT:" + barcodeValue;
+    const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
+    var printHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title></title><style>' +
+      '*{box-sizing:border-box;margin:0;padding:0}' +
+      'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;padding:14mm;display:flex;justify-content:center;-webkit-font-smoothing:antialiased}' +
+      '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:3mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542}' +
+      '.pvc-card::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;background-image:radial-gradient(circle at 15% 20%,rgba(15,47,88,.5) .4mm,transparent .4mm),radial-gradient(circle at 85% 25%,rgba(15,47,88,.4) .4mm,transparent .4mm),radial-gradient(circle at 50% 80%,rgba(15,47,88,.3) .4mm,transparent .4mm),radial-gradient(circle at 25% 60%,rgba(27,95,122,.3) .4mm,transparent .4mm),radial-gradient(circle at 75% 70%,rgba(27,95,122,.3) .4mm,transparent .4mm);background-size:6mm 6mm}' +
+      '.pvc-card__topband{height:10mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 40%,#1b5f7a 70%,#1d9c61 100%)}' +
+      '.pvc-card__body{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 4mm;gap:.8mm}' +
+      '.pvc-card__header{display:flex;align-items:center;gap:2mm;width:100%;padding:1.5mm 0 1mm}' +
+      '.pvc-card__logo{width:8mm;height:8mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(16,37,66,.1);background:#fff}' +
+      '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2.5mm;font-weight:700;color:#0f2f58;width:8mm;height:8mm;border-radius:50%;background:#fff;border:.3mm solid rgba(16,37,66,.1)}' +
+      '.pvc-card__header-text{flex:1;min-width:0}' +
+      '.pvc-card__school{display:block;font-size:2.8mm;font-weight:700;color:#0f2f58;line-height:1.2}' +
+      '.pvc-card__tagline{display:block;font-size:1.8mm;color:#5a7a96;font-style:italic;line-height:1.2}' +
+      '.pvc-card__photo-wrap{display:flex;justify-content:center;padding:.5mm 0}' +
+      '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.5mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.5mm solid #0f2f58}' +
+      '.pvc-card__barcode-wrap{text-align:center;padding:.3mm 0}' +
+      '.pvc-card__barcode-img{width:38mm;height:7mm;object-fit:contain;display:block;margin:0 auto}' +
+      '.pvc-card__barcode-text{display:block;font-size:1.8mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.2mm}' +
+      '.pvc-card__name{font-size:3mm;font-weight:700;color:#102542;text-align:center;line-height:1.2}' +
+      '.pvc-card__type-label{font-size:1.8mm;font-weight:600;color:#5a7a96;text-align:center;text-transform:uppercase;letter-spacing:.4mm}' +
+      '.pvc-card__info{display:flex;gap:3mm;font-size:1.8mm;color:#3a5a7c;text-align:center}' +
+      '.pvc-card__info strong{color:#102542}' +
+      '.pvc-card__qr{position:absolute;bottom:2mm;right:2mm}' +
+      '.pvc-card__qr-img{width:10mm;height:10mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff}' +
+      '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:8mm;size:auto}body{padding:0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
+      '</style></head><body>' +
+      '<article class="pvc-card">' +
+        '<div class="pvc-card__topband"></div>' +
+        '<div class="pvc-card__body">' +
+          '<div class="pvc-card__header">' +
+            (logo ? '<img src="' + escapePrintAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
+            '<div class="pvc-card__header-text">' +
+              '<strong class="pvc-card__school">' + escapePrintHtml(schoolName) + '</strong>' +
+              (schoolTagline ? '<span class="pvc-card__tagline">' + escapePrintHtml(schoolTagline) + '</span>' : '') +
+            '</div>' +
+          '</div>' +
+          '<div class="pvc-card__photo-wrap">' +
+            (photo ? '<img src="' + escapePrintAttr(photo) + '" alt="' + escapePrintAttr(normalizedStudent.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(normalizedStudent.name || "S") + '</span>') +
+          '</div>' +
+          '<div class="pvc-card__barcode-wrap">' +
+            '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
+            '<span class="pvc-card__barcode-text">' + escapePrintHtml(barcodeValue) + '</span>' +
+          '</div>' +
+          '<div class="pvc-card__name">' + escapePrintHtml(normalizedStudent.name || "-") + '</div>' +
+          '<div class="pvc-card__type-label">STUDENT</div>' +
+          '<div class="pvc-card__info">' +
+            '<span><strong>ID</strong> ' + escapePrintHtml(normalizedStudent.admissionNo) + '</span>' +
+            '<span><strong>Class</strong> ' + escapePrintHtml(normalizedStudent.className) + '</span>' +
+            '<span><strong>DOA</strong> ' + escapePrintHtml(normalizedStudent.dateOfAdmission) + '</span>' +
+          '</div>' +
+          '<div class="pvc-card__qr">' +
+            '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
+          '</div>' +
+        '</div>' +
+      '</article>' +
+      '</body></html>';
     openPrintHtmlWindow(printHtml, "width=900,height=650", "Please allow popups to print ID card.");
   }
 
@@ -26779,7 +26531,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
   initKeyboardScanner();
 
   /* ===================================================================
-     NUCLEAR MOBILE RESPONSIVE FIX � JS-based, runs after every render
+     NUCLEAR MOBILE RESPONSIVE FIX ï¿½ JS-based, runs after every render
      Bypasses ALL CSS specificity wars and inline style conflicts
      =================================================================== */
   function forceMobileLayout() {

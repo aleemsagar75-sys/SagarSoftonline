@@ -2088,62 +2088,94 @@ body {
 
 .id-card-modern {
   position: relative;
+  width: 260px;
+  min-height: 410px;
   overflow: hidden;
-  border-radius: 16px;
-  border: 1px solid rgba(16, 37, 66, 0.1);
-  background: #fff;
+  border-radius: 14px;
+  border: 1px solid rgba(16, 37, 66, 0.12);
+  background: #f8f9fb;
   color: #102542;
-  box-shadow: 0 2px 12px rgba(16, 37, 66, 0.08), 0 1px 3px rgba(16, 37, 66, 0.06);
+  box-shadow: 0 4px 20px rgba(16, 37, 66, 0.10), 0 1px 4px rgba(16, 37, 66, 0.06);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
+  font-family: "Segoe UI", "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
 }
 
 .id-card-modern:hover {
-  box-shadow: 0 8px 24px rgba(16, 37, 66, 0.14), 0 2px 6px rgba(16, 37, 66, 0.08);
+  box-shadow: 0 8px 28px rgba(16, 37, 66, 0.16), 0 2px 8px rgba(16, 37, 66, 0.08);
   transform: translateY(-2px);
 }
 
-.id-card-modern::after {
+.id-card-modern::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 5px;
-  background: linear-gradient(90deg, #0f2f58 0%, #1b5f7a 60%, #1d9c61 100%);
+  inset: 0;
+  opacity: 0.04;
+  background-image:
+    radial-gradient(circle at 15% 20%, rgba(15,47,88,0.5) 1px, transparent 1px),
+    radial-gradient(circle at 85% 25%, rgba(15,47,88,0.4) 1px, transparent 1px),
+    radial-gradient(circle at 50% 80%, rgba(15,47,88,0.3) 1px, transparent 1px),
+    radial-gradient(circle at 25% 60%, rgba(27,95,122,0.3) 1px, transparent 1px),
+    radial-gradient(circle at 75% 70%, rgba(27,95,122,0.3) 1px, transparent 1px),
+    radial-gradient(circle at 10% 90%, rgba(15,47,88,0.4) 1px, transparent 1px),
+    radial-gradient(circle at 90% 10%, rgba(15,47,88,0.5) 1px, transparent 1px),
+    radial-gradient(circle at 40% 40%, rgba(29,156,97,0.3) 1px, transparent 1px),
+    radial-gradient(circle at 60% 50%, rgba(29,156,97,0.2) 1px, transparent 1px),
+    radial-gradient(circle at 30% 15%, rgba(15,47,88,0.4) 0.5px, transparent 0.5px),
+    radial-gradient(circle at 70% 85%, rgba(15,47,88,0.3) 0.5px, transparent 0.5px),
+    radial-gradient(circle at 55% 30%, rgba(27,95,122,0.3) 0.5px, transparent 0.5px);
+  background-size: 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px, 60px 60px;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .id-card-modern__inner {
   position: relative;
   z-index: 1;
-  display: grid;
-  gap: 0.85rem;
-  padding: 1.25rem 1rem 1rem;
-}
-
-.id-card-modern__head {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.8rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid rgba(16, 37, 66, 0.08);
+  padding: 1rem 0.85rem 0.75rem;
+  gap: 0.35rem;
 }
 
-.id-card-modern__school {
-  font-size: 0.88rem;
+.id-card-modern__header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  padding-bottom: 0.4rem;
+  width: 100%;
+}
+
+.id-card-modern__school-name {
+  font-size: 0.82rem;
   font-weight: 700;
   color: #0f2f58;
+  text-align: center;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.id-card-modern__tagline {
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: #5a7a96;
+  text-align: center;
+  font-style: italic;
 }
 
 .id-card-modern__logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   background: #fff;
+  border: 2px solid rgba(16, 37, 66, 0.1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 800;
+  font-size: 0.7rem;
+  color: #0f2f58;
   flex-shrink: 0;
   position: relative;
   overflow: hidden;
@@ -2155,34 +2187,97 @@ body {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  border-radius: 12px;
-}
-.id-card-modern__qr-wrap {
-  text-align: center;
-  padding: 4px 0;
-}
-.id-card-modern__qr {
-  width: 56px;
-  height: 56px;
-  border-radius: 6px;
-}
-
-.id-card-modern__profile {
-  display: grid;
-  justify-items: center;
-  align-items: center;
-  gap: 0.55rem;
-  text-align: center;
-}
-
-.id-card-modern__profile img,
-.id-card-modern__profile .student-avatar {
-  width: 80px;
-  height: 80px;
   border-radius: 50%;
-  border: 3px solid #e8eef4;
+}
+
+.id-card-modern__photo-area {
+  display: flex;
+  justify-content: center;
+  padding: 0.15rem 0;
+}
+
+.id-card-modern__photo-area img,
+.id-card-modern__photo-area .student-avatar {
+  width: 82px;
+  height: 82px;
+  border-radius: 50%;
+  border: 3px solid #0f2f58;
   object-fit: cover;
-  background: #f0f4f8;
+  background: #e8eef4;
+}
+
+.id-card-modern__barcode-area {
+  width: 100%;
+  text-align: center;
+  padding: 0.1rem 0;
+}
+
+.id-card-modern__barcode-img {
+  width: 170px;
+  height: 36px;
+  display: inline-block;
+  object-fit: contain;
+}
+
+.id-card-modern__barcode-text {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: #102542;
+  letter-spacing: 0.08em;
+  font-family: "Courier New", Courier, monospace;
+  margin-top: 0.1rem;
+}
+
+.id-card-modern__name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #102542;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.id-card-modern__type-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: #5a7a96;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.id-card-modern__info-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.15rem 0.5rem;
+  font-size: 0.68rem;
+  padding: 0.2rem 0;
+}
+
+.id-card-modern__info-grid dt {
+  font-weight: 600;
+  color: #0f2f58;
+}
+
+.id-card-modern__info-grid dd {
+  color: #3a5a7c;
+  text-align: right;
+}
+
+.id-card-modern__qr-area {
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  text-align: center;
+}
+
+.id-card-modern__qr-img {
+  width: 52px;
+  height: 52px;
+  border-radius: 4px;
+  border: 1px solid rgba(16, 37, 66, 0.1);
+  background: #fff;
 }
 
 .id-card-modern__meta {
@@ -2196,48 +2291,8 @@ body {
   color: #102542;
 }
 
-.id-card-modern__meta span,
-.id-card-modern__rows span {
+.id-card-modern__meta span {
   color: #5a7a96;
-}
-
-.id-card-modern__rows {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.id-card-modern__rows article {
-  display: grid;
-  grid-template-columns: minmax(82px, auto) 1fr;
-  align-items: center;
-  gap: 0.8rem;
-  font-size: 0.82rem;
-  background: #f5f7fa;
-  padding: 0.45rem 0.6rem;
-  border-radius: 8px;
-  border: 1px solid rgba(16, 37, 66, 0.05);
-}
-
-.id-card-modern__rows article span {
-  text-align: right;
-  color: #3a5a7c;
-}
-
-.id-card-modern__rows article strong {
-  color: #102542;
-  font-weight: 600;
-}
-
-.id-card-modern__barcode {
-  margin-top: 0.4rem;
-  text-align: center;
-}
-
-.id-card-modern__barcode-img {
-  width: 100%;
-  max-width: 180px;
-  height: auto;
-  display: inline-block;
 }
 
 .student-modal {
@@ -3255,9 +3310,6 @@ body {
   background: rgba(27, 95, 122, 0.03);
 }
 
-.view.module--employee .id-card-modern {
-  background: #fff;
-}
 
 .view.module--employee #moduleSummary {
   gap: 0.75rem;
