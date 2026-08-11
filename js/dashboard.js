@@ -13408,10 +13408,14 @@ ${allContent}
                       <div class="id-card-modern__name">${escapeHtml(employee.name || "-")}</div>
                       <div class="id-card-modern__type-label">EMPLOYEE</div>
                       <dl class="id-card-modern__info-grid">
-                        <dt>ID</dt><dd>${escapeHtml(employee.id || "-")}</dd>
-                        <dt>Role</dt><dd>${escapeHtml(employee.role || "-")}</dd>
-                        <dt>Mobile</dt><dd>${escapeHtml(getEmployeeDisplayPhone(employee))}</dd>
-                        <dt>Joined</dt><dd>${escapeHtml(employee.dateOfJoining || "-")}</dd>
+                        <div class="id-card-modern__info-row">
+                          <dt>ID</dt><dd>${escapeHtml(employee.id || "-")}</dd>
+                          <dt>Role</dt><dd>${escapeHtml(employee.role || "-")}</dd>
+                        </div>
+                        <div class="id-card-modern__info-row">
+                          <dt>Joined</dt><dd>${escapeHtml(employee.dateOfJoining || "-")}</dd>
+                          <dt>Mobile</dt><dd>${escapeHtml(getEmployeeDisplayPhone(employee))}</dd>
+                        </div>
                       </dl>
                     </div>
                   </div>
@@ -13460,6 +13464,7 @@ ${allContent}
             name: employee.name || "-",
             picture: employee.picture || "",
             role: employee.role || "-",
+            phone: getEmployeeDisplayPhone(employee),
             dateOfJoining: employee.dateOfJoining || ""
           };
         });
@@ -13485,10 +13490,14 @@ ${allContent}
                 '<div class="pvc-card__name">' + safeHtml(employee.name || "-") + '</div>' +
                 '<div class="pvc-card__type-label">EMPLOYEE</div>' +
                 '<div class="pvc-card__info-grid">' +
-                  '<span><strong>ID</strong> ' + safeHtml(employee.id) + '</span>' +
-                  '<span><strong>Role</strong> ' + safeHtml(employee.role) + '</span>' +
-                  '<span><strong>Mobile</strong> ' + safeHtml(employee.phone || "-") + '</span>' +
-                  '<span><strong>Joined</strong> ' + safeHtml(employee.dateOfJoining || "-") + '</span>' +
+                  '<div class="pvc-card__info-row">' +
+                    '<span><strong>ID</strong> ' + safeHtml(employee.id) + '</span>' +
+                    '<span><strong>Role</strong> ' + safeHtml(employee.role) + '</span>' +
+                  '</div>' +
+                  '<div class="pvc-card__info-row">' +
+                    '<span><strong>Joined</strong> ' + safeHtml(employee.dateOfJoining || "-") + '</span>' +
+                    '<span><strong>Mobile</strong> ' + safeHtml(employee.phone || "-") + '</span>' +
+                  '</div>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -13520,9 +13529,10 @@ ${allContent}
       '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
       '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
       '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
-      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm 1mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
-          '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-          '.pvc-card__info-grid strong{color:#0f2f58}' +
+      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;width:100%}' +
+      '.pvc-card__info-row{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm .8mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
+          '.pvc-card__info-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+          '.pvc-card__info-row strong{color:#0f2f58}' +
           '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
           '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
           '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
@@ -23440,11 +23450,17 @@ classSelect.addEventListener("change", renderSubjectSelect);
                   <div class="id-card-modern__name">${student.name}</div>
                   <div class="id-card-modern__type-label">STUDENT</div>
                   <dl class="id-card-modern__info-grid">
-                    <dt>ID</dt><dd>${student.admissionNo || "-"}</dd>
-                    <dt>Class</dt><dd>${student.className || "-"}</dd>
-                    <dt>Father</dt><dd>${student.fatherName || "-"}</dd>
-                    <dt>Mobile</dt><dd>${getStudentDisplayPhone(student)}</dd>
-                    <dt>DOA</dt><dd>${student.dateOfAdmission || "-"}</dd>
+                    <div class="id-card-modern__info-row">
+                      <dt>ID</dt><dd>${student.admissionNo || "-"}</dd>
+                      <dt>Class</dt><dd>${student.className || "-"}</dd>
+                    </div>
+                    <div class="id-card-modern__info-row">
+                      <dt>Father</dt><dd>${student.fatherName || "-"}</dd>
+                      <dt>Mobile</dt><dd>${getStudentDisplayPhone(student)}</dd>
+                    </div>
+                    <div class="id-card-modern__info-row">
+                      <dt>DOA</dt><dd>${student.dateOfAdmission || "-"}</dd>
+                    </div>
                   </dl>
                 </div>
               </div>
@@ -23550,17 +23566,23 @@ classSelect.addEventListener("change", renderSubjectSelect);
           '<div class="pvc-card__photo-area">' +
             (photo ? '<img src="' + safeAttr(photo) + '" alt="' + safeAttr(student.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(student.name || "S") + '</span>') +
           '</div>' +
-          '<div class="pvc-card__info-area">' +
-            '<div class="pvc-card__name">' + safeHtml(student.name || "-") + '</div>' +
-            '<div class="pvc-card__type-label">STUDENT</div>' +
-            '<div class="pvc-card__info-grid">' +
-              '<span><strong>ID</strong> ' + safeHtml(student.admissionNo) + '</span>' +
-              '<span><strong>Class</strong> ' + safeHtml(student.className) + '</span>' +
-              '<span><strong>Father</strong> ' + safeHtml(student.fatherName) + '</span>' +
-              '<span><strong>Mobile</strong> ' + safeHtml(student.phone) + '</span>' +
-              '<span><strong>DOA</strong> ' + safeHtml(student.dateOfAdmission) + '</span>' +
+            '<div class="pvc-card__info-area">' +
+              '<div class="pvc-card__name">' + safeHtml(student.name || "-") + '</div>' +
+              '<div class="pvc-card__type-label">STUDENT</div>' +
+              '<div class="pvc-card__info-grid">' +
+                '<div class="pvc-card__info-row">' +
+                  '<span><strong>ID</strong> ' + safeHtml(student.admissionNo) + '</span>' +
+                  '<span><strong>Class</strong> ' + safeHtml(student.className) + '</span>' +
+                '</div>' +
+                '<div class="pvc-card__info-row">' +
+                  '<span><strong>Father</strong> ' + safeHtml(student.fatherName) + '</span>' +
+                  '<span><strong>Mobile</strong> ' + safeHtml(student.phone) + '</span>' +
+                '</div>' +
+                '<div class="pvc-card__info-row">' +
+                  '<span><strong>DOA</strong> ' + safeHtml(student.dateOfAdmission) + '</span>' +
+                '</div>' +
+              '</div>' +
             '</div>' +
-          '</div>' +
         '</div>' +
         '<div class="pvc-card__footer">' +
           '<div class="pvc-card__barcode-area">' +
@@ -23590,9 +23612,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
       '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
       '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
       '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
-      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm 1mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
-      '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.pvc-card__info-grid strong{color:#0f2f58}' +
+      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;width:100%}' +
+      '.pvc-card__info-row{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm .8mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
+      '.pvc-card__info-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.pvc-card__info-row strong{color:#0f2f58}' +
       '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
       '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
       '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
@@ -23649,9 +23672,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
       '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
       '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
       '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
-      '.pvc-card__info-grid{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm 1mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
-      '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.pvc-card__info-grid strong{color:#0f2f58}' +
+      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;width:100%}' +
+      '.pvc-card__info-row{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.1mm .8mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
+      '.pvc-card__info-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.pvc-card__info-row strong{color:#0f2f58}' +
       '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
       '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
       '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
@@ -23671,17 +23695,23 @@ classSelect.addEventListener("change", renderSubjectSelect);
           '<div class="pvc-card__photo-area">' +
             (photo ? '<img src="' + escapePrintAttr(photo) + '" alt="' + escapePrintAttr(normalizedStudent.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(normalizedStudent.name || "S") + '</span>') +
           '</div>' +
-          '<div class="pvc-card__info-area">' +
-            '<div class="pvc-card__name">' + escapePrintHtml(normalizedStudent.name || "-") + '</div>' +
-            '<div class="pvc-card__type-label">STUDENT</div>' +
-            '<div class="pvc-card__info-grid">' +
-              '<span><strong>ID</strong> ' + escapePrintHtml(normalizedStudent.admissionNo) + '</span>' +
-              '<span><strong>Class</strong> ' + escapePrintHtml(normalizedStudent.className) + '</span>' +
-              '<span><strong>Father</strong> ' + escapePrintHtml(normalizedStudent.fatherName) + '</span>' +
-              '<span><strong>Mobile</strong> ' + escapePrintHtml(normalizedStudent.phone) + '</span>' +
-              '<span><strong>DOA</strong> ' + escapePrintHtml(normalizedStudent.dateOfAdmission) + '</span>' +
+            '<div class="pvc-card__info-area">' +
+              '<div class="pvc-card__name">' + escapePrintHtml(normalizedStudent.name || "-") + '</div>' +
+              '<div class="pvc-card__type-label">STUDENT</div>' +
+              '<div class="pvc-card__info-grid">' +
+                '<div class="pvc-card__info-row">' +
+                  '<span><strong>ID</strong> ' + escapePrintHtml(normalizedStudent.admissionNo) + '</span>' +
+                  '<span><strong>Class</strong> ' + escapePrintHtml(normalizedStudent.className) + '</span>' +
+                '</div>' +
+                '<div class="pvc-card__info-row">' +
+                  '<span><strong>Father</strong> ' + escapePrintHtml(normalizedStudent.fatherName) + '</span>' +
+                  '<span><strong>Mobile</strong> ' + escapePrintHtml(normalizedStudent.phone) + '</span>' +
+                '</div>' +
+                '<div class="pvc-card__info-row">' +
+                  '<span><strong>DOA</strong> ' + escapePrintHtml(normalizedStudent.dateOfAdmission) + '</span>' +
+                '</div>' +
+              '</div>' +
             '</div>' +
-          '</div>' +
         '</div>' +
         '<div class="pvc-card__footer">' +
           '<div class="pvc-card__barcode-area">' +

@@ -1,4 +1,4 @@
-var CACHE = "sagarsoft-v81";
+var CACHE = "sagarsoft-v82";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
