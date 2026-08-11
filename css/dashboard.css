@@ -2089,9 +2089,16 @@ body {
   .id-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+.id-card-modern-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
 .id-card-modern {
   position: relative;
   width: 100%;
+  max-width: 340px;
   aspect-ratio: 85.6 / 54;
   overflow: hidden;
   border-radius: 8px;
@@ -2210,8 +2217,8 @@ body {
 .id-card-modern__photo-area {
   flex-shrink: 0;
   display: flex;
-  align-items: flex-start;
-  padding-top: 0.1rem;
+  align-items: center;
+  padding-top: 0;
 }
 
 .id-card-modern__photo-area img,
@@ -2332,17 +2339,20 @@ body {
   color: #5a7a96;
 }
 
-.id-card-modern > .form-actions {
+.id-card-modern-wrap > .form-actions {
   display: flex;
   gap: 0.4rem;
-  padding: 0.35rem 0.5rem;
+  padding: 0.4rem 0 0;
   justify-content: center;
   flex-wrap: nowrap;
+  width: 100%;
+  max-width: 340px;
+  box-sizing: border-box;
 }
 
-.id-card-modern > .form-actions .table-action-btn {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.65rem;
+.id-card-modern-wrap > .form-actions .table-action-btn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.7rem;
   white-space: nowrap;
   min-width: 0;
   flex: 1 1 0;

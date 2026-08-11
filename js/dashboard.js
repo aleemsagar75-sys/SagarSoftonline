@@ -13390,46 +13390,48 @@ ${allContent}
           const qrValue = "ATTEND:EMPLOYEE:" + barcodeValue;
           const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
           return `
-            <article class="id-card-modern">
-              <div class="id-card-modern__inner">
-                <div class="id-card-modern__header">
-                  ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
-                  <div class="id-card-modern__header-text">
-                    <div class="id-card-modern__school-name">${schoolName}</div>
-                    ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+            <div class="id-card-modern-wrap">
+              <article class="id-card-modern">
+                <div class="id-card-modern__inner">
+                  <div class="id-card-modern__header">
+                    ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
+                    <div class="id-card-modern__header-text">
+                      <div class="id-card-modern__school-name">${schoolName}</div>
+                      ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+                    </div>
+                  </div>
+                  <div class="id-card-modern__body">
+                    <div class="id-card-modern__photo-area">
+                      ${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" class="student-avatar student-avatar--image">` : `<span class="student-avatar">${getInitials(employee.name || "E")}</span>`}
+                    </div>
+                    <div class="id-card-modern__info-area">
+                      <div class="id-card-modern__name">${escapeHtml(employee.name || "-")}</div>
+                      <div class="id-card-modern__type-label">EMPLOYEE</div>
+                      <dl class="id-card-modern__info-grid">
+                        <dt>ID</dt><dd>${escapeHtml(employee.id || "-")}</dd>
+                        <dt>Role</dt><dd>${escapeHtml(employee.role || "-")}</dd>
+                        <dt>Mobile</dt><dd>${escapeHtml(getEmployeeDisplayPhone(employee))}</dd>
+                        <dt>Joined</dt><dd>${escapeHtml(employee.dateOfJoining || "-")}</dd>
+                      </dl>
+                    </div>
+                  </div>
+                  <div class="id-card-modern__footer">
+                    <div class="id-card-modern__barcode-area">
+                      <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
+                      <span class="id-card-modern__barcode-text">${barcodeValue}</span>
+                    </div>
+                    <div class="id-card-modern__qr-area">
+                      <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
+                    </div>
                   </div>
                 </div>
-                <div class="id-card-modern__body">
-                  <div class="id-card-modern__photo-area">
-                    ${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" class="student-avatar student-avatar--image">` : `<span class="student-avatar">${getInitials(employee.name || "E")}</span>`}
-                  </div>
-                  <div class="id-card-modern__info-area">
-                    <div class="id-card-modern__name">${escapeHtml(employee.name || "-")}</div>
-                    <div class="id-card-modern__type-label">EMPLOYEE</div>
-                    <dl class="id-card-modern__info-grid">
-                      <dt>ID</dt><dd>${escapeHtml(employee.id || "-")}</dd>
-                      <dt>Role</dt><dd>${escapeHtml(employee.role || "-")}</dd>
-                      <dt>Mobile</dt><dd>${escapeHtml(getEmployeeDisplayPhone(employee))}</dd>
-                      <dt>Joined</dt><dd>${escapeHtml(employee.dateOfJoining || "-")}</dd>
-                    </dl>
-                  </div>
-                </div>
-                <div class="id-card-modern__footer">
-                  <div class="id-card-modern__barcode-area">
-                    <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
-                    <span class="id-card-modern__barcode-text">${barcodeValue}</span>
-                  </div>
-                  <div class="id-card-modern__qr-area">
-                    <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
-                  </div>
-                </div>
-              </div>
+              </article>
               <div class="form-actions">
                 <button class="table-action-btn" type="button" data-emp-action="sms" data-id="${employee.id}">SMS</button>
                 <button class="table-action-btn" type="button" data-emp-action="whatsapp" data-id="${employee.id}">WhatsApp</button>
                 <button class="table-action-btn" type="button" data-emp-action="print-id-card" data-id="${employee.id}">Print Card</button>
               </div>
-            </article>
+            </div>
           `;
         }).join("");
         emptyState.hidden = employees.length !== 0;
@@ -23420,47 +23422,49 @@ classSelect.addEventListener("change", renderSubjectSelect);
       const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
 
       return `
-        <article class="id-card-modern">
-          <div class="id-card-modern__inner">
-            <div class="id-card-modern__header">
-              ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
-              <div class="id-card-modern__header-text">
-                <div class="id-card-modern__school-name">${schoolName}</div>
-                ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+        <div class="id-card-modern-wrap">
+          <article class="id-card-modern">
+            <div class="id-card-modern__inner">
+              <div class="id-card-modern__header">
+                ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
+                <div class="id-card-modern__header-text">
+                  <div class="id-card-modern__school-name">${schoolName}</div>
+                  ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+                </div>
+              </div>
+              <div class="id-card-modern__body">
+                <div class="id-card-modern__photo-area">
+                  ${profileMedia}
+                </div>
+                <div class="id-card-modern__info-area">
+                  <div class="id-card-modern__name">${student.name}</div>
+                  <div class="id-card-modern__type-label">STUDENT</div>
+                  <dl class="id-card-modern__info-grid">
+                    <dt>ID</dt><dd>${student.admissionNo || "-"}</dd>
+                    <dt>Class</dt><dd>${student.className || "-"}</dd>
+                    <dt>Father</dt><dd>${student.fatherName || "-"}</dd>
+                    <dt>Mobile</dt><dd>${getStudentDisplayPhone(student)}</dd>
+                    <dt>DOA</dt><dd>${student.dateOfAdmission || "-"}</dd>
+                  </dl>
+                </div>
+              </div>
+              <div class="id-card-modern__footer">
+                <div class="id-card-modern__barcode-area">
+                  <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
+                  <span class="id-card-modern__barcode-text">${barcodeValue}</span>
+                </div>
+                <div class="id-card-modern__qr-area">
+                  <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
+                </div>
               </div>
             </div>
-            <div class="id-card-modern__body">
-              <div class="id-card-modern__photo-area">
-                ${profileMedia}
-              </div>
-              <div class="id-card-modern__info-area">
-                <div class="id-card-modern__name">${student.name}</div>
-                <div class="id-card-modern__type-label">STUDENT</div>
-                <dl class="id-card-modern__info-grid">
-                  <dt>ID</dt><dd>${student.admissionNo || "-"}</dd>
-                  <dt>Class</dt><dd>${student.className || "-"}</dd>
-                  <dt>Father</dt><dd>${student.fatherName || "-"}</dd>
-                  <dt>Mobile</dt><dd>${getStudentDisplayPhone(student)}</dd>
-                  <dt>DOA</dt><dd>${student.dateOfAdmission || "-"}</dd>
-                </dl>
-              </div>
-            </div>
-            <div class="id-card-modern__footer">
-              <div class="id-card-modern__barcode-area">
-                <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
-                <span class="id-card-modern__barcode-text">${barcodeValue}</span>
-              </div>
-              <div class="id-card-modern__qr-area">
-                <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
-              </div>
-            </div>
-          </div>
+          </article>
           <div class="form-actions">
             <button class="table-action-btn" type="button" data-action="sms-student-id-card" data-id="${student.id}">SMS</button>
             <button class="table-action-btn" type="button" data-action="whatsapp-student-id-card" data-id="${student.id}">WhatsApp</button>
             <button class="table-action-btn" type="button" data-action="print-student-id-card" data-id="${student.id}">Print Card</button>
           </div>
-        </article>
+        </div>
       `;
     }).join("");
 
