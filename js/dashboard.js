@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -13394,25 +13394,34 @@ ${allContent}
               <div class="id-card-modern__inner">
                 <div class="id-card-modern__header">
                   ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
-                  <div class="id-card-modern__school-name">${schoolName}</div>
-                  ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+                  <div class="id-card-modern__header-text">
+                    <div class="id-card-modern__school-name">${schoolName}</div>
+                    ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+                  </div>
                 </div>
-                <div class="id-card-modern__photo-area">
-                  ${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" class="student-avatar student-avatar--image">` : `<span class="student-avatar">${getInitials(employee.name || "E")}</span>`}
+                <div class="id-card-modern__body">
+                  <div class="id-card-modern__photo-area">
+                    ${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" class="student-avatar student-avatar--image">` : `<span class="student-avatar">${getInitials(employee.name || "E")}</span>`}
+                  </div>
+                  <div class="id-card-modern__info-area">
+                    <div class="id-card-modern__name">${escapeHtml(employee.name || "-")}</div>
+                    <div class="id-card-modern__type-label">EMPLOYEE</div>
+                    <dl class="id-card-modern__info-grid">
+                      <dt>ID</dt><dd>${escapeHtml(employee.id || "-")}</dd>
+                      <dt>Role</dt><dd>${escapeHtml(employee.role || "-")}</dd>
+                      <dt>Mobile</dt><dd>${escapeHtml(getEmployeeDisplayPhone(employee))}</dd>
+                      <dt>Joined</dt><dd>${escapeHtml(employee.dateOfJoining || "-")}</dd>
+                    </dl>
+                  </div>
                 </div>
-                <div class="id-card-modern__barcode-area">
-                  <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
-                  <span class="id-card-modern__barcode-text">${barcodeValue}</span>
-                </div>
-                <div class="id-card-modern__name">${escapeHtml(employee.name || "-")}</div>
-                <div class="id-card-modern__type-label">EMPLOYEE</div>
-                <dl class="id-card-modern__info-grid">
-                  <dt>ID</dt><dd>${escapeHtml(employee.id || "-")}</dd>
-                  <dt>Role</dt><dd>${escapeHtml(employee.role || "-")}</dd>
-                  <dt>Joined</dt><dd>${escapeHtml(employee.dateOfJoining || "-")}</dd>
-                </dl>
-                <div class="id-card-modern__qr-area">
-                  <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
+                <div class="id-card-modern__footer">
+                  <div class="id-card-modern__qr-area">
+                    <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
+                  </div>
+                  <div class="id-card-modern__barcode-area">
+                    <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
+                    <span class="id-card-modern__barcode-text">${barcodeValue}</span>
+                  </div>
                 </div>
               </div>
               <div class="form-actions">
@@ -13459,31 +13468,33 @@ ${allContent}
           const qrValue = "ATTEND:EMPLOYEE:" + barcodeValue;
           const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
           return '<article class="pvc-card">' +
-            '<div class="pvc-card__topband"></div>' +
-            '<div class="pvc-card__body">' +
-              '<div class="pvc-card__header">' +
-                (logo ? '<img src="' + safeAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
-                '<div class="pvc-card__header-text">' +
-                  '<strong class="pvc-card__school">' + safeHtml(schoolName) + '</strong>' +
-                  (schoolTagline ? '<span class="pvc-card__tagline">' + safeHtml(schoolTagline) + '</span>' : '') +
-                '</div>' +
+            '<div class="pvc-card__header">' +
+              (logo ? '<img src="' + safeAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
+              '<div class="pvc-card__header-text">' +
+                '<strong class="pvc-card__school">' + safeHtml(schoolName) + '</strong>' +
+                (schoolTagline ? '<span class="pvc-card__tagline">' + safeHtml(schoolTagline) + '</span>' : '') +
               '</div>' +
-              '<div class="pvc-card__photo-wrap">' +
+            '</div>' +
+            '<div class="pvc-card__body">' +
+              '<div class="pvc-card__photo-area">' +
                 (photo ? '<img src="' + safeAttr(photo) + '" alt="' + safeAttr(employee.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(employee.name || "E") + '</span>') +
               '</div>' +
-              '<div class="pvc-card__barcode-wrap">' +
+              '<div class="pvc-card__info-area">' +
+                '<div class="pvc-card__name">' + safeHtml(employee.name || "-") + '</div>' +
+                '<div class="pvc-card__type-label">EMPLOYEE</div>' +
+                '<div class="pvc-card__info-grid">' +
+                  '<span><strong>ID</strong> ' + safeHtml(employee.id) + '</span>' +
+                  '<span><strong>Role</strong> ' + safeHtml(employee.role) + '</span>' +
+                  '<span><strong>Mobile</strong> ' + safeHtml(employee.phone || "-") + '</span>' +
+                  '<span><strong>Joined</strong> ' + safeHtml(employee.dateOfJoining || "-") + '</span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="pvc-card__footer">' +
+              '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
+              '<div class="pvc-card__barcode-area">' +
                 '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
                 '<span class="pvc-card__barcode-text">' + safeHtml(barcodeValue) + '</span>' +
-              '</div>' +
-              '<div class="pvc-card__name">' + safeHtml(employee.name || "-") + '</div>' +
-              '<div class="pvc-card__type-label">EMPLOYEE</div>' +
-              '<div class="pvc-card__info">' +
-                '<span><strong>ID</strong> ' + safeHtml(employee.id) + '</span>' +
-                '<span><strong>Role</strong> ' + safeHtml(employee.role) + '</span>' +
-                '<span><strong>Joined</strong> ' + safeHtml(employee.dateOfJoining) + '</span>' +
-              '</div>' +
-              '<div class="pvc-card__qr">' +
-                '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
               '</div>' +
             '</div>' +
           '</article>';
@@ -13491,30 +13502,31 @@ ${allContent}
         return '<!DOCTYPE html><html><head><title></title><meta charset="utf-8"><style>' +
           '*{box-sizing:border-box;margin:0;padding:0}' +
           'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;color:#102542;padding:10mm;-webkit-font-smoothing:antialiased}' +
-          '.pvc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(85.6mm,1fr));gap:8mm;justify-items:center}' +
-          '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:3mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;break-inside:avoid}' +
+          '.pvc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:8mm;justify-items:center}' +
+          '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:2.5mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;break-inside:avoid;aspect-ratio:85.6/54;display:flex;flex-direction:column}' +
           '.pvc-card::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;background-image:radial-gradient(circle at 15% 20%,rgba(15,47,88,.5) .4mm,transparent .4mm),radial-gradient(circle at 85% 25%,rgba(15,47,88,.4) .4mm,transparent .4mm),radial-gradient(circle at 50% 80%,rgba(15,47,88,.3) .4mm,transparent .4mm),radial-gradient(circle at 25% 60%,rgba(27,95,122,.3) .4mm,transparent .4mm),radial-gradient(circle at 75% 70%,rgba(27,95,122,.3) .4mm,transparent .4mm);background-size:6mm 6mm}' +
-          '.pvc-card__topband{height:10mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 40%,#1b5f7a 70%,#1d9c61 100%)}' +
-          '.pvc-card__body{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 4mm;gap:.8mm}' +
-          '.pvc-card__header{display:flex;align-items:center;gap:2mm;width:100%;padding:1.5mm 0 1mm}' +
-          '.pvc-card__logo{width:8mm;height:8mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(16,37,66,.1);background:#fff}' +
-          '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2.5mm;font-weight:700;color:#0f2f58;width:8mm;height:8mm;border-radius:50%;background:#fff;border:.3mm solid rgba(16,37,66,.1)}' +
+          '.pvc-card__header{display:flex;align-items:center;gap:2mm;padding:1.5mm 3mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 50%,#1b5f7a 100%);color:#fff;flex-shrink:0}' +
+          '.pvc-card__logo{width:7mm;height:7mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(255,255,255,.3);background:#fff}' +
+          '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2mm;font-weight:700;color:#0f2f58;width:7mm;height:7mm;border-radius:50%;background:#fff;border:.3mm solid rgba(255,255,255,.3)}' +
           '.pvc-card__header-text{flex:1;min-width:0}' +
-          '.pvc-card__school{display:block;font-size:2.8mm;font-weight:700;color:#0f2f58;line-height:1.2}' +
-          '.pvc-card__tagline{display:block;font-size:1.8mm;color:#5a7a96;font-style:italic;line-height:1.2}' +
-          '.pvc-card__photo-wrap{display:flex;justify-content:center;padding:.5mm 0}' +
-          '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.5mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
-          '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.5mm solid #0f2f58}' +
-          '.pvc-card__barcode-wrap{text-align:center;padding:.3mm 0}' +
-          '.pvc-card__barcode-img{width:38mm;height:7mm;object-fit:contain;display:block;margin:0 auto}' +
-          '.pvc-card__barcode-text{display:block;font-size:1.8mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.2mm}' +
-          '.pvc-card__name{font-size:3mm;font-weight:700;color:#102542;text-align:center;line-height:1.2}' +
-          '.pvc-card__type-label{font-size:1.8mm;font-weight:600;color:#5a7a96;text-align:center;text-transform:uppercase;letter-spacing:.4mm}' +
-          '.pvc-card__info{display:flex;gap:3mm;font-size:1.8mm;color:#3a5a7c;text-align:center}' +
-          '.pvc-card__info strong{color:#102542}' +
-          '.pvc-card__qr{position:absolute;bottom:2mm;right:2mm}' +
-          '.pvc-card__qr-img{width:10mm;height:10mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff}' +
-          '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:8mm;size:auto}body{padding:0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
+          '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
+          '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
+          '.pvc-card__body{display:flex;gap:2.5mm;padding:2mm 3mm;flex:1;min-height:0}' +
+          '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:flex-start;padding-top:.5mm}' +
+          '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+          '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:14mm;height:14mm;border-radius:50%}' +
+          '.pvc-card__info-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3mm}' +
+          '.pvc-card__name{font-size:2.8mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+          '.pvc-card__type-label{font-size:1.6mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm}' +
+          '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;font-size:1.7mm;color:#3a5a7c}' +
+          '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+          '.pvc-card__info-grid strong{color:#0f2f58}' +
+          '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
+          '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
+          '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
+          '.pvc-card__barcode-img{width:100%;max-width:45mm;height:6mm;object-fit:contain;display:block}' +
+          '.pvc-card__barcode-text{font-size:1.5mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.15mm}' +
+          '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:6mm;size:auto}body{padding:0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
           '</style></head><body><div class="pvc-grid">' + cardsMarkup + '</div></body></html>';
       }
 
@@ -23412,25 +23424,35 @@ classSelect.addEventListener("change", renderSubjectSelect);
           <div class="id-card-modern__inner">
             <div class="id-card-modern__header">
               ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
-              <div class="id-card-modern__school-name">${schoolName}</div>
-              ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+              <div class="id-card-modern__header-text">
+                <div class="id-card-modern__school-name">${schoolName}</div>
+                ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+              </div>
             </div>
-            <div class="id-card-modern__photo-area">
-              ${profileMedia}
+            <div class="id-card-modern__body">
+              <div class="id-card-modern__photo-area">
+                ${profileMedia}
+              </div>
+              <div class="id-card-modern__info-area">
+                <div class="id-card-modern__name">${student.name}</div>
+                <div class="id-card-modern__type-label">STUDENT</div>
+                <dl class="id-card-modern__info-grid">
+                  <dt>ID</dt><dd>${student.admissionNo || "-"}</dd>
+                  <dt>Class</dt><dd>${student.className || "-"}</dd>
+                  <dt>Father</dt><dd>${student.fatherName || "-"}</dd>
+                  <dt>Mobile</dt><dd>${getStudentDisplayPhone(student)}</dd>
+                  <dt>DOA</dt><dd>${student.dateOfAdmission || "-"}</dd>
+                </dl>
+              </div>
             </div>
-            <div class="id-card-modern__barcode-area">
-              <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
-              <span class="id-card-modern__barcode-text">${barcodeValue}</span>
-            </div>
-            <div class="id-card-modern__name">${student.name}</div>
-            <div class="id-card-modern__type-label">STUDENT</div>
-            <dl class="id-card-modern__info-grid">
-              <dt>ID</dt><dd>${student.admissionNo || "-"}</dd>
-              <dt>Class</dt><dd>${student.className || "-"}</dd>
-              <dt>DOA</dt><dd>${student.dateOfAdmission || "-"}</dd>
-            </dl>
-            <div class="id-card-modern__qr-area">
-              <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
+            <div class="id-card-modern__footer">
+              <div class="id-card-modern__qr-area">
+                <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
+              </div>
+              <div class="id-card-modern__barcode-area">
+                <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
+                <span class="id-card-modern__barcode-text">${barcodeValue}</span>
+              </div>
             </div>
           </div>
           <div class="form-actions">
@@ -23461,15 +23483,17 @@ classSelect.addEventListener("change", renderSubjectSelect);
       const barcodeText = safeText(card.querySelector(".id-card-modern__barcode-text"), "-");
       const infoItems = Array.from(card.querySelectorAll(".id-card-modern__info-grid dd"));
       const className = infoItems[1] ? safeText(infoItems[1], "-") : "-";
-      const doa = infoItems[2] ? safeText(infoItems[2], "-") : "-";
+      const fatherName = infoItems[2] ? safeText(infoItems[2], "-") : "-";
+      const phone = infoItems[3] ? safeText(infoItems[3], "-") : "-";
+      const doa = infoItems[4] ? safeText(infoItems[4], "-") : "-";
       const photo = (card.querySelector(".id-card-modern__photo-area img") && card.querySelector(".id-card-modern__photo-area img").src) || "";
       return {
         name: String(name || "-").trim(),
         picture: String(photo || ""),
         admissionNo: String(barcodeText || "-"),
         className: String(className || "-"),
-        fatherName: "-",
-        phone: "-",
+        fatherName: String(fatherName || "-"),
+        phone: String(phone || "-"),
         dateOfAdmission: String(doa || "-")
       };
     });
@@ -23511,62 +23535,66 @@ classSelect.addEventListener("change", renderSubjectSelect);
       const qrValue = "ATTEND:STUDENT:" + barcodeValue;
       const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
       return '<article class="pvc-card">' +
-        '<div class="pvc-card__topband"></div>' +
-        '<div class="pvc-card__body">' +
-          '<div class="pvc-card__header">' +
-            (logo ? '<img src="' + safeAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
-            '<div class="pvc-card__header-text">' +
-              '<strong class="pvc-card__school">' + safeHtml(schoolName) + '</strong>' +
-              (schoolTagline ? '<span class="pvc-card__tagline">' + safeHtml(schoolTagline) + '</span>' : '') +
-            '</div>' +
+        '<div class="pvc-card__header">' +
+          (logo ? '<img src="' + safeAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
+          '<div class="pvc-card__header-text">' +
+            '<strong class="pvc-card__school">' + safeHtml(schoolName) + '</strong>' +
+            (schoolTagline ? '<span class="pvc-card__tagline">' + safeHtml(schoolTagline) + '</span>' : '') +
           '</div>' +
-          '<div class="pvc-card__photo-wrap">' +
+        '</div>' +
+        '<div class="pvc-card__body">' +
+          '<div class="pvc-card__photo-area">' +
             (photo ? '<img src="' + safeAttr(photo) + '" alt="' + safeAttr(student.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(student.name || "S") + '</span>') +
           '</div>' +
-          '<div class="pvc-card__barcode-wrap">' +
+          '<div class="pvc-card__info-area">' +
+            '<div class="pvc-card__name">' + safeHtml(student.name || "-") + '</div>' +
+            '<div class="pvc-card__type-label">STUDENT</div>' +
+            '<div class="pvc-card__info-grid">' +
+              '<span><strong>ID</strong> ' + safeHtml(student.admissionNo) + '</span>' +
+              '<span><strong>Class</strong> ' + safeHtml(student.className) + '</span>' +
+              '<span><strong>Father</strong> ' + safeHtml(student.fatherName) + '</span>' +
+              '<span><strong>Mobile</strong> ' + safeHtml(student.phone) + '</span>' +
+              '<span><strong>DOA</strong> ' + safeHtml(student.dateOfAdmission) + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pvc-card__footer">' +
+          '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
+          '<div class="pvc-card__barcode-area">' +
             '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
             '<span class="pvc-card__barcode-text">' + safeHtml(barcodeValue) + '</span>' +
-          '</div>' +
-          '<div class="pvc-card__name">' + safeHtml(student.name || "-") + '</div>' +
-          '<div class="pvc-card__type-label">STUDENT</div>' +
-          '<div class="pvc-card__info">' +
-            '<span><strong>ID</strong> ' + safeHtml(student.admissionNo) + '</span>' +
-            '<span><strong>Class</strong> ' + safeHtml(student.className) + '</span>' +
-            '<span><strong>DOA</strong> ' + safeHtml(student.dateOfAdmission) + '</span>' +
-          '</div>' +
-          '<div class="pvc-card__qr">' +
-            '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
           '</div>' +
         '</div>' +
       '</article>';
     }).join("");
     return '<!DOCTYPE html><html><head><title></title><meta charset="utf-8"><style>' +
       '*{box-sizing:border-box;margin:0;padding:0}' +
-      'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;color:#102542;padding:10mm;-webkit-font-smoothing:antialiased}' +
-      '.pvc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(85.6mm,1fr));gap:8mm;justify-items:center}' +
-      '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:3mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;break-inside:avoid}' +
+      'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;color:#102542;padding:8mm;-webkit-font-smoothing:antialiased}' +
+      '.pvc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(85.6mm,1fr));gap:6mm;justify-items:center}' +
+      '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:2.5mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;break-inside:avoid;display:flex;flex-direction:column}' +
       '.pvc-card::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;background-image:radial-gradient(circle at 15% 20%,rgba(15,47,88,.5) .4mm,transparent .4mm),radial-gradient(circle at 85% 25%,rgba(15,47,88,.4) .4mm,transparent .4mm),radial-gradient(circle at 50% 80%,rgba(15,47,88,.3) .4mm,transparent .4mm),radial-gradient(circle at 25% 60%,rgba(27,95,122,.3) .4mm,transparent .4mm),radial-gradient(circle at 75% 70%,rgba(27,95,122,.3) .4mm,transparent .4mm);background-size:6mm 6mm}' +
-      '.pvc-card__topband{height:10mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 40%,#1b5f7a 70%,#1d9c61 100%)}' +
-      '.pvc-card__body{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 4mm;gap:.8mm}' +
-      '.pvc-card__header{display:flex;align-items:center;gap:2mm;width:100%;padding:1.5mm 0 1mm}' +
-      '.pvc-card__logo{width:8mm;height:8mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(16,37,66,.1);background:#fff}' +
-      '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2.5mm;font-weight:700;color:#0f2f58;width:8mm;height:8mm;border-radius:50%;background:#fff;border:.3mm solid rgba(16,37,66,.1)}' +
+      '.pvc-card__header{display:flex;align-items:center;gap:2mm;padding:1.5mm 3mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 50%,#1b5f7a 100%);color:#fff;flex-shrink:0}' +
+      '.pvc-card__logo{width:7mm;height:7mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(255,255,255,.3);background:#fff}' +
+      '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2mm;font-weight:700;color:#0f2f58;width:7mm;height:7mm;border-radius:50%;background:#fff;border:.3mm solid rgba(255,255,255,.3)}' +
       '.pvc-card__header-text{flex:1;min-width:0}' +
-      '.pvc-card__school{display:block;font-size:2.8mm;font-weight:700;color:#0f2f58;line-height:1.2}' +
-      '.pvc-card__tagline{display:block;font-size:1.8mm;color:#5a7a96;font-style:italic;line-height:1.2}' +
-      '.pvc-card__photo-wrap{display:flex;justify-content:center;padding:.5mm 0}' +
-      '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.5mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
-      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.5mm solid #0f2f58}' +
-      '.pvc-card__barcode-wrap{text-align:center;padding:.3mm 0}' +
-      '.pvc-card__barcode-img{width:38mm;height:7mm;object-fit:contain;display:block;margin:0 auto}' +
-      '.pvc-card__barcode-text{display:block;font-size:1.8mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.2mm}' +
-      '.pvc-card__name{font-size:3mm;font-weight:700;color:#102542;text-align:center;line-height:1.2}' +
-      '.pvc-card__type-label{font-size:1.8mm;font-weight:600;color:#5a7a96;text-align:center;text-transform:uppercase;letter-spacing:.4mm}' +
-      '.pvc-card__info{display:flex;gap:3mm;font-size:1.8mm;color:#3a5a7c;text-align:center}' +
-      '.pvc-card__info strong{color:#102542}' +
-      '.pvc-card__qr{position:absolute;bottom:2mm;right:2mm}' +
-      '.pvc-card__qr-img{width:10mm;height:10mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff}' +
-      '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:8mm;size:auto}body{padding:0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
+      '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
+      '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
+      '.pvc-card__body{display:flex;gap:2.5mm;padding:2mm 3mm;flex:1;min-height:0}' +
+      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:flex-start;padding-top:.5mm}' +
+      '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:14mm;height:14mm;border-radius:50%}' +
+      '.pvc-card__info-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3mm}' +
+      '.pvc-card__name{font-size:2.8mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.pvc-card__type-label{font-size:1.6mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm}' +
+      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;font-size:1.7mm;color:#3a5a7c}' +
+      '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.pvc-card__info-grid strong{color:#0f2f58}' +
+      '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
+      '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
+      '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
+      '.pvc-card__barcode-img{width:100%;max-width:45mm;height:6mm;object-fit:contain;display:block}' +
+      '.pvc-card__barcode-text{font-size:1.5mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.15mm}' +
+      '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:6mm;size:auto}body{padding:0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
       '</style></head><body><div class="pvc-grid">' + cardsMarkup + '</div></body></html>';
   }
 
@@ -23602,56 +23630,60 @@ classSelect.addEventListener("change", renderSubjectSelect);
     var printHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title></title><style>' +
       '*{box-sizing:border-box;margin:0;padding:0}' +
       'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;padding:14mm;display:flex;justify-content:center;-webkit-font-smoothing:antialiased}' +
-      '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:3mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542}' +
+      '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:2.5mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;display:flex;flex-direction:column}' +
       '.pvc-card::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;background-image:radial-gradient(circle at 15% 20%,rgba(15,47,88,.5) .4mm,transparent .4mm),radial-gradient(circle at 85% 25%,rgba(15,47,88,.4) .4mm,transparent .4mm),radial-gradient(circle at 50% 80%,rgba(15,47,88,.3) .4mm,transparent .4mm),radial-gradient(circle at 25% 60%,rgba(27,95,122,.3) .4mm,transparent .4mm),radial-gradient(circle at 75% 70%,rgba(27,95,122,.3) .4mm,transparent .4mm);background-size:6mm 6mm}' +
-      '.pvc-card__topband{height:10mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 40%,#1b5f7a 70%,#1d9c61 100%)}' +
-      '.pvc-card__body{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;padding:0 4mm;gap:.8mm}' +
-      '.pvc-card__header{display:flex;align-items:center;gap:2mm;width:100%;padding:1.5mm 0 1mm}' +
-      '.pvc-card__logo{width:8mm;height:8mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(16,37,66,.1);background:#fff}' +
-      '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2.5mm;font-weight:700;color:#0f2f58;width:8mm;height:8mm;border-radius:50%;background:#fff;border:.3mm solid rgba(16,37,66,.1)}' +
+      '.pvc-card__header{display:flex;align-items:center;gap:2mm;padding:1.5mm 3mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 50%,#1b5f7a 100%);color:#fff;flex-shrink:0}' +
+      '.pvc-card__logo{width:7mm;height:7mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(255,255,255,.3);background:#fff}' +
+      '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2mm;font-weight:700;color:#0f2f58;width:7mm;height:7mm;border-radius:50%;background:#fff;border:.3mm solid rgba(255,255,255,.3)}' +
       '.pvc-card__header-text{flex:1;min-width:0}' +
-      '.pvc-card__school{display:block;font-size:2.8mm;font-weight:700;color:#0f2f58;line-height:1.2}' +
-      '.pvc-card__tagline{display:block;font-size:1.8mm;color:#5a7a96;font-style:italic;line-height:1.2}' +
-      '.pvc-card__photo-wrap{display:flex;justify-content:center;padding:.5mm 0}' +
-      '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.5mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
-      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.5mm solid #0f2f58}' +
-      '.pvc-card__barcode-wrap{text-align:center;padding:.3mm 0}' +
-      '.pvc-card__barcode-img{width:38mm;height:7mm;object-fit:contain;display:block;margin:0 auto}' +
-      '.pvc-card__barcode-text{display:block;font-size:1.8mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.2mm}' +
-      '.pvc-card__name{font-size:3mm;font-weight:700;color:#102542;text-align:center;line-height:1.2}' +
-      '.pvc-card__type-label{font-size:1.8mm;font-weight:600;color:#5a7a96;text-align:center;text-transform:uppercase;letter-spacing:.4mm}' +
-      '.pvc-card__info{display:flex;gap:3mm;font-size:1.8mm;color:#3a5a7c;text-align:center}' +
-      '.pvc-card__info strong{color:#102542}' +
-      '.pvc-card__qr{position:absolute;bottom:2mm;right:2mm}' +
-      '.pvc-card__qr-img{width:10mm;height:10mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff}' +
-      '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:8mm;size:auto}body{padding:0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
+      '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
+      '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
+      '.pvc-card__body{display:flex;gap:2.5mm;padding:2mm 3mm;flex:1;min-height:0}' +
+      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:flex-start;padding-top:.5mm}' +
+      '.pvc-card__photo{width:14mm;height:14mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:14mm;height:14mm;border-radius:50%}' +
+      '.pvc-card__info-area{flex:1;min-width:0;display:flex;flex-direction:column;gap:.3mm}' +
+      '.pvc-card__name{font-size:2.8mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.pvc-card__type-label{font-size:1.6mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm}' +
+      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;font-size:1.7mm;color:#3a5a7c}' +
+      '.pvc-card__info-grid span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.pvc-card__info-grid strong{color:#0f2f58}' +
+      '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
+      '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
+      '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
+      '.pvc-card__barcode-img{width:100%;max-width:45mm;height:6mm;object-fit:contain;display:block}' +
+      '.pvc-card__barcode-text{font-size:1.5mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.15mm}' +
+      '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:6mm;size:auto}body{padding:0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
       '</style></head><body>' +
       '<article class="pvc-card">' +
-        '<div class="pvc-card__topband"></div>' +
-        '<div class="pvc-card__body">' +
-          '<div class="pvc-card__header">' +
-            (logo ? '<img src="' + escapePrintAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
-            '<div class="pvc-card__header-text">' +
-              '<strong class="pvc-card__school">' + escapePrintHtml(schoolName) + '</strong>' +
-              (schoolTagline ? '<span class="pvc-card__tagline">' + escapePrintHtml(schoolTagline) + '</span>' : '') +
-            '</div>' +
+        '<div class="pvc-card__header">' +
+          (logo ? '<img src="' + escapePrintAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
+          '<div class="pvc-card__header-text">' +
+            '<strong class="pvc-card__school">' + escapePrintHtml(schoolName) + '</strong>' +
+            (schoolTagline ? '<span class="pvc-card__tagline">' + escapePrintHtml(schoolTagline) + '</span>' : '') +
           '</div>' +
-          '<div class="pvc-card__photo-wrap">' +
+        '</div>' +
+        '<div class="pvc-card__body">' +
+          '<div class="pvc-card__photo-area">' +
             (photo ? '<img src="' + escapePrintAttr(photo) + '" alt="' + escapePrintAttr(normalizedStudent.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(normalizedStudent.name || "S") + '</span>') +
           '</div>' +
-          '<div class="pvc-card__barcode-wrap">' +
+          '<div class="pvc-card__info-area">' +
+            '<div class="pvc-card__name">' + escapePrintHtml(normalizedStudent.name || "-") + '</div>' +
+            '<div class="pvc-card__type-label">STUDENT</div>' +
+            '<div class="pvc-card__info-grid">' +
+              '<span><strong>ID</strong> ' + escapePrintHtml(normalizedStudent.admissionNo) + '</span>' +
+              '<span><strong>Class</strong> ' + escapePrintHtml(normalizedStudent.className) + '</span>' +
+              '<span><strong>Father</strong> ' + escapePrintHtml(normalizedStudent.fatherName) + '</span>' +
+              '<span><strong>Mobile</strong> ' + escapePrintHtml(normalizedStudent.phone) + '</span>' +
+              '<span><strong>DOA</strong> ' + escapePrintHtml(normalizedStudent.dateOfAdmission) + '</span>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="pvc-card__footer">' +
+          '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
+          '<div class="pvc-card__barcode-area">' +
             '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
             '<span class="pvc-card__barcode-text">' + escapePrintHtml(barcodeValue) + '</span>' +
-          '</div>' +
-          '<div class="pvc-card__name">' + escapePrintHtml(normalizedStudent.name || "-") + '</div>' +
-          '<div class="pvc-card__type-label">STUDENT</div>' +
-          '<div class="pvc-card__info">' +
-            '<span><strong>ID</strong> ' + escapePrintHtml(normalizedStudent.admissionNo) + '</span>' +
-            '<span><strong>Class</strong> ' + escapePrintHtml(normalizedStudent.className) + '</span>' +
-            '<span><strong>DOA</strong> ' + escapePrintHtml(normalizedStudent.dateOfAdmission) + '</span>' +
-          '</div>' +
-          '<div class="pvc-card__qr">' +
-            '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
           '</div>' +
         '</div>' +
       '</article>' +
