@@ -1,4 +1,4 @@
-/* Major section: Dashboard shell, routing, and student management module */
+﻿/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -21774,6 +21774,31 @@ classSelect.addEventListener("change", renderSubjectSelect);
               </article>
             </div>
           </article>`;
+          (function () {
+            var _clearBtn = document.getElementById("clearNotifHistoryBtn");
+            if (_clearBtn) {
+              _clearBtn.addEventListener("click", async function () {
+                if (!(await brandedConfirm("Clear Notification History?\nThis will hide all notifications from your history view. Schools will still see their notifications."))) return;
+                var _msgEl = document.getElementById("notifHistoryMessage");
+                var _clearApiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
+                fetch(_clearApiBase + "/api/admin/notifications", { method: "DELETE", cache: "no-store", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } }).then(function (resp) {
+                  return resp.json().catch(function () { return {}; });
+                }).then(function (data) {
+                  if (data.success) {
+                    if (_msgEl) { _msgEl.textContent = "History cleared."; _msgEl.className = "form-message success"; }
+                    var _cache = window.SagarSoftCache;
+                    if (_cache && _cache.clearHistoryOptimistic) { _cache.clearHistoryOptimistic(); }
+                    loadNotifHistory();
+                  } else {
+                    if (_msgEl) { _msgEl.textContent = data.message || "Failed."; _msgEl.className = "form-message error"; }
+                  }
+                }).catch(function () {
+                  if (_msgEl) { _msgEl.textContent = "Failed to clear history."; _msgEl.className = "form-message error"; }
+                });
+              });
+            }
+          })();
+          loadNotifHistory();
         } else {
           fullWidthEl.style.display = "none";
           fullWidthEl.innerHTML = "";
@@ -22575,27 +22600,6 @@ classSelect.addEventListener("change", renderSubjectSelect);
       _renderNotifHistory(cachedHistory);
     }
     cache.fetchHistory();
-  }
-
-  var clearNotifBtn = document.getElementById("clearNotifHistoryBtn");
-  if (clearNotifBtn) {
-    clearNotifBtn.addEventListener("click", async function () {
-      if (!(await brandedConfirm("Clear all notification history?"))) return;
-      var msgEl = document.getElementById("notifHistoryMessage");
-      var _clearApiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
-      fetch(_clearApiBase + "/api/admin/notifications", { method: "DELETE", cache: "no-store", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } }).then(function (resp) {
-        return resp.json().catch(function () { return {}; });
-      }).then(function (data) {
-        if (data.success) {
-          if (msgEl) { msgEl.textContent = "History cleared."; msgEl.className = "form-message success"; }
-          loadNotifHistory();
-        } else {
-          if (msgEl) { msgEl.textContent = data.message || "Failed."; msgEl.className = "form-message error"; }
-        }
-      }).catch(function () {
-        if (msgEl) { msgEl.textContent = "Failed to clear history."; msgEl.className = "form-message error"; }
-      });
-    });
   }
 
   function updateHero() {
