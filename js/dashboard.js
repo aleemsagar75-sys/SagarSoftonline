@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -1727,30 +1727,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const input = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
     if (!input || !dropdown) return;
-    const studentSearchIndex = (database.students || []).map(function (student) {
-      return {
-        id: student.id || "",
-        name: student.name || "",
-        className: student.className || "",
-        admissionNo: student.admissionNo || "",
-        rollNo: student.rollNo || "",
-        fatherName: student.fatherName || "",
-        nameSearch: String(student.name || "").toLowerCase(),
-        admissionSearch: String(student.admissionNo || "").toLowerCase(),
-        rollSearch: String(student.rollNo || "").toLowerCase(),
-        classSearch: String(student.className || "").toLowerCase(),
-        fatherSearch: String(student.fatherName || "").toLowerCase()
-      };
-    });
 
     initializeSearchWithDropdown(
       input,
       dropdown,
       function(searchTerm) {
-        const matches = [];
-        for (let index = 0; index < studentSearchIndex.length && matches.length < 10; index += 1) {
-          const student = studentSearchIndex[index];
-          if (student.nameSearch.includes(searchTerm) || student.admissionSearch.includes(searchTerm) || student.rollSearch.includes(searchTerm) || student.classSearch.includes(searchTerm) || student.fatherSearch.includes(searchTerm)) {
+        var students = database.students || [];
+        var matches = [];
+        for (let index = 0; index < students.length && matches.length < 10; index += 1) {
+          const student = students[index];
+          const name = String(student.name || "").toLowerCase();
+          const admissionNo = String(student.admissionNo || "").toLowerCase();
+          const rollNo = String(student.rollNo || "").toLowerCase();
+          const className = String(student.className || "").toLowerCase();
+          const fatherName = String(student.fatherName || "").toLowerCase();
+          if (name.includes(searchTerm) || admissionNo.includes(searchTerm) || rollNo.includes(searchTerm) || className.includes(searchTerm) || fatherName.includes(searchTerm)) {
             matches.push(student);
           }
         }
@@ -13524,7 +13515,7 @@ ${allContent}
               '<div class="pvc-card__photo-area">' +
                 (photo ? '<img src="' + safeAttr(photo) + '" alt="' + safeAttr(employee.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(employee.name || "E") + '</span>') +
               '</div>' +
-              '<div class="pvc-card__info-area">' +
+              '<div class="pvc-card__info-area pvc-card__info-area--employee">' +
                 '<div class="pvc-card__name">' + safeHtml(employee.name || "-") + '</div>' +
                 '<div class="pvc-card__type-label">EMPLOYEE</div>' +
                 '<div class="pvc-card__info-grid">' +
@@ -13565,6 +13556,7 @@ ${allContent}
           '.pvc-card__photo{width:13mm;height:13mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
           '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:13mm;height:13mm;border-radius:50%}' +
           '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
+          '.pvc-card__info-area--employee{padding-left:2mm}' +
           '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
           '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
           '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.3mm;width:100%}' +
@@ -24532,7 +24524,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
       if (_psUtilityCard2) _psUtilityCard2.style.gridColumn = "1 / -1";
       studentsUtilityContent.innerHTML = `
         <div class="toolbar" style="margin-bottom:12px">
-          <input id="parentLoginSearchInput" type="search" placeholder="Search by father name or student name">
+          <div id="parentLoginSearchContainer" style="position:relative;flex:1;min-width:0;">
+            <input id="parentLoginSearchInput" type="search" placeholder="Search by father name or student name" style="width:100%;">
+            <div id="parentLoginSearchDropdown" class="search-dropdown"></div>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -24552,9 +24547,35 @@ classSelect.addEventListener("change", renderSubjectSelect);
         <p class="empty-state" id="parentLoginEmptyState" hidden>No parent records found.</p>
       `;
       renderParentLoginTable();
-      var searchInput = document.getElementById("parentLoginSearchInput");
-      if (searchInput) {
-        searchInput.addEventListener("input", renderParentLoginTable);
+      var parentLoginSearchInput = document.getElementById("parentLoginSearchInput");
+      var parentLoginSearchDropdown = document.getElementById("parentLoginSearchDropdown");
+      if (parentLoginSearchInput && parentLoginSearchDropdown) {
+        initializeSearchWithDropdown(
+          parentLoginSearchInput,
+          parentLoginSearchDropdown,
+          function(searchTerm) {
+            return (database.students || []).filter(function(s) {
+              var fn = String(s.fatherName || "").toLowerCase();
+              var sn = String(s.name || "").toLowerCase();
+              return fn.includes(searchTerm) || sn.includes(searchTerm);
+            }).slice(0, 10);
+          },
+          function(student) {
+            return '<div class="gsac-item" data-student-id="' + escapeAttr(student.id || "") + '">' +
+              '<div class="gsac-item-main">' +
+                '<div class="gsac-item-name">' + escapeHtml(student.fatherName || "-") + '</div>' +
+                '<div class="gsac-item-sub">' + escapeHtml(student.name || "-") + '</div>' +
+              '</div>' +
+              '<div class="gsac-item-id">' + escapeHtml(student.className || "-") + '</div>' +
+            '</div>';
+          },
+          function(student) {
+            parentLoginSearchInput.value = student.fatherName || student.name || "";
+            renderParentLoginTable();
+          },
+          "parentLoginSearchContainer"
+        );
+        parentLoginSearchInput.addEventListener("input", renderParentLoginTable);
       }
       studentsUtilityContent.addEventListener("change", function (ev) {
         var toggle = ev.target.closest(".parent-login-toggle");
