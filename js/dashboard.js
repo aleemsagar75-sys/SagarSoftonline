@@ -1733,8 +1733,13 @@ document.addEventListener("DOMContentLoaded", function () {
         name: student.name || "",
         className: student.className || "",
         admissionNo: student.admissionNo || "",
+        rollNo: student.rollNo || "",
+        fatherName: student.fatherName || "",
         nameSearch: String(student.name || "").toLowerCase(),
-        admissionSearch: String(student.admissionNo || "").toLowerCase()
+        admissionSearch: String(student.admissionNo || "").toLowerCase(),
+        rollSearch: String(student.rollNo || "").toLowerCase(),
+        classSearch: String(student.className || "").toLowerCase(),
+        fatherSearch: String(student.fatherName || "").toLowerCase()
       };
     });
 
@@ -1745,7 +1750,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const matches = [];
         for (let index = 0; index < studentSearchIndex.length && matches.length < 10; index += 1) {
           const student = studentSearchIndex[index];
-          if (student.nameSearch.includes(searchTerm) || student.admissionSearch.includes(searchTerm)) {
+          if (student.nameSearch.includes(searchTerm) || student.admissionSearch.includes(searchTerm) || student.rollSearch.includes(searchTerm) || student.classSearch.includes(searchTerm) || student.fatherSearch.includes(searchTerm)) {
             matches.push(student);
           }
         }
@@ -13524,12 +13529,12 @@ ${allContent}
                 '<div class="pvc-card__type-label">EMPLOYEE</div>' +
                 '<div class="pvc-card__info-grid">' +
                   '<div class="pvc-card__info-row">' +
-                    '<span><strong>ID:</strong> ' + safeHtml(employee.id) + '</span>' +
-                    '<span><strong>Role:</strong> ' + safeHtml(employee.role) + '</span>' +
+                    '<span class="pvc-card__field"><span class="pvc-card__label">ID:</span> <span class="pvc-card__value">' + safeHtml(employee.id) + '</span></span>' +
+                    '<span class="pvc-card__field"><span class="pvc-card__label">Role:</span> <span class="pvc-card__value">' + safeHtml(employee.role) + '</span></span>' +
                   '</div>' +
                   '<div class="pvc-card__info-row">' +
-                    '<span><strong>Joined:</strong> ' + safeHtml(employee.dateOfJoining || "-") + '</span>' +
-                    '<span><strong>Mobile:</strong> ' + safeHtml(employee.phone || "-") + '</span>' +
+                    '<span class="pvc-card__field"><span class="pvc-card__label">Joined:</span> <span class="pvc-card__value">' + safeHtml(employee.dateOfJoining || "-") + '</span></span>' +
+                    '<span class="pvc-card__field"><span class="pvc-card__label">Mobile:</span> <span class="pvc-card__value">' + safeHtml(employee.phone || "-") + '</span></span>' +
                   '</div>' +
                 '</div>' +
               '</div>' +
@@ -13555,17 +13560,18 @@ ${allContent}
           '.pvc-card__header-text{flex:1;min-width:0}' +
           '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
           '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
-      '.pvc-card__body{display:flex;flex-direction:column;align-items:center;gap:.5mm;padding:1.5mm 3mm;flex:1;min-height:0}' +
-      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0}' +
-      '.pvc-card__photo{width:13mm;height:13mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
-      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:13mm;height:13mm;border-radius:50%}' +
-      '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
-      '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
-      '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
-      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;width:100%}' +
-      '.pvc-card__info-row{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.3mm 1.5mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
-          '.pvc-card__info-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-          '.pvc-card__info-row strong{color:#0f2f58}' +
+          '.pvc-card__body{display:flex;flex-direction:column;align-items:center;gap:.5mm;padding:1.5mm 3mm;flex:1;min-height:0}' +
+          '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0}' +
+          '.pvc-card__photo{width:13mm;height:13mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+          '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:13mm;height:13mm;border-radius:50%}' +
+          '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
+          '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
+          '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
+          '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.3mm;width:100%}' +
+          '.pvc-card__info-row{display:grid;grid-template-columns:1fr 1fr;gap:.4mm 2mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
+          '.pvc-card__field{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:.3mm}' +
+          '.pvc-card__label{font-weight:700;color:#0f2f58;flex-shrink:0}' +
+          '.pvc-card__value{color:#3a5a7c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
           '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
           '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
           '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
@@ -23615,15 +23621,16 @@ classSelect.addEventListener("change", renderSubjectSelect);
               '<div class="pvc-card__type-label">STUDENT</div>' +
               '<div class="pvc-card__info-grid">' +
                 '<div class="pvc-card__info-row">' +
-                  '<span><strong>ID:</strong> ' + safeHtml(student.admissionNo) + '</span>' +
-                  '<span><strong>Class:</strong> ' + safeHtml(student.className) + '</span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">ID:</span> <span class="pvc-card__value">' + safeHtml(student.admissionNo) + '</span></span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Class:</span> <span class="pvc-card__value">' + safeHtml(student.className) + '</span></span>' +
                 '</div>' +
                 '<div class="pvc-card__info-row">' +
-                  '<span><strong>Father:</strong> ' + safeHtml(student.fatherName) + '</span>' +
-                  '<span><strong>Mobile:</strong> ' + safeHtml(student.phone) + '</span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Father:</span> <span class="pvc-card__value">' + safeHtml(student.fatherName) + '</span></span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Mobile:</span> <span class="pvc-card__value">' + safeHtml(student.phone) + '</span></span>' +
                 '</div>' +
                 '<div class="pvc-card__info-row">' +
-                  '<span><strong>DOA:</strong> ' + safeHtml(student.dateOfAdmission) + '</span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">DOA:</span> <span class="pvc-card__value">' + safeHtml(student.dateOfAdmission) + '</span></span>' +
+                  '<span class="pvc-card__field"></span>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -23656,10 +23663,11 @@ classSelect.addEventListener("change", renderSubjectSelect);
       '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
       '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
       '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
-      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;width:100%}' +
-      '.pvc-card__info-row{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.3mm 1.5mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
-      '.pvc-card__info-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.pvc-card__info-row strong{color:#0f2f58}' +
+      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.3mm;width:100%}' +
+      '.pvc-card__info-row{display:grid;grid-template-columns:1fr 1fr;gap:.4mm 2mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
+      '.pvc-card__field{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:.3mm}' +
+      '.pvc-card__label{font-weight:700;color:#0f2f58;flex-shrink:0}' +
+      '.pvc-card__value{color:#3a5a7c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
       '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
       '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
@@ -23716,10 +23724,11 @@ classSelect.addEventListener("change", renderSubjectSelect);
       '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
       '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
       '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
-      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.2mm;width:100%}' +
-      '.pvc-card__info-row{display:grid;grid-template-columns:auto 1fr auto 1fr;gap:.3mm 1.5mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
-      '.pvc-card__info-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
-      '.pvc-card__info-row strong{color:#0f2f58}' +
+      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.3mm;width:100%}' +
+      '.pvc-card__info-row{display:grid;grid-template-columns:1fr 1fr;gap:.4mm 2mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
+      '.pvc-card__field{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:.3mm}' +
+      '.pvc-card__label{font-weight:700;color:#0f2f58;flex-shrink:0}' +
+      '.pvc-card__value{color:#3a5a7c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
       '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
       '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
@@ -23744,15 +23753,16 @@ classSelect.addEventListener("change", renderSubjectSelect);
               '<div class="pvc-card__type-label">STUDENT</div>' +
               '<div class="pvc-card__info-grid">' +
                 '<div class="pvc-card__info-row">' +
-                  '<span><strong>ID:</strong> ' + escapePrintHtml(normalizedStudent.admissionNo) + '</span>' +
-                  '<span><strong>Class:</strong> ' + escapePrintHtml(normalizedStudent.className) + '</span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">ID:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.admissionNo) + '</span></span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Class:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.className) + '</span></span>' +
                 '</div>' +
                 '<div class="pvc-card__info-row">' +
-                  '<span><strong>Father:</strong> ' + escapePrintHtml(normalizedStudent.fatherName) + '</span>' +
-                  '<span><strong>Mobile:</strong> ' + escapePrintHtml(normalizedStudent.phone) + '</span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Father:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.fatherName) + '</span></span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Mobile:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.phone) + '</span></span>' +
                 '</div>' +
                 '<div class="pvc-card__info-row">' +
-                  '<span><strong>DOA:</strong> ' + escapePrintHtml(normalizedStudent.dateOfAdmission) + '</span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">DOA:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.dateOfAdmission) + '</span></span>' +
+                  '<span class="pvc-card__field"></span>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -26223,6 +26233,11 @@ classSelect.addEventListener("change", renderSubjectSelect);
     safeOn(element, "change", renderStudentsWorkspace);
   });
 
+  initializeStudentProfessionalSearch("studentSearchInput", "mainStudentSearchDropdown", "mainStudentSearchContainer", function(student) {
+    studentSearchInput.value = student.name || "";
+    renderStudentsWorkspace();
+  });
+
   // Initialize all-students search with dropdown
   const allStudentsSearchDropdown = document.getElementById("allStudentsSearchDropdown");
   if (allStudentsSearchInput && allStudentsSearchDropdown) {
@@ -26369,6 +26384,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
   
   safeOn(studentIdCardsSearchInput, "input", renderStudentIdCards);
   safeOn(studentIdCardsClassFilter, "change", renderStudentIdCards);
+  initializeStudentProfessionalSearch("studentIdCardsSearchInput", "studentIdCardsSearchDropdown", "studentIdCardsSearchContainer", function(student) {
+    studentIdCardsSearchInput.value = student.name || "";
+    renderStudentIdCards();
+  });
   safeOn(printAllStudentIdCardsBtn, "click", function () {
     printStudentIdCardsByList(getIdCardStudents(), "Student ID Cards");
   });
@@ -26379,6 +26398,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
   });
   safeOn(printBasicListSearchInput, "input", renderPrintBasicListTable);
   safeOn(printBasicListClassFilter, "change", renderPrintBasicListTable);
+  initializeStudentProfessionalSearch("printBasicListSearchInput", "printBasicListSearchDropdown", "printBasicListSearchContainer", function(student) {
+    printBasicListSearchInput.value = student.name || "";
+    renderPrintBasicListTable();
+  });
   safeOn(printBasicListBtn, "click", printBasicList);
   const dashboardStatsGrid = document.getElementById("statsGrid");
   if (dashboardStatsGrid) {
@@ -26391,7 +26414,16 @@ classSelect.addEventListener("change", renderSubjectSelect);
     });
   }
   safeOn(studentsManageLoginSearchInput, "input", renderManageLoginTable);
+  initializeStudentProfessionalSearch("studentsManageLoginSearchInput", "manageLoginSearchDropdown", "manageLoginSearchContainer", function(student) {
+    studentsManageLoginSearchInput.value = student.name || "";
+    renderManageLoginTable();
+  });
   safeOn(promoteStudentsSearchInput, "input", function () {
+    promoteSelectionState = {};
+    renderPromoteStudentsTable();
+  });
+  initializeStudentProfessionalSearch("promoteStudentsSearchInput", "promoteStudentsSearchDropdown", "promoteStudentsSearchContainer", function(student) {
+    promoteStudentsSearchInput.value = student.name || "";
     promoteSelectionState = {};
     renderPromoteStudentsTable();
   });
