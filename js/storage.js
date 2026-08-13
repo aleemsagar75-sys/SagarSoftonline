@@ -495,16 +495,32 @@
     return cachedDatabase;
   }
 
+  function sendBeaconWithAuth() {
+    if (cachedDatabase && config.apiBaseUrl && config.schoolId) {
+      try {
+        var payload = JSON.stringify({ database: cachedDatabase });
+        var url = config.apiBaseUrl + "/api/database/" + encodeURIComponent(config.schoolId);
+        var authHeaders = { "Content-Type": "application/json" };
+        if (config.apiKey) authHeaders["x-sagarsoft-api-key"] = config.apiKey;
+        if (config.authToken) authHeaders["Authorization"] = "Bearer " + config.authToken;
+        fetch(url, {
+          method: "POST",
+          headers: authHeaders,
+          body: payload,
+          keepalive: true
+        }).catch(function () {});
+        _pendingSave = false;
+        if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
+        return true;
+      } catch (_e) { console.warn("[SagarSoft] sendBeaconWithAuth failed:", _e); }
+    }
+    return false;
+  }
+
   if (typeof window !== "undefined") {
     window.addEventListener("beforeunload", function () {
       if (_pendingSave && cachedDatabase && config.apiBaseUrl && config.schoolId) {
-        try {
-          var payload = JSON.stringify({ database: cachedDatabase });
-          var url = config.apiBaseUrl + "/api/database/" + encodeURIComponent(config.schoolId);
-          navigator.sendBeacon(url, new Blob([payload], { type: "application/json" }));
-          _pendingSave = false;
-          if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
-        } catch (_e) {}
+        sendBeaconWithAuth();
       }
     });
   }
@@ -560,6 +576,29 @@
           timeoutMs: 30000
         });
       } catch (_e) {}
+    }
+  }
+
+  function forceSyncBeforeLogout() {
+    if (!cachedDatabase || !config.apiBaseUrl || !config.schoolId) return false;
+    if (isDemoUser()) return false;
+    if (_saveDbTimer) { clearTimeout(_saveDbTimer); _saveDbTimer = null; }
+    _pendingSave = false;
+    var payload = JSON.stringify({ database: cachedDatabase });
+    var url = config.apiBaseUrl + "/api/database/" + encodeURIComponent(config.schoolId);
+    var authHeaders = { "Content-Type": "application/json" };
+    if (config.apiKey) authHeaders["x-sagarsoft-api-key"] = config.apiKey;
+    if (config.authToken) authHeaders["Authorization"] = "Bearer " + config.authToken;
+    try {
+      fetch(url, {
+        method: "POST",
+        headers: authHeaders,
+        body: payload,
+        keepalive: true
+      }).catch(function () {});
+      return true;
+    } catch (_e) {
+      return false;
     }
   }
 
@@ -772,6 +811,8 @@
     saveProfileToServer: saveProfileToServer,
     loadSchoolProfile: loadSchoolProfile,
     loadSettingItemsFromServer: loadSettingItemsFromServer,
+    sendBeaconWithAuth: sendBeaconWithAuth,
+    forceSyncBeforeLogout: forceSyncBeforeLogout,
     isCancelled: function () { return _isCancelled; },
     resetCancel: function () { _isCancelled = false; }
   };
