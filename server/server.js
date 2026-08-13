@@ -2840,7 +2840,7 @@ app.post("/api/admin/notifications", requireSuperAdmin, async function (req, res
 
 app.get("/api/admin/notifications", requireSuperAdmin, async function (req, res) {
   try {
-    var result = await pool.query("select n.id, n.school_id, n.title, n.message, n.created_at, coalesce(a.school_name,'') as school_name from public.license_notifications n left join public.license_accounts a on n.school_id = a.school_id order by n.created_at desc limit 100");
+    var result = await pool.query("select n.id, n.school_id, n.title, n.message, n.created_at, coalesce(a.school_name,'') as school_name from public.license_notifications n left join public.license_accounts a on n.school_id = a.school_id where n.hidden_from_admin is not true order by n.created_at desc limit 100");
     return res.json({ success: true, notifications: result.rows });
   } catch (error) {
     console.error("GET /api/admin/notifications error:", error.message);
@@ -2850,9 +2850,11 @@ app.get("/api/admin/notifications", requireSuperAdmin, async function (req, res)
 
 app.delete("/api/admin/notifications", requireSuperAdmin, async function (req, res) {
   try {
-    await pool.query("delete from public.license_notifications");
+    await pool.query("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_notifications' AND column_name='hidden_from_admin') THEN ALTER TABLE public.license_notifications ADD COLUMN hidden_from_admin boolean DEFAULT false; END IF; END $$;");
+    await pool.query("update public.license_notifications set hidden_from_admin = true where hidden_from_admin is not true");
     return res.json({ success: true, message: "Notification history cleared." });
   } catch (error) {
+    console.error("DELETE /api/admin/notifications error:", error.message);
     return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
   }
 });
