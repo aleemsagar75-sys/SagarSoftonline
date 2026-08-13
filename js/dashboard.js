@@ -1,4 +1,4 @@
-/* Major section: Dashboard shell, routing, and student management module */
+﻿/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -2311,6 +2311,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function syncPortalActivationAndNotifications() {
     renderNotificationList();
+    var _cfg = window.SagarSoftDB && window.SagarSoftDB.getConfig ? window.SagarSoftDB.getConfig() : {};
+    var _schoolId = _cfg.schoolId || "";
+    var _session = null;
+    try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
+    var _isSuperAdmin = _session && _session.role === "superadmin";
+    if (_schoolId && !_isSuperAdmin && _cfg.apiBaseUrl && _cfg.apiKey) {
+      var _headers = { "Content-Type": "application/json" };
+      if (_cfg.authToken) _headers["Authorization"] = "Bearer " + _cfg.authToken;
+      if (_cfg.apiKey) _headers["x-sagarsoft-api-key"] = _cfg.apiKey;
+      fetch(_cfg.apiBaseUrl + "/api/school/notifications/" + encodeURIComponent(_schoolId), { headers: _headers, cache: "no-store" })
+        .then(function(r) { return r.json().catch(function() { return {}; }); })
+        .then(function(data) {
+          if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
+            ensurePortalSyncData();
+            var added = 0;
+            data.notifications.forEach(function(note) {
+              var noteId = "PORTAL-" + String(note.id || "");
+              if (!note.id || database.portalSync.appliedNotificationIds.indexOf(noteId) >= 0) return;
+              database.notifications.unshift({
+                id: noteId, title: note.title || "Portal Notification", message: note.message || "-",
+                createdAt: note.created_at || new Date().toISOString(), read: false, source: "portal"
+              });
+              database.portalSync.appliedNotificationIds.push(noteId);
+              added++;
+            });
+            if (added > 0) {
+              database.notifications = database.notifications.slice(0, 100);
+              renderNotificationList();
+            }
+          }
+        })
+        .catch(function() {});
+    }
   }
 
   function escapePrintHtml(value) {
@@ -21888,11 +21921,22 @@ classSelect.addEventListener("change", renderSubjectSelect);
           renderProfileDropdownMenu();
           applyRouteAccessVisibility();
           try {
-            var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(activeLicense.schoolId || ""), {
-              method: "PUT",
-              headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") },
-              body: JSON.stringify({ school_name: schoolName, timezone: timezone, currency: currency, symbol: symbol })
-            });
+            var _cfg = window.SagarSoftDB && window.SagarSoftDB.getConfig ? window.SagarSoftDB.getConfig() : {};
+            var _isSchoolUser = !!(_cfg && _cfg.apiKey);
+            var _saveUrl, _saveHeaders, _saveBody;
+            if (_isSchoolUser) {
+              var _schoolId = _cfg.schoolId;
+              _saveUrl = apiBase + "/api/school/profile/" + encodeURIComponent(_schoolId);
+              _saveHeaders = { "Content-Type": "application/json" };
+              if (_cfg.authToken) _saveHeaders["Authorization"] = "Bearer " + _cfg.authToken;
+              if (_cfg.apiKey) _saveHeaders["x-sagarsoft-api-key"] = _cfg.apiKey;
+              _saveBody = JSON.stringify({ profile: { name: schoolName }, school: { timezone: timezone, currency: currency, symbol: symbol } });
+            } else {
+              _saveUrl = apiBase + "/api/admin/schools/" + encodeURIComponent(activeLicense.schoolId || "");
+              _saveHeaders = { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") };
+              _saveBody = JSON.stringify({ school_name: schoolName, timezone: timezone, currency: currency, symbol: symbol });
+            }
+            var resp = await fetch(_saveUrl, { method: "PUT", headers: _saveHeaders, body: _saveBody });
             var data = await resp.json().catch(function () { return {}; });
             if (data.success && msgEl) {
               msgEl.textContent = "Account updated successfully.";
