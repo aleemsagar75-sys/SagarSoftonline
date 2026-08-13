@@ -674,7 +674,10 @@
             </div>
 
             <div class="toolbar toolbar--status">
-              <input id="studentIdCardsSearchInput" type="search" placeholder="Search by student name or roll number">
+              <div id="studentIdCardsSearchContainer" style="position:relative;flex:1;min-width:0;">
+                <input id="studentIdCardsSearchInput" type="search" placeholder="Search by student name, ID, or roll number">
+                <div id="studentIdCardsSearchDropdown" class="search-dropdown"></div>
+              </div>
               <select id="studentIdCardsClassFilter">
                 <option value="all">All Classes</option>
               </select>
@@ -699,7 +702,10 @@
             </div>
 
             <div class="toolbar toolbar--status">
-              <input id="printBasicListSearchInput" type="search" placeholder="Search by student name or roll number">
+              <div id="printBasicListSearchContainer" style="position:relative;flex:1;min-width:0;">
+                <input id="printBasicListSearchInput" type="search" placeholder="Search by student name, ID, or roll number">
+                <div id="printBasicListSearchDropdown" class="search-dropdown"></div>
+              </div>
               <select id="printBasicListClassFilter">
                 <option value="all">All Classes</option>
               </select>
@@ -830,7 +836,10 @@
             </div>
 
             <div class="toolbar toolbar--simple">
-              <input id="studentsManageLoginSearchInput" type="search" placeholder="Search by student name or roll number">
+              <div id="manageLoginSearchContainer" style="position:relative;flex:1;min-width:0;">
+                <input id="studentsManageLoginSearchInput" type="search" placeholder="Search by student name, ID, or roll number">
+                <div id="manageLoginSearchDropdown" class="search-dropdown"></div>
+              </div>
             </div>
 
             <div class="table-wrap">
@@ -861,7 +870,10 @@
             </div>
 
             <div class="toolbar toolbar--promote">
-              <input id="promoteStudentsSearchInput" type="search" placeholder="Search by student name or roll number">
+              <div id="promoteStudentsSearchContainer" style="position:relative;flex:1;min-width:0;">
+                <input id="promoteStudentsSearchInput" type="search" placeholder="Search by student name, ID, or roll number">
+                <div id="promoteStudentsSearchDropdown" class="search-dropdown"></div>
+              </div>
               <select id="promoteStudentsClassFilter">
                 <option value="all">All Classes</option>
               </select>
@@ -902,7 +914,10 @@
               </div>
 
               <div class="toolbar toolbar--students">
-                <input id="studentSearchInput" type="search" placeholder="Search by name, admission no, or class">
+                <div id="mainStudentSearchContainer" style="position:relative;flex:1;min-width:0;">
+                  <input id="studentSearchInput" type="search" placeholder="Search by name, admission no, or class">
+                  <div id="mainStudentSearchDropdown" class="search-dropdown"></div>
+                </div>
                 <select id="studentClassFilter">
                   <option value="all">All Classes</option>
                 </select>
