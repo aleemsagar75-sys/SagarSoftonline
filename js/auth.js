@@ -195,6 +195,11 @@
   function logout() {
     var session = getCurrentUser();
     if (session && isDemoEmail(session.email)) { restoreDemoSnapshot(); }
+    try {
+      if (window.SagarSoftDB && typeof window.SagarSoftDB.forceSyncBeforeLogout === "function") {
+        window.SagarSoftDB.forceSyncBeforeLogout();
+      }
+    } catch (_e) {}
     clearSession();
   }
 
@@ -219,6 +224,14 @@
         return { success: false, message: data.message || "Invalid super admin credentials" };
       }
       if (data.success && data.user) {
+        try {
+          localStorage.removeItem("ss_school_id_persistent");
+          localStorage.removeItem("ss_api_key_persistent");
+          localStorage.removeItem("ss_auth_token");
+        } catch (_e) {}
+        if (window.SagarSoftDB && typeof window.SagarSoftDB.clearCache === "function") {
+          window.SagarSoftDB.clearCache();
+        }
         var session = { id: data.user.id || "USR-SUPER-001", name: data.user.name || "SagarSoft Super Admin", email: data.user.email || email, role: data.user.role || "superadmin", rememberMe: !!rememberMe, loginAt: new Date().toISOString(), serverToken: data.token || "" };
         if (rememberMe) { try { localStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
         else { try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); } catch (e) {} }
