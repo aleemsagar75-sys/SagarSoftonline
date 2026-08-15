@@ -3626,13 +3626,13 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
             <div class="stat-item">
               <span class="stat-label">Boys</span>
-              <button class="stat-link" type="button" data-action="class-view-boys" data-id="${classItem.id}">
+              <button class="stat-link stat-link--boys" type="button" data-action="class-view-boys" data-id="${classItem.id}" style="--pct:${boysPercentage}">
                 ${boysCount} (${boysPercentage}%)
               </button>
             </div>
             <div class="stat-item">
               <span class="stat-label">Girls</span>
-              <button class="stat-link" type="button" data-action="class-view-girls" data-id="${classItem.id}">
+              <button class="stat-link stat-link--girls" type="button" data-action="class-view-girls" data-id="${classItem.id}" style="--pct:${girlsPercentage}">
                 ${girlsCount} (${girlsPercentage}%)
               </button>
             </div>
