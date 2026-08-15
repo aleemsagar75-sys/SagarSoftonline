@@ -3743,60 +3743,9 @@ body {
   background: #fff;
 }
 
-/* Classes Card Grid Layout */
-.classes-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 1.2rem;
-  padding: 0.5rem 0;
-}
+/* Classes Card Grid Layout — base overrides removed, scoped to #allClassesShell */
 
-.class-card {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-  padding: 1.2rem;
-  border-radius: 18px;
-  border: 1px solid rgba(16, 37, 66, 0.08);
-  background: rgba(255, 255, 255, 0.9);
-  box-shadow: var(--shadow-card);
-  transition: transform var(--transition-base), box-shadow var(--transition-base);
-}
-
-.class-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-soft);
-}
-
-.class-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.8rem;
-  margin: 0 0 0.8rem 0;
-  padding-bottom: 0.8rem;
-  border-bottom: none;
-  background: linear-gradient(135deg, rgba(15, 43, 63, 0.08) 0%, rgba(27, 95, 122, 0.06) 100%);
-  border-radius: 16px 16px 0 0;
-}
-
-.class-card__header h4 {
-  margin: 0;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #0f2b3f;
-}
-
-.class-card__actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.class-card__stats {
-  display: grid;
-  gap: 0.85rem;
-}
+/* Class card sub-element base styles — replaced by scoped #allClassesShell rules */
 
 .stat-item {
   display: flex;
@@ -3828,20 +3777,7 @@ body {
   color: #102542;
 }
 
-.stat-link {
-  min-height: 34px;
-  padding: 0.3rem 0.55rem;
-  border-radius: 8px;
-  font-size: 0.82rem;
-  font-weight: 700;
-  color: var(--primary-color);
-  background: rgba(30, 94, 255, 0.08);
-  border: 1px solid rgba(30, 94, 255, 0.2);
-}
-
-.stat-link:hover {
-  background: rgba(30, 94, 255, 0.14);
-}
+/* .stat-link base styles — replaced by scoped #allClassesShell rules */
 
 /* ===== EMPLOYEE CARDS – Fluent Design + Zero Overflow ===== */
 .employees-card-grid {
@@ -6360,7 +6296,6 @@ th {
   border-color: rgba(27, 95, 122, 0.3);
 }
 
-.class-card:hover,
 .employee-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 8px 24px rgba(15, 43, 63, 0.1), 0 20px 48px rgba(15, 43, 63, 0.06);
@@ -6752,6 +6687,7 @@ select:focus, input:focus, textarea:focus {
 #allClassesShell .class-card {
   background: #ffffff;
   border: 1px solid rgba(120, 80, 200, 0.1);
+  border-left: 1px solid rgba(120, 80, 200, 0.1);
   border-top: 3px solid #7c5cbf;
   border-radius: 18px;
   box-shadow: 0 2px 12px rgba(100, 70, 170, 0.06), 0 4px 24px rgba(100, 70, 170, 0.04);
@@ -6762,6 +6698,9 @@ select:focus, input:focus, textarea:focus {
   position: relative;
   overflow: hidden;
   transition: transform 0.28s cubic-bezier(0.22,1,0.36,1), box-shadow 0.28s cubic-bezier(0.22,1,0.36,1);
+}
+#allClassesShell .class-card::after {
+  content: none !important;
 }
 #allClassesShell .class-card::before {
   content: "";
@@ -7116,7 +7055,6 @@ select:focus, input:focus, textarea:focus {
 }
 
 /* ===== CARD HOVER LIFT ===== */
-.class-card:hover,
 .student-status-card:hover,
 .class-subject-card:hover,
 .module-preview-card:hover,
