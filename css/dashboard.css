@@ -1,4 +1,4 @@
-*, ::before, ::after {
+﻿*, ::before, ::after {
   box-sizing: border-box;
 }
 
@@ -6742,33 +6742,200 @@ select:focus, input:focus, textarea:focus {
   background: linear-gradient(135deg, #f8fbfa, #f0f5f3);
 }
 
-/* ===== CLASS CARDS PREMIUM (dashboard-style) ===== */
-.class-card {
-  background: linear-gradient(135deg, #d2e9e3 0%, #a5d3c7 50%, #78bdaa 100%) !important;
-  border: 1px solid rgba(20, 90, 115, 0.25) !important;
-  border-left: 6px solid #145a73 !important;
-  box-shadow: 0 4px 16px rgba(15, 43, 63, 0.12), 0 8px 24px rgba(15, 43, 63, 0.06) !important;
-  position: relative;
+/* ===== CLASS CARDS PREMIUM (All Classes — White + Purple SaaS) ===== */
+#allClassesShell .classes-card-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.25rem;
+  padding: 0.5rem 0;
 }
-.class-card__header {
+#allClassesShell .class-card {
+  background: #ffffff;
+  border: 1px solid rgba(120, 80, 200, 0.1);
+  border-top: 3px solid #7c5cbf;
+  border-radius: 18px;
+  box-shadow: 0 2px 12px rgba(100, 70, 170, 0.06), 0 4px 24px rgba(100, 70, 170, 0.04);
+  padding: 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.28s cubic-bezier(0.22,1,0.36,1), box-shadow 0.28s cubic-bezier(0.22,1,0.36,1);
+}
+#allClassesShell .class-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #7c5cbf 0%, #a78bfa 50%, #c4b5fd 100%);
+  border-radius: 18px 18px 0 0;
+}
+#allClassesShell .class-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 28px rgba(100, 70, 170, 0.12), 0 16px 48px rgba(100, 70, 170, 0.06);
+  border-color: rgba(120, 80, 200, 0.18);
+}
+#allClassesShell .class-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
   background: transparent;
-  margin: 0;
+  margin: 0 0 1rem 0;
   padding: 0;
   border: none;
+  border-bottom: none;
+  border-radius: 0;
 }
-.class-card__header h4 {
-  color: #0f2b3f;
+#allClassesShell .class-card__header h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #1e1b4b;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  min-width: 0;
+  word-break: break-word;
+}
+#allClassesShell .class-card__actions {
+  display: flex;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+#allClassesShell .class-card__actions .table-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 0.5rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid rgba(120, 80, 200, 0.12);
+  background: rgba(124, 92, 191, 0.05);
+  color: #7c5cbf;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+#allClassesShell .class-card__actions .table-action-btn:hover {
+  background: rgba(124, 92, 191, 0.12);
+  border-color: rgba(124, 92, 191, 0.25);
+  transform: translateY(-1px);
+}
+#allClassesShell .class-card__actions .table-action-btn.danger {
+  background: rgba(220, 60, 80, 0.05);
+  border-color: rgba(220, 60, 80, 0.12);
+  color: #dc3c50;
+}
+#allClassesShell .class-card__actions .table-action-btn.danger:hover {
+  background: rgba(220, 60, 80, 0.12);
+  border-color: rgba(220, 60, 80, 0.25);
+}
+#allClassesShell .class-card__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-top: auto;
+}
+#allClassesShell .stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  background: #f8f7fc;
+  border: 1px solid rgba(120, 80, 200, 0.06);
+  transition: background 0.2s ease;
+}
+#allClassesShell .stat-item:hover {
+  background: rgba(124, 92, 191, 0.06);
+}
+#allClassesShell .stat-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+#allClassesShell .stat-value {
+  font-size: 1.3rem;
   font-weight: 800;
-  font-size: 1.15rem;
+  color: #1e1b4b;
 }
-.class-card .stat-item {
-  background: rgba(255, 255, 255, 0.6);
-  border: 1px solid rgba(27, 95, 122, 0.12);
+#allClassesShell .stat-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 36px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
 }
-.class-card .stat-item:hover {
-  background: rgba(255, 255, 255, 0.85);
+#allClassesShell .stat-link--boys {
+  background: rgba(59, 130, 246, 0.08);
+  color: #2563eb;
+  --ring-color: #3b82f6;
+  --ring-inner: rgba(59, 130, 246, 0.08);
 }
-
+#allClassesShell .stat-link--boys:hover {
+  background: rgba(59, 130, 246, 0.15);
+}
+#allClassesShell .stat-link--girls {
+  background: rgba(236, 72, 153, 0.08);
+  color: #db2777;
+  --ring-color: #ec4899;
+  --ring-inner: rgba(236, 72, 153, 0.08);
+}
+#allClassesShell .stat-link--girls:hover {
+  background: rgba(236, 72, 153, 0.15);
+}
+#allClassesShell .stat-link::before {
+  content: "";
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background:
+    radial-gradient(circle, var(--ring-inner, #f8f7fc) 9px, transparent 9px),
+    conic-gradient(
+      var(--ring-color, #3b82f6) calc(var(--pct, 0) * 1%),
+      rgba(0, 0, 0, 0.06) calc(var(--pct, 0) * 1%)
+    );
+}
+@media (max-width: 1200px) {
+  #allClassesShell .classes-card-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+@media (max-width: 960px) {
+  #allClassesShell .classes-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  #allClassesShell .classes-card-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+  #allClassesShell .class-card {
+    padding: 1.1rem;
+    border-radius: 14px;
+  }
+  #allClassesShell .class-card__header h4 {
+    font-size: 0.95rem;
+  }
+}
 /* ===== EMPLOYEE CARDS PREMIUM (Fluent Design) ===== */
 .employee-card {
   background: linear-gradient(145deg, rgba(255,255,255,0.92) 0%, rgba(240,247,255,0.88) 100%) !important;
@@ -7799,13 +7966,6 @@ select:focus, input:focus, textarea:focus {
   .form-actions .primary-button,
   .form-actions .secondary-button,
   .form-actions .danger-button { width: 100%; }
-}
-
-/* Class Cards */
-@media (max-width: 768px) {
-  .class-card { padding: 0.65rem !important; }
-  .class-card strong { font-size: 0.85rem; }
-  .class-card span { font-size: 0.75rem; }
 }
 
 /* Student Directory Cards */
