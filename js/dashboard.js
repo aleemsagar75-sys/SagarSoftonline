@@ -12880,24 +12880,49 @@ ${allContent}
 
     if (route === "students-attendance-report") {
       moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong>Students Attendance Report</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;">
-            <div id="studentsAttendanceReportSearchContainer" style="position:relative;flex:1 1 180px;min-width:0;">
-              <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search student by roll no / name" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
-              <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
+        <article class="ar-report">
+          <div class="ar-header">
+            <div class="ar-header__left">
+              <strong class="ar-header__title">Students Attendance Report</strong>
+              <p class="ar-header__subtitle">Daily attendance entries for the selected date range</p>
             </div>
-            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">From: <input id="studentsAttendanceReportFromDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
-            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">To: <input id="studentsAttendanceReportToDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
-            <button class="primary-button" id="downloadStudentsAttendancePdfBtn" type="button" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;">Download PDF</button>
+            <div class="ar-header__controls">
+              <div class="ar-date-group">
+                <label for="studentsAttendanceReportFromDate">From</label>
+                <input id="studentsAttendanceReportFromDate" type="date">
+              </div>
+              <div class="ar-date-group">
+                <label for="studentsAttendanceReportToDate">To</label>
+                <input id="studentsAttendanceReportToDate" type="date">
+              </div>
+            </div>
           </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:650px;width:100%;"><thead><tr>
-            <th>Sr#</th><th>Roll No</th><th>Photo</th><th>Student Name</th><th>Class</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
-          </tr></thead><tbody id="studentsAttendanceReportTableBody"></tbody></table></div>
-          <p class="empty-state" id="studentsAttendanceReportEmptyState" hidden>No student attendance report found.</p>
+          <div id="studentsAttendanceReportStats" class="ar-stats"></div>
+          <div class="ar-table-wrap">
+            <div class="ar-toolbar">
+              <div class="ar-toolbar__exports">
+                <button class="table-action-btn" id="downloadStudentsAttendancePdfBtn" type="button">Download PDF</button>
+              </div>
+              <div class="ar-toolbar__search" id="studentsAttendanceReportSearchContainer">
+                <span class="ar-toolbar__search-icon">&#128269;</span>
+                <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search by roll no / name">
+                <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown"></div>
+              </div>
+            </div>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+              <table class="ar-table"><thead><tr>
+                <th>Sr#</th><th>Roll No</th><th>Photo</th><th>Student Name</th><th>Class</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
+              </tr></thead><tbody id="studentsAttendanceReportTableBody"></tbody></table>
+            </div>
+            <p class="ar-empty" id="studentsAttendanceReportEmptyState" hidden>No student attendance report found.</p>
+          </div>
         </article>
       `;
       moduleGuide.innerHTML = "";
+      var _pg = moduleGuide.closest(".panel-card");
+      if (_pg) _pg.style.display = "none";
+      var _ps = moduleSummary.closest(".panel-card");
+      if (_ps) _ps.style.gridColumn = "1 / -1";
       const searchInput = document.getElementById("studentsAttendanceReportSearchInput");
       const searchDropdown = document.getElementById("studentsAttendanceReportSearchDropdown");
       const searchContainer = document.getElementById("studentsAttendanceReportSearchContainer");
@@ -12905,6 +12930,7 @@ ${allContent}
       const toDateInput = document.getElementById("studentsAttendanceReportToDate");
       const tableBody = document.getElementById("studentsAttendanceReportTableBody");
       const emptyState = document.getElementById("studentsAttendanceReportEmptyState");
+      const statsEl = document.getElementById("studentsAttendanceReportStats");
 
       initializeStudentProfessionalSearch(
         "studentsAttendanceReportSearchInput",
@@ -12948,18 +12974,27 @@ ${allContent}
 
       function renderTable() {
         const rows = getRows();
+        var totalPresent = 0;
+        var totalLeave = 0;
+        var totalAbsent = 0;
+        rows.forEach(function (r) { totalPresent += r.present; totalLeave += r.leave; totalAbsent += r.absent; });
+        statsEl.innerHTML =
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(124,92,191,0.1);color:#7c5cbf;">&#9632;</div><div class="ar-stat__info"><span class="ar-stat__value">' + rows.length + '</span><span class="ar-stat__label">Total Records</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(29,156,97,0.1);color:#1d9c61;">&#10003;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalPresent + '</span><span class="ar-stat__label">Present</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(240,163,39,0.1);color:#f0a327;">&#9679;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalLeave + '</span><span class="ar-stat__label">On Leave</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(214,75,75,0.1);color:#d64b4b;">&#10007;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalAbsent + '</span><span class="ar-stat__label">Absent</span></div></div>';
         tableBody.innerHTML = rows.map(function (row, index) {
           return `
             <tr>
               <td>${index + 1}</td>
               <td>${escapeHtml(row.student.admissionNo || "-")}</td>
-              <td>${row.student.picture ? `<img src="${row.student.picture}" alt="${escapeAttr(row.student.name)}" class="employee-table-avatar">` : `<span class="student-avatar">${getInitials(row.student.name || "S")}</span>`}</td>
-              <td>${escapeHtml(row.student.name || "-")}</td>
+              <td>${row.student.picture ? '<img src="' + row.student.picture + '" alt="' + escapeAttr(row.student.name) + '" class="ar-photo">' : '<span class="ar-avatar">' + getInitials(row.student.name || "S") + '</span>'}</td>
+              <td class="ar-name">${escapeHtml(row.student.name || "-")}</td>
               <td>${escapeHtml(row.student.className || "-")}</td>
               <td>${row.present}</td>
               <td>${row.leave}</td>
               <td>${row.absent}</td>
-              <td>${row.percent}%</td>
+              <td class="ar-percent">${row.percent}%</td>
             </tr>
           `;
         }).join("");
@@ -12973,7 +13008,7 @@ ${allContent}
         }
         openPrintReport({
           title: "Students Attendance Report",
-          subtitle: `${fromDateInput.value} to ${toDateInput.value}`,
+          subtitle: fromDateInput.value + " to " + toDateInput.value,
           headers: ["Sr#", "Roll", "Name", "Class", "Present", "On-leave", "Absent", "Attendance %"],
           rows: rows.map(function (row, index) {
             return [
@@ -12984,7 +13019,7 @@ ${allContent}
               row.present,
               row.leave,
               row.absent,
-              `${row.percent}%`
+              row.percent + "%"
             ];
           })
         });
@@ -13013,24 +13048,49 @@ ${allContent}
 
     if (route === "employees-attendance-report") {
       moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong>Employees Attendance Report</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;">
-            <div id="employeesAttendanceReportSearchContainer" style="position:relative;flex:1 1 180px;min-width:0;">
-              <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search employee by name / phone" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
-              <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
+        <article class="ar-report">
+          <div class="ar-header">
+            <div class="ar-header__left">
+              <strong class="ar-header__title">Employees Attendance Report</strong>
+              <p class="ar-header__subtitle">Daily attendance entries for the selected date range</p>
             </div>
-            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">From: <input id="employeesAttendanceReportFromDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
-            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">To: <input id="employeesAttendanceReportToDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
-            <button class="primary-button" id="downloadEmployeesAttendancePdfBtn" type="button" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;">Download PDF</button>
+            <div class="ar-header__controls">
+              <div class="ar-date-group">
+                <label for="employeesAttendanceReportFromDate">From</label>
+                <input id="employeesAttendanceReportFromDate" type="date">
+              </div>
+              <div class="ar-date-group">
+                <label for="employeesAttendanceReportToDate">To</label>
+                <input id="employeesAttendanceReportToDate" type="date">
+              </div>
+            </div>
           </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:650px;width:100%;"><thead><tr>
-            <th>Sr#</th><th>Employee Name</th><th>Photo</th><th>Role</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
-          </tr></thead><tbody id="employeesAttendanceReportTableBody"></tbody></table></div>
-          <p class="empty-state" id="employeesAttendanceReportEmptyState" hidden>No employee attendance report found.</p>
+          <div id="employeesAttendanceReportStats" class="ar-stats"></div>
+          <div class="ar-table-wrap">
+            <div class="ar-toolbar">
+              <div class="ar-toolbar__exports">
+                <button class="table-action-btn" id="downloadEmployeesAttendancePdfBtn" type="button">Download PDF</button>
+              </div>
+              <div class="ar-toolbar__search" id="employeesAttendanceReportSearchContainer">
+                <span class="ar-toolbar__search-icon">&#128269;</span>
+                <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search by name / phone">
+                <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown"></div>
+              </div>
+            </div>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+              <table class="ar-table"><thead><tr>
+                <th>Sr#</th><th>Employee Name</th><th>Role</th><th>Phone</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
+              </tr></thead><tbody id="employeesAttendanceReportTableBody"></tbody></table>
+            </div>
+            <p class="ar-empty" id="employeesAttendanceReportEmptyState" hidden>No employee attendance report found.</p>
+          </div>
         </article>
       `;
       moduleGuide.innerHTML = "";
+      var _pg = moduleGuide.closest(".panel-card");
+      if (_pg) _pg.style.display = "none";
+      var _ps = moduleSummary.closest(".panel-card");
+      if (_ps) _ps.style.gridColumn = "1 / -1";
       const searchInput = document.getElementById("employeesAttendanceReportSearchInput");
       const searchDropdown = document.getElementById("employeesAttendanceReportSearchDropdown");
       const searchContainer = document.getElementById("employeesAttendanceReportSearchContainer");
@@ -13038,6 +13098,7 @@ ${allContent}
       const toDateInput = document.getElementById("employeesAttendanceReportToDate");
       const tableBody = document.getElementById("employeesAttendanceReportTableBody");
       const emptyState = document.getElementById("employeesAttendanceReportEmptyState");
+      const statsEl = document.getElementById("employeesAttendanceReportStats");
 
       initializeEmployeeProfessionalSearch(
         "employeesAttendanceReportSearchInput",
@@ -13081,17 +13142,26 @@ ${allContent}
 
       function renderTable() {
         const rows = getRows();
+        var totalPresent = 0;
+        var totalLeave = 0;
+        var totalAbsent = 0;
+        rows.forEach(function (r) { totalPresent += r.present; totalLeave += r.leave; totalAbsent += r.absent; });
+        statsEl.innerHTML =
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(124,92,191,0.1);color:#7c5cbf;">&#9632;</div><div class="ar-stat__info"><span class="ar-stat__value">' + rows.length + '</span><span class="ar-stat__label">Total Records</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(29,156,97,0.1);color:#1d9c61;">&#10003;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalPresent + '</span><span class="ar-stat__label">Present</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(240,163,39,0.1);color:#f0a327;">&#9679;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalLeave + '</span><span class="ar-stat__label">On Leave</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(214,75,75,0.1);color:#d64b4b;">&#10007;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalAbsent + '</span><span class="ar-stat__label">Absent</span></div></div>';
         tableBody.innerHTML = rows.map(function (row, index) {
           return `
             <tr>
               <td>${index + 1}</td>
-              <td>${escapeHtml(row.employee.name || "-")}</td>
+              <td class="ar-name">${escapeHtml(row.employee.name || "-")}</td>
               <td>${escapeHtml(row.employee.role || row.employee.designation || "-")}</td>
               <td>${escapeHtml(row.employee.phone || "-")}</td>
               <td>${row.present}</td>
               <td>${row.leave}</td>
               <td>${row.absent}</td>
-              <td>${row.percent}%</td>
+              <td class="ar-percent">${row.percent}%</td>
             </tr>
           `;
         }).join("");
@@ -13105,7 +13175,7 @@ ${allContent}
         }
         openPrintReport({
           title: "Employees Attendance Report",
-          subtitle: `${fromDateInput.value} to ${toDateInput.value}`,
+          subtitle: fromDateInput.value + " to " + toDateInput.value,
           headers: ["Sr#", "Employee", "Role", "Phone", "Present", "On-leave", "Absent", "Attendance %"],
           rows: rows.map(function (row, index) {
             return [
@@ -13116,7 +13186,7 @@ ${allContent}
               row.present,
               row.leave,
               row.absent,
-              `${row.percent}%`
+              row.percent + "%"
             ];
           })
         });
