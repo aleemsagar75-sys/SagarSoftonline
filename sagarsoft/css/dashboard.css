@@ -3953,21 +3953,27 @@ body {
 
 /* ===== STUDENT TABLE HEADER ===== */
 
-.att-table thead {
-  display: block;
-  background: #f8f7fc;
-  border-bottom: 2px solid rgba(16, 37, 66, 0.08);
-}
-
-#studentsAttendanceTableBody tr,
-.att-table thead tr {
+#studentsAttendanceTableBody tr {
   display: grid;
   grid-template-columns: 56px 100px 1.2fr 1.2fr auto auto;
   gap: 0.5rem;
   align-items: center;
 }
 
-.att-table thead th {
+.att-table.att-table--student thead {
+  display: block;
+  background: #f8f7fc;
+  border-bottom: 2px solid rgba(16, 37, 66, 0.08);
+}
+
+.att-table.att-table--student thead tr {
+  display: grid;
+  grid-template-columns: 56px 100px 1.2fr 1.2fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.att-table.att-table--student thead th {
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -3978,7 +3984,7 @@ body {
   white-space: nowrap;
 }
 
-.att-table thead th:nth-child(1) {
+.att-table.att-table--student thead th:nth-child(1) {
   display: none;
 }
 
@@ -4061,6 +4067,11 @@ body {
 #employeesAttendanceTableBody tr {
   grid-template-columns: 1fr auto auto;
   gap: 0.5rem 0.6rem;
+}
+
+/* Hide employee table header */
+.att-table:not(.att-table--student) thead {
+  display: none;
 }
 
 #employeesAttendanceTableBody tr td:nth-child(3) {
@@ -4198,7 +4209,7 @@ body {
     padding: 0.8rem;
   }
 
-  .att-table thead {
+  .att-table.att-table--student thead {
     display: none;
   }
 
