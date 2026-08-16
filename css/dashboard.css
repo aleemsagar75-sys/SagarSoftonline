@@ -3802,6 +3802,355 @@ body {
   background: #d64b4b;
 }
 
+/* ===== ATTENDANCE MODULE REDESIGN ===== */
+
+.att-setup {
+  background: #ffffff;
+  border: 1px solid rgba(16, 37, 66, 0.08);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.att-setup__header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.9rem;
+}
+
+.att-step-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c5cbf, #a78bfa);
+  color: #ffffff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.att-step-badge--done {
+  background: linear-gradient(135deg, #1d9c61, #34d399);
+}
+
+.att-setup__title {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1e1b4b;
+}
+
+.att-setup__subtitle {
+  display: block;
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-top: 0.1rem;
+}
+
+.att-setup__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.att-field label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.att-field input,
+.att-field select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #dde4ea;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  min-height: 38px;
+  background: #ffffff;
+  color: #1e1b4b;
+}
+
+.att-field input:focus,
+.att-field select:focus {
+  outline: none;
+  border-color: #7c5cbf;
+  box-shadow: 0 0 0 3px rgba(124, 92, 191, 0.1);
+}
+
+.att-setup__actions {
+  display: flex;
+  justify-content: center;
+}
+
+.att-submit-btn {
+  min-width: 140px;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.85rem;
+}
+
+.att-student-section {
+  margin-top: 0.25rem;
+}
+
+.att-student-section__header {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-bottom: 0.7rem;
+}
+
+.att-student-section__title {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #1e1b4b;
+}
+
+.att-student-section__subtitle {
+  display: block;
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-top: 0.1rem;
+}
+
+.att-mark-all {
+  display: flex;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+  flex-wrap: wrap;
+}
+
+.att-mark-all .table-action-btn {
+  flex: 1 1 80px;
+  min-width: 0;
+  white-space: normal;
+  text-align: center;
+  font-size: 0.75rem;
+  padding: 0.4rem 0.6rem;
+}
+
+.att-student-list {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid rgba(16, 37, 66, 0.06);
+  border-radius: 10px;
+}
+
+.att-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.att-table thead {
+  display: none;
+}
+
+.att-table tbody tr {
+  display: grid;
+  grid-template-columns: 44px 1fr auto auto;
+  gap: 0.5rem 0.6rem;
+  align-items: center;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid rgba(16, 37, 66, 0.05);
+  transition: background 0.15s ease;
+}
+
+.att-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.att-table tbody tr:hover {
+  background: rgba(124, 92, 191, 0.02);
+}
+
+/* SrNo - hidden */
+.att-table tbody tr td:nth-child(1) {
+  display: none;
+}
+
+/* Photo */
+.att-table tbody tr td:nth-child(3) {
+  grid-row: 1 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.att-table tbody tr td:nth-child(3) img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(124, 92, 191, 0.12);
+}
+
+.att-table tbody tr td:nth-child(3) span.student-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #7c5cbf, #a78bfa);
+  color: #ffffff;
+  border: 2px solid rgba(124, 92, 191, 0.12);
+}
+
+/* Student Name */
+.att-table tbody tr td:nth-child(4) {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #1e1b4b;
+  line-height: 1.3;
+}
+
+/* Roll No */
+.att-table tbody tr td:nth-child(2) {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+/* Father Name */
+.att-table tbody tr td:nth-child(5) {
+  font-size: 0.7rem;
+  color: #6b7280;
+  margin-top: 0.05rem;
+}
+
+/* Status Controls */
+.att-table tbody tr td:nth-child(6) {
+  margin-left: auto;
+}
+
+/* WhatsApp */
+.att-table tbody tr td:nth-child(7) .table-action-btn {
+  font-size: 0.62rem;
+  padding: 0.2rem 0.4rem;
+  min-height: 24px;
+  border-radius: 6px;
+}
+
+/* ===== ATTENDANCE TOGGLE BUTTONS (circular) ===== */
+
+.view.module--attendance .attendance-toggle {
+  display: inline-flex;
+  gap: 0.3rem;
+}
+
+.view.module--attendance .attendance-toggle button {
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  border: 2px solid rgba(16, 37, 66, 0.12);
+  background: #ffffff;
+  color: #6b7280;
+  font-weight: 700;
+  font-size: 0.72rem;
+  transition: all 0.15s ease;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.view.module--attendance .attendance-toggle button:hover {
+  border-color: rgba(16, 37, 66, 0.25);
+  background: rgba(16, 37, 66, 0.04);
+}
+
+.view.module--attendance .attendance-toggle button[data-status="Present"].active {
+  background: #1d9c61;
+  border-color: #1d9c61;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(29, 156, 97, 0.3);
+}
+
+.view.module--attendance .attendance-toggle button[data-status="Absent"].active {
+  background: #d64b4b;
+  border-color: #d64b4b;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(214, 75, 75, 0.3);
+}
+
+.view.module--attendance .attendance-toggle button[data-status="On-leave"].active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+}
+
+/* ===== ATTENDANCE RESPONSIVE ===== */
+
+@media (max-width: 768px) {
+  .att-setup__fields {
+    grid-template-columns: 1fr;
+  }
+
+  .att-table tbody tr {
+    grid-template-columns: 40px 1fr auto auto;
+    gap: 0.4rem 0.5rem;
+    padding: 0.5rem 0.6rem;
+  }
+
+  .att-table tbody tr td:nth-child(3) img,
+  .att-table tbody tr td:nth-child(3) span.student-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .view.module--attendance .attendance-toggle button {
+    min-width: 34px;
+    min-height: 34px;
+    font-size: 0.7rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .att-setup {
+    padding: 0.8rem;
+  }
+
+  .att-table tbody tr {
+    grid-template-columns: 38px 1fr;
+    gap: 0.35rem 0.5rem;
+    padding: 0.5rem;
+  }
+
+  .att-table tbody tr td:nth-child(3) img,
+  .att-table tbody tr td:nth-child(3) span.student-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .att-table tbody tr td:nth-child(6) {
+    grid-column: 1 / -1;
+    margin-left: 0;
+    margin-top: 0.2rem;
+  }
+
+  .att-table tbody tr td:nth-child(7) {
+    grid-column: 1 / -1;
+  }
+
+  .view.module--attendance .attendance-toggle button {
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 0.68rem;
+  }
+}
+
 .promote-form {
   display: grid;
   gap: 1rem;
