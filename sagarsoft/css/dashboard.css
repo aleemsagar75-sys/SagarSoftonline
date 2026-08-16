@@ -3985,14 +3985,16 @@ body {
 }
 
 .att-table.att-table--student thead th {
+  background: #ffffff;
   font-size: 0.68rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #1e1b4b;
+  color: #102a43;
   padding: 0.6rem 0.5rem;
   text-align: left;
   white-space: nowrap;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .att-table.att-table--student thead th:nth-child(1) {
@@ -4871,14 +4873,16 @@ body {
 }
 
 .ar-table thead th {
+  background: #ffffff;
   font-size: 0.65rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #4b5563;
+  color: #102a43;
   padding: 0.6rem 0.6rem;
   text-align: left;
   white-space: nowrap;
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .ar-table tbody tr {
