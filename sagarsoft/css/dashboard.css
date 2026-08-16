@@ -3970,7 +3970,7 @@ body {
 
 #studentsAttendanceTableBody tr {
   display: grid;
-  grid-template-columns: 56px 100px 1.2fr 1.2fr auto auto;
+  grid-template-columns: 56px 100px 1fr 1.2fr 1.2fr minmax(130px, auto) auto;
   gap: 0.5rem;
   align-items: center;
 }
@@ -3983,7 +3983,7 @@ body {
 
 .att-table.att-table--student thead tr {
   display: grid;
-  grid-template-columns: 56px 100px 1.2fr 1.2fr auto auto;
+  grid-template-columns: 56px 100px 1fr 1.2fr 1.2fr minmax(130px, auto) auto;
   gap: 0.5rem;
   align-items: center;
 }
@@ -4003,6 +4003,16 @@ body {
 
 .att-table.att-table--student thead th:nth-child(1) {
   display: none;
+}
+
+.att-table.att-table--student thead th:nth-child(6) {
+  text-align: center;
+}
+
+.attendance-toggle {
+  display: inline-flex;
+  justify-content: center;
+  gap: 0.35rem;
 }
 
 .att-table tbody tr {
