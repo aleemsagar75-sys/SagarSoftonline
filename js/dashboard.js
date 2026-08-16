@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -12251,8 +12251,8 @@ ${allContent}
               <button class="table-action-btn" type="button" data-mark-all-status="Absent">Absent</button>
             </div>
             <div class="att-student-list">
-              <table class="att-table"><thead><tr>
-                <th>SrNo.</th><th>Roll No.</th><th>Photo</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
+              <table class="att-table att-table--student"><thead><tr>
+                <th>SrNo.</th><th>Photo</th><th>Roll No.</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
               </tr></thead><tbody id="studentsAttendanceTableBody"></tbody></table>
             </div>
             <div class="form-actions" style="margin-top:10px;">
@@ -12308,8 +12308,8 @@ ${allContent}
           return `
             <tr>
               <td>${index + 1}</td>
-              <td>${escapeHtml(student.admissionNo || "-")}</td>
               <td>${student.picture ? `<img src="${student.picture}" alt="${escapeAttr(student.name)}" class="employee-table-avatar">` : `<span class="student-avatar">${getInitials(student.name || "S")}</span>`}</td>
+              <td>${escapeHtml(student.admissionNo || "-")}</td>
               <td>${escapeHtml(student.name || "-")}</td>
               <td>${escapeHtml(student.fatherName || "-")}</td>
               <td>${statusButtonsMarkup(student.id, student.currentStatus)}</td>
@@ -12443,26 +12443,48 @@ ${allContent}
     if (route === "employees-attendance") {
       moduleSummary.innerHTML = `
         <article style="overflow-x:hidden;">
-          <strong class="module-center-title" style="display:block;margin-bottom:12px;">Add/update Attendance</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-            <div style="flex:1 1 140px;min-width:0;">
-              <label for="employeesAttendanceDateInput" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Date*</label>
-              <input id="employeesAttendanceDateInput" type="date" value="${getTodayDateISO()}" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
+          <div class="att-setup">
+            <div class="att-setup__header">
+              <span class="att-step-badge">1</span>
+              <div>
+                <strong class="att-setup__title">Select Date</strong>
+                <p class="att-setup__subtitle">Choose the date to mark employee attendance</p>
+              </div>
+            </div>
+            <div class="att-setup__fields" style="grid-template-columns:1fr;">
+              <div class="att-field">
+                <label for="employeesAttendanceDateInput">Date</label>
+                <input id="employeesAttendanceDateInput" type="date" value="${getTodayDateISO()}">
+              </div>
+            </div>
+            <div class="att-setup__actions">
+              <button class="primary-button att-submit-btn" id="empSubmitBtn" type="button">Submit</button>
             </div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
-            <button class="table-action-btn" type="button" data-mark-all-emp-status="Present" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Present</button>
-            <button class="table-action-btn" type="button" data-mark-all-emp-status="On-leave" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">On-leave</button>
-            <button class="table-action-btn" type="button" data-mark-all-emp-status="Absent" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Absent</button>
+          <div class="att-student-section" id="empEmployeeSection" style="display:none;">
+            <div class="att-student-section__header">
+              <span class="att-step-badge att-step-badge--done">2</span>
+              <div>
+                <strong class="att-student-section__title">Employee Attendance</strong>
+                <p class="att-student-section__subtitle">Mark attendance for each employee</p>
+              </div>
+            </div>
+            <div class="att-mark-all">
+              <button class="table-action-btn" type="button" data-mark-all-emp-status="Present">Present</button>
+              <button class="table-action-btn" type="button" data-mark-all-emp-status="On-leave">On-leave</button>
+              <button class="table-action-btn" type="button" data-mark-all-emp-status="Absent">Absent</button>
+            </div>
+            <div class="att-student-list">
+              <table class="att-table"><thead><tr>
+                <th>SrNo.</th><th>Employee Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
+              </tr></thead><tbody id="employeesAttendanceTableBody"></tbody></table>
+            </div>
+            <div class="form-actions" style="margin-top:10px;">
+              <button class="table-action-btn" id="sendEmployeeAbsenteesBtn" type="button">Send Absentees Message</button>
+              <button class="primary-button" id="saveEmployeesAttendanceBtn" type="button">Update Attendance</button>
+            </div>
+            <p class="form-message" id="employeesAttendanceMessage"></p>
           </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:550px;width:100%;"><thead><tr>
-            <th>SrNo.</th><th>Employee Name</th><th>Father Name</th><th>Employee Role</th><th>Status</th><th>WhatsApp</th>
-          </tr></thead><tbody id="employeesAttendanceTableBody"></tbody></table></div>
-          <div class="form-actions" style="margin-top:10px;">
-            <button class="table-action-btn" id="sendEmployeeAbsenteesBtn" type="button">Send Absentees Message</button>
-            <button class="primary-button" id="saveEmployeesAttendanceBtn" type="button">Update Attendance</button>
-          </div>
-          <p class="form-message" id="employeesAttendanceMessage"></p>
         </article>
       `;
 
@@ -12474,7 +12496,14 @@ ${allContent}
       const dateInput = document.getElementById("employeesAttendanceDateInput");
       const tableBody = document.getElementById("employeesAttendanceTableBody");
       const message = document.getElementById("employeesAttendanceMessage");
+      const empSubmitBtn = document.getElementById("empSubmitBtn");
+      const empEmployeeSection = document.getElementById("empEmployeeSection");
       let rowStatusState = {};
+
+      safeOn(empSubmitBtn, "click", function () {
+        empEmployeeSection.style.display = "";
+        renderTable();
+      });
 
       function getRows() {
         return getEmployees().filter(function (employee) {
@@ -12507,9 +12536,10 @@ ${allContent}
           return `
             <tr>
               <td>${index + 1}</td>
-              <td>${escapeHtml(employee.name || "-")}</td>
-              <td>${escapeHtml(employee.fatherOrHusbandName || "-")}</td>
-              <td>${escapeHtml(employee.role || employee.designation || "-")}</td>
+              <td class="att-info">
+                <span class="att-info__name">${escapeHtml(employee.name || "-")}</span>
+                <span class="att-info__meta">${escapeHtml(employee.fatherOrHusbandName || "-")} • ${escapeHtml(employee.role || employee.designation || "-")}</span>
+              </td>
               <td>${statusButtonsMarkup(employee.id, employee.currentStatus)}</td>
               <td><button class="table-action-btn" type="button" data-attendance-wa-employee="${employee.id}">WhatsApp</button></td>
             </tr>
