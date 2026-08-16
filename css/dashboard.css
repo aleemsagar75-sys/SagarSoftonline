@@ -1058,16 +1058,15 @@ body {
 
 .class-subjects-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 0.42fr));
-  gap: 0.85rem;
-  justify-items: center;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.7rem;
 }
 
 .class-subject-card {
   display: grid;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border-radius: 14px;
+  gap: 0.4rem;
+  padding: 0.6rem;
+  border-radius: 12px;
   border: 1px solid rgba(16, 37, 66, 0.08);
   background: #ffffff;
   width: 100%;
@@ -1077,7 +1076,7 @@ body {
 .class-subject-card__head {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.4rem;
   align-items: flex-start;
 }
 
@@ -1086,22 +1085,27 @@ body {
   margin: 0;
 }
 
+.class-subject-card h4 {
+  font-size: 0.78rem;
+}
+
 .class-subject-card p {
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.65rem;
 }
 
 .subject-meta-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
+  gap: 0.35rem;
 }
 
 .subject-meta-item {
-  padding: 0.5rem;
-  border-radius: 10px;
+  padding: 0.35rem;
+  border-radius: 8px;
   background: var(--surface-muted);
   border: 1px solid rgba(16, 37, 66, 0.06);
+  text-align: center;
 }
 
 .subject-meta-item strong,
@@ -1110,28 +1114,93 @@ body {
 }
 
 .subject-meta-item strong {
-  font-size: 1.05rem;
+  font-size: 0.85rem;
 }
 
 .subject-meta-item span {
-  margin-top: 0.1rem;
+  margin-top: 0.05rem;
   color: var(--text-muted);
-  font-size: 0.65rem;
+  font-size: 0.55rem;
 }
 
 .subject-list {
-  display: grid;
-  gap: 0.35rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: flex-start;
 }
 
 .subject-list article {
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 50px;
+  text-align: center;
+  background: none;
+  border: none;
+  padding: 0;
+  border-radius: 0;
+  gap: 0.15rem;
+}
+
+.subject-list article:only-child {
+  width: 100%;
+  flex-direction: row;
   justify-content: space-between;
-  gap: 0.6rem;
-  padding: 0.4rem 0.6rem;
-  border-radius: 8px;
-  background: rgba(30, 94, 255, 0.06);
-  border: 1px solid rgba(30, 94, 255, 0.14);
+  align-items: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(105, 65, 198, 0.04);
+  border: 1px solid rgba(105, 65, 198, 0.08);
+}
+
+.subject-list article span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f0ebf7 0%, #e8e0f5 100%);
+  border: 2.5px solid #7c5cbf;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #4a2d8a;
+  text-align: center;
+  line-height: 1.1;
+  word-break: break-word;
+  padding: 2px;
+  box-sizing: border-box;
+}
+
+.subject-list article:only-child span {
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  background: none;
+  border: none;
+  font-size: 0.6rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 0;
+}
+
+.subject-list article strong {
+  font-size: 0.52rem;
+  font-weight: 600;
+  color: #1e1b4b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50px;
+  line-height: 1.2;
+}
+
+.subject-list article:only-child strong {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: #1e1b4b;
+  max-width: none;
 }
 
 .subjects-rows {
@@ -5799,12 +5868,15 @@ th {
   .dashboard-grid,
   .split-grid,
   .student-layout,
-  .class-subjects-grid,
   .admission-letter-layout,
   .id-cards-grid,
   .report-grid,
   .report-cards {
     grid-template-columns: 1fr;
+  }
+
+  .class-subjects-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .student-directory-grid {
@@ -7053,50 +7125,47 @@ select:focus, input:focus, textarea:focus {
 .class-subject-card {
   background: #ffffff !important;
   border: 1px solid rgba(105, 65, 198, 0.12) !important;
-  border-left: 4px solid #7c5cbf !important;
-  box-shadow: 0 1px 4px rgba(105, 65, 198, 0.06) !important;
-  border-radius: 14px;
-  padding: 0.75rem;
-  gap: 0.5rem;
+  border-left: 3px solid #7c5cbf !important;
+  box-shadow: 0 1px 3px rgba(105, 65, 198, 0.05) !important;
+  border-radius: 12px;
+  padding: 0.6rem;
+  gap: 0.4rem;
 }
 .class-subject-card__head h4 {
   color: #1e1b4b;
   font-weight: 700;
-  font-size: 0.88rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
 }
 .class-subject-card__head p {
-  font-size: 0.72rem;
-  margin-top: 0.1rem;
+  font-size: 0.62rem;
+  margin-top: 0.05rem;
 }
 .subject-meta-item {
   background: #f8f7fc;
-  border-radius: 10px;
-  padding: 0.5rem;
-  border: 1px solid rgba(105, 65, 198, 0.07);
+  border-radius: 8px;
+  padding: 0.3rem;
+  border: 1px solid rgba(105, 65, 198, 0.06);
 }
 .subject-meta-item strong {
   color: #4a2d8a;
-  font-size: 1.05rem;
+  font-size: 0.82rem;
   font-weight: 800;
 }
 .subject-meta-item span {
-  font-size: 0.65rem;
-  margin-top: 0.1rem;
+  font-size: 0.52rem;
+  margin-top: 0.05rem;
 }
-.subject-list > article {
+.subject-list > article:not(:only-child) span {
+  background: linear-gradient(135deg, #f0ebf7 0%, #e8e0f5 100%);
+  border-color: #7c5cbf;
+}
+.subject-list > article:not(:only-child) strong {
+  color: #1e1b4b;
+}
+.subject-list > article:only-child {
   background: #f8f7fc;
-  border-radius: 8px;
-  padding: 0.4rem 0.6rem;
-  border: 1px solid rgba(105, 65, 198, 0.06);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.subject-list > article strong {
-  font-size: 0.78rem;
-}
-.subject-list > article span {
-  font-size: 0.68rem;
+  border-color: rgba(105, 65, 198, 0.08);
 }
 .class-subject-card:hover {
   border-color: rgba(105, 65, 198, 0.2) !important;
@@ -9514,7 +9583,8 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
 
   /* WhatsApp */
   .view.module--whatsapp .whatsapp-form-card .form-grid { grid-template-columns: 1fr !important; }
-  .id-cards-grid, .class-subjects-grid, .subject-meta-grid, .admission-letter-layout { grid-template-columns: 1fr !important; }
+  .id-cards-grid, .subject-meta-grid, .admission-letter-layout { grid-template-columns: 1fr !important; }
+  .class-subjects-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 
   /* Hero panel */
   .hero-metrics article { padding: 0.8rem !important; min-height: 100px !important; border-radius: 16px !important; }
