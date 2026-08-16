@@ -1,4 +1,4 @@
-/* Major section: Dashboard shell, routing, and student management module */
+﻿/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -12268,6 +12268,7 @@ ${allContent}
       if (_pg) _pg.style.display = "none";
       var _ps = moduleSummary.closest(".panel-card");
       if (_ps) _ps.style.gridColumn = "1 / -1";
+      if (_ps) _ps.classList.add("att-white-heading");
       const dateInput = document.getElementById("studentsAttendanceDateInput");
       const classSelect = document.getElementById("studentsAttendanceClassSelect");
       const tableBody = document.getElementById("studentsAttendanceTableBody");
@@ -12923,6 +12924,7 @@ ${allContent}
       if (_pg) _pg.style.display = "none";
       var _ps = moduleSummary.closest(".panel-card");
       if (_ps) _ps.style.gridColumn = "1 / -1";
+      if (_ps) _ps.classList.add("att-white-heading");
       const searchInput = document.getElementById("studentsAttendanceReportSearchInput");
       const searchDropdown = document.getElementById("studentsAttendanceReportSearchDropdown");
       const searchContainer = document.getElementById("studentsAttendanceReportSearchContainer");
@@ -13091,6 +13093,7 @@ ${allContent}
       if (_pg) _pg.style.display = "none";
       var _ps = moduleSummary.closest(".panel-card");
       if (_ps) _ps.style.gridColumn = "1 / -1";
+      if (_ps) _ps.classList.add("att-white-heading");
       const searchInput = document.getElementById("employeesAttendanceReportSearchInput");
       const searchDropdown = document.getElementById("employeesAttendanceReportSearchDropdown");
       const searchContainer = document.getElementById("employeesAttendanceReportSearchContainer");
