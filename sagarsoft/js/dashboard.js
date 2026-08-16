@@ -12252,7 +12252,7 @@ ${allContent}
             </div>
             <div class="att-student-list">
               <table class="att-table"><thead><tr>
-                <th>SrNo.</th><th>Roll No.</th><th>Photo</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
+                <th>SrNo.</th><th>Photo</th><th>Roll No.</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
               </tr></thead><tbody id="studentsAttendanceTableBody"></tbody></table>
             </div>
             <div class="form-actions" style="margin-top:10px;">
@@ -12309,10 +12309,9 @@ ${allContent}
             <tr>
               <td>${index + 1}</td>
               <td>${student.picture ? `<img src="${student.picture}" alt="${escapeAttr(student.name)}" class="employee-table-avatar">` : `<span class="student-avatar">${getInitials(student.name || "S")}</span>`}</td>
-              <td class="att-info">
-                <span class="att-info__name">${escapeHtml(student.name || "-")}</span>
-                <span class="att-info__meta">${escapeHtml(student.admissionNo || "-")} • ${escapeHtml(student.fatherName || "-")}</span>
-              </td>
+              <td>${escapeHtml(student.admissionNo || "-")}</td>
+              <td>${escapeHtml(student.name || "-")}</td>
+              <td>${escapeHtml(student.fatherName || "-")}</td>
               <td>${statusButtonsMarkup(student.id, student.currentStatus)}</td>
               <td><button class="table-action-btn" type="button" data-attendance-wa-student="${student.id}">WhatsApp</button></td>
             </tr>
