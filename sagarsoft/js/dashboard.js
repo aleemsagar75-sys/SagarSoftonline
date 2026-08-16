@@ -12251,7 +12251,7 @@ ${allContent}
               <button class="table-action-btn" type="button" data-mark-all-status="Absent">Absent</button>
             </div>
             <div class="att-student-list">
-              <table class="att-table"><thead><tr>
+              <table class="att-table att-table--student"><thead><tr>
                 <th>SrNo.</th><th>Photo</th><th>Roll No.</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
               </tr></thead><tbody id="studentsAttendanceTableBody"></tbody></table>
             </div>
