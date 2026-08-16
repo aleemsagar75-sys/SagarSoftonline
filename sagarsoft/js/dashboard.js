@@ -12704,60 +12704,177 @@ ${allContent}
 
     if (route === "class-wise-report") {
       moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong>Class wise Report</strong>
-          <div style="margin:10px 0 4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date</label><input id="classWiseAttendanceDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;max-width:220px;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-          <div id="classWiseAttendanceCards" class="stats-grid"></div>
+        <article class="cwr-report">
+          <div class="cwr-header">
+            <div>
+              <strong class="cwr-header__title">Class wise Attendance Report</strong>
+              <p class="cwr-header__subtitle">Daily attendance summary across active classes</p>
+            </div>
+            <div class="cwr-header__actions">
+              <div class="cwr-header__date">
+                <label for="classWiseAttendanceDateInput" class="cwr-header__label">Date</label>
+                <input id="classWiseAttendanceDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}">
+              </div>
+              <button class="table-action-btn cwr-print-btn" id="cwrPrintBtn" type="button">Print</button>
+            </div>
+          </div>
+          <div id="cwrSummaryCards" class="cwr-summary"></div>
+          <div id="cwrDailyOverview" class="cwr-daily"></div>
+          <div class="cwr-section">
+            <strong class="cwr-section__title">Class Breakdown</strong>
+            <div id="cwrClassCards" class="cwr-classes"></div>
+          </div>
         </article>
       `;
       moduleGuide.innerHTML = "";
+      var _pg = moduleGuide.closest(".panel-card");
+      if (_pg) _pg.style.display = "none";
+      var _ps = moduleSummary.closest(".panel-card");
+      if (_ps) _ps.style.gridColumn = "1 / -1";
       const dateInput = document.getElementById("classWiseAttendanceDateInput");
-      const cards = document.getElementById("classWiseAttendanceCards");
+      const summaryEl = document.getElementById("cwrSummaryCards");
+      const dailyEl = document.getElementById("cwrDailyOverview");
+      const classCardsEl = document.getElementById("cwrClassCards");
+      const printBtn = document.getElementById("cwrPrintBtn");
 
-      function renderCards() {
-        const dateValue = dateInput.value;
-        cards.innerHTML = classOptions.map(function (className) {
-          const classStudents = database.students.filter(function (student) {
-            return String(student.status || "").toLowerCase() === "active" && student.className === className;
-          });
-          const total = classStudents.length;
-          let present = 0;
-          let leave = 0;
-          let absent = 0;
-          classStudents.forEach(function (student) {
-            const attendance = getAttendanceRecordFor("student", student.id, dateValue);
-            const status = normalizeAttendanceStatus(attendance ? attendance.status : "Absent");
-            if (status === "Present") {
-              present += 1;
-            } else if (status === "On-leave") {
-              leave += 1;
-            } else {
-              absent += 1;
-            }
-          });
-          const presentPercent = total ? Math.round((present / total) * 100) : 0;
-          const leavePercent = total ? Math.round((leave / total) * 100) : 0;
-          const absentPercent = total ? Math.round((absent / total) * 100) : 0;
-          return `
-            <article class="stat-card attendance-class-card">
-              <p class="panel-label">Attendance ${escapeHtml(dateValue)} for</p>
-              <strong>${escapeHtml(className)}</strong>
-              <div class="attendance-circle" title="Present: ${presentPercent}% | On-leave: ${leavePercent}% | Absent: ${absentPercent}%"
-                style="--p:${presentPercent};--l:${leavePercent};--a:${absentPercent};">
-                <span>${total}</span>
-              </div>
-              <div class="attendance-legend">
-                <p><span class="dot present"></span> Present ${presentPercent}%</p>
-                <p><span class="dot leave"></span> On-leave ${leavePercent}%</p>
-                <p><span class="dot absent"></span> Absent ${absentPercent}%</p>
-              </div>
-            </article>
-          `;
+      safeOn(printBtn, "click", function () { window.print(); });
+
+      function computeClassData(className, dateValue) {
+        var classStudents = database.students.filter(function (student) {
+          return String(student.status || "").toLowerCase() === "active" && student.className === className;
+        });
+        var total = classStudents.length;
+        var present = 0;
+        var leave = 0;
+        var absent = 0;
+        classStudents.forEach(function (student) {
+          var attendance = getAttendanceRecordFor("student", student.id, dateValue);
+          var status = normalizeAttendanceStatus(attendance ? attendance.status : "Absent");
+          if (status === "Present") present += 1;
+          else if (status === "On-leave") leave += 1;
+          else absent += 1;
+        });
+        var hasRecords = classStudents.some(function (student) {
+          return getAttendanceRecordFor("student", student.id, dateValue) !== null;
+        });
+        return {
+          className: className,
+          total: total,
+          present: present,
+          leave: leave,
+          absent: absent,
+          presentPercent: total ? Math.round((present / total) * 100) : 0,
+          leavePercent: total ? Math.round((leave / total) * 100) : 0,
+          absentPercent: total ? Math.round((absent / total) * 100) : 0,
+          hasRecords: hasRecords
+        };
+      }
+
+      function donutSVG(rate, size, stroke) {
+        var r = (size - stroke) / 2;
+        var circ = 2 * Math.PI * r;
+        var filled = (rate / 100) * circ;
+        var empty = circ - filled;
+        var color = rate >= 75 ? "#1d9c61" : rate >= 50 ? "#f0a327" : "#d64b4b";
+        return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="rgba(16,37,66,0.06)" stroke-width="' + stroke + '"/>' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="' + stroke + '" stroke-linecap="round" stroke-dasharray="' + filled + ' ' + empty + '" transform="rotate(-90 ' + (size/2) + ' ' + (size/2) + ')"/>' +
+          '<text x="50%" y="50%" text-anchor="middle" dy=".35em" font-size="' + (size * 0.22) + '" font-weight="800" fill="#1e1b4b">' + rate + '%</text>' +
+          '</svg>';
+      }
+
+      function miniDonut(rate, size, stroke) {
+        var r = (size - stroke) / 2;
+        var circ = 2 * Math.PI * r;
+        var filled = (rate / 100) * circ;
+        var empty = circ - filled;
+        var color = rate >= 75 ? "#1d9c61" : rate >= 50 ? "#f0a327" : "#d64b4b";
+        return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="rgba(16,37,66,0.06)" stroke-width="' + stroke + '"/>' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="' + stroke + '" stroke-linecap="round" stroke-dasharray="' + filled + ' ' + empty + '" transform="rotate(-90 ' + (size/2) + ' ' + (size/2) + ')"/>' +
+          '</svg>';
+      }
+
+      function renderReport() {
+        var dateValue = dateInput.value;
+        var allData = classOptions.map(function (cn) { return computeClassData(cn, dateValue); });
+        var totalClasses = allData.length;
+        var totalStudents = 0;
+        var totalPresent = 0;
+        var totalLeave = 0;
+        var totalAbsent = 0;
+        allData.forEach(function (d) {
+          totalStudents += d.total;
+          totalPresent += d.present;
+          totalLeave += d.leave;
+          totalAbsent += d.absent;
+        });
+        var overallRate = totalStudents ? Math.round((totalPresent / totalStudents) * 100) : 0;
+        var dateLabel = dateValue;
+
+        var summaryHTML = '<div class="cwr-stat" style="--accent:#7c5cbf;"><div class="cwr-stat__icon" style="background:rgba(124,92,191,0.1);color:#7c5cbf;">&#9632;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalClasses + '</span><span class="cwr-stat__label">Total Classes</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#3b82f6;"><div class="cwr-stat__icon" style="background:rgba(59,130,246,0.1);color:#3b82f6;">&#9679;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalStudents + '</span><span class="cwr-stat__label">Total Students</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#1d9c61;"><div class="cwr-stat__icon" style="background:rgba(29,156,97,0.1);color:#1d9c61;">&#10003;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalPresent + '</span><span class="cwr-stat__label">Present</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#f0a327;"><div class="cwr-stat__icon" style="background:rgba(240,163,39,0.1);color:#f0a327;">&#9679;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalLeave + '</span><span class="cwr-stat__label">On Leave</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#d64b4b;"><div class="cwr-stat__icon" style="background:rgba(214,75,75,0.1);color:#d64b4b;">&#10007;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalAbsent + '</span><span class="cwr-stat__label">Absent</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#6366f1;"><div class="cwr-stat__icon" style="background:rgba(99,102,241,0.1);color:#6366f1;">&#9733;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + overallRate + '%</span><span class="cwr-stat__label">Attendance Rate</span></div></div>';
+        summaryEl.innerHTML = summaryHTML;
+
+        var presentP = totalStudents ? Math.round((totalPresent / totalStudents) * 100) : 0;
+        var leaveP = totalStudents ? Math.round((totalLeave / totalStudents) * 100) : 0;
+        var absentP = totalStudents ? Math.round((totalAbsent / totalStudents) * 100) : 0;
+        var unmarked = Math.max(0, totalStudents - totalPresent - totalLeave - totalAbsent);
+        dailyEl.innerHTML =
+          '<div class="cwr-daily__left">' +
+            '<strong class="cwr-daily__heading">Daily Overview</strong>' +
+            '<span class="cwr-daily__date">' + escapeHtml(dateLabel) + '</span>' +
+          '</div>' +
+          '<div class="cwr-daily__donut">' + donutSVG(overallRate, 140, 12) +
+            '<span class="cwr-daily__rate-label">Rate</span>' +
+          '</div>' +
+          '<div class="cwr-daily__legend">' +
+            '<div class="cwr-daily__row"><span class="cwr-dot cwr-dot--present"></span><span class="cwr-daily__label">Present</span><span class="cwr-daily__val">' + totalPresent + ' <em>(' + presentP + '%)</em></span></div>' +
+            '<div class="cwr-daily__row"><span class="cwr-dot cwr-dot--leave"></span><span class="cwr-daily__label">On Leave</span><span class="cwr-daily__val">' + totalLeave + ' <em>(' + leaveP + '%)</em></span></div>' +
+            '<div class="cwr-daily__row"><span class="cwr-dot cwr-dot--absent"></span><span class="cwr-daily__label">Absent</span><span class="cwr-daily__val">' + totalAbsent + ' <em>(' + absentP + '%)</em></span></div>' +
+            (unmarked > 0 ? '<div class="cwr-daily__row"><span class="cwr-dot cwr-dot--unmarked"></span><span class="cwr-daily__label">Unmarked</span><span class="cwr-daily__val">' + unmarked + ' students</span></div>' : '') +
+          '</div>';
+
+        classCardsEl.innerHTML = allData.map(function (d) {
+          if (!d.hasRecords || d.total === 0) {
+            return '<div class="cwr-class-card cwr-class-card--empty">' +
+              '<div class="cwr-class-card__head"><strong class="cwr-class-card__name">' + escapeHtml(d.className) + '</strong></div>' +
+              '<div class="cwr-class-card__empty">' +
+                '<span class="cwr-class-card__empty-icon">&#9744;</span>' +
+                '<p class="cwr-class-card__empty-text">Attendance Not Marked</p>' +
+                '<p class="cwr-class-card__empty-sub">No attendance records found for this class on ' + escapeHtml(dateValue) + '.</p>' +
+              '</div>' +
+            '</div>';
+          }
+          var presentBar = d.total ? (d.present / d.total * 100) : 0;
+          var leaveBar = d.total ? (d.leave / d.total * 100) : 0;
+          var absentBar = d.total ? (d.absent / d.total * 100) : 0;
+          return '<div class="cwr-class-card">' +
+            '<div class="cwr-class-card__head">' +
+              '<strong class="cwr-class-card__name">' + escapeHtml(d.className) + '</strong>' +
+              '<span class="cwr-class-card__meta">' + escapeHtml(dateValue) + ' &middot; ' + d.total + ' students</span>' +
+            '</div>' +
+            '<div class="cwr-class-card__donut">' + miniDonut(d.presentPercent, 80, 8) +
+              '<span class="cwr-class-card__rate">' + d.presentPercent + '%</span>' +
+            '</div>' +
+            '<div class="cwr-class-card__breakdown">' +
+              '<div class="cwr-class-card__row"><span class="cwr-dot cwr-dot--present"></span><span class="cwr-class-card__row-label">Present</span><span class="cwr-class-card__row-val">' + d.present + ' (' + d.presentPercent + '%)</span></div>' +
+              '<div class="cwr-class-card__bar"><div class="cwr-class-card__bar-fill cwr-class-card__bar-fill--present" style="width:' + presentBar + '%"></div></div>' +
+              '<div class="cwr-class-card__row"><span class="cwr-dot cwr-dot--leave"></span><span class="cwr-class-card__row-label">On Leave</span><span class="cwr-class-card__row-val">' + d.leave + ' (' + d.leavePercent + '%)</span></div>' +
+              '<div class="cwr-class-card__bar"><div class="cwr-class-card__bar-fill cwr-class-card__bar-fill--leave" style="width:' + leaveBar + '%"></div></div>' +
+              '<div class="cwr-class-card__row"><span class="cwr-dot cwr-dot--absent"></span><span class="cwr-class-card__row-label">Absent</span><span class="cwr-class-card__row-val">' + d.absent + ' (' + d.absentPercent + '%)</span></div>' +
+              '<div class="cwr-class-card__bar"><div class="cwr-class-card__bar-fill cwr-class-card__bar-fill--absent" style="width:' + absentBar + '%"></div></div>' +
+            '</div>' +
+          '</div>';
         }).join("");
       }
 
-      dateInput.addEventListener("change", renderCards);
-      renderCards();
+      dateInput.addEventListener("change", renderReport);
+      renderReport();
       return;
     }
 
