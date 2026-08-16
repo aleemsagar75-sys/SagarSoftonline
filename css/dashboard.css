@@ -3668,6 +3668,23 @@ body {
   border: 1px solid rgba(20, 84, 145, 0.16);
 }
 
+/* White heading fix — Students Attendance, Students Attendance Report, Employees Attendance Report */
+.view.module--attendance:has(#studentsAttendanceDateInput) .panel-card:first-child,
+.view.module--attendance:has(#studentsAttendanceReportFromDate) .panel-card:first-child,
+.view.module--attendance:has(#employeesAttendanceReportFromDate) .panel-card:first-child {
+  background: #ffffff;
+  border: 1px solid rgba(20, 84, 145, 0.1);
+}
+
+.view.module--attendance:has(#studentsAttendanceDateInput) .panel-card:first-child strong,
+.view.module--attendance:has(#studentsAttendanceReportFromDate) .panel-card:first-child strong,
+.view.module--attendance:has(#employeesAttendanceReportFromDate) .panel-card:first-child strong,
+.view.module--attendance:has(#studentsAttendanceDateInput) .panel-card:first-child .ar-header__title,
+.view.module--attendance:has(#studentsAttendanceReportFromDate) .panel-card:first-child .ar-header__title,
+.view.module--attendance:has(#employeesAttendanceReportFromDate) .panel-card:first-child .ar-header__title {
+  color: #102a43;
+}
+
 .view.module--attendance #moduleSummary {
   gap: 0.8rem;
 }
