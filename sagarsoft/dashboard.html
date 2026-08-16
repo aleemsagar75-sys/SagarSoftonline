@@ -866,7 +866,18 @@
                 <p class="panel-label">Promote Students</p>
                 <h3>Class-wise student promotion</h3>
               </div>
-              <button class="primary-button" id="promoteSelectedStudentsBtn" type="button">Promote Selected</button>
+            </div>
+
+            <div class="promote-stat-row">
+              <div class="promote-stat-card">
+                <span class="promote-stat-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                </span>
+                <div class="promote-stat-text">
+                  <strong id="promoteStudentsCount">0</strong>
+                  <span class="panel-label">Displayed Students</span>
+                </div>
+              </div>
             </div>
 
             <div class="toolbar toolbar--promote">
@@ -877,27 +888,55 @@
               <select id="promoteStudentsClassFilter">
                 <option value="all">All Classes</option>
               </select>
-              <select id="promoteTargetClassSelect">
-                <option value="">Select Target Class</option>
-              </select>
-
             </div>
 
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Select</th>
-                    <th>Roll No</th>
-                    <th>Name</th>
-                    <th>Father Name</th>
-                    <th>Class</th>
-                  </tr>
-                </thead>
-                <tbody id="promoteStudentsTableBody"></tbody>
-              </table>
+            <div class="promote-workspace">
+              <div class="promote-student-list">
+                <div class="promote-list-header">
+                  <label class="promote-select-all-label">
+                    <input type="checkbox" id="promoteSelectAllCheckbox" class="promote-checkbox">
+                    <span>Select All</span>
+                  </label>
+                  <span class="promote-list-count" id="promoteListCount">0 students</span>
+                </div>
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Select</th>
+                        <th>Roll No</th>
+                        <th>Name</th>
+                        <th>Father Name</th>
+                        <th>Class</th>
+                      </tr>
+                    </thead>
+                    <tbody id="promoteStudentsTableBody"></tbody>
+                  </table>
+                </div>
+                <p class="empty-state" id="promoteStudentsEmptyState" hidden>No student found for this class/search.</p>
+              </div>
+
+              <div class="promote-action-panel">
+                <div class="promote-panel-header">
+                  <h4>Promote To</h4>
+                </div>
+                <div class="promote-panel-body">
+                  <div class="promote-selected-count">
+                    <strong id="promoteSelectedCount">0</strong>
+                    <span>Students Selected</span>
+                  </div>
+                  <div class="promote-target-group">
+                    <label for="promoteTargetClassSelect">Target Class *</label>
+                    <select id="promoteTargetClassSelect">
+                      <option value="">Select Target Class</option>
+                    </select>
+                  </div>
+                  <button class="primary-button promote-action-btn" id="promoteSelectedStudentsBtn" type="button">Promote Selected</button>
+                  <p class="promote-info-text">This will update the class for selected students across all records.</p>
+                </div>
+              </div>
             </div>
-            <p class="empty-state" id="promoteStudentsEmptyState" hidden>No student found for this class/search.</p>
+
             <p class="form-message" id="promoteStudentsMessage"></p>
           </section>
 
