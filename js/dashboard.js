@@ -12212,32 +12212,54 @@ ${allContent}
 
       moduleSummary.innerHTML = `
         <article style="overflow-x:hidden;">
-          <strong class="module-center-title" style="display:block;margin-bottom:12px;">Add/update Attendance</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-            <div style="flex:1 1 140px;min-width:0;">
-              <label for="studentsAttendanceDateInput" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Date*</label>
-              <input id="studentsAttendanceDateInput" type="date" value="${getTodayDateISO()}" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
+          <div class="att-setup">
+            <div class="att-setup__header">
+              <span class="att-step-badge">1</span>
+              <div>
+                <strong class="att-setup__title">Select Date & Class</strong>
+                <p class="att-setup__subtitle">Choose the date and class to mark attendance</p>
+              </div>
             </div>
-            <div style="flex:1 1 140px;min-width:0;">
-              <label for="studentsAttendanceClassSelect" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Search Class*</label>
-              <select id="studentsAttendanceClassSelect" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
-                <option value="all">Select Class</option>
-                ${classOptionsMarkup}
-              </select>
+            <div class="att-setup__fields">
+              <div class="att-field">
+                <label for="studentsAttendanceDateInput">Date</label>
+                <input id="studentsAttendanceDateInput" type="date" value="${getTodayDateISO()}">
+              </div>
+              <div class="att-field">
+                <label for="studentsAttendanceClassSelect">Class</label>
+                <select id="studentsAttendanceClassSelect">
+                  <option value="all">Select Class</option>
+                  ${classOptionsMarkup}
+                </select>
+              </div>
+            </div>
+            <div class="att-setup__actions">
+              <button class="primary-button att-submit-btn" id="attSubmitBtn" type="button">Submit</button>
             </div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
-            <button class="table-action-btn" type="button" data-mark-all-status="Present" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Present</button>
-            <button class="table-action-btn" type="button" data-mark-all-status="On-leave" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">On-leave</button>
-            <button class="table-action-btn" type="button" data-mark-all-status="Absent" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Absent</button>
+          <div class="att-student-section" id="attStudentSection" style="display:none;">
+            <div class="att-student-section__header">
+              <span class="att-step-badge att-step-badge--done">2</span>
+              <div>
+                <strong class="att-student-section__title">Student Attendance</strong>
+                <p class="att-student-section__subtitle">Mark attendance for each student</p>
+              </div>
+            </div>
+            <div class="att-mark-all">
+              <button class="table-action-btn" type="button" data-mark-all-status="Present">Present</button>
+              <button class="table-action-btn" type="button" data-mark-all-status="On-leave">On-leave</button>
+              <button class="table-action-btn" type="button" data-mark-all-status="Absent">Absent</button>
+            </div>
+            <div class="att-student-list">
+              <table class="att-table"><thead><tr>
+                <th>SrNo.</th><th>Roll No.</th><th>Photo</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
+              </tr></thead><tbody id="studentsAttendanceTableBody"></tbody></table>
+            </div>
+            <div class="form-actions" style="margin-top:10px;">
+              <button class="primary-button" id="saveStudentsAttendanceBtn" type="button">Update Attendance</button>
+            </div>
+            <p class="form-message" id="studentsAttendanceMessage"></p>
           </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:550px;width:100%;"><thead><tr>
-            <th>SrNo.</th><th>Roll No.</th><th>Photo</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
-          </tr></thead><tbody id="studentsAttendanceTableBody"></tbody></table></div>
-          <div class="form-actions" style="margin-top:10px;">
-            <button class="primary-button" id="saveStudentsAttendanceBtn" type="button">Update Attendance</button>
-          </div>
-          <p class="form-message" id="studentsAttendanceMessage"></p>
         </article>
       `;
 
@@ -12401,10 +12423,20 @@ ${allContent}
       });
 
       [dateInput, classSelect].forEach(function (input) {
-        input.addEventListener("change", renderTable);
+        input.addEventListener("change", function () {
+          var _sec = document.getElementById("attStudentSection");
+          if (_sec && _sec.style.display !== "none") {
+            renderTable();
+          }
+        });
       });
 
-      renderTable();
+      safeOn(document.getElementById("attSubmitBtn"), "click", function () {
+        var _sec = document.getElementById("attStudentSection");
+        if (_sec) _sec.style.display = "";
+        renderTable();
+      });
+
       return;
     }
 
