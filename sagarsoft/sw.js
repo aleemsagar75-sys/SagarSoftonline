@@ -1,10 +1,10 @@
-var CACHE = "sagarsoft-v93";
+var CACHE = "sagarsoft-v94";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
   "./dashboard.html",
-  "./css/base.css?v=20260816h",
-  "./css/dashboard.css?v=20260816h",
+  "./css/base.css?v=20260816i",
+  "./css/dashboard.css?v=20260816i",
   "./js/online-config.js?v=20260816",
   "./js/crypto-utils.js?v=20260816",
   "./js/utils.js?v=20260816",
@@ -12,7 +12,7 @@ const PRECACHE_URLS = [
   "./js/enterprise.js?v=20260816",
   "./js/auth.js?v=20260816",
   "./js/login.js?v=20260816",
-  "./js/dashboard.js?v=20260816h",
+  "./js/dashboard.js?v=20260816i",
   "./assets/SagarSoft.logo.png",
   "./assets/parents.png",
   "./manifest.json"
