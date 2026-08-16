@@ -1,4 +1,4 @@
-﻿*, ::before, ::after {
+*, ::before, ::after {
   box-sizing: border-box;
 }
 
@@ -3941,8 +3941,9 @@ body {
 .att-student-list {
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
-  border: 1px solid rgba(16, 37, 66, 0.06);
-  border-radius: 10px;
+  border: 1px solid rgba(16, 37, 66, 0.08);
+  border-radius: 12px;
+  background: #ffffff;
 }
 
 .att-table {
@@ -3950,17 +3951,47 @@ body {
   border-collapse: collapse;
 }
 
-.att-table thead {
+/* ===== STUDENT TABLE HEADER ===== */
+
+#studentsAttendanceTableBody tr {
+  display: grid;
+  grid-template-columns: 56px 100px 1.2fr 1.2fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.att-table.att-table--student thead {
+  display: block;
+  background: #f8f7fc;
+  border-bottom: 2px solid rgba(16, 37, 66, 0.08);
+}
+
+.att-table.att-table--student thead tr {
+  display: grid;
+  grid-template-columns: 56px 100px 1.2fr 1.2fr auto auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.att-table.att-table--student thead th {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+  padding: 0.6rem 0.5rem;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.att-table.att-table--student thead th:nth-child(1) {
   display: none;
 }
 
 .att-table tbody tr {
-  display: grid;
-  grid-template-columns: 44px 1fr auto auto;
-  gap: 0.5rem 0.6rem;
-  align-items: center;
-  padding: 0.55rem 0.7rem;
+  padding: 0.55rem 0.5rem;
   border-bottom: 1px solid rgba(16, 37, 66, 0.05);
+  background: #ffffff;
   transition: background 0.15s ease;
 }
 
@@ -3977,68 +4008,112 @@ body {
   display: none;
 }
 
+/* ===== STUDENT ROWS ===== */
+
 /* Photo */
-.att-table tbody tr td:nth-child(3) {
-  grid-row: 1 / 3;
+#studentsAttendanceTableBody tr td:nth-child(2) {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.att-table tbody tr td:nth-child(3) img {
+#studentsAttendanceTableBody tr td:nth-child(2) img,
+#studentsAttendanceTableBody tr td:nth-child(2) span.student-avatar {
   width: 42px;
   height: 42px;
   border-radius: 50%;
   object-fit: cover;
+}
+
+#studentsAttendanceTableBody tr td:nth-child(2) img {
   border: 2px solid rgba(124, 92, 191, 0.12);
 }
 
-.att-table tbody tr td:nth-child(3) span.student-avatar {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
+#studentsAttendanceTableBody tr td:nth-child(2) span.student-avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 700;
   background: linear-gradient(135deg, #7c5cbf, #a78bfa);
   color: #ffffff;
   border: 2px solid rgba(124, 92, 191, 0.12);
 }
 
+/* Roll No */
+#studentsAttendanceTableBody tr td:nth-child(3) {
+  font-size: 0.78rem;
+  color: #374151;
+  font-weight: 500;
+}
+
 /* Student Name */
-.att-table tbody tr td:nth-child(4) {
+#studentsAttendanceTableBody tr td:nth-child(4) {
   font-weight: 600;
   font-size: 0.82rem;
   color: #1e1b4b;
   line-height: 1.3;
 }
 
-/* Roll No */
-.att-table tbody tr td:nth-child(2) {
-  font-size: 0.7rem;
-  color: #6b7280;
-}
-
 /* Father Name */
-.att-table tbody tr td:nth-child(5) {
-  font-size: 0.7rem;
+#studentsAttendanceTableBody tr td:nth-child(5) {
+  font-size: 0.78rem;
   color: #6b7280;
-  margin-top: 0.05rem;
 }
 
-/* Status Controls */
-.att-table tbody tr td:nth-child(6) {
+/* ===== EMPLOYEE ROWS ===== */
+
+/* Employee rows: info | role | status | whatsapp */
+#employeesAttendanceTableBody tr {
+  grid-template-columns: 1fr auto auto;
+  gap: 0.5rem 0.6rem;
+}
+
+/* Hide employee table header */
+.att-table:not(.att-table--student) thead {
+  display: none;
+}
+
+#employeesAttendanceTableBody tr td:nth-child(3) {
+  font-size: 0.7rem;
+  color: #6b7280;
+}
+
+#employeesAttendanceTableBody tr td:nth-child(4) {
   margin-left: auto;
 }
 
-/* WhatsApp */
-.att-table tbody tr td:nth-child(7) .table-action-btn {
+#employeesAttendanceTableBody tr td:nth-child(5) .table-action-btn {
   font-size: 0.62rem;
   padding: 0.2rem 0.4rem;
   min-height: 24px;
   border-radius: 6px;
+}
+
+/* ===== SHARED INFO CELL ===== */
+
+.att-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.att-info__name {
+  font-weight: 600;
+  font-size: 0.82rem;
+  color: #1e1b4b;
+  line-height: 1.3;
+}
+
+.att-info__meta {
+  font-size: 0.7rem;
+  color: #6b7280;
+  line-height: 1.3;
+}
+
+.att-info__role {
+  font-size: 0.7rem;
+  color: #6b7280;
 }
 
 /* ===== ATTENDANCE TOGGLE BUTTONS (circular) ===== */
@@ -4098,16 +4173,28 @@ body {
     grid-template-columns: 1fr;
   }
 
-  .att-table tbody tr {
-    grid-template-columns: 40px 1fr auto auto;
+  #studentsAttendanceTableBody tr,
+  .att-table thead tr {
+    grid-template-columns: 48px 80px 1fr 1fr auto auto;
     gap: 0.4rem 0.5rem;
-    padding: 0.5rem 0.6rem;
+    padding: 0.5rem;
   }
 
-  .att-table tbody tr td:nth-child(3) img,
-  .att-table tbody tr td:nth-child(3) span.student-avatar {
-    width: 40px;
-    height: 40px;
+  #studentsAttendanceTableBody tr td:nth-child(2) img,
+  #studentsAttendanceTableBody tr td:nth-child(2) span.student-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  .att-table thead th {
+    font-size: 0.62rem;
+    padding: 0.5rem 0.4rem;
+  }
+
+  #employeesAttendanceTableBody tr {
+    grid-template-columns: 1fr auto auto;
+    gap: 0.4rem 0.5rem;
+    padding: 0.5rem 0.6rem;
   }
 
   .view.module--attendance .attendance-toggle button {
@@ -4122,26 +4209,35 @@ body {
     padding: 0.8rem;
   }
 
-  .att-table tbody tr {
-    grid-template-columns: 38px 1fr;
+  .att-table.att-table--student thead {
+    display: none;
+  }
+
+  #studentsAttendanceTableBody tr {
+    grid-template-columns: 38px 1fr auto;
     gap: 0.35rem 0.5rem;
     padding: 0.5rem;
   }
 
-  .att-table tbody tr td:nth-child(3) img,
-  .att-table tbody tr td:nth-child(3) span.student-avatar {
-    width: 38px;
-    height: 38px;
+  #studentsAttendanceTableBody tr td:nth-child(2) img,
+  #studentsAttendanceTableBody tr td:nth-child(2) span.student-avatar {
+    width: 36px;
+    height: 36px;
   }
 
-  .att-table tbody tr td:nth-child(6) {
-    grid-column: 1 / -1;
-    margin-left: 0;
-    margin-top: 0.2rem;
+  #studentsAttendanceTableBody tr td:nth-child(3),
+  #studentsAttendanceTableBody tr td:nth-child(5) {
+    display: none;
   }
 
-  .att-table tbody tr td:nth-child(7) {
-    grid-column: 1 / -1;
+  #employeesAttendanceTableBody tr {
+    grid-template-columns: 1fr auto auto;
+    gap: 0.35rem 0.5rem;
+    padding: 0.5rem;
+  }
+
+  #employeesAttendanceTableBody tr td:nth-child(4) {
+    display: none;
   }
 
   .view.module--attendance .attendance-toggle button {
