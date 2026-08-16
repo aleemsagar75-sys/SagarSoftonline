@@ -850,6 +850,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const promoteStudentsTableBody = document.getElementById("promoteStudentsTableBody");
   const promoteStudentsEmptyState = document.getElementById("promoteStudentsEmptyState");
   const promoteStudentsMessage = document.getElementById("promoteStudentsMessage");
+  const promoteStudentsCount = document.getElementById("promoteStudentsCount");
+  const promoteSelectedCount = document.getElementById("promoteSelectedCount");
+  const promoteListCount = document.getElementById("promoteListCount");
+  const promoteSelectAllCheckbox = document.getElementById("promoteSelectAllCheckbox");
   const studentToolsShell = document.getElementById("studentToolsShell");
   const studentDirectoryGrid = document.getElementById("studentDirectoryGrid");
   const studentDirectoryEmptyState = document.getElementById("studentDirectoryEmptyState");
@@ -24147,6 +24151,23 @@ classSelect.addEventListener("change", renderSubjectSelect);
     }).join("");
 
     promoteStudentsEmptyState.hidden = students.length !== 0;
+
+    var displayedCount = students.length;
+    var selectedCount = students.filter(function (s) { return promoteSelectionState[s.id]; }).length;
+
+    if (promoteStudentsCount) {
+      promoteStudentsCount.textContent = displayedCount;
+    }
+    if (promoteSelectedCount) {
+      promoteSelectedCount.textContent = selectedCount;
+    }
+    if (promoteListCount) {
+      promoteListCount.textContent = displayedCount + " student" + (displayedCount !== 1 ? "s" : "");
+    }
+    if (promoteSelectAllCheckbox) {
+      promoteSelectAllCheckbox.checked = displayedCount > 0 && selectedCount === displayedCount;
+      promoteSelectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < displayedCount;
+    }
   }
 
   async function printBasicList() {
@@ -26709,6 +26730,15 @@ classSelect.addEventListener("change", renderSubjectSelect);
     renderPromoteStudentsTable();
   });
   safeOn(promoteSelectedStudentsBtn, "click", promoteSelectedStudents);
+
+  safeOn(promoteSelectAllCheckbox, "change", function () {
+    var isChecked = promoteSelectAllCheckbox.checked;
+    var students = getPromoteStudents();
+    students.forEach(function (student) {
+      promoteSelectionState[student.id] = isChecked;
+    });
+    renderPromoteStudentsTable();
+  });
 
   safeOn(openStudentFormBtn, "click", function () {
     setRoute("students-add-new");
