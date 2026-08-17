@@ -10738,7 +10738,115 @@ body[data-theme="dark"] .dash-notice:nth-child(2n)::before { background: #58a6ff
   box-shadow: 0 8px 28px rgba(27,95,122,0.4) !important;
 }
 
-/* ===== LOADING OVERLAY â€” PREMIUM GLASSMORPHISM ===== */
+/* ===== WHITE PREMIUM STAT CARD OVERRIDES ===== */
+.dashboard-stat-card--students,
+.dashboard-stat-card--teachers,
+.dashboard-stat-card--classes,
+.dashboard-stat-card--fees,
+.dashboard-stat-card--attendance,
+.dashboard-stat-card--parents,
+.dashboard-stat-card--subjects,
+.dashboard-stat-card--activity,
+.dashboard-stat-card--default {
+  background: #ffffff !important;
+  background-size: 100% 100% !important;
+  color: #102A43 !important;
+  box-shadow: 0 2px 12px rgba(16,42,67,0.07) !important;
+  border: 1px solid #e6e8f0 !important;
+  border-left: 4px solid transparent !important;
+  animation: none !important;
+}
+
+.dashboard-stat-card--students  { border-left-color: #0ea5e9 !important; }
+.dashboard-stat-card--teachers  { border-left-color: #6D4AFF !important; }
+.dashboard-stat-card--classes   { border-left-color: #19A889 !important; }
+.dashboard-stat-card--fees      { border-left-color: #F59E0B !important; }
+.dashboard-stat-card--attendance { border-left-color: #E5485B !important; }
+.dashboard-stat-card--parents   { border-left-color: #2563EB !important; }
+.dashboard-stat-card--subjects  { border-left-color: #0891b2 !important; }
+.dashboard-stat-card--activity  { border-left-color: #475569 !important; }
+.dashboard-stat-card--default   { border-left-color: #6D4AFF !important; }
+
+.dashboard-stat-card--students::before,
+.dashboard-stat-card--teachers::before,
+.dashboard-stat-card--classes::before,
+.dashboard-stat-card--fees::before,
+.dashboard-stat-card--attendance::before,
+.dashboard-stat-card--parents::before,
+.dashboard-stat-card--subjects::before,
+.dashboard-stat-card--activity::before,
+.dashboard-stat-card--default::before {
+  display: none !important;
+}
+
+.dashboard-stat-card::after {
+  background: linear-gradient(105deg, transparent 38%, rgba(109,74,255,0.04) 42%, rgba(109,74,255,0.08) 50%, rgba(109,74,255,0.04) 58%, transparent 62%) !important;
+}
+
+.dashboard-stat-card--students::after  { background: linear-gradient(105deg, transparent 38%, rgba(14,165,233,0.04) 42%, rgba(14,165,233,0.08) 50%, rgba(14,165,233,0.04) 58%, transparent 62%) !important; }
+.dashboard-stat-card--teachers::after  { background: linear-gradient(105deg, transparent 38%, rgba(109,74,255,0.04) 42%, rgba(109,74,255,0.08) 50%, rgba(109,74,255,0.04) 58%, transparent 62%) !important; }
+.dashboard-stat-card--classes::after   { background: linear-gradient(105deg, transparent 38%, rgba(25,168,137,0.04) 42%, rgba(25,168,137,0.08) 50%, rgba(25,168,137,0.04) 58%, transparent 62%) !important; }
+.dashboard-stat-card--fees::after      { background: linear-gradient(105deg, transparent 38%, rgba(245,158,11,0.04) 42%, rgba(245,158,11,0.08) 50%, rgba(245,158,11,0.04) 58%, transparent 62%) !important; }
+.dashboard-stat-card--attendance::after { background: linear-gradient(105deg, transparent 38%, rgba(229,72,91,0.04) 42%, rgba(229,72,91,0.08) 50%, rgba(229,72,91,0.04) 58%, transparent 62%) !important; }
+.dashboard-stat-card--parents::after   { background: linear-gradient(105deg, transparent 38%, rgba(37,99,235,0.04) 42%, rgba(37,99,235,0.08) 50%, rgba(37,99,235,0.04) 58%, transparent 62%) !important; }
+.dashboard-stat-card--subjects::after  { background: linear-gradient(105deg, transparent 38%, rgba(8,145,178,0.04) 42%, rgba(8,145,178,0.08) 50%, rgba(8,145,178,0.04) 58%, transparent 62%) !important; }
+.dashboard-stat-card--activity::after  { background: linear-gradient(105deg, transparent 38%, rgba(71,85,105,0.04) 42%, rgba(71,85,105,0.08) 50%, rgba(71,85,105,0.04) 58%, transparent 62%) !important; }
+.dashboard-stat-card--default::after   { background: linear-gradient(105deg, transparent 38%, rgba(109,74,255,0.04) 42%, rgba(109,74,255,0.08) 50%, rgba(109,74,255,0.04) 58%, transparent 62%) !important; }
+
+.dashboard-stat-card .menu-icon {
+  background: #f0ebff !important;
+}
+
+.dashboard-stat-card--students .menu-icon  { background: #eaf2ff !important; }
+.dashboard-stat-card--teachers .menu-icon  { background: #f0ebff !important; }
+.dashboard-stat-card--classes .menu-icon   { background: #e8f8f3 !important; }
+.dashboard-stat-card--fees .menu-icon      { background: #fff7e6 !important; }
+.dashboard-stat-card--attendance .menu-icon { background: #fff0f2 !important; }
+.dashboard-stat-card--parents .menu-icon   { background: #eaf2ff !important; }
+.dashboard-stat-card--subjects .menu-icon  { background: #e8f7fa !important; }
+.dashboard-stat-card--activity .menu-icon  { background: #f1f5f9 !important; }
+.dashboard-stat-card--default .menu-icon   { background: #f0ebff !important; }
+
+.dashboard-stat-card .menu-icon img,
+.dashboard-stat-card .menu-icon i {
+  filter: none !important;
+}
+
+.dashboard-stat-card--students .menu-icon img,
+.dashboard-stat-card--students .menu-icon i  { color: #0ea5e9 !important; }
+.dashboard-stat-card--teachers .menu-icon img,
+.dashboard-stat-card--teachers .menu-icon i  { color: #6D4AFF !important; }
+.dashboard-stat-card--classes .menu-icon img,
+.dashboard-stat-card--classes .menu-icon i   { color: #19A889 !important; }
+.dashboard-stat-card--fees .menu-icon img,
+.dashboard-stat-card--fees .menu-icon i      { color: #F59E0B !important; }
+.dashboard-stat-card--attendance .menu-icon img,
+.dashboard-stat-card--attendance .menu-icon i { color: #E5485B !important; }
+.dashboard-stat-card--parents .menu-icon img,
+.dashboard-stat-card--parents .menu-icon i   { color: #2563EB !important; }
+.dashboard-stat-card--subjects .menu-icon img,
+.dashboard-stat-card--subjects .menu-icon i  { color: #0891b2 !important; }
+.dashboard-stat-card--activity .menu-icon img,
+.dashboard-stat-card--activity .menu-icon i  { color: #475569 !important; }
+.dashboard-stat-card--default .menu-icon img,
+.dashboard-stat-card--default .menu-icon i   { color: #6D4AFF !important; }
+
+.dashboard-stat-card strong {
+  color: #102A43 !important;
+  text-shadow: none !important;
+}
+
+.dashboard-stat-card .panel-label {
+  color: #102A43 !important;
+  -webkit-text-fill-color: #102A43 !important;
+  text-shadow: none !important;
+}
+
+.dashboard-stat-card .metric-note {
+  color: #486581 !important;
+  text-shadow: none !important;
+}
+
 .ss-modal-glass {
   display: flex;
   flex-direction: column;
