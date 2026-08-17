@@ -8128,28 +8128,27 @@ select:focus, input:focus, textarea:focus {
 
 /* ===== SIDEBAR ENHANCEMENTS ===== */
 .sidebar {
-  background:
-    linear-gradient(180deg, rgba(5, 17, 37, 0.98), rgba(8, 24, 54, 0.96)),
-    linear-gradient(135deg, #102A43, #6D4AFF);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  background: #ffffff;
+  border-right: 1px solid #e6e8f0;
 }
 
 .menu-link.active,
 .menu-group.open .menu-group__trigger {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(109, 74, 255, 0.2);
-  box-shadow: inset 3px 0 0 #19A889;
+  background: #f0ebff;
+  border-color: rgba(109, 74, 255, 0.15);
+  box-shadow: inset 3px 0 0 #6d4aff;
+  color: #5435d6;
 }
 .menu-link.active .menu-label {
   font-weight: 700;
-  color: #fff;
+  color: #5435d6;
 }
 
 .submenu-link.active {
-  background: rgba(109, 74, 255, 0.12) !important;
-  border-color: rgba(109, 74, 255, 0.2) !important;
-  color: #fff !important;
-  box-shadow: inset 3px 0 0 #19A889;
+  background: rgba(109, 74, 255, 0.08) !important;
+  border-color: rgba(109, 74, 255, 0.15) !important;
+  color: #5435d6 !important;
+  box-shadow: inset 3px 0 0 #6d4aff;
 }
 
 /* ===== STAT CARD INTERNAL REFINEMENT ===== */
