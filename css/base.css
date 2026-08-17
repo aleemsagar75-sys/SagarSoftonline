@@ -1,23 +1,35 @@
 :root {
-  --bg-color: #edf3f7;
+  --bg-color: #F7F8FC;
   --surface-color: #ffffff;
-  --surface-muted: #f4f8fb;
-  --surface-strong: #0f2b3f;
-  --text-color: #153043;
-  --text-muted: #5b7286;
-  --primary-color: #1b5f7a;
-  --primary-dark: #13465a;
-  --success-color: #1f8d67;
-  --danger-color: #c44545;
-  --border-color: rgba(15, 43, 63, 0.12);
-  --shadow-soft: 0 24px 60px rgba(15, 43, 63, 0.14);
-  --shadow-card: 0 18px 40px rgba(15, 43, 63, 0.12);
+  --surface-muted: #F7F8FC;
+  --surface-strong: #102A43;
+  --text-color: #102A43;
+  --text-muted: #6B7A90;
+  --primary-color: #6D4AFF;
+  --primary-dark: #5435D6;
+  --success-color: #19A889;
+  --danger-color: #E5485B;
+  --border-color: #E6E8F0;
+  --shadow-soft: 0 8px 24px rgba(16, 42, 67, 0.06);
+  --shadow-card: 0 8px 24px rgba(16, 42, 67, 0.06);
   --radius-xl: 28px;
   --radius-lg: 20px;
   --radius-md: 14px;
   --radius-sm: 10px;
-  --transition-base: 0.25s ease;
+  --transition-base: 0.2s ease;
   --font-primary: "Poppins", "Segoe UI", "Trebuchet MS", sans-serif;
+  --brand-purple: #6D4AFF;
+  --brand-purple-dark: #5435D6;
+  --brand-purple-soft: #F0EBFF;
+  --brand-teal: #19A889;
+  --brand-teal-soft: #E8F8F3;
+  --brand-blue: #2563EB;
+  --brand-blue-soft: #EAF2FF;
+  --brand-red: #E5485B;
+  --brand-red-soft: #FFF0F2;
+  --brand-orange: #F59E0B;
+  --brand-orange-soft: #FFF7E6;
+  --brand-navy: #102A43;
 }
 
 * {
@@ -34,10 +46,7 @@ body {
   min-height: 100vh;
   font-family: var(--font-primary);
   color: var(--text-color);
-  background:
-    radial-gradient(circle at top left, rgba(27, 95, 122, 0.16), transparent 28%),
-    radial-gradient(circle at bottom right, rgba(31, 141, 103, 0.12), transparent 22%),
-    var(--bg-color);
+  background: var(--bg-color);
 }
 
 a {
@@ -60,50 +69,50 @@ button {
 input {
   width: 100%;
   padding: 0.95rem 1rem;
-  border: 1.5px solid rgba(27, 95, 122, 0.15);
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-sm);
   outline: none;
-  background: rgba(255, 255, 255, 0.98);
+  background: #ffffff;
   color: var(--text-color);
   transition: all var(--transition-base);
 }
 
 input:focus {
-  border-color: rgba(27, 95, 122, 0.5);
-  box-shadow: 0 0 0 4px rgba(27, 95, 122, 0.1), 0 0 0 6px rgba(47, 176, 138, 0.08);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.10);
   background: #ffffff;
 }
 
 input:hover:not(:focus) {
-  border-color: rgba(27, 95, 122, 0.25);
+  border-color: rgba(109, 74, 255, 0.25);
 }
 
 textarea {
   width: 100%;
   padding: 0.95rem 1rem;
-  border: 1.5px solid rgba(27, 95, 122, 0.15);
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-sm);
   outline: none;
-  background: rgba(255, 255, 255, 0.98);
+  background: #ffffff;
   color: var(--text-color);
   resize: vertical;
   transition: all var(--transition-base);
 }
 
 textarea:focus {
-  border-color: rgba(27, 95, 122, 0.5);
-  box-shadow: 0 0 0 4px rgba(27, 95, 122, 0.1), 0 0 0 6px rgba(47, 176, 138, 0.08);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.10);
   background: #ffffff;
 }
 
 textarea:hover:not(:focus) {
-  border-color: rgba(27, 95, 122, 0.25);
+  border-color: rgba(109, 74, 255, 0.25);
 }
 
 select {
   width: 100%;
   padding: 0.95rem 1rem;
-  border: 1.5px solid rgba(27, 95, 122, 0.15);
+  border: 1.5px solid var(--border-color);
   border-radius: var(--radius-sm);
   outline: none;
   background: #ffffff;
@@ -114,12 +123,12 @@ select {
 }
 
 select:focus {
-  border-color: rgba(27, 95, 122, 0.5);
-  box-shadow: 0 0 0 4px rgba(27, 95, 122, 0.1), 0 0 0 6px rgba(47, 176, 138, 0.08);
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(109, 74, 255, 0.10);
 }
 
 select:hover:not(:focus) {
-  border-color: rgba(27, 95, 122, 0.25);
+  border-color: rgba(109, 74, 255, 0.25);
 }
 
 .primary-button,
@@ -136,9 +145,9 @@ select:hover:not(:focus) {
 
 .primary-button {
   color: #fff;
-  background: linear-gradient(135deg, #1b5f7a 0%, #2fb08a 100%);
-  box-shadow: 0 8px 20px rgba(27, 95, 122, 0.3);
-  border: 1px solid rgba(47, 176, 138, 0.3);
+  background: linear-gradient(135deg, #6D4AFF 0%, #8B6FFF 100%);
+  box-shadow: 0 4px 14px rgba(109, 74, 255, 0.3);
+  border: 1px solid rgba(109, 74, 255, 0.3);
 }
 
 .primary-button:hover,
@@ -150,21 +159,21 @@ select:hover:not(:focus) {
 }
 
 .primary-button:hover {
-  background: linear-gradient(135deg, #0f4a63 0%, #2fb08a 100%);
-  box-shadow: 0 12px 28px rgba(27, 95, 122, 0.4);
-  border-color: rgba(47, 176, 138, 0.5);
+  background: linear-gradient(135deg, #5435D6 0%, #7B5FEF 100%);
+  box-shadow: 0 8px 24px rgba(109, 74, 255, 0.4);
+  border-color: rgba(109, 74, 255, 0.5);
 }
 
 .secondary-button {
-  color: #0f2b3f;
-  background: rgba(27, 95, 122, 0.08);
-  border: 1px solid rgba(27, 95, 122, 0.2);
+  color: var(--text-color);
+  background: #ffffff;
+  border: 1px solid var(--border-color);
   transition: all var(--transition-base);
 }
 
 .secondary-button:hover {
-  background: rgba(27, 95, 122, 0.15);
-  border-color: rgba(27, 95, 122, 0.35);
+  background: var(--brand-purple-soft);
+  border-color: rgba(109, 74, 255, 0.25);
 }
 
 .text-button {
@@ -191,7 +200,7 @@ select:hover:not(:focus) {
 .eyebrow,
 .placeholder-badge {
   color: var(--primary-color);
-  background: rgba(27, 95, 122, 0.12);
+  background: var(--brand-purple-soft);
 }
 
 .brand-badge {
@@ -202,8 +211,6 @@ select:hover:not(:focus) {
 
 @media (max-width: 768px) {
   body {
-    background:
-      radial-gradient(circle at top center, rgba(27, 95, 122, 0.18), transparent 24%),
-      var(--bg-color);
+    background: var(--bg-color);
   }
 }
