@@ -214,3 +214,131 @@ select:hover:not(:focus) {
     background: var(--bg-color);
   }
 }
+
+/* ===== BRAND REFRESH: Sidebar + Hero overrides ===== */
+/* base.css loads BEFORE dashboard.css, but !important guarantees these win */
+/* regardless of cascade order, specificity, or CDN caching of dashboard.css */
+
+.sidebar {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #102A43 !important;
+  border-right: 1px solid #e6e8f0 !important;
+}
+
+.sidebar .brand-copy span {
+  color: #6B7A90 !important;
+}
+
+.sidebar .menu-link,
+.sidebar .menu-group__trigger {
+  color: #102A43 !important;
+}
+
+.sidebar .menu-link.active,
+.sidebar .menu-group.open .menu-group__trigger {
+  background: #f0ebff !important;
+  border-color: rgba(109, 74, 255, 0.15) !important;
+  box-shadow: inset 3px 0 0 #6d4aff !important;
+  color: #5435d6 !important;
+}
+
+.sidebar .menu-link.active .menu-label {
+  color: #5435d6 !important;
+}
+
+.sidebar .submenu-link {
+  color: #6B7A90 !important;
+  background: transparent !important;
+}
+
+.sidebar .submenu-link.active,
+.sidebar .submenu-link:hover,
+.sidebar .menu-link:hover,
+.sidebar .menu-group__trigger:hover {
+  background: #f0ebff !important;
+  border-color: rgba(109, 74, 255, 0.10) !important;
+  color: #5435d6 !important;
+}
+
+.sidebar .sidebar-card {
+  background: #f0ebff !important;
+  border: 1px solid rgba(109, 74, 255, 0.10) !important;
+}
+
+.sidebar .sidebar-card__label {
+  color: #6D4AFF !important;
+}
+
+.sidebar .sidebar-card strong {
+  color: #102A43 !important;
+}
+
+.sidebar .sidebar-card span {
+  color: #6B7A90 !important;
+}
+
+.sidebar .icon-button {
+  background: #f0ebff !important;
+  border: 1px solid #e6e8f0 !important;
+  color: #102A43 !important;
+}
+
+.sidebar .menu-icon {
+  background: #f0ebff !important;
+}
+
+.hero-panel {
+  background: #ffffff !important;
+  background-image: none !important;
+  color: #102A43 !important;
+  border: 1px solid #e6e8f0 !important;
+  box-shadow: 0 8px 24px rgba(16, 42, 67, 0.06) !important;
+  animation: none !important;
+}
+
+.hero-panel h2 {
+  color: #102A43 !important;
+}
+
+.hero-panel p {
+  color: #6B7A90 !important;
+}
+
+.hero-panel .hero-chip {
+  background: #f0ebff !important;
+  color: #6D4AFF !important;
+}
+
+.hero-panel .hero-metrics article {
+  background: #F7F8FC !important;
+  border: 1px solid #e6e8f0 !important;
+}
+
+.hero-panel .hero-stat-header {
+  color: #6B7A90 !important;
+}
+
+.hero-panel .hero-stat-symbol {
+  color: #6D4AFF !important;
+}
+
+.hero-panel .hero-stat-value {
+  color: #102A43 !important;
+}
+
+.hero-panel .hero-metrics span {
+  color: #6B7A90 !important;
+}
+
+.hero-panel .hero-stat-footer {
+  border-top: 1px solid #e6e8f0 !important;
+}
+
+.hero-panel .hero-stat-footer span {
+  color: #6B7A90 !important;
+}
+
+.hero-panel .hero-stat-footer-amount {
+  color: #102A43 !important;
+}
