@@ -1707,6 +1707,97 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function showSSModal(opts) {
+    var existing = document.getElementById("ssGenericModal");
+    if (existing) existing.remove();
+    var tone = opts.tone || "info";
+    var iconMap = { danger: "&#9888;", warning: "&#9888;", success: "&#10003;", info: "&#8505;", confirm: "&#9888;" };
+    var toneColorMap = { danger: "#E5485B", warning: "#D97706", success: "#059669", info: "#6D4AFF", confirm: "#D97706" };
+    var icon = opts.icon || iconMap[tone] || iconMap.info;
+    var color = toneColorMap[tone] || toneColorMap.info;
+    var buttonsHTML = "";
+    if (opts.buttons) {
+      buttonsHTML = opts.buttons.map(function (btn) {
+        var cls = "ss-modal-btn";
+        if (btn.tone === "danger") cls += " ss-modal-btn--delete";
+        else if (btn.tone === "cancel") cls += " ss-modal-btn--cancel";
+        else if (btn.tone === "primary") cls += " ss-modal-btn--primary";
+        return '<button class="' + cls + '" type="button" data-ss-btn="' + escapeAttr(btn.id || "") + '">' + escapeHtml(btn.label) + '</button>';
+      }).join("");
+    } else {
+      buttonsHTML = '<button class="ss-modal-btn ss-modal-btn--cancel" type="button" data-ss-btn="cancel">Cancel</button>'
+        + '<button class="ss-modal-btn ss-modal-btn--delete" type="button" data-ss-btn="confirm">Confirm</button>';
+    }
+    var bodyHTML = "";
+    if (opts.html) {
+      bodyHTML = opts.html;
+    } else if (opts.message) {
+      bodyHTML = '<p style="font-size:0.88rem;color:#486581;margin:0 0 6px;">' + escapeHtml(opts.message) + '</p>';
+      if (opts.warning) bodyHTML += '<p class="ss-modal-warning">' + escapeHtml(opts.warning) + '</p>';
+    }
+    var modal = document.createElement("div");
+    modal.id = "ssGenericModal";
+    modal.className = "ss-modal-overlay";
+    modal.innerHTML = '<div class="ss-modal-box">'
+      + '<div class="ss-modal-header">'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
+      + '<span style="font-size:1.3rem;color:' + color + ';">' + icon + '</span>'
+      + '<h3>' + escapeHtml(opts.title || "Confirm") + '</h3>'
+      + '</div>'
+      + '<button class="ss-modal-close" type="button">&times;</button>'
+      + '</div>'
+      + '<div class="ss-modal-body">' + bodyHTML + '</div>'
+      + '<div class="ss-modal-footer">' + buttonsHTML + '</div>'
+      + '</div>';
+    document.body.appendChild(modal);
+    requestAnimationFrame(function() { modal.classList.add("ss-modal-visible"); });
+    return new Promise(function (resolve) {
+      function close(result) {
+        modal.classList.remove("ss-modal-visible");
+        setTimeout(function() { modal.remove(); }, 200);
+        resolve(result);
+      }
+      modal.querySelector(".ss-modal-close").addEventListener("click", function() { close(null); });
+      modal.querySelectorAll("[data-ss-btn]").forEach(function (btn) {
+        btn.addEventListener("click", function() {
+          var val = btn.getAttribute("data-ss-btn");
+          close(val === "cancel" || val === "close" ? null : val);
+        });
+      });
+      modal.addEventListener("click", function(e) { if (e.target === modal) close(null); });
+    });
+  }
+
+  function showToast(message, type) {
+    var existing = document.getElementById("ssToastContainer");
+    if (!existing) {
+      existing = document.createElement("div");
+      existing.id = "ssToastContainer";
+      existing.style.cssText = "position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;";
+      document.body.appendChild(existing);
+    }
+    var typeColors = { success: "#059669", error: "#E5485B", warning: "#D97706", info: "#6D4AFF" };
+    var typeBg = { success: "#f0fdf4", error: "#fef2f2", warning: "#fffbeb", info: "#f5f3ff" };
+    var typeIcons = { success: "&#10003;", error: "&#10005;", warning: "&#9888;", info: "&#8505;" };
+    var color = typeColors[type] || typeColors.info;
+    var bg = typeBg[type] || typeBg.info;
+    var icon = typeIcons[type] || typeIcons.info;
+    var toast = document.createElement("div");
+    toast.style.cssText = "pointer-events:auto;background:" + bg + ";border:1px solid " + color + "30;border-left:4px solid " + color + ";border-radius:10px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,0.12);display:flex;align-items:center;gap:10px;min-width:280px;max-width:420px;animation:ssToastSlideIn 0.3s ease;cursor:pointer;font-size:0.85rem;color:#102A43;";
+    toast.innerHTML = '<span style="font-size:1.1rem;color:' + color + ';">' + icon + '</span><span style="flex:1;">' + escapeHtml(message) + '</span>';
+    toast.addEventListener("click", function() {
+      toast.style.animation = "ssToastSlideOut 0.3s ease forwards";
+      setTimeout(function() { toast.remove(); }, 300);
+    });
+    existing.appendChild(toast);
+    setTimeout(function() {
+      if (toast.parentNode) {
+        toast.style.animation = "ssToastSlideOut 0.3s ease forwards";
+        setTimeout(function() { toast.remove(); }, 300);
+      }
+    }, 4000);
+  }
+
   function renderStudentSearchResult(student) {
     return '<div class="gsac-item" data-student-id="' + escapeAttr(student.id || "") + '">' +
       '<div class="gsac-item-main">' +
@@ -10258,6 +10349,7 @@ ${allContent}
         shortInput.value = "";
         statusInput.value = "active";
         setWeekdayMessage("Weekday saved successfully.", "success");
+        showToast("Weekday saved successfully.", "success");
         renderRows();
       });
 
@@ -10277,17 +10369,87 @@ ${allContent}
           nameInput.value = weekday.name || "";
           shortInput.value = weekday.shortLabel || "";
           statusInput.value = weekday.active ? "active" : "inactive";
+          var formSection = nameInput.closest(".gs-form-section");
+          if (formSection) {
+            var header = formSection.querySelector(".gs-form-section__header");
+            if (header) {
+              header.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;">&#9998;</div><div><p class="gs-form-section__title">Editing Weekday: ' + escapeHtml(weekday.name || "-") + '</p></div>';
+            }
+          }
+          document.getElementById("saveWeekdayBtn").textContent = "Update Weekday";
+          var cancelEditBtn = document.getElementById("cancelWeekdayEditBtn");
+          if (!cancelEditBtn) {
+            cancelEditBtn = document.createElement("button");
+            cancelEditBtn.id = "cancelWeekdayEditBtn";
+            cancelEditBtn.className = "gs-btn-outline";
+            cancelEditBtn.type = "button";
+            cancelEditBtn.textContent = "Cancel Edit";
+            cancelEditBtn.style.marginLeft = "8px";
+            document.getElementById("saveWeekdayBtn").parentNode.insertBefore(cancelEditBtn, document.getElementById("saveWeekdayBtn").nextSibling);
+            cancelEditBtn.addEventListener("click", function () {
+              editingId = "";
+              nameInput.value = "";
+              shortInput.value = "";
+              statusInput.value = "active";
+              document.getElementById("saveWeekdayBtn").textContent = "Save Weekday";
+              var hdr = nameInput.closest(".gs-form-section").querySelector(".gs-form-section__header");
+              if (hdr) hdr.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">&#128197;</div><div><p class="gs-form-section__title">Manage Weekdays</p><p class="gs-form-section__subtitle">Configure school weekdays</p></div>';
+              cancelEditBtn.remove();
+            });
+          }
+          nameInput.focus();
+          nameInput.scrollIntoView({ behavior: "smooth", block: "center" });
           return;
         }
         const hasUsage = getTimetableEntries().some(function (item) {
           return item.weekdayId === weekdayId;
         });
         if (hasUsage) {
-          setWeekdayMessage("This weekday is already used in timetable entries.", "error");
+          showSSModal({
+            title: "Weekday In Use",
+            tone: "warning",
+            message: "This weekday is currently used by timetable entries and cannot be deleted.",
+            warning: "You can deactivate it instead. It will be hidden but its data will be preserved.",
+            html: '<p style="font-size:0.88rem;color:#486581;margin:0 0 6px;">This weekday is currently used by timetable entries and cannot be deleted.</p><p style="font-size:0.85rem;color:#D97706;margin:0;">You can deactivate it instead. It will be hidden but its data will be preserved.</p>',
+            buttons: [
+              { id: "cancel", label: "Cancel", tone: "cancel" },
+              { id: "deactivate", label: "Deactivate", tone: "primary" }
+            ]
+          }).then(function (choice) {
+            if (choice === "deactivate") {
+              var idx = (settings.timetableWeekdays || []).findIndex(function (d) { return d.id === weekdayId; });
+              if (idx >= 0) {
+                settings.timetableWeekdays[idx].active = false;
+                saveDatabase("Deactivating weekday...", [{ table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+                addActivity("Weekday deactivated", weekday.name + " deactivated (used in timetable).");
+                setWeekdayMessage("Weekday deactivated successfully.", "success");
+                showToast("Weekday deactivated successfully.", "success");
+                renderRows();
+              }
+            }
+          });
           return;
         }
-        settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; }); trackDeletion(weekdayId);
-        saveDatabase("Deleting weekday...", [{ table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        showSSModal({
+          title: "Delete Weekday?",
+          tone: "danger",
+          message: "Are you sure you want to delete \"" + (weekday.name || "-") + "\"?",
+          warning: "This action cannot be undone.",
+          buttons: [
+            { id: "cancel", label: "Cancel", tone: "cancel" },
+            { id: "confirm", label: "Delete", tone: "danger" }
+          ]
+        }).then(function (choice) {
+          if (choice === "confirm") {
+            settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; });
+            trackDeletion(weekdayId);
+            saveDatabase("Deleting weekday...", [{ table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            addActivity("Weekday deleted", weekday.name + " deleted from timetable settings.");
+            setWeekdayMessage("Weekday deleted successfully.", "success");
+            showToast("Weekday deleted successfully.", "success");
+            renderRows();
+          }
+        });
         renderRows();
       });
 
@@ -10392,6 +10554,7 @@ ${allContent}
         typeInput.value = "Regular";
         statusInput.value = "active";
         setPeriodMessage("Time period saved successfully.", "success");
+        showToast("Time period saved successfully.", "success");
         renderRows();
       });
 
@@ -10413,34 +10576,89 @@ ${allContent}
           endInput.value = period.endTime || "";
           typeInput.value = period.periodType || "Regular";
           statusInput.value = period.active ? "active" : "inactive";
+          var formSection = labelInput.closest(".gs-form-section");
+          if (formSection) {
+            var header = formSection.querySelector(".gs-form-section__header");
+            if (header) {
+              header.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;">&#9998;</div><div><p class="gs-form-section__title">Editing Time Period: ' + escapeHtml(period.label || "-") + '</p></div>';
+            }
+          }
+          document.getElementById("savePeriodBtn").textContent = "Update Time Period";
+          var cancelEditBtn = document.getElementById("cancelPeriodEditBtn");
+          if (!cancelEditBtn) {
+            cancelEditBtn = document.createElement("button");
+            cancelEditBtn.id = "cancelPeriodEditBtn";
+            cancelEditBtn.className = "gs-btn-outline";
+            cancelEditBtn.type = "button";
+            cancelEditBtn.textContent = "Cancel Edit";
+            cancelEditBtn.style.marginLeft = "8px";
+            document.getElementById("savePeriodBtn").parentNode.insertBefore(cancelEditBtn, document.getElementById("savePeriodBtn").nextSibling);
+            cancelEditBtn.addEventListener("click", function () {
+              editingId = "";
+              labelInput.value = "";
+              startInput.value = "";
+              endInput.value = "";
+              typeInput.value = "Regular";
+              statusInput.value = "active";
+              document.getElementById("savePeriodBtn").textContent = "Save Period";
+              var hdr = labelInput.closest(".gs-form-section").querySelector(".gs-form-section__header");
+              if (hdr) hdr.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">&#9201;</div><div><p class="gs-form-section__title">Manage Time Periods</p><p class="gs-form-section__subtitle">Set class periods, breaks and activities</p></div>';
+              cancelEditBtn.remove();
+            });
+          }
+          labelInput.focus();
+          labelInput.scrollIntoView({ behavior: "smooth", block: "center" });
           return;
         }
         var hasUsage = (settings.timetableEntries || []).some(function (item) {
           return item.periodId === periodId;
         });
         if (hasUsage) {
-          if (!confirm("This time period is used in timetable entries and cannot be deleted. Deactivate it instead?")) {
-            return;
-          }
-          var idx = (settings.timetablePeriods || []).findIndex(function (p) { return p.id === periodId; });
-          if (idx >= 0) {
-            settings.timetablePeriods[idx].active = false;
-            saveDatabase("Deactivating time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-            addActivity("Time period deactivated", period.label + " deactivated (used in timetable).");
-            setPeriodMessage("Time period deactivated successfully.", "success");
+          showSSModal({
+            title: "Time Period In Use",
+            tone: "warning",
+            message: "This time period is currently used by existing timetable entries and cannot be permanently deleted.",
+            warning: "You can deactivate it instead. It will be hidden from the timetable but its data will be preserved.",
+            html: '<p style="font-size:0.88rem;color:#486581;margin:0 0 6px;">This time period is currently used by existing timetable entries and cannot be permanently deleted.</p><p style="font-size:0.85rem;color:#D97706;margin:0;">You can deactivate it instead. It will be hidden from the timetable but its data will be preserved.</p>',
+            buttons: [
+              { id: "cancel", label: "Cancel", tone: "cancel" },
+              { id: "deactivate", label: "Deactivate", tone: "primary" }
+            ]
+          }).then(function (choice) {
+            if (choice === "deactivate") {
+              var idx = (settings.timetablePeriods || []).findIndex(function (p) { return p.id === periodId; });
+              if (idx >= 0) {
+                settings.timetablePeriods[idx].active = false;
+                saveDatabase("Deactivating time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+                addActivity("Time period deactivated", period.label + " deactivated (used in timetable).");
+                setPeriodMessage("Time period deactivated successfully.", "success");
+                showToast("Time period deactivated successfully.", "success");
+                renderRows();
+              }
+            }
+          });
+          return;
+        }
+        showSSModal({
+          title: "Delete Time Period?",
+          tone: "danger",
+          message: "Are you sure you want to delete \"" + (period.label || "-") + "\"?",
+          warning: "This action cannot be undone.",
+          buttons: [
+            { id: "cancel", label: "Cancel", tone: "cancel" },
+            { id: "confirm", label: "Delete", tone: "danger" }
+          ]
+        }).then(function (choice) {
+          if (choice === "confirm") {
+            settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; });
+            trackDeletion(periodId);
+            saveDatabase("Deleting time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            addActivity("Time period deleted", period.label + " deleted from timetable periods.");
+            setPeriodMessage("Time period deleted successfully.", "success");
+            showToast("Time period deleted successfully.", "success");
             renderRows();
           }
-          return;
-        }
-        if (!confirm("Delete time period \"" + (period.label || "-") + "\"?")) {
-          return;
-        }
-        settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; });
-        trackDeletion(periodId);
-        saveDatabase("Deleting time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-        addActivity("Time period deleted", period.label + " deleted from timetable periods.");
-        setPeriodMessage("Time period deleted successfully.", "success");
-        renderRows();
+        });
       });
 
       renderRows();
@@ -10821,7 +11039,7 @@ ${allContent}
           var isNonTeach = isNonTeachingPeriodType(pType);
           var cells = ttWeekdays.map(function (day) {
             var entry = entryMap.get(period.id + "-" + day.id);
-            if (!entry) return '<td style="padding:8px 6px;text-align:center;color:#cbd5e1;font-size:0.8rem;">-</td>';
+            if (!entry) return '<td class="tt-cell tt-cell--empty" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" style="padding:8px 6px;text-align:center;color:#cbd5e1;font-size:0.8rem;">-</td>';
             if (isNonTeach) {
               var icon = pType.toLowerCase() === "assembly" ? "&#127891;" : "&#9749;";
               return '<td class="tt-cell tt-cell--' + (pType.toLowerCase() === "assembly" ? "assembly" : "break") + '">'
@@ -10829,11 +11047,13 @@ ${allContent}
                 + '<div class="tt-cell__time">' + escapeHtml(formatTimeLabel(period.startTime)) + ' - ' + escapeHtml(formatTimeLabel(period.endTime)) + '</div>'
                 + '</td>';
             }
-            return '<td class="tt-cell tt-cell--regular">'
+            var dragData = encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id,subject:entry.subjectName,teacher:entry.teacherId,room:entry.roomId}));
+            return '<td class="tt-cell tt-cell--regular" draggable="true" data-tt-drag="' + dragData + '" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '">'
               + '<div class="tt-cell__subject">' + escapeHtml(entry.subjectName || "-") + '</div>'
               + '<div class="tt-cell__teacher">' + escapeHtml(entry.teacherName || "-") + '</div>'
               + '<div class="tt-cell__room">' + escapeHtml(entry.roomName || "-") + '</div>'
               + '<div class="tt-cell__actions">'
+              + '<span class="tt-drag-handle" title="Drag to rearrange">&#8942;&#8942;</span> '
               + '<button class="tt-cell__menu-btn" data-tt-edit="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Edit">&#9998;</button>'
               + '<button class="tt-cell__menu-btn tt-cell__menu-btn--danger" data-tt-delete="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Delete">&#10005;</button>'
               + '</div>'
@@ -10974,6 +11194,7 @@ ${allContent}
           addActivity("Timetable entry deleted", subjectName + " removed from " + entryData.class + " on " + dayLabel + ".");
           ttFormMessage.textContent = "Timetable entry deleted successfully.";
           ttFormMessage.className = "form-message success";
+          showToast("Timetable entry deleted successfully.", "success");
           renderPreview();
         }
         function onCancel() { cleanup(); }
@@ -11027,6 +11248,176 @@ ${allContent}
           } catch (err) { /* ignore */ }
         }
       });
+
+      // Drag & Drop handlers
+      var ttDragData = null;
+      var ttPreviewTable = document.getElementById("ttPreviewTable");
+      if (ttPreviewTable) {
+        ttPreviewTable.addEventListener("dragstart", function (e) {
+          var cell = e.target.closest("[data-tt-drag]");
+          if (!cell) return;
+          try {
+            ttDragData = JSON.parse(decodeURIComponent(cell.getAttribute("data-tt-drag")));
+            cell.classList.add("tt-dragging");
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", cell.getAttribute("data-tt-drag"));
+          } catch (err) { ttDragData = null; }
+        });
+        ttPreviewTable.addEventListener("dragend", function (e) {
+          var cell = e.target.closest("[data-tt-drag]");
+          if (cell) cell.classList.remove("tt-dragging");
+          ttPreviewTable.querySelectorAll(".tt-drag-over").forEach(function (el) { el.classList.remove("tt-drag-over"); });
+          ttPreviewTable.querySelectorAll(".tt-cell--drop-valid, .tt-cell--drop-invalid").forEach(function (el) {
+            el.classList.remove("tt-cell--drop-valid", "tt-cell--drop-invalid");
+          });
+          ttDragData = null;
+        });
+        ttPreviewTable.addEventListener("dragover", function (e) {
+          var cell = e.target.closest("[data-tt-drop]");
+          if (!cell) return;
+          e.preventDefault();
+          if (!ttDragData) return;
+          var dropTarget = null;
+          try { dropTarget = JSON.parse(decodeURIComponent(cell.getAttribute("data-tt-drop"))); } catch (err) { return; }
+          var isSameCell = ttDragData.class === dropTarget.class && ttDragData.period === dropTarget.period && ttDragData.day === dropTarget.day;
+          if (isSameCell) return;
+          var raw = getRawTimetableEntries();
+          var targetOccupied = raw.some(function (item) {
+            if (item.className !== dropTarget.class || item.periodId !== dropTarget.period) return false;
+            var days = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
+            return days.indexOf(dropTarget.day) >= 0;
+          });
+          cell.classList.add("tt-drag-over");
+          if (targetOccupied) {
+            cell.classList.add("tt-cell--drop-invalid");
+            cell.classList.remove("tt-cell--drop-valid");
+          } else {
+            cell.classList.add("tt-cell--drop-valid");
+            cell.classList.remove("tt-cell--drop-invalid");
+          }
+        });
+        ttPreviewTable.addEventListener("dragleave", function (e) {
+          var cell = e.target.closest("[data-tt-drop]");
+          if (cell) {
+            cell.classList.remove("tt-drag-over", "tt-cell--drop-valid", "tt-cell--drop-invalid");
+          }
+        });
+        ttPreviewTable.addEventListener("drop", function (e) {
+          e.preventDefault();
+          var cell = e.target.closest("[data-tt-drop]");
+          if (!cell || !ttDragData) return;
+          cell.classList.remove("tt-drag-over", "tt-cell--drop-valid", "tt-cell--drop-invalid");
+          var dropTarget = null;
+          try { dropTarget = JSON.parse(decodeURIComponent(cell.getAttribute("data-tt-drop"))); } catch (err) { return; }
+          var isSameCell = ttDragData.class === dropTarget.class && ttDragData.period === dropTarget.period && ttDragData.day === dropTarget.day;
+          if (isSameCell) return;
+          var raw = getRawTimetableEntries();
+          var targetEntry = null;
+          for (var ti = 0; ti < raw.length; ti++) {
+            var te = raw[ti];
+            if (te.className !== dropTarget.class || te.periodId !== dropTarget.period) continue;
+            var teDays = te.scheduleType === "recurring" && Array.isArray(te.recurringDays) ? te.recurringDays : [te.weekdayId];
+            if (teDays.indexOf(dropTarget.day) >= 0) { targetEntry = te; break; }
+          }
+          var sourceEntry = null;
+          for (var si = 0; si < raw.length; si++) {
+            var se = raw[si];
+            if (se.className !== ttDragData.class || se.periodId !== ttDragData.period) continue;
+            var seDays = se.scheduleType === "recurring" && Array.isArray(se.recurringDays) ? se.recurringDays : [se.weekdayId];
+            if (seDays.indexOf(ttDragData.day) >= 0) { sourceEntry = se; break; }
+          }
+          if (!sourceEntry) return;
+          var sourcePeriodType = "Regular";
+          for (var pi = 0; pi < ttPeriods.length; pi++) {
+            if (ttPeriods[pi].id === ttDragData.period) { sourcePeriodType = ttPeriods[pi].periodType || "Regular"; break; }
+          }
+          if (!isNonTeachingPeriodType(sourcePeriodType)) {
+            if (sourceEntry.teacherId) {
+              for (var ci = 0; ci < raw.length; ci++) {
+                var ce = raw[ci];
+                if (ce.className === dropTarget.class && ce.periodId === dropTarget.period) {
+                  var ceDays = ce.scheduleType === "recurring" && Array.isArray(ce.recurringDays) ? ce.recurringDays : [ce.weekdayId];
+                  if (ceDays.indexOf(dropTarget.day) >= 0 && ce.teacherId === sourceEntry.teacherId) {
+                    showToast("Teacher conflict: this teacher is already assigned during this period.", "error");
+                    ttDragData = null;
+                    return;
+                  }
+                }
+              }
+            }
+            if (sourceEntry.roomId) {
+              for (var ri = 0; ri < raw.length; ri++) {
+                var re2 = raw[ri];
+                if (re2.className === dropTarget.class && re2.periodId === dropTarget.period) {
+                  var re2Days = re2.scheduleType === "recurring" && Array.isArray(re2.recurringDays) ? re2.recurringDays : [re2.weekdayId];
+                  if (re2Days.indexOf(dropTarget.day) >= 0 && re2.roomId === sourceEntry.roomId) {
+                    showToast("Room conflict: this room is already in use during this period.", "error");
+                    ttDragData = null;
+                    return;
+                  }
+                }
+              }
+            }
+          }
+          if (targetEntry) {
+            var targetHasSameClass = targetEntry.className === sourceEntry.className;
+            if (targetHasSameClass) {
+              settings.timetableEntries = raw.map(function (item) {
+                if (item === sourceEntry) {
+                  var updated = Object.assign({}, item, { periodId: dropTarget.period, weekdayId: dropTarget.day, updatedAt: new Date().toISOString() });
+                  if (updated.scheduleType === "recurring") {
+                    delete updated.scheduleType;
+                    delete updated.recurringGroupId;
+                    delete updated.recurringDays;
+                  }
+                  return updated;
+                }
+                if (item === targetEntry) {
+                  var moved = Object.assign({}, item, { periodId: ttDragData.period, weekdayId: ttDragData.day, updatedAt: new Date().toISOString() });
+                  if (moved.scheduleType === "recurring") {
+                    delete moved.scheduleType;
+                    delete moved.recurringGroupId;
+                    delete moved.recurringDays;
+                  }
+                  return moved;
+                }
+                return item;
+              });
+            } else {
+              settings.timetableEntries = raw.map(function (item) {
+                if (item === sourceEntry) {
+                  var updated2 = Object.assign({}, item, { periodId: dropTarget.period, weekdayId: dropTarget.day, updatedAt: new Date().toISOString() });
+                  if (updated2.scheduleType === "recurring") {
+                    delete updated2.scheduleType;
+                    delete updated2.recurringGroupId;
+                    delete updated2.recurringDays;
+                  }
+                  return updated2;
+                }
+                return item;
+              });
+            }
+          } else {
+            settings.timetableEntries = raw.map(function (item) {
+              if (item === sourceEntry) {
+                var updated3 = Object.assign({}, item, { periodId: dropTarget.period, weekdayId: dropTarget.day, updatedAt: new Date().toISOString() });
+                if (updated3.scheduleType === "recurring") {
+                  delete updated3.scheduleType;
+                  delete updated3.recurringGroupId;
+                  delete updated3.recurringDays;
+                }
+                return updated3;
+              }
+              return item;
+            });
+          }
+          saveDatabase("Moving timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+          addActivity("Timetable entry moved", "Entry moved from " + ttDragData.period + " to " + dropTarget.period + ".");
+          showToast("Timetable entry moved successfully.", "success");
+          ttDragData = null;
+          renderPreview();
+        });
+      }
 
       function showModal(desc, singleLabel, callback) {
         ttModalDesc.textContent = desc;
@@ -11194,6 +11585,7 @@ ${allContent}
         addActivity("Timetable updated", "Timetable updated for " + className + ".");
         ttFormMessage.textContent = "Timetable saved successfully.";
         ttFormMessage.className = "form-message success";
+        showToast("Timetable saved successfully.", "success");
         renderPreview();
       }
 
@@ -11284,6 +11676,7 @@ ${allContent}
           addActivity("Timetable updated", "Timetable updated for " + className + ".");
           ttFormMessage.textContent = "Timetable saved successfully.";
           ttFormMessage.className = "form-message success";
+          showToast("Timetable saved successfully.", "success");
           renderPreview();
           return;
         }
