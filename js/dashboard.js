@@ -10573,16 +10573,12 @@ ${allContent}
       moduleSummary.innerHTML = '<article class="gs-form-section" style="overflow-x:hidden;">'
         + '<div class="gs-form-section__header">'
         + '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6D4AFF,#8B6FFF);color:#fff;font-size:1rem;">&#128197;</div>'
-        + '<div><p class="gs-form-section__title">Create Timetable</p><p class="gs-form-section__subtitle"><a href="#" style="color:#6D4AFF;text-decoration:none;" data-route="weekdays">Home</a> &rarr; <a href="#" style="color:#6D4AFF;text-decoration:none;" data-route="create-timetable">Timetable</a> &rarr; Create Timetable</p></div>'
+        + '<div><p class="gs-form-section__title">Create Timetable</p></div>'
         + '</div>'
         + '</article>'
 
-        + '<div style="display:flex;gap:16px;flex-wrap:wrap;">'
-
-        + '<div style="flex:1;min-width:0;min-width:300px;">'
-
         + '<article class="gs-form-section" style="margin-bottom:16px;">'
-        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Timetable Entry</p><p class="gs-form-section__subtitle">Configure the period, subject, teacher and room</p></div></div>'
+        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Timetable Entry</p></div></div>'
         + '<div class="gs-form-grid" style="grid-template-columns:1fr 1fr;">'
         + '<div class="gs-field"><label class="gs-field__label">Select Class*</label><select class="gs-field__input" id="ttFormClass"><option value="">Select Class</option>' + ttClassOptions.map(function (c) { return '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>'; }).join("") + '</select></div>'
         + '<div class="gs-field"><label class="gs-field__label">Select Period*</label><select class="gs-field__input" id="ttFormPeriod"><option value="">Select Period</option>' + ttPeriods.map(function (p) { return '<option value="' + escapeAttr(p.id) + '">' + escapeHtml(p.label || "-") + ' (' + escapeHtml(formatTimeLabel(p.startTime)) + ' - ' + escapeHtml(formatTimeLabel(p.endTime)) + ')</option>'; }).join("") + '</select></div>'
@@ -10596,23 +10592,23 @@ ${allContent}
         + '</div>'
 
         + '<div style="margin-top:14px;">'
-        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Schedule Type*</label>'
+        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Schedule Type</label>'
         + '<div style="display:flex;gap:12px;flex-wrap:wrap;">'
-        + '<div class="tt-sched-card tt-sched-card--active" data-sched="recurring" style="flex:1;min-width:180px;padding:14px 16px;border:2px solid #6D4AFF;border-radius:12px;background:#f8f7ff;cursor:pointer;transition:all 0.2s;">'
+        + '<div class="tt-sched-card tt-sched-card--active" data-sched="recurring" style="flex:1;min-width:180px;padding:14px 16px;border:2px solid #6D4AFF;border-radius:12px;background:#f8f7ff;cursor:pointer;">'
         + '<div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;color:#6D4AFF;">&#9200; Fixed / Repeat</div>'
-        + '<div style="font-size:0.78rem;color:#486581;">Use when the same period repeats on multiple days.</div>'
+        + '<div style="font-size:0.78rem;color:#486581;">Same period repeats on multiple days.</div>'
         + '</div>'
-        + '<div class="tt-sched-card" data-sched="custom" style="flex:1;min-width:180px;padding:14px 16px;border:2px solid #e6e8f0;border-radius:12px;background:#fff;cursor:pointer;transition:all 0.2s;">'
+        + '<div class="tt-sched-card" data-sched="custom" style="flex:1;min-width:180px;padding:14px 16px;border:2px solid #e6e8f0;border-radius:12px;background:#fff;cursor:pointer;">'
         + '<div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;color:#486581;">&#128197; Custom Weekly</div>'
-        + '<div style="font-size:0.78rem;color:#486581;">Use when different days have different subjects.</div>'
+        + '<div style="font-size:0.78rem;color:#486581;">Different days have different subjects.</div>'
         + '</div>'
         + '</div>'
         + '</div>'
 
         + '<div id="ttRepeatSection" style="margin-top:14px;">'
-        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Repeat On (Select days)</label>'
+        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Repeat On</label>'
         + '<div style="display:flex;flex-wrap:wrap;gap:6px;" id="ttDayCheckboxes">' + weekdaysCheckboxesMarkup + '</div>'
-        + '<div style="margin-top:8px;padding:8px 12px;background:#f0f7ff;border:1px solid #c5dff8;border-radius:8px;font-size:0.8rem;color:#1e6091;">&#8505; This period will be applied to all selected days.</div>'
+        + '<div style="margin-top:8px;padding:8px 12px;background:#f0f7ff;border:1px solid #c5dff8;border-radius:8px;font-size:0.8rem;color:#1e6091;">This period will be applied to all selected days.</div>'
         + '</div>'
 
         + '<div id="ttCustomSection" style="display:none;margin-top:14px;">'
@@ -10627,61 +10623,13 @@ ${allContent}
         + '<button class="gs-btn-primary" id="ttSaveBtn" type="button">Save Timetable</button>'
         + '</div>'
         + '<p class="form-message" id="ttFormMessage"></p>'
-        + '</div>'
         + '</article>'
 
         + '<article class="gs-form-section">'
-        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Weekly Timetable</p><p class="gs-form-section__subtitle">Preview of the current class schedule</p></div></div>'
+        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Weekly Timetable</p></div></div>'
         + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:500px;width:100%;border-collapse:collapse;" id="ttPreviewTable"><thead><tr><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Period / Time</th>' + weekdaysHeaderMarkup + '</tr></thead><tbody id="ttPreviewBody"></tbody></table></div>'
-        + '<p class="empty-state" id="ttPreviewEmpty" hidden>Select class to preview timetable.</p>'
+        + '<p class="empty-state" id="ttPreviewEmpty" hidden>Select class to view timetable.</p>'
         + '</article>'
-
-        + '</div>'
-
-        + '<div style="width:260px;flex-shrink:0;" class="tt-help-panel">'
-        + '<article class="gs-form-section" style="margin-bottom:12px;">'
-        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Schedule Types Help</p></div></div>'
-        + '<div style="padding:0 4px;">'
-        + '<div style="margin-bottom:12px;">'
-        + '<p style="font-weight:700;font-size:0.82rem;color:#6D4AFF;margin:0 0 4px;">Fixed / Repeat</p>'
-        + '<p style="font-size:0.78rem;color:#486581;margin:0 0 6px;">Use when the same period repeats on multiple days.</p>'
-        + '<div style="background:#f7f8fc;border-radius:8px;padding:8px 10px;font-size:0.76rem;">'
-        + '<div style="font-weight:600;margin-bottom:4px;">Example: Nazira</div>'
-        + '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
-        + ttWeekdays.map(function (w) { return '<span style="background:#e8f8f3;padding:2px 6px;border-radius:4px;color:#0F766E;">' + escapeHtml(w.shortLabel || w.name) + ' &#10003;</span>'; }).join("")
-        + '</div></div></div>'
-        + '<div>'
-        + '<p style="font-weight:700;font-size:0.82rem;color:#6D4AFF;margin:0 0 4px;">Custom Weekly</p>'
-        + '<p style="font-size:0.78rem;color:#486581;margin:0 0 6px;">Use when different days have different subjects.</p>'
-        + '<div style="background:#f7f8fc;border-radius:8px;padding:8px 10px;font-size:0.76rem;">'
-        + '<table style="width:100%;border-collapse:collapse;"><tr><td style="padding:2px 4px;font-weight:600;">Mon</td><td style="padding:2px 4px;">English</td></tr>'
-        + '<tr><td style="padding:2px 4px;font-weight:600;">Tue</td><td style="padding:2px 4px;">Maths</td></tr>'
-        + '<tr><td style="padding:2px 4px;font-weight:600;">Wed</td><td style="padding:2px 4px;">Science</td></tr>'
-        + '</table></div></div>'
-        + '</div></article>'
-
-        + '<article class="gs-form-section" style="margin-bottom:12px;">'
-        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Conflict Checking</p></div></div>'
-        + '<div style="padding:0 4px;font-size:0.78rem;">'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="color:#E5485B;font-weight:700;">&#9679;</span> <strong>Class conflict</strong> &mdash; same class, day, period</div>'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="color:#E5485B;font-weight:700;">&#9679;</span> <strong>Teacher conflict</strong> &mdash; same teacher, day, period</div>'
-        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span style="color:#E5485B;font-weight:700;">&#9679;</span> <strong>Room conflict</strong> &mdash; same room, day, period</div>'
-        + '<div style="padding:6px 8px;background:#fff0f2;border-radius:6px;color:#842029;font-size:0.76rem;">If any conflict is found, the system will show details and stop saving.</div>'
-        + '</div></article>'
-
-        + '<article class="gs-form-section">'
-        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Quick Guide</p></div></div>'
-        + '<div style="padding:0 4px;font-size:0.78rem;color:#486581;">'
-        + '<div style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">1</span> Select Class &amp; Period</div>'
-        + '<div style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">2</span> Choose Subject, Teacher &amp; Room</div>'
-        + '<div style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">3</span> Pick Schedule Type</div>'
-        + '<div style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">4</span> Select days or configure Custom Weekly</div>'
-        + '<div><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">5</span> Save &mdash; conflicts are checked automatically</div>'
-        + '</div></article>'
-
-        + '</div>'
-
-        + '</div>'
 
         + '<div id="ttRecurringModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">'
         + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
@@ -11125,6 +11073,8 @@ ${allContent}
         renderPreview();
       });
 
+      populateTeacherDropdown();
+      populateRoomDropdown();
       renderPreview();
       return;
     }
