@@ -1884,10 +1884,13 @@ body {
   border-radius: 16px;
   width: 90%;
   max-width: 400px;
+  max-height: 85vh;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   transform: scale(0.9);
   transition: transform 0.2s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .ss-modal-visible .ss-modal-box { transform: scale(1); }
 .ss-modal-header {
@@ -1912,6 +1915,9 @@ body {
 }
 .ss-modal-body {
   padding: 1.2rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 .ss-modal-body p { margin: 0 0 0.5rem; color: #334155; font-size: 0.9rem; }
 .ss-modal-warning {

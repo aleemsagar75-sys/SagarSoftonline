@@ -1750,10 +1750,12 @@ document.addEventListener("DOMContentLoaded", function () {
       + '<div class="ss-modal-footer">' + buttonsHTML + '</div>'
       + '</div>';
     document.body.appendChild(modal);
+    document.body.style.overflow = "hidden";
     requestAnimationFrame(function() { modal.classList.add("ss-modal-visible"); });
     return new Promise(function (resolve) {
       function close(result) {
         modal.classList.remove("ss-modal-visible");
+        document.body.style.overflow = "";
         setTimeout(function() { modal.remove(); }, 200);
         resolve(result);
       }
@@ -10700,6 +10702,7 @@ ${allContent}
         row.classList.remove("tt-reorder-over", "tt-reorder-over-bottom");
         var targetId = row.dataset.periodId;
         if (periodDragData.id === targetId) return;
+        var previousOrder = (settings.timetablePeriods || []).map(function (p) { return { id: p.id, order: p.order }; });
         var periods = settings.timetablePeriods || [];
         var dragIdx = periods.findIndex(function (p) { return p.id === periodDragData.id; });
         var dropIdx = periods.findIndex(function (p) { return p.id === targetId; });
@@ -10713,9 +10716,22 @@ ${allContent}
         periods.splice(newIdx, 0, dragItem);
         settings.timetablePeriods = periods;
         normalizePeriodOrders();
-        saveDatabase("Reordering time periods...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-        showToast("Time periods reordered.", "success");
         renderRows();
+        var savedOk = saveDatabase("Reordering time periods...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        Promise.resolve(savedOk).then(function (ok) {
+          if (ok === false) {
+            for (var ri = 0; ri < previousOrder.length; ri++) {
+              var prev = previousOrder[ri];
+              var pIdx = (settings.timetablePeriods || []).findIndex(function (p) { return p.id === prev.id; });
+              if (pIdx >= 0) settings.timetablePeriods[pIdx].order = prev.order;
+            }
+            normalizePeriodOrders();
+            renderRows();
+            showToast("Unable to save the new period order. Your previous order has been restored.", "error");
+          } else {
+            showToast("Time periods reordered.", "success");
+          }
+        });
         periodDragData = null;
       });
       tableBody.addEventListener("dragend", function () {
@@ -10874,9 +10890,9 @@ ${allContent}
         }).length;
         if (usageCount > 0) {
           showSSModal({
-            title: "Time Period In Use",
+            title: "Time Period Is In Use",
             tone: "warning",
-            html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">This period is used in <strong>' + usageCount + '</strong> timetable entry' + (usageCount > 1 ? 's' : '') + '.</p><p style="font-size:0.88rem;color:#102A43;margin:0 0 8px;">What would you like to do?</p>',
+            html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">"<strong>' + escapeHtml(period.label || "-") + '</strong>" is currently used in <strong>' + usageCount + '</strong> timetable entry' + (usageCount > 1 ? 's' : '') + '.</p><p style="font-size:0.88rem;color:#102A43;margin:0 0 8px;">What would you like to do?</p>',
             buttons: [
               { id: "cancel", label: "Cancel", tone: "cancel" },
               { id: "deactivate", label: "Deactivate Period", tone: "primary" },
@@ -10889,22 +10905,62 @@ ${allContent}
                 settings.timetablePeriods[idx].active = false;
                 saveDatabase("Deactivating time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
                 addActivity("Time period deactivated", period.label + " deactivated (used in timetable).");
-                setPeriodMessage("Time period deactivated successfully.", "success");
+                setPeriodMessage("Time period deactivated.", "success");
                 showToast("Time period deactivated.", "success");
                 renderRows();
               }
             } else if (choice === "delete-and-remove") {
-              settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; });
-              settings.timetableEntries = (settings.timetableEntries || []).filter(function (item) { return item.periodId !== periodId; });
-              trackDeletion(periodId);
-              saveDatabase("Deleting time period and entries...", [
-                { table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" },
-                { table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }
-              ]);
-              addActivity("Time period deleted with entries", period.label + " and " + usageCount + " entry/entries removed.");
-              setPeriodMessage("Time period and related entries deleted.", "success");
-              showToast("Time period and " + usageCount + " entry/entries deleted.", "success");
-              renderRows();
+              var affectedEntries = getRawTimetableEntries().filter(function (item) { return item.periodId === periodId; });
+              var entryCount = affectedEntries.length;
+              var recurringCount = affectedEntries.filter(function (item) { return item.scheduleType === "recurring"; }).length;
+              var detailParts = [];
+              if (entryCount > 0) detailParts.push(entryCount + " timetable entry" + (entryCount > 1 ? "s" : ""));
+              if (recurringCount > 0) detailParts.push(recurringCount + " recurring group" + (recurringCount > 1 ? "s" : ""));
+              var detailText = detailParts.length > 0 ? detailParts.join(" and ") : entryCount + " entry" + (entryCount > 1 ? "s" : "");
+              showSSModal({
+                title: "Delete Period & Timetable Entries?",
+                tone: "danger",
+                html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 10px;">This action will permanently delete:</p>'
+                  + '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin:0 0 10px;">'
+                  + '<p style="font-size:0.88rem;color:#102A43;margin:0 0 4px;"><strong>Period:</strong> ' + escapeHtml(period.label || "-") + '</p>'
+                  + '<p style="font-size:0.88rem;color:#102A43;margin:0;"><strong>Timetable entries:</strong> ' + entryCount + (recurringCount > 0 ? ' (including ' + recurringCount + ' recurring)' : '') + '</p>'
+                  + '</div>'
+                  + '<p style="font-size:0.85rem;color:#B91C1C;margin:0;font-weight:600;">This action cannot be undone.</p>',
+                buttons: [
+                  { id: "cancel2", label: "Cancel", tone: "cancel" },
+                  { id: "confirm-delete-all", label: "Delete Everything", tone: "danger" }
+                ]
+              }).then(function (choice2) {
+                if (choice2 === "confirm-delete-all") {
+                  var rawEntries = getRawTimetableEntries();
+                  var remainingEntries = [];
+                  for (var ri = 0; ri < rawEntries.length; ri++) {
+                    var rawEntry = rawEntries[ri];
+                    if (rawEntry.periodId === periodId) {
+                      if (rawEntry.scheduleType === "recurring" && Array.isArray(rawEntry.recurringDays)) {
+                        var remainingDays = rawEntry.recurringDays.filter(function (d) { return d !== rawEntry.weekdayId; });
+                        if (remainingDays.length > 0 && rawEntry.recurringDays.length > 1) {
+                          remainingEntries.push(Object.assign({}, rawEntry, { recurringDays: remainingDays }));
+                        }
+                      }
+                      continue;
+                    }
+                    remainingEntries.push(rawEntry);
+                  }
+                  settings.timetableEntries = remainingEntries;
+                  settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; });
+                  trackDeletion(periodId);
+                  normalizePeriodOrders();
+                  saveDatabase("Deleting time period and entries...", [
+                    { table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" },
+                    { table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }
+                  ]);
+                  addActivity("Time period deleted with entries", period.label + " and " + entryCount + " entry/entries removed.");
+                  setPeriodMessage("Time period and related entries deleted.", "success");
+                  showToast("Time period and " + entryCount + " entry/entries deleted.", "success");
+                  renderRows();
+                }
+              });
             }
           });
           return;
@@ -10912,20 +10968,21 @@ ${allContent}
         showSSModal({
           title: "Delete Time Period?",
           tone: "danger",
-          message: "Are you sure you want to delete \"" + (period.label || "-") + "\"?",
-          warning: "This action cannot be undone.",
+          html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">Are you sure you want to permanently delete <strong>"' + escapeHtml(period.label || "-") + '"</strong>?</p>'
+            + '<p style="font-size:0.85rem;color:#64748b;margin:0;">This time period is not currently used in any timetable entry.</p>',
           buttons: [
             { id: "cancel", label: "Cancel", tone: "cancel" },
-            { id: "confirm", label: "Delete", tone: "danger" }
+            { id: "confirm", label: "Delete Permanently", tone: "danger" }
           ]
         }).then(function (choice) {
           if (choice === "confirm") {
             settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; });
             trackDeletion(periodId);
+            normalizePeriodOrders();
             saveDatabase("Deleting time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
             addActivity("Time period deleted", period.label + " deleted from timetable periods.");
-            setPeriodMessage("Time period deleted successfully.", "success");
-            showToast("Time period deleted successfully.", "success");
+            setPeriodMessage("Time period deleted.", "success");
+            showToast("Time period deleted.", "success");
             renderRows();
           }
         });
