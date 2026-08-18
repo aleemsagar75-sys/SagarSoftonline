@@ -1331,8 +1331,24 @@
       });
     };
     if ('serviceWorker' in navigator) {
+      var _swReg = null;
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js');
+        navigator.serviceWorker.register('./sw.js?v=v108').then(function (reg) {
+          _swReg = reg;
+          if (reg.installing) {
+            reg.installing.addEventListener('statechange', function (sw) {
+              if (sw.target.state === 'installed' && navigator.serviceWorker.controller) {
+                sw.target.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        });
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (sessionStorage.getItem('sw-reloaded') !== 'v108') {
+          sessionStorage.setItem('sw-reloaded', 'v108');
+          window.location.reload();
+        }
       });
     }
 

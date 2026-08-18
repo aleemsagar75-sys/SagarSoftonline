@@ -19,6 +19,12 @@ const PRECACHE_URLS = [
   "./manifest.json"
 ];
 
+self.addEventListener("message", function (event) {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches.open(CACHE).then(function (cache) {
@@ -60,7 +66,7 @@ self.addEventListener("fetch", function (event) {
 
   if (url.pathname.indexOf(".html") >= 0 || url.pathname === "/" || url.pathname === "") {
     event.respondWith(
-      fetch(event.request).then(function (response) {
+      fetch(event.request, { cache: "no-store" }).then(function (response) {
         if (response && response.status === 200) {
           var clone = response.clone();
           caches.open(CACHE).then(function (cache) { cache.put(event.request, clone); });
