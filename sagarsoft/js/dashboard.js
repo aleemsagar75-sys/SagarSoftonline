@@ -10551,522 +10551,581 @@ ${allContent}
     }
 
     if (route === "create-timetable") {
-      const classOptionsMarkup = classOptions.map(function (className) {
-        return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
-      }).join("");
-      const weekdays = getTimetableWeekdays();
-      const weekdayCheckboxesMarkup = weekdays.map(function (weekday, idx) {
-        return `<label style="display:inline-flex;align-items:center;gap:4px;margin:2px 8px 2px 0;font-size:0.85rem;cursor:pointer;"><input type="checkbox" class="tt-recurring-day-cb" value="${weekday.id}" ${idx < weekdays.length ? "checked" : ""}> ${escapeHtml(weekday.shortLabel || weekday.name)}</label>`;
-      }).join("");
-      let pendingRecurringSaves = [];
-      let pendingRecurringMode = "";
+      var ttClassOptions = classOptions;
+      var ttWeekdays = getTimetableWeekdays();
+      var ttPeriods = getTimetablePeriods();
+      var ttSubjects = [];
+      var ttTeachers = getEmployees().filter(function (e) { return String(e.status || "").toLowerCase() === "active"; });
+      var ttRooms = getClassRooms();
+      var ttSelectedClass = "";
+      var ttSelectedPeriod = "";
+      var ttScheduleType = "recurring";
+      var ttSelectedDays = ttWeekdays.map(function (d) { return d.id; });
 
-      moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong class="module-center-title">Create Timetable</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-            <div style="flex:1 1 180px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Select Class*</label><select id="timetableClassSelect" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
-          </div>
-          <div style="background:#f7f8fc;border:1px solid #e6e8f0;border-radius:12px;padding:12px 16px;margin:10px 0;">
-            <label style="display:block;font-size:0.82rem;font-weight:700;margin-bottom:6px;">Schedule Type*</label>
-            <div style="display:flex;flex-wrap:wrap;gap:16px;margin-bottom:0;">
-              <label style="display:inline-flex;align-items:center;gap:5px;font-size:0.85rem;cursor:pointer;"><input type="radio" name="ttScheduleType" value="custom" checked> Custom Weekly</label>
-              <label style="display:inline-flex;align-items:center;gap:5px;font-size:0.85rem;cursor:pointer;"><input type="radio" name="ttScheduleType" value="recurring"> Fixed / Repeat</label>
-            </div>
-            <div id="ttRecurringDaysRow" style="display:none;margin-top:8px;">
-              <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Repeat On*</label>
-              <div style="display:flex;flex-wrap:wrap;gap:4px;">${weekdayCheckboxesMarkup}</div>
-            </div>
-          </div>
-          <div id="ttDaySelectRow" style="margin:10px 0;">
-            <label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Select Weekday*</label>
-            <select id="timetableWeekdaySelect" style="width:100%;max-width:320px;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="">Select Weekday</option></select>
-          </div>
-          <div id="ttConflictBanner" style="display:none;background:#fff0f2;border:1px solid #f5c6cb;border-radius:8px;padding:10px 14px;margin:10px 0;font-size:0.84rem;color:#842029;"></div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:500px;width:100%;"><thead><tr><th>Period</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Class Room</th></tr></thead><tbody id="createTimetableTableBody"></tbody></table></div>
-          <div class="form-actions"><button class="primary-button" id="saveTimetableBtn" type="button">Save Timetable</button></div>
-          <p class="form-message" id="createTimetableMessage"></p>
-        </article>
-        <div id="ttRecurringModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;display:none;align-items:center;justify-content:center;">
-          <div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
-            <p style="font-weight:700;font-size:1rem;margin:0 0 10px;">Recurring Entry Detected</p>
-            <p id="ttRecurringModalDesc" style="font-size:0.85rem;color:#486581;margin:0 0 14px;"></p>
-            <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">
-              <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttRecurringChoice" value="single" checked> <span id="ttRecurringSingleLabel">Update this day only</span></label>
-              <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttRecurringChoice" value="all"> Update entire recurring schedule</label>
-            </div>
-            <div style="display:flex;gap:8px;justify-content:flex-end;">
-              <button class="primary-button" id="ttRecurringModalConfirm" type="button" style="padding:8px 20px;">Confirm</button>
-              <button id="ttRecurringModalCancel" type="button" style="padding:8px 16px;border:1px solid #dde4ea;border-radius:8px;background:#fff;cursor:pointer;font-size:0.85rem;">Cancel</button>
-            </div>
-          </div>
-        </div>
-      `;
+      var weekdaysCheckboxesMarkup = ttWeekdays.map(function (w) {
+        return '<label class="tt-day-cb-label" data-day-id="' + w.id + '"><input type="checkbox" class="tt-day-cb" value="' + w.id + '" checked> ' + escapeHtml(w.shortLabel || w.name) + '</label>';
+      }).join("");
+
+      var weekdaysHeaderMarkup = ttWeekdays.map(function (w) {
+        return '<th style="padding:8px 6px;font-size:0.78rem;text-align:center;white-space:nowrap;">' + escapeHtml(w.shortLabel || w.name) + '</th>';
+      }).join("");
+
+      moduleSummary.innerHTML = '<article class="gs-form-section" style="overflow-x:hidden;">'
+        + '<div class="gs-form-section__header">'
+        + '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6D4AFF,#8B6FFF);color:#fff;font-size:1rem;">&#128197;</div>'
+        + '<div><p class="gs-form-section__title">Create Timetable</p><p class="gs-form-section__subtitle"><a href="#" style="color:#6D4AFF;text-decoration:none;" data-route="weekdays">Home</a> &rarr; <a href="#" style="color:#6D4AFF;text-decoration:none;" data-route="create-timetable">Timetable</a> &rarr; Create Timetable</p></div>'
+        + '</div>'
+        + '</article>'
+
+        + '<div style="display:flex;gap:16px;flex-wrap:wrap;">'
+
+        + '<div style="flex:1;min-width:0;min-width:300px;">'
+
+        + '<article class="gs-form-section" style="margin-bottom:16px;">'
+        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Timetable Entry</p><p class="gs-form-section__subtitle">Configure the period, subject, teacher and room</p></div></div>'
+        + '<div class="gs-form-grid" style="grid-template-columns:1fr 1fr;">'
+        + '<div class="gs-field"><label class="gs-field__label">Select Class*</label><select class="gs-field__input" id="ttFormClass"><option value="">Select Class</option>' + ttClassOptions.map(function (c) { return '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>'; }).join("") + '</select></div>'
+        + '<div class="gs-field"><label class="gs-field__label">Select Period*</label><select class="gs-field__input" id="ttFormPeriod"><option value="">Select Period</option>' + ttPeriods.map(function (p) { return '<option value="' + escapeAttr(p.id) + '">' + escapeHtml(p.label || "-") + ' (' + escapeHtml(formatTimeLabel(p.startTime)) + ' - ' + escapeHtml(formatTimeLabel(p.endTime)) + ')</option>'; }).join("") + '</select></div>'
+        + '</div>'
+
+        + '<div id="ttEntryFieldsRow" style="display:none;">'
+        + '<div class="gs-form-grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:8px;">'
+        + '<div class="gs-field"><label class="gs-field__label">Select Subject*</label><select class="gs-field__input" id="ttFormSubject"><option value="">Select Subject</option></select></div>'
+        + '<div class="gs-field"><label class="gs-field__label">Select Teacher*</label><select class="gs-field__input" id="ttFormTeacher"><option value="">Select Teacher</option></select></div>'
+        + '<div class="gs-field"><label class="gs-field__label">Select Room*</label><select class="gs-field__input" id="ttFormRoom"><option value="">Select Room</option></select></div>'
+        + '</div>'
+
+        + '<div style="margin-top:14px;">'
+        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Schedule Type*</label>'
+        + '<div style="display:flex;gap:12px;flex-wrap:wrap;">'
+        + '<div class="tt-sched-card tt-sched-card--active" data-sched="recurring" style="flex:1;min-width:180px;padding:14px 16px;border:2px solid #6D4AFF;border-radius:12px;background:#f8f7ff;cursor:pointer;transition:all 0.2s;">'
+        + '<div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;color:#6D4AFF;">&#9200; Fixed / Repeat</div>'
+        + '<div style="font-size:0.78rem;color:#486581;">Use when the same period repeats on multiple days.</div>'
+        + '</div>'
+        + '<div class="tt-sched-card" data-sched="custom" style="flex:1;min-width:180px;padding:14px 16px;border:2px solid #e6e8f0;border-radius:12px;background:#fff;cursor:pointer;transition:all 0.2s;">'
+        + '<div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;color:#486581;">&#128197; Custom Weekly</div>'
+        + '<div style="font-size:0.78rem;color:#486581;">Use when different days have different subjects.</div>'
+        + '</div>'
+        + '</div>'
+        + '</div>'
+
+        + '<div id="ttRepeatSection" style="margin-top:14px;">'
+        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Repeat On (Select days)</label>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:6px;" id="ttDayCheckboxes">' + weekdaysCheckboxesMarkup + '</div>'
+        + '<div style="margin-top:8px;padding:8px 12px;background:#f0f7ff;border:1px solid #c5dff8;border-radius:8px;font-size:0.8rem;color:#1e6091;">&#8505; This period will be applied to all selected days.</div>'
+        + '</div>'
+
+        + '<div id="ttCustomSection" style="display:none;margin-top:14px;">'
+        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Weekly Configuration</label>'
+        + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:480px;width:100%;border-collapse:collapse;"><thead><tr><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Day</th><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Subject</th><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Teacher</th><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Room</th></tr></thead><tbody id="ttCustomBody"></tbody></table></div>'
+        + '</div>'
+
+        + '<div id="ttConflictBanner" style="display:none;margin-top:12px;background:#fff0f2;border:1px solid #f5c6cb;border-radius:8px;padding:10px 14px;font-size:0.84rem;color:#842029;"></div>'
+
+        + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid #e6e8f0;">'
+        + '<button class="gs-btn-outline" id="ttCancelBtn" type="button">Cancel</button>'
+        + '<button class="gs-btn-primary" id="ttSaveBtn" type="button">Save Timetable</button>'
+        + '</div>'
+        + '<p class="form-message" id="ttFormMessage"></p>'
+        + '</div>'
+        + '</article>'
+
+        + '<article class="gs-form-section">'
+        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Weekly Timetable</p><p class="gs-form-section__subtitle">Preview of the current class schedule</p></div></div>'
+        + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:500px;width:100%;border-collapse:collapse;" id="ttPreviewTable"><thead><tr><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Period / Time</th>' + weekdaysHeaderMarkup + '</tr></thead><tbody id="ttPreviewBody"></tbody></table></div>'
+        + '<p class="empty-state" id="ttPreviewEmpty" hidden>Select class to preview timetable.</p>'
+        + '</article>'
+
+        + '</div>'
+
+        + '<div style="width:260px;flex-shrink:0;" class="tt-help-panel">'
+        + '<article class="gs-form-section" style="margin-bottom:12px;">'
+        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Schedule Types Help</p></div></div>'
+        + '<div style="padding:0 4px;">'
+        + '<div style="margin-bottom:12px;">'
+        + '<p style="font-weight:700;font-size:0.82rem;color:#6D4AFF;margin:0 0 4px;">Fixed / Repeat</p>'
+        + '<p style="font-size:0.78rem;color:#486581;margin:0 0 6px;">Use when the same period repeats on multiple days.</p>'
+        + '<div style="background:#f7f8fc;border-radius:8px;padding:8px 10px;font-size:0.76rem;">'
+        + '<div style="font-weight:600;margin-bottom:4px;">Example: Nazira</div>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:4px;">'
+        + ttWeekdays.map(function (w) { return '<span style="background:#e8f8f3;padding:2px 6px;border-radius:4px;color:#0F766E;">' + escapeHtml(w.shortLabel || w.name) + ' &#10003;</span>'; }).join("")
+        + '</div></div></div>'
+        + '<div>'
+        + '<p style="font-weight:700;font-size:0.82rem;color:#6D4AFF;margin:0 0 4px;">Custom Weekly</p>'
+        + '<p style="font-size:0.78rem;color:#486581;margin:0 0 6px;">Use when different days have different subjects.</p>'
+        + '<div style="background:#f7f8fc;border-radius:8px;padding:8px 10px;font-size:0.76rem;">'
+        + '<table style="width:100%;border-collapse:collapse;"><tr><td style="padding:2px 4px;font-weight:600;">Mon</td><td style="padding:2px 4px;">English</td></tr>'
+        + '<tr><td style="padding:2px 4px;font-weight:600;">Tue</td><td style="padding:2px 4px;">Maths</td></tr>'
+        + '<tr><td style="padding:2px 4px;font-weight:600;">Wed</td><td style="padding:2px 4px;">Science</td></tr>'
+        + '</table></div></div>'
+        + '</div></article>'
+
+        + '<article class="gs-form-section" style="margin-bottom:12px;">'
+        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Conflict Checking</p></div></div>'
+        + '<div style="padding:0 4px;font-size:0.78rem;">'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="color:#E5485B;font-weight:700;">&#9679;</span> <strong>Class conflict</strong> &mdash; same class, day, period</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;"><span style="color:#E5485B;font-weight:700;">&#9679;</span> <strong>Teacher conflict</strong> &mdash; same teacher, day, period</div>'
+        + '<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><span style="color:#E5485B;font-weight:700;">&#9679;</span> <strong>Room conflict</strong> &mdash; same room, day, period</div>'
+        + '<div style="padding:6px 8px;background:#fff0f2;border-radius:6px;color:#842029;font-size:0.76rem;">If any conflict is found, the system will show details and stop saving.</div>'
+        + '</div></article>'
+
+        + '<article class="gs-form-section">'
+        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Quick Guide</p></div></div>'
+        + '<div style="padding:0 4px;font-size:0.78rem;color:#486581;">'
+        + '<div style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">1</span> Select Class &amp; Period</div>'
+        + '<div style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">2</span> Choose Subject, Teacher &amp; Room</div>'
+        + '<div style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">3</span> Pick Schedule Type</div>'
+        + '<div style="margin-bottom:6px;"><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">4</span> Select days or configure Custom Weekly</div>'
+        + '<div><span style="display:inline-block;width:18px;height:18px;background:#6D4AFF;color:#fff;border-radius:50%;text-align:center;line-height:18px;font-size:0.7rem;font-weight:700;margin-right:4px;">5</span> Save &mdash; conflicts are checked automatically</div>'
+        + '</div></article>'
+
+        + '</div>'
+
+        + '</div>'
+
+        + '<div id="ttRecurringModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">'
+        + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
+        + '<p style="font-weight:700;font-size:1rem;margin:0 0 10px;">Recurring Entry Detected</p>'
+        + '<p id="ttModalDesc" style="font-size:0.85rem;color:#486581;margin:0 0 14px;"></p>'
+        + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">'
+        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttModalChoice" value="single" checked> <span id="ttModalSingleLabel">Update this day only</span></label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttModalChoice" value="all"> Update entire recurring schedule</label>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+        + '<button class="gs-btn-primary" id="ttModalConfirm" type="button" style="padding:8px 20px;">Confirm</button>'
+        + '<button id="ttModalCancel" type="button" style="padding:8px 16px;border:1px solid #dde4ea;border-radius:8px;background:#fff;cursor:pointer;font-size:0.85rem;">Cancel</button>'
+        + '</div></div></div>';
+
       moduleGuide.innerHTML = "";
 
-      const classSelect = document.getElementById("timetableClassSelect");
-      const weekdaySelect = document.getElementById("timetableWeekdaySelect");
-      const tableBody = document.getElementById("createTimetableTableBody");
-      const message = document.getElementById("createTimetableMessage");
-      const recurringDaysRow = document.getElementById("ttRecurringDaysRow");
-      const daySelectRow = document.getElementById("ttDaySelectRow");
-      const conflictBanner = document.getElementById("ttConflictBanner");
-      const recurringModal = document.getElementById("ttRecurringModal");
-      const recurringModalDesc = document.getElementById("ttRecurringModalDesc");
-      const recurringModalConfirm = document.getElementById("ttRecurringModalConfirm");
-      const recurringModalCancel = document.getElementById("ttRecurringModalCancel");
-      const recurringSingleLabel = document.getElementById("ttRecurringSingleLabel");
+      var ttFormClass = document.getElementById("ttFormClass");
+      var ttFormPeriod = document.getElementById("ttFormPeriod");
+      var ttFormSubject = document.getElementById("ttFormSubject");
+      var ttFormTeacher = document.getElementById("ttFormTeacher");
+      var ttFormRoom = document.getElementById("ttFormRoom");
+      var ttEntryFieldsRow = document.getElementById("ttEntryFieldsRow");
+      var ttRepeatSection = document.getElementById("ttRepeatSection");
+      var ttCustomSection = document.getElementById("ttCustomSection");
+      var ttCustomBody = document.getElementById("ttCustomBody");
+      var ttConflictBanner = document.getElementById("ttConflictBanner");
+      var ttFormMessage = document.getElementById("ttFormMessage");
+      var ttPreviewBody = document.getElementById("ttPreviewBody");
+      var ttPreviewEmpty = document.getElementById("ttPreviewEmpty");
+      var ttModal = document.getElementById("ttRecurringModal");
+      var ttModalDesc = document.getElementById("ttModalDesc");
+      var ttModalConfirm = document.getElementById("ttModalConfirm");
+      var ttModalCancel = document.getElementById("ttModalCancel");
+      var ttModalSingleLabel = document.getElementById("ttModalSingleLabel");
 
-      function getScheduleType() {
-        var checked = document.querySelector('input[name="ttScheduleType"]:checked');
-        return checked ? checked.value : "custom";
-      }
-
-      function getSelectedRecurringDays() {
-        var cbs = document.querySelectorAll(".tt-recurring-day-cb:checked");
-        var days = [];
-        cbs.forEach(function (cb) { days.push(cb.value); });
-        return days;
-      }
-
-      function populateWeekdayDropdown() {
-        var currentVal = weekdaySelect.value;
-        var wdays = getTimetableWeekdays();
-        weekdaySelect.innerHTML = '<option value="">Select Weekday</option>' + wdays.map(function (w) {
-          return '<option value="' + w.id + '">' + escapeHtml(w.name) + '</option>';
+      function populateSubjectDropdown() {
+        if (!ttSelectedClass) { ttFormSubject.innerHTML = '<option value="">Select Subject</option>'; return; }
+        var subjects = getClassSubjects(ttSelectedClass);
+        ttFormSubject.innerHTML = '<option value="">Select Subject</option>' + subjects.map(function (s) {
+          return '<option value="' + escapeAttr(s.name) + '">' + escapeHtml(s.name) + '</option>';
         }).join("");
-        if (currentVal) weekdaySelect.value = currentVal;
       }
 
-      document.querySelectorAll('input[name="ttScheduleType"]').forEach(function (radio) {
-        radio.addEventListener("change", function () {
-          var isRecurring = getScheduleType() === "recurring";
-          recurringDaysRow.style.display = isRecurring ? "block" : "none";
-          daySelectRow.style.display = isRecurring ? "none" : "block";
-          if (isRecurring) {
-            weekdaySelect.value = "";
-          } else {
-            populateWeekdayDropdown();
-          }
-          renderRows();
-        });
-      });
+      function populateTeacherDropdown() {
+        ttFormTeacher.innerHTML = '<option value="">Select Teacher</option>' + ttTeachers.map(function (t) {
+          return '<option value="' + escapeAttr(t.id) + '">' + escapeHtml(t.name || "-") + ' (' + escapeHtml(t.role || "Teacher") + ')</option>';
+        }).join("");
+      }
 
-      function renderRows() {
-        var selectedClass = classSelect.value;
-        var scheduleType = getScheduleType();
-        var selectedDay = scheduleType === "custom" ? weekdaySelect.value : "";
-        if (!selectedClass) {
-          tableBody.innerHTML = "";
-          return;
-        }
-        if (scheduleType === "custom" && !selectedDay) {
-          tableBody.innerHTML = "";
-          return;
-        }
-        var subjects = getClassSubjects(selectedClass);
-        var teachers = getEmployees().filter(function (employee) {
-          return String(employee.status || "").toLowerCase() === "active";
+      function populateRoomDropdown() {
+        ttFormRoom.innerHTML = '<option value="">Select Room</option>' + ttRooms.map(function (r) {
+          return '<option value="' + escapeAttr(r.id) + '">' + escapeHtml(r.name || "-") + '</option>';
+        }).join("");
+      }
+
+      function setScheduleType(type) {
+        ttScheduleType = type;
+        document.querySelectorAll(".tt-sched-card").forEach(function (card) {
+          var isActive = card.getAttribute("data-sched") === type;
+          card.classList.toggle("tt-sched-card--active", isActive);
+          card.style.borderColor = isActive ? "#6D4AFF" : "#e6e8f0";
+          card.style.background = isActive ? "#f8f7ff" : "#fff";
+          card.querySelector("div:first-child").style.color = isActive ? "#6D4AFF" : "#486581";
         });
-        var rooms = getClassRooms();
-        var allEntries = getTimetableEntries();
-        var displayDay = scheduleType === "custom" ? selectedDay : (getTimetableWeekdays()[0] || {}).id;
-        var entries = allEntries.filter(function (item) {
-          return item.className === selectedClass && item.weekdayId === displayDay;
-        });
-        tableBody.innerHTML = getTimetablePeriods().map(function (period) {
-          var existing = entries.find(function (entry) { return entry.periodId === period.id; }) || null;
-          var isRecurringEntry = existing && existing.scheduleType === "recurring";
-          var subjectOptions = subjects.map(function (subject) {
-            return '<option value="' + escapeAttr(subject.name) + '"' + (existing && existing.subjectName === subject.name ? ' selected' : '') + '>' + escapeHtml(subject.name) + '</option>';
-          }).join("");
-          var teacherOptions = teachers.map(function (teacher) {
-            return '<option value="' + teacher.id + '"' + (existing && existing.teacherId === teacher.id ? ' selected' : '') + '>' + escapeHtml(teacher.name || '-') + ' (' + escapeHtml(teacher.role || 'Teacher') + ')</option>';
-          }).join("");
-          var roomOptions = rooms.map(function (room) {
-            return '<option value="' + room.id + '"' + (existing && existing.roomId === room.id ? ' selected' : '') + '>' + escapeHtml(room.name || '-') + '</option>';
-          }).join("");
-          var recurringBadge = isRecurringEntry ? ' <span style="display:inline-block;font-size:0.65rem;background:#f0ebff;color:#5435d6;padding:1px 6px;border-radius:6px;font-weight:600;vertical-align:middle;">RECURRING</span>' : "";
-          return '<tr' + (isRecurringEntry ? ' data-recurring="true"' : '') + '>'
-            + '<td>' + escapeHtml(period.label || '-') + recurringBadge + '</td>'
-            + '<td>' + escapeHtml(formatTimeLabel(period.startTime)) + ' - ' + escapeHtml(formatTimeLabel(period.endTime)) + '</td>'
-            + '<td><select class="table-inline-input" data-timetable-subject data-period-id="' + period.id + '"><option value="">Select Subject</option>' + subjectOptions + '</select></td>'
-            + '<td><select class="table-inline-input" data-timetable-teacher data-period-id="' + period.id + '"><option value="">Select Teacher</option>' + teacherOptions + '</select></td>'
-            + '<td><select class="table-inline-input" data-timetable-room data-period-id="' + period.id + '"><option value="">Select Room</option>' + roomOptions + '</select></td>'
+        ttRepeatSection.style.display = type === "recurring" ? "block" : "none";
+        ttCustomSection.style.display = type === "custom" ? "block" : "none";
+        if (type === "custom") { renderCustomTable(); }
+        ttConflictBanner.style.display = "none";
+      }
+
+      function getSelectedDays() {
+        if (ttScheduleType === "recurring") {
+          var cbs = document.querySelectorAll(".tt-day-cb:checked");
+          var days = [];
+          cbs.forEach(function (cb) { days.push(cb.value); });
+          return days;
+        }
+        return ttWeekdays.map(function (d) { return d.id; });
+      }
+
+      function renderCustomTable() {
+        if (!ttSelectedClass || !ttSelectedPeriod) { ttCustomBody.innerHTML = '<tr><td colspan="4" style="padding:12px;text-align:center;color:#829AB1;font-size:0.84rem;">Select class and period first.</td></tr>'; return; }
+        var subjects = getClassSubjects(ttSelectedClass);
+        var existingEntries = getTimetableEntries().filter(function (item) { return item.className === ttSelectedClass && item.periodId === ttSelectedPeriod; });
+        ttCustomBody.innerHTML = ttWeekdays.map(function (day) {
+          var existing = existingEntries.find(function (e) { return e.weekdayId === day.id; }) || null;
+          var subOpts = subjects.map(function (s) { return '<option value="' + escapeAttr(s.name) + '"' + (existing && existing.subjectName === s.name ? " selected" : "") + '>' + escapeHtml(s.name) + '</option>'; }).join("");
+          var tchOpts = ttTeachers.map(function (t) { return '<option value="' + escapeAttr(t.id) + '"' + (existing && existing.teacherId === t.id ? " selected" : "") + '>' + escapeHtml(t.name || "-") + '</option>'; }).join("");
+          var rmOpts = ttRooms.map(function (r) { return '<option value="' + escapeAttr(r.id) + '"' + (existing && existing.roomId === r.id ? " selected" : "") + '>' + escapeHtml(r.name || "-") + '</option>'; }).join("");
+          return '<tr style="border-bottom:1px solid #f0f2f5;">'
+            + '<td style="padding:8px 6px;font-weight:600;font-size:0.82rem;white-space:nowrap;">' + escapeHtml(day.shortLabel || day.name) + '</td>'
+            + '<td style="padding:8px 4px;"><select class="table-inline-input tt-custom-subject" data-day="' + day.id + '" style="width:100%;"><option value="">Select Subject</option>' + subOpts + '</select></td>'
+            + '<td style="padding:8px 4px;"><select class="table-inline-input tt-custom-teacher" data-day="' + day.id + '" style="width:100%;"><option value="">Select Teacher</option>' + tchOpts + '</select></td>'
+            + '<td style="padding:8px 4px;"><select class="table-inline-input tt-custom-room" data-day="' + day.id + '" style="width:100%;"><option value="">Select Room</option>' + rmOpts + '</select></td>'
             + '</tr>';
         }).join("");
-        conflictBanner.style.display = "none";
       }
 
-      [classSelect, weekdaySelect].forEach(function (input) {
-        input.addEventListener("change", renderRows);
+      function renderPreview() {
+        if (!ttSelectedClass) { ttPreviewBody.innerHTML = ""; ttPreviewEmpty.hidden = false; return; }
+        var entries = getTimetableEntries().filter(function (item) { return item.className === ttSelectedClass; });
+        var entryMap = new Map(entries.map(function (e) { return [e.periodId + "-" + e.weekdayId, e]; }));
+        ttPreviewBody.innerHTML = ttPeriods.map(function (period) {
+          var cells = ttWeekdays.map(function (day) {
+            var entry = entryMap.get(period.id + "-" + day.id);
+            if (!entry) return '<td style="padding:8px 6px;text-align:center;color:#cbd5e1;font-size:0.8rem;">-</td>';
+            return '<td style="padding:8px 6px;text-align:center;font-size:0.8rem;"><strong style="color:#102A43;">' + escapeHtml(entry.subjectName || "-") + '</strong><br><span style="color:#486581;">' + escapeHtml(entry.teacherName || "-") + '</span><br><span style="color:#829AB1;">' + escapeHtml(entry.roomName || "-") + '</span></td>';
+          }).join("");
+          return '<tr style="border-bottom:1px solid #f0f2f5;">'
+            + '<td style="padding:8px 6px;font-size:0.82rem;white-space:nowrap;"><strong>' + escapeHtml(period.label || "-") + '</strong><br><span style="color:#829AB1;font-size:0.76rem;">' + escapeHtml(formatTimeLabel(period.startTime)) + ' - ' + escapeHtml(formatTimeLabel(period.endTime)) + '</span></td>'
+            + cells + '</tr>';
+        }).join("");
+        ttPreviewEmpty.hidden = ttPeriods.length > 0;
+      }
+
+      function loadExistingEntry() {
+        if (!ttSelectedClass || !ttSelectedPeriod) {
+          ttFormSubject.value = "";
+          ttFormTeacher.value = "";
+          ttFormRoom.value = "";
+          return;
+        }
+        var entries = getTimetableEntries().filter(function (item) { return item.className === ttSelectedClass && item.periodId === ttSelectedPeriod; });
+        if (entries.length === 0) {
+          ttFormSubject.value = "";
+          ttFormTeacher.value = "";
+          ttFormRoom.value = "";
+          return;
+        }
+        var first = entries[0];
+        ttFormSubject.value = first.subjectName || "";
+        ttFormTeacher.value = first.teacherId || "";
+        ttFormRoom.value = first.roomId || "";
+        if (first.scheduleType === "recurring" && Array.isArray(first.recurringDays)) {
+          ttScheduleType = "recurring";
+          document.querySelectorAll(".tt-day-cb").forEach(function (cb) {
+            cb.checked = first.recurringDays.indexOf(cb.value) >= 0;
+          });
+          setScheduleType("recurring");
+        } else {
+          setScheduleType("custom");
+        }
+      }
+
+      document.querySelectorAll(".tt-sched-card").forEach(function (card) {
+        card.addEventListener("click", function () {
+          setScheduleType(card.getAttribute("data-sched"));
+        });
       });
 
-      function showRecurringModal(desc, singleLabel, callback) {
-        recurringModalDesc.textContent = desc;
-        recurringSingleLabel.textContent = singleLabel || "Update this day only";
-        recurringModal.style.display = "flex";
-        function cleanup() {
-          recurringModal.style.display = "none";
-          recurringModalConfirm.removeEventListener("click", onConfirm);
-          recurringModalCancel.removeEventListener("click", onCancel);
-        }
-        function onConfirm() {
-          var choice = document.querySelector('input[name="ttRecurringChoice"]:checked');
-          cleanup();
-          callback(choice ? choice.value : "single");
-        }
-        function onCancel() {
-          cleanup();
-          callback(null);
-        }
-        recurringModalConfirm.addEventListener("click", onConfirm);
-        recurringModalCancel.addEventListener("click", onCancel);
+      ttFormClass.addEventListener("change", function () {
+        ttSelectedClass = ttFormClass.value;
+        populateSubjectDropdown();
+        ttEntryFieldsRow.style.display = ttSelectedClass ? "block" : "none";
+        loadExistingEntry();
+        renderCustomTable();
+        renderPreview();
+      });
+
+      ttFormPeriod.addEventListener("change", function () {
+        ttSelectedPeriod = ttFormPeriod.value;
+        loadExistingEntry();
+        renderCustomTable();
+        renderPreview();
+      });
+
+      ttFormSubject.addEventListener("change", function () { renderPreview(); });
+
+      document.getElementById("ttDayCheckboxes").addEventListener("change", function () {
+        ttSelectedDays = getSelectedDays();
+      });
+
+      function showModal(desc, singleLabel, callback) {
+        ttModalDesc.textContent = desc;
+        ttModalSingleLabel.textContent = singleLabel || "Update this day only";
+        ttModal.style.display = "flex";
+        function cleanup() { ttModal.style.display = "none"; ttModalConfirm.removeEventListener("click", onConfirm); ttModalCancel.removeEventListener("click", onCancel); }
+        function onConfirm() { var c = document.querySelector('input[name="ttModalChoice"]:checked'); cleanup(); callback(c ? c.value : "single"); }
+        function onCancel() { cleanup(); callback(null); }
+        ttModalConfirm.addEventListener("click", onConfirm);
+        ttModalCancel.addEventListener("click", onCancel);
       }
 
-      function performSave(singleDayOverride, allDaysOverride) {
-        var selectedClass = classSelect.value;
-        var scheduleType = getScheduleType();
-        var targetDays = [];
-        if (scheduleType === "recurring") {
-          targetDays = getSelectedRecurringDays();
-        } else {
-          targetDays = [weekdaySelect.value];
-        }
-        if (!selectedClass || targetDays.length === 0 || (scheduleType === "custom" && !targetDays[0])) {
-          message.textContent = scheduleType === "recurring" ? "Please select class and at least one working day." : "Please select class and weekday.";
-          message.className = "form-message error";
-          return;
-        }
-        var periods = getTimetablePeriods();
-        var rawEntries = getRawTimetableEntries();
+      function checkConflictsForDays(className, periodId, targetDays, excludeGroupId) {
+        var raw = getRawTimetableEntries();
         var conflicts = [];
-        periods.forEach(function (period) {
-          var subjectInput = tableBody.querySelector('select[data-timetable-subject][data-period-id="' + period.id + '"]');
-          var teacherInput = tableBody.querySelector('select[data-timetable-teacher][data-period-id="' + period.id + '"]');
-          var roomInput = tableBody.querySelector('select[data-timetable-room][data-period-id="' + period.id + '"]');
-          var subjectName = subjectInput ? subjectInput.value : "";
-          var teacherId = teacherInput ? teacherInput.value : "";
-          var roomId = roomInput ? roomInput.value : "";
-          if (!subjectName) return;
-          for (var d = 0; d < targetDays.length; d++) {
-            var dayId = targetDays[d];
-            for (var i = 0; i < rawEntries.length; i++) {
-              var existing = rawEntries[i];
-              var existingGroupId = existing.recurringGroupId || existing.id;
-              if (allDaysOverride && existingGroupId === allDaysOverride) continue;
-              if (singleDayOverride && singleDayOverride === dayId) {
-                var existingDays = existing.scheduleType === "recurring" && Array.isArray(existing.recurringDays) ? existing.recurringDays : [existing.weekdayId];
-                if (existingDays.indexOf(dayId) >= 0 && existing.periodId === period.id) {
-                  continue;
-                }
-              }
-              var existingDays2 = existing.scheduleType === "recurring" && Array.isArray(existing.recurringDays) ? existing.recurringDays : [existing.weekdayId];
-              if (existingDays2.indexOf(dayId) < 0) continue;
-              if (existing.periodId !== period.id) continue;
-              var dayLabel = "";
-              var wdays = getTimetableWeekdays();
-              for (var w = 0; w < wdays.length; w++) {
-                if (wdays[w].id === dayId) { dayLabel = wdays[w].name; break; }
-              }
-              if (existing.className === selectedClass) {
-                conflicts.push("\u2022 " + dayLabel + " \u2014 " + (period.label || "-") + ": Class already has an entry.");
-              }
-              if (teacherId && existing.teacherId === teacherId && existing.className !== selectedClass) {
-                conflicts.push("\u2022 " + dayLabel + " \u2014 " + (period.label || "-") + ": Teacher is already assigned to " + existing.className + ".");
-              }
-              if (roomId && existing.roomId === roomId && existing.className !== selectedClass) {
-                conflicts.push("\u2022 " + dayLabel + " \u2014 " + (period.label || "-") + ": Room is already occupied by " + existing.className + ".");
-              }
+        for (var d = 0; d < targetDays.length; d++) {
+          var dayId = targetDays[d];
+          var dayLabel = "";
+          for (var w = 0; w < ttWeekdays.length; w++) { if (ttWeekdays[w].id === dayId) { dayLabel = ttWeekdays[w].name; break; } }
+          for (var i = 0; i < raw.length; i++) {
+            var e = raw[i];
+            var eGroup = e.recurringGroupId || e.id;
+            if (excludeGroupId && eGroup === excludeGroupId) continue;
+            var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
+            if (eDays.indexOf(dayId) < 0) continue;
+            if (e.periodId !== periodId) continue;
+            var period = ttPeriods.find(function (p) { return p.id === periodId; }) || {};
+            var pLabel = period.label || "-";
+            if (e.className === className) {
+              conflicts.push({ type: "class", day: dayLabel, period: pLabel, detail: "Class already has an entry for this period." });
+            }
+            var tVal = ttFormTeacher.value;
+            if (tVal && e.teacherId === tVal && e.className !== className) {
+              var tName = ttTeachers.find(function (t) { return t.id === tVal; });
+              conflicts.push({ type: "teacher", day: dayLabel, period: pLabel, detail: (tName ? tName.name : "Teacher") + " is already assigned to " + e.className + "." });
+            }
+            var rVal = ttFormRoom.value;
+            if (rVal && e.roomId === rVal && e.className !== className) {
+              var rName = ttRooms.find(function (r) { return r.id === rVal; });
+              conflicts.push({ type: "room", day: dayLabel, period: pLabel, detail: (rName ? rName.name : "Room") + " is already occupied by " + e.className + "." });
             }
           }
-        });
-        if (conflicts.length > 0) {
-          conflictBanner.innerHTML = "<strong>\u26A0\uFE0F Timetable Conflicts Found:</strong><br>" + conflicts.slice(0, 10).join("<br>") + (conflicts.length > 10 ? "<br>...and " + (conflicts.length - 10) + " more." : "");
-          conflictBanner.style.display = "block";
-          message.textContent = "Please resolve conflicts before saving.";
-          message.className = "form-message error";
+        }
+        return conflicts;
+      }
+
+      function doSave(singleDayOverride, allDaysOverride) {
+        var className = ttFormClass.value;
+        var periodId = ttFormPeriod.value;
+        if (!className || !periodId) {
+          ttFormMessage.textContent = "Please select class and period.";
+          ttFormMessage.className = "form-message error";
           return;
         }
-        conflictBanner.style.display = "none";
-        if (scheduleType === "recurring") {
+        var targetDays = getSelectedDays();
+        if (targetDays.length === 0) {
+          ttFormMessage.textContent = "Please select at least one day.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        var subjectName = ttFormSubject.value;
+        var teacherId = ttFormTeacher.value;
+        var roomId = ttFormRoom.value;
+        if (!subjectName) {
+          ttFormMessage.textContent = "Please select a subject.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        var period = ttPeriods.find(function (p) { return p.id === periodId; }) || {};
+        var teacher = getEmployeeById(teacherId);
+        var room = ttRooms.find(function (r) { return r.id === roomId; }) || null;
+        var conflicts = checkConflictsForDays(className, periodId, targetDays, allDaysOverride);
+        if (conflicts.length > 0) {
+          ttConflictBanner.innerHTML = '<strong>&#9888;&#65039; Timetable Conflicts Found:</strong><br>' + conflicts.slice(0, 8).map(function (c) { return '&#8226; ' + c.day + ' &mdash; ' + c.period + ': ' + c.detail; }).join("<br>") + (conflicts.length > 8 ? '<br>...and ' + (conflicts.length - 8) + ' more.' : "");
+          ttConflictBanner.style.display = "block";
+          ttFormMessage.textContent = "Please resolve conflicts before saving.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        ttConflictBanner.style.display = "none";
+        if (ttScheduleType === "recurring") {
           var groupId = "RCG-" + generateId();
-          periods.forEach(function (period) {
-            var subjectInput = tableBody.querySelector('select[data-timetable-subject][data-period-id="' + period.id + '"]');
-            var teacherInput = tableBody.querySelector('select[data-timetable-teacher][data-period-id="' + period.id + '"]');
-            var roomInput = tableBody.querySelector('select[data-timetable-room][data-period-id="' + period.id + '"]');
-            var subjectName = subjectInput ? subjectInput.value : "";
-            var teacherId = teacherInput ? teacherInput.value : "";
-            var roomId = roomInput ? roomInput.value : "";
-            if (!subjectName) {
-              for (var d = 0; d < targetDays.length; d++) {
-                settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                  var itemGroupId = item.recurringGroupId || item.id;
-                  var itemDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
-                  return !(item.className === selectedClass && item.periodId === period.id && itemDays.indexOf(targetDays[d]) >= 0);
-                });
-              }
-              return;
-            }
-            var teacher = getEmployeeById(teacherId);
-            var room = getClassRooms().find(function (roomItem) { return roomItem.id === roomId; }) || null;
-            for (var d2 = 0; d2 < targetDays.length; d2++) {
-              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                var itemDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
-                return !(item.className === selectedClass && item.periodId === period.id && itemDays.indexOf(targetDays[d2]) >= 0);
-              });
-            }
-            settings.timetableEntries = getRawTimetableEntries();
-            var entryId = "TT-" + selectedClass + "-" + groupId + "-" + period.id;
-            var newEntry = {
-              id: entryId,
-              className: selectedClass,
-              weekdayId: targetDays[0],
-              periodId: period.id,
-              periodLabel: period.label,
-              subjectName: subjectName,
-              teacherId: teacher ? teacher.id : "",
-              teacherName: teacher ? teacher.name : "",
-              roomId: room ? room.id : "",
-              roomName: room ? room.name : "",
-              scheduleType: "recurring",
-              recurringGroupId: groupId,
-              recurringDays: targetDays.slice(),
-              updatedAt: new Date().toISOString()
-            };
-            var rawArr = getRawTimetableEntries();
-            rawArr.push(newEntry);
-            settings.timetableEntries = rawArr;
+          for (var d = 0; d < targetDays.length; d++) {
+            settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+              var iDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
+              return !(item.className === className && item.periodId === periodId && iDays.indexOf(targetDays[d]) >= 0);
+            });
+          }
+          settings.timetableEntries = getRawTimetableEntries();
+          settings.timetableEntries.push({
+            id: "TT-" + className + "-" + groupId + "-" + periodId,
+            className: className,
+            weekdayId: targetDays[0],
+            periodId: periodId,
+            periodLabel: period.label || "",
+            subjectName: subjectName,
+            teacherId: teacher ? teacher.id : "",
+            teacherName: teacher ? teacher.name : "",
+            roomId: room ? room.id : "",
+            roomName: room ? room.name : "",
+            scheduleType: "recurring",
+            recurringGroupId: groupId,
+            recurringDays: targetDays.slice(),
+            updatedAt: new Date().toISOString()
           });
         } else {
-          periods.forEach(function (period) {
-            var subjectInput = tableBody.querySelector('select[data-timetable-subject][data-period-id="' + period.id + '"]');
-            var teacherInput = tableBody.querySelector('select[data-timetable-teacher][data-period-id="' + period.id + '"]');
-            var roomInput = tableBody.querySelector('select[data-timetable-room][data-period-id="' + period.id + '"]');
-            var subjectName = subjectInput ? subjectInput.value : "";
-            var teacherId = teacherInput ? teacherInput.value : "";
-            var roomId = roomInput ? roomInput.value : "";
-            if (!subjectName) {
-              if (singleDayOverride || allDaysOverride) {
-                var rawForDel = getRawTimetableEntries();
-                var delEntry = null;
-                for (var dei = 0; dei < rawForDel.length; dei++) {
-                  var de = rawForDel[dei];
-                  if (de.scheduleType === "recurring" && de.periodId === period.id && de.className === selectedClass) {
-                    var deDays = de.recurringDays || [];
-                    if (deDays.indexOf(targetDays[0]) >= 0) { delEntry = de; break; }
-                  }
-                }
-                if (delEntry) {
-                  if (allDaysOverride) {
-                    settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                      return (item.recurringGroupId || item.id) !== allDaysOverride;
-                    });
-                  } else if (singleDayOverride) {
-                    var delRemainingDays = (delEntry.recurringDays || []).filter(function (d) { return d !== targetDays[0]; });
-                    if (delRemainingDays.length === 0) {
-                      settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                        return (item.recurringGroupId || item.id) !== delEntry.recurringGroupId;
-                      });
-                    } else {
-                      settings.timetableEntries = getRawTimetableEntries().map(function (item) {
-                        if ((item.recurringGroupId || item.id) === delEntry.recurringGroupId && item.periodId === period.id) {
-                          return Object.assign({}, item, { recurringDays: delRemainingDays });
-                        }
-                        return item;
-                      });
-                    }
-                  }
-                } else {
-                  settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                    return !(item.className === selectedClass && item.weekdayId === targetDays[0] && item.periodId === period.id);
-                  });
-                }
+          var raw = getRawTimetableEntries();
+          var existingRaw = null;
+          for (var ei = 0; ei < raw.length; ei++) {
+            var re = raw[ei];
+            if (re.scheduleType === "recurring" && re.periodId === periodId && re.className === className) {
+              var reDays = re.recurringDays || [];
+              if (reDays.indexOf(targetDays[0]) >= 0) { existingRaw = re; break; }
+            }
+          }
+          if (existingRaw && !singleDayOverride && !allDaysOverride) {
+            var edDesc = "This period is part of a recurring schedule (" + (existingRaw.recurringDays || []).length + " days). What would you like to do?";
+            showModal(edDesc, "Update this day only", function (choice) {
+              if (choice === null) return;
+              doSave(choice === "single" ? targetDays[0] : null, choice === "all" ? existingRaw.recurringGroupId : null);
+            });
+            return;
+          }
+          if (existingRaw) {
+            if (allDaysOverride) {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== allDaysOverride; });
+            } else if (singleDayOverride) {
+              var remDays = (existingRaw.recurringDays || []).filter(function (d) { return d !== singleDayOverride; });
+              if (remDays.length === 0) {
+                settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== existingRaw.recurringGroupId; });
               } else {
-                settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                  if (item.className !== selectedClass || item.periodId !== period.id) return true;
-                  var iDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
-                  return iDays.indexOf(targetDays[0]) < 0;
-                });
-              }
-              return;
-            }
-            var teacher = getEmployeeById(teacherId);
-            var room = getClassRooms().find(function (roomItem) { return roomItem.id === roomId; }) || null;
-            settings.timetableEntries = getRawTimetableEntries();
-            var existingRawEntry = null;
-            for (var ei = 0; ei < getRawTimetableEntries().length; ei++) {
-              var re = getRawTimetableEntries()[ei];
-              if (re.scheduleType === "recurring" && re.periodId === period.id && re.className === selectedClass) {
-                var reDays = re.recurringDays || [];
-                if (reDays.indexOf(targetDays[0]) >= 0) { existingRawEntry = re; break; }
-              }
-            }
-            if (!existingRawEntry) {
-              var existingExpanded = getTimetableEntries().find(function (item) {
-                return item.className === selectedClass && item.weekdayId === targetDays[0] && item.periodId === period.id;
-              });
-              if (existingExpanded && existingExpanded.scheduleType === "recurring") {
-                for (var ei2 = 0; ei2 < getRawTimetableEntries().length; ei2++) {
-                  var re2 = getRawTimetableEntries()[ei2];
-                  if (re2.recurringGroupId === existingExpanded.recurringGroupId && re2.periodId === period.id) {
-                    existingRawEntry = re2; break;
+                settings.timetableEntries = getRawTimetableEntries().map(function (item) {
+                  if ((item.recurringGroupId || item.id) === existingRaw.recurringGroupId && item.periodId === periodId) {
+                    return Object.assign({}, item, { recurringDays: remDays });
                   }
-                }
-              }
-            }
-            var isExistingRecurring = existingRawEntry && existingRawEntry.scheduleType === "recurring";
-            if (isExistingRecurring) {
-              if (singleDayOverride) {
-                var remainingDays = (existingRawEntry.recurringDays || []).filter(function (d) { return d !== targetDays[0]; });
-                if (remainingDays.length === 0) {
-                  settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                    return (item.recurringGroupId || item.id) !== existingRawEntry.recurringGroupId;
-                  });
-                } else {
-                  settings.timetableEntries = getRawTimetableEntries().map(function (item) {
-                    if ((item.recurringGroupId || item.id) === existingRawEntry.recurringGroupId && item.periodId === period.id) {
-                      return Object.assign({}, item, { recurringDays: remainingDays });
-                    }
-                    return item;
-                  });
-                }
-                settings.timetableEntries = getRawTimetableEntries();
-                settings.timetableEntries.push({
-                  id: "TT-" + selectedClass + "-" + targetDays[0] + "-" + period.id,
-                  className: selectedClass,
-                  weekdayId: targetDays[0],
-                  periodId: period.id,
-                  periodLabel: period.label,
-                  subjectName: subjectName,
-                  teacherId: teacher ? teacher.id : "",
-                  teacherName: teacher ? teacher.name : "",
-                  roomId: room ? room.id : "",
-                  roomName: room ? room.name : "",
-                  updatedAt: new Date().toISOString()
-                });
-              } else if (allDaysOverride) {
-                settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                  return (item.recurringGroupId || item.id) !== allDaysOverride;
-                });
-                settings.timetableEntries = getRawTimetableEntries();
-                var originalDays = existingRawEntry.recurringDays || [targetDays[0]];
-                for (var od = 0; od < originalDays.length; od++) {
-                  settings.timetableEntries.push({
-                    id: "TT-" + selectedClass + "-" + originalDays[od] + "-" + period.id,
-                    className: selectedClass,
-                    weekdayId: originalDays[od],
-                    periodId: period.id,
-                    periodLabel: period.label,
-                    subjectName: subjectName,
-                    teacherId: teacher ? teacher.id : "",
-                    teacherName: teacher ? teacher.name : "",
-                    roomId: room ? room.id : "",
-                    roomName: room ? room.name : "",
-                    updatedAt: new Date().toISOString()
-                  });
-                }
-              } else {
-                settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                  return (item.recurringGroupId || item.id) !== existingRawEntry.recurringGroupId;
-                });
-                settings.timetableEntries = getRawTimetableEntries();
-                settings.timetableEntries.push({
-                  id: "TT-" + selectedClass + "-" + targetDays[0] + "-" + period.id,
-                  className: selectedClass,
-                  weekdayId: targetDays[0],
-                  periodId: period.id,
-                  periodLabel: period.label,
-                  subjectName: subjectName,
-                  teacherId: teacher ? teacher.id : "",
-                  teacherName: teacher ? teacher.name : "",
-                  roomId: room ? room.id : "",
-                  roomName: room ? room.name : "",
-                  updatedAt: new Date().toISOString()
+                  return item;
                 });
               }
             } else {
-              upsertTimetableEntry({
-                id: "TT-" + selectedClass + "-" + targetDays[0] + "-" + period.id,
-                className: selectedClass,
-                weekdayId: targetDays[0],
-                periodId: period.id,
-                periodLabel: period.label,
-                subjectName: subjectName,
-                teacherId: teacher ? teacher.id : "",
-                teacherName: teacher ? teacher.name : "",
-                roomId: room ? room.id : "",
-                roomName: room ? room.name : "",
-                updatedAt: new Date().toISOString()
-              });
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== existingRaw.recurringGroupId; });
             }
+          }
+          settings.timetableEntries = getRawTimetableEntries();
+          settings.timetableEntries.push({
+            id: "TT-" + className + "-" + targetDays[0] + "-" + periodId,
+            className: className,
+            weekdayId: targetDays[0],
+            periodId: periodId,
+            periodLabel: period.label || "",
+            subjectName: subjectName,
+            teacherId: teacher ? teacher.id : "",
+            teacherName: teacher ? teacher.name : "",
+            roomId: room ? room.id : "",
+            roomName: room ? room.name : "",
+            updatedAt: new Date().toISOString()
           });
         }
         saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-        addActivity("Timetable updated", "Timetable updated for " + selectedClass + ".");
-        message.textContent = "Timetable saved successfully.";
-        message.className = "form-message success";
+        addActivity("Timetable updated", "Timetable updated for " + className + ".");
+        ttFormMessage.textContent = "Timetable saved successfully.";
+        ttFormMessage.className = "form-message success";
+        renderPreview();
       }
 
-      safeOn(document.getElementById("saveTimetableBtn"), "click", function () {
-        var selectedClass = classSelect.value;
-        var scheduleType = getScheduleType();
-        var targetDays = scheduleType === "recurring" ? getSelectedRecurringDays() : [weekdaySelect.value];
-        if (!selectedClass || targetDays.length === 0 || (scheduleType === "custom" && !targetDays[0])) {
-          message.textContent = scheduleType === "recurring" ? "Please select class and at least one working day." : "Please select class and weekday.";
-          message.className = "form-message error";
+      safeOn(document.getElementById("ttSaveBtn"), "click", function () {
+        var className = ttFormClass.value;
+        var periodId = ttFormPeriod.value;
+        if (!className || !periodId) {
+          ttFormMessage.textContent = "Please select class and period.";
+          ttFormMessage.className = "form-message error";
           return;
         }
-        var rawEntries = getRawTimetableEntries();
-        var periods = getTimetablePeriods();
-        var recurringEdits = [];
-        var recurringDeletes = [];
-        periods.forEach(function (period) {
-          var subjectInput = tableBody.querySelector('select[data-timetable-subject][data-period-id="' + period.id + '"]');
-          var teacherInput = tableBody.querySelector('select[data-timetable-teacher][data-period-id="' + period.id + '"]');
-          var roomInput = tableBody.querySelector('select[data-timetable-room][data-period-id="' + period.id + '"]');
-          var newSubject = subjectInput ? subjectInput.value : "";
-          var newTeacherId = teacherInput ? teacherInput.value : "";
-          var newRoomId = roomInput ? roomInput.value : "";
-          var displayDay = scheduleType === "custom" ? targetDays[0] : (getTimetableWeekdays()[0] || {}).id;
-          var existingEntry = null;
-          for (var ei = 0; ei < rawEntries.length; ei++) {
-            var e = rawEntries[ei];
-            var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
-            if (e.className === selectedClass && e.periodId === period.id && eDays.indexOf(displayDay) >= 0) {
-              existingEntry = e;
-              break;
+        var subjectName = ttFormSubject.value;
+        if (!subjectName) {
+          ttFormMessage.textContent = "Please select a subject.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        var targetDays = getSelectedDays();
+        if (ttScheduleType === "recurring" && targetDays.length === 0) {
+          ttFormMessage.textContent = "Please select at least one day.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        if (ttScheduleType === "custom") {
+          var customBody = ttCustomBody;
+          var customConflicts = [];
+          ttWeekdays.forEach(function (day) {
+            var subEl = customBody.querySelector('.tt-custom-subject[data-day="' + day.id + '"]');
+            var tchEl = customBody.querySelector('.tt-custom-teacher[data-day="' + day.id + '"]');
+            var rmEl = customBody.querySelector('.tt-custom-room[data-day="' + day.id + '"]');
+            if (subEl && subEl.value) {
+              var cks = checkConflictsForDays(className, periodId, [day.id], null);
+              customConflicts = customConflicts.concat(cks);
             }
+          });
+          if (customConflicts.length > 0) {
+            ttConflictBanner.innerHTML = '<strong>&#9888;&#65039; Timetable Conflicts Found:</strong><br>' + customConflicts.slice(0, 8).map(function (c) { return '&#8226; ' + c.day + ' &mdash; ' + c.period + ': ' + c.detail; }).join("<br>");
+            ttConflictBanner.style.display = "block";
+            ttFormMessage.textContent = "Please resolve conflicts before saving.";
+            ttFormMessage.className = "form-message error";
+            return;
           }
-          if (existingEntry && existingEntry.scheduleType === "recurring") {
-            if (!newSubject) {
-              recurringDeletes.push({ period: period, existing: existingEntry });
-            } else if (newSubject !== existingEntry.subjectName || newTeacherId !== existingEntry.teacherId || newRoomId !== existingEntry.roomId) {
-              recurringEdits.push({ period: period, existing: existingEntry, newSubject: newSubject, newTeacherId: newTeacherId, newRoomId: newRoomId });
+          ttConflictBanner.style.display = "none";
+          ttWeekdays.forEach(function (day) {
+            var subEl = customBody.querySelector('.tt-custom-subject[data-day="' + day.id + '"]');
+            var tchEl = customBody.querySelector('.tt-custom-teacher[data-day="' + day.id + '"]');
+            var rmEl = customBody.querySelector('.tt-custom-room[data-day="' + day.id + '"]');
+            var subName = subEl ? subEl.value : "";
+            var tchId = tchEl ? tchEl.value : "";
+            var rmId = rmEl ? rmEl.value : "";
+            if (!subName) {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+                return !(item.className === className && item.weekdayId === day.id && item.periodId === periodId);
+              });
+              return;
             }
-          }
-        });
-        if (recurringEdits.length > 0 && scheduleType === "custom") {
-          var editDesc = "This period is part of a recurring schedule (" + recurringEdits[0].existing.recurringDays.length + " days). What would you like to do?";
-          showRecurringModal(editDesc, "Update this day only", function (choice) {
-            if (choice === null) return;
-            performSave(choice === "single" ? targetDays[0] : null, choice === "all" ? recurringEdits[0].existing.recurringGroupId : null);
+            var tch = getEmployeeById(tchId);
+            var rm = ttRooms.find(function (r) { return r.id === rmId; }) || null;
+            var period = ttPeriods.find(function (p) { return p.id === periodId; }) || {};
+            settings.timetableEntries = getRawTimetableEntries();
+            var existIdx = -1;
+            for (var xi = 0; xi < getRawTimetableEntries().length; xi++) {
+              var xe = getRawTimetableEntries()[xi];
+              if (xe.className === className && xe.weekdayId === day.id && xe.periodId === periodId) { existIdx = xi; break; }
+            }
+            var newEntry = {
+              id: "TT-" + className + "-" + day.id + "-" + periodId,
+              className: className,
+              weekdayId: day.id,
+              periodId: periodId,
+              periodLabel: period.label || "",
+              subjectName: subName,
+              teacherId: tch ? tch.id : "",
+              teacherName: tch ? tch.name : "",
+              roomId: rm ? rm.id : "",
+              roomName: rm ? rm.name : "",
+              updatedAt: new Date().toISOString()
+            };
+            if (existIdx >= 0) {
+              settings.timetableEntries[existIdx] = newEntry;
+            } else {
+              settings.timetableEntries.push(newEntry);
+            }
           });
+          saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+          addActivity("Timetable updated", "Timetable updated for " + className + ".");
+          ttFormMessage.textContent = "Timetable saved successfully.";
+          ttFormMessage.className = "form-message success";
+          renderPreview();
           return;
         }
-        if (recurringDeletes.length > 0 && scheduleType === "custom") {
-          var delDesc = "This period is part of a recurring schedule (" + recurringDeletes[0].existing.recurringDays.length + " days). Delete:";
-          showRecurringModal(delDesc, "Delete this day only", function (choice) {
-            if (choice === null) return;
-            performSave(choice === "single" ? targetDays[0] : null, choice === "all" ? recurringDeletes[0].existing.recurringGroupId : null);
-          });
-          return;
-        }
-        performSave(null, null);
+        doSave(null, null);
       });
 
-      populateWeekdayDropdown();
-      renderRows();
+      safeOn(document.getElementById("ttCancelBtn"), "click", function () {
+        ttFormClass.value = "";
+        ttFormPeriod.value = "";
+        ttSelectedClass = "";
+        ttSelectedPeriod = "";
+        ttFormSubject.value = "";
+        ttFormTeacher.value = "";
+        ttFormRoom.value = "";
+        ttEntryFieldsRow.style.display = "none";
+        ttConflictBanner.style.display = "none";
+        ttFormMessage.textContent = "";
+        ttFormMessage.className = "form-message";
+        setScheduleType("recurring");
+        renderCustomTable();
+        renderPreview();
+      });
+
+      renderPreview();
       return;
     }
 
