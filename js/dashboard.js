@@ -10415,22 +10415,31 @@ ${allContent}
           statusInput.value = period.active ? "active" : "inactive";
           return;
         }
-        const hasUsage = getTimetableEntries().some(function (item) {
+        var hasUsage = (settings.timetableEntries || []).some(function (item) {
           return item.periodId === periodId;
         });
         if (hasUsage) {
+          if (!confirm("This time period is used in timetable entries and cannot be deleted. Deactivate it instead?")) {
+            return;
+          }
           var idx = (settings.timetablePeriods || []).findIndex(function (p) { return p.id === periodId; });
           if (idx >= 0) {
             settings.timetablePeriods[idx].active = false;
             saveDatabase("Deactivating time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
             addActivity("Time period deactivated", period.label + " deactivated (used in timetable).");
-            setPeriodMessage("This period is used in timetable entries. It has been deactivated instead.", "success");
+            setPeriodMessage("Time period deactivated successfully.", "success");
             renderRows();
           }
           return;
         }
-        settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; }); trackDeletion(periodId);
+        if (!confirm("Delete time period \"" + (period.label || "-") + "\"?")) {
+          return;
+        }
+        settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; });
+        trackDeletion(periodId);
         saveDatabase("Deleting time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        addActivity("Time period deleted", period.label + " deleted from timetable periods.");
+        setPeriodMessage("Time period deleted successfully.", "success");
         renderRows();
       });
 
