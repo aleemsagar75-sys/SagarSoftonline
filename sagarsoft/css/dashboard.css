@@ -14283,3 +14283,74 @@ button.ss-btn-loading {
     font-size: 0.75rem;
   }
 }
+
+/* Modal primary button */
+.ss-modal-btn--primary {
+  background: linear-gradient(135deg, #6D4AFF, #8B6FFF) !important;
+  color: #fff !important;
+  border: none !important;
+}
+.ss-modal-btn--primary:hover {
+  opacity: 0.9;
+}
+
+/* Toast animations */
+@keyframes ssToastSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes ssToastSlideOut {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(100%); opacity: 0; }
+}
+
+/* Drag & Drop styles */
+.tt-dragging {
+  opacity: 0.4 !important;
+}
+.tt-drag-over {
+  background: #f0ebff !important;
+  outline: 2px dashed #6D4AFF;
+  outline-offset: -2px;
+}
+.tt-drag-handle {
+  cursor: grab;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  color: #829AB1;
+  font-size: 0.7rem;
+  transition: all 0.15s;
+}
+.tt-drag-handle:hover {
+  background: #f0ebff;
+  color: #6D4AFF;
+}
+.tt-cell--drop-target {
+  position: relative;
+}
+.tt-cell--drop-target::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border: 2px dashed transparent;
+  border-radius: 6px;
+  pointer-events: none;
+  transition: border-color 0.15s;
+}
+.tt-cell--drop-valid::after {
+  border-color: #6D4AFF;
+}
+.tt-cell--drop-invalid::after {
+  border-color: #E5485B;
+}
+[draggable="true"] {
+  cursor: grab;
+}
+[draggable="true"]:active {
+  cursor: grabbing;
+}
