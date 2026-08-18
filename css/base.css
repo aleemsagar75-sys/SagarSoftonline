@@ -342,3 +342,33 @@ select:hover:not(:focus) {
 .hero-panel .hero-stat-footer-amount {
   color: #102A43 !important;
 }
+
+/* Timetable page: clean white background */
+.view.module--timetable {
+  background: #ffffff !important;
+}
+
+.view.module--timetable .dashboard-content-area,
+.view.module--timetable .module-content,
+.view.module--timetable .main-content {
+  background: #ffffff !important;
+}
+
+.view.module--timetable .gs-form-section {
+  background: #ffffff !important;
+  border: 1px solid #e6e8f0 !important;
+}
+
+.view.module--timetable .gs-table {
+  background: #ffffff !important;
+}
+
+.view.module--timetable .gs-table thead th {
+  background: #fafbfc !important;
+  border-bottom: 2px solid #e6e8f0 !important;
+  color: #486581 !important;
+  font-weight: 600 !important;
+  font-size: 0.78rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+}
