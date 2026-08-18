@@ -10729,6 +10729,12 @@ ${allContent}
             ? "This is a Break period. Subject, Teacher and Room are not required."
             : "This is a " + ttSelectedPeriodType + " period. Subject, Teacher and Room are not required.";
           ttNonTeachingInfo.innerHTML = "&#8505; " + escapeHtml(msg);
+          setScheduleType("recurring");
+          var customCard = document.querySelector('.tt-sched-card[data-sched="custom"]');
+          if (customCard) customCard.style.display = "none";
+        } else {
+          var customCard2 = document.querySelector('.tt-sched-card[data-sched="custom"]');
+          if (customCard2) customCard2.style.display = "";
         }
       }
 
@@ -11280,6 +11286,7 @@ ${allContent}
         ttFormPeriod.value = "";
         ttSelectedClass = "";
         ttSelectedPeriod = "";
+        ttSelectedPeriodType = "Regular";
         ttFormSubject.value = "";
         ttFormTeacher.value = "";
         ttFormRoom.value = "";
@@ -11288,6 +11295,8 @@ ${allContent}
         ttFormMessage.textContent = "";
         ttFormMessage.className = "form-message";
         setScheduleType("recurring");
+        var customCard = document.querySelector('.tt-sched-card[data-sched="custom"]');
+        if (customCard) customCard.style.display = "";
         renderCustomTable();
         renderPreview();
       });
