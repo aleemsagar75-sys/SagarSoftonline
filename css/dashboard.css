@@ -14090,3 +14090,196 @@ button.ss-btn-loading {
   border-color: #6D4AFF !important;
   background: #f8f7ff !important;
 }
+
+/* === Timetable Module: Professional Enhancements === */
+
+/* White page background for timetable routes */
+.view.module--timetable,
+.view.module--timetable .module-content,
+.view.module--timetable .dashboard-content-area {
+  background: #ffffff !important;
+}
+
+/* Period type badges */
+.tt-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.tt-badge--regular {
+  background: #f0f2f5;
+  color: #486581;
+  border: 1px solid #e6e8f0;
+}
+.tt-badge--assembly {
+  background: #fef3e2;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+.tt-badge--break {
+  background: #e8f8f3;
+  color: #0f766e;
+  border: 1px solid #99f6e4;
+}
+.tt-badge--free {
+  background: #f0f7ff;
+  color: #1e6091;
+  border: 1px solid #c5dff8;
+}
+
+/* Timetable preview cell styles */
+.tt-cell {
+  padding: 8px 6px !important;
+  text-align: center;
+  font-size: 0.8rem;
+  vertical-align: top;
+  position: relative;
+  transition: background 0.15s;
+}
+.tt-cell--regular {
+  background: #fff;
+}
+.tt-cell--assembly {
+  background: #fffbeb;
+  border-left: 3px solid #f59e0b;
+}
+.tt-cell--break {
+  background: #f0fdfa;
+  border-left: 3px solid #14b8a6;
+}
+.tt-cell__subject {
+  font-weight: 700;
+  color: #102A43;
+  font-size: 0.82rem;
+}
+.tt-cell__teacher {
+  color: #486581;
+  font-size: 0.76rem;
+  margin-top: 1px;
+}
+.tt-cell__room {
+  color: #829AB1;
+  font-size: 0.72rem;
+  margin-top: 1px;
+}
+.tt-cell__type {
+  font-size: 0.8rem;
+  margin-bottom: 2px;
+}
+.tt-cell__time {
+  font-size: 0.72rem;
+  color: #6B7A90;
+}
+.tt-cell__actions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.tt-cell:hover .tt-cell__actions {
+  opacity: 1;
+}
+.tt-cell__menu-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(109, 74, 255, 0.1);
+  color: #6D4AFF;
+  font-size: 0.72rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s;
+  padding: 0;
+  line-height: 1;
+}
+.tt-cell__menu-btn:hover {
+  background: #6D4AFF;
+  color: #fff;
+}
+.tt-cell__menu-btn--danger {
+  background: rgba(229, 72, 91, 0.1);
+  color: #E5485B;
+}
+.tt-cell__menu-btn--danger:hover {
+  background: #E5485B;
+  color: #fff;
+}
+
+/* Timetable row highlights for Assembly/Break */
+.tt-row--assembly td {
+  background: #fffbeb;
+}
+.tt-row--break td {
+  background: #f0fdfa;
+}
+.tt-row--assembly td:first-child,
+.tt-row--break td:first-child {
+  background: inherit;
+}
+
+/* Period label in preview */
+.tt-period-label {
+  padding: 8px 6px !important;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  vertical-align: top;
+}
+.tt-period-time {
+  color: #829AB1;
+  font-size: 0.76rem;
+}
+
+/* Schedule type card selection indicator */
+.tt-sched-card {
+  transition: all 0.2s;
+}
+.tt-sched-card:hover {
+  border-color: #c5dff8 !important;
+  background: #fafbfc !important;
+}
+
+/* Professional spacing for timetable form */
+.view.module--timetable .gs-form-section {
+  margin-bottom: 20px;
+}
+
+/* Modal overlay */
+#ttDeleteModal,
+#ttRecurringModal {
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Non-teaching info banner */
+#ttNonTeachingInfo {
+  border-left: 3px solid #6D4AFF;
+}
+
+/* Responsive: preview table cells */
+@media (max-width: 768px) {
+  .tt-cell__actions {
+    opacity: 1;
+  }
+  .tt-cell {
+    min-height: 50px;
+    font-size: 0.72rem;
+    padding: 4px 3px !important;
+  }
+  .tt-period-label {
+    font-size: 0.75rem;
+  }
+}
