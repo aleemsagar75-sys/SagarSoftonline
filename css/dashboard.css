@@ -1,4 +1,4 @@
-﻿*, ::before, ::after {
+*, ::before, ::after {
   box-sizing: border-box;
 }
 
@@ -1884,10 +1884,13 @@ body {
   border-radius: 16px;
   width: 90%;
   max-width: 400px;
+  max-height: 85vh;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
   transform: scale(0.9);
   transition: transform 0.2s ease;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 .ss-modal-visible .ss-modal-box { transform: scale(1); }
 .ss-modal-header {
@@ -1912,6 +1915,9 @@ body {
 }
 .ss-modal-body {
   padding: 1.2rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
 }
 .ss-modal-body p { margin: 0 0 0.5rem; color: #334155; font-size: 0.9rem; }
 .ss-modal-warning {
@@ -14353,4 +14359,99 @@ button.ss-btn-loading {
 }
 [draggable="true"]:active {
   cursor: grabbing;
+}
+.tt-reorder-row {
+  transition: background 0.15s, transform 0.15s;
+}
+.tt-reorder-row.tt-reorder-dragging {
+  opacity: 0.35;
+}
+.tt-reorder-row.tt-reorder-over td {
+  border-top: 3px solid #6D4AFF;
+}
+.tt-reorder-row.tt-reorder-over-bottom td {
+  border-bottom: 3px solid #6D4AFF;
+}
+.tt-reorder-handle {
+  cursor: grab;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: #829AB1;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+.tt-reorder-handle:hover {
+  background: #f0ebff;
+  color: #6D4AFF;
+}
+.tt-reorder-handle:active {
+  cursor: grabbing;
+}
+.tt-sort-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0.35rem 0.75rem;
+  border: 1px solid #CBD5E1;
+  border-radius: 6px;
+  background: #fff;
+  color: #486581;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tt-sort-btn:hover {
+  background: #f0ebff;
+  border-color: #6D4AFF;
+  color: #6D4AFF;
+}
+.tt-period-overlap-warning {
+  background: #FEF3CD;
+  border: 1px solid #FFC107;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  font-size: 0.82rem;
+  color: #856404;
+}
+.tt-period-overlap-warning::before {
+  content: "\26A0\FE0F ";
+}
+.ss-drag-modal .ss-modal__content {
+  padding: 0 1.5rem 1rem;
+}
+.ss-drag-modal .ss-modal__btn--primary {
+  background: #6D4AFF;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+/* Time Periods table alignment + 3-button actions */
+.tt-periods-table th,
+.tt-periods-table td {
+  vertical-align: middle;
+}
+.tt-periods-table th:first-child,
+.tt-periods-table td:first-child {
+  text-align: center;
+  width: 36px;
+}
+.tt-actions-cell {
+  margin-top: 0 !important;
+  flex-wrap: nowrap !important;
+  gap: 0.35rem !important;
+  white-space: nowrap;
+}
+.tt-period-toggle {
+  white-space: nowrap;
 }
