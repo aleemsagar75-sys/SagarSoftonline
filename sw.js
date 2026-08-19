@@ -1,10 +1,10 @@
-var CACHE = "sagarsoft-v106";
+var CACHE = "sagarsoft-v110";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
   "./dashboard.html",
-  "./css/base.css?v=20260818a",
-  "./css/dashboard.css?v=20260818a",
+  "./css/base.css?v=20260819",
+  "./css/dashboard.css?v=20260819",
   "./js/online-config.js?v=20260729",
   "./js/crypto-utils.js?v=20260729",
   "./js/utils.js?v=20260729",
@@ -13,11 +13,17 @@ const PRECACHE_URLS = [
   "./js/auth.js?v=20260729",
   "./js/cache-manager.js?v=20260805",
   "./js/login.js?v=20260729",
-  "./js/dashboard.js?v=20260818a",
+  "./js/dashboard.js?v=20260819",
   "./assets/SagarSoft.logo.png",
   "./assets/parents.png",
   "./manifest.json"
 ];
+
+self.addEventListener("message", function (event) {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 self.addEventListener("install", function (event) {
   event.waitUntil(
@@ -60,7 +66,7 @@ self.addEventListener("fetch", function (event) {
 
   if (url.pathname.indexOf(".html") >= 0 || url.pathname === "/" || url.pathname === "") {
     event.respondWith(
-      fetch(event.request).then(function (response) {
+      fetch(event.request, { cache: "no-store" }).then(function (response) {
         if (response && response.status === 200) {
           var clone = response.clone();
           caches.open(CACHE).then(function (cache) { cache.put(event.request, clone); });
