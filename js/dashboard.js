@@ -11226,7 +11226,8 @@ ${allContent}
     }
 
     if (route === "create-timetable") {
-      var ttClassOptions = classOptions;
+      var activeRoomClassNames = getClassRooms().filter(function (r) { return r.status !== "inactive"; }).map(function (r) { return r.name; });
+      var ttClassOptions = classOptions.filter(function (c) { return activeRoomClassNames.indexOf(c) >= 0; });
       var ttWeekdays = getTimetableWeekdays();
       var ttPeriods = getTimetablePeriods();
       var ttSubjects = [];
