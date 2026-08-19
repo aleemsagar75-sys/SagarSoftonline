@@ -10653,7 +10653,8 @@ ${allContent}
             <tr class="tt-reorder-row" draggable="true" data-period-id="${period.id}">
               <td><span class="tt-reorder-handle" title="Drag to reorder">&#9776;</span></td>
               <td><strong>${escapeHtml(period.label || "-")}</strong></td>
-              <td>${escapeHtml(formatTimeLabel(period.startTime))} - ${escapeHtml(formatTimeLabel(period.endTime))}</td>
+              <td>${escapeHtml(formatTimeLabel(period.startTime))}</td>
+              <td>${escapeHtml(formatTimeLabel(period.endTime))}</td>
               <td><span class="tt-badge ${badgeClass}">${escapeHtml(pType)}</span></td>
               <td><span class="gs-pill gs-pill--${period.active ? "active" : "inactive"}">${period.active ? "Active" : "Inactive"}</span></td>
               <td>
@@ -10797,11 +10798,6 @@ ${allContent}
         });
         if (duplicateLabel) {
           setPeriodMessage("A period with this name already exists.", "error");
-          return;
-        }
-        var overlaps = detectTimeOverlap(start, end, editingId);
-        if (overlaps.length > 0) {
-          setPeriodMessage("This period overlaps with: " + overlaps.join(", "), "error");
           return;
         }
         const record = {
@@ -11277,7 +11273,7 @@ ${allContent}
         + '</article>'
 
         + '<div id="ttRecurringModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">'
-        + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
+        + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
         + '<p style="font-weight:700;font-size:1rem;margin:0 0 10px;">Recurring Entry Detected</p>'
         + '<p id="ttModalDesc" style="font-size:0.85rem;color:#486581;margin:0 0 14px;"></p>'
         + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">'
@@ -11290,7 +11286,7 @@ ${allContent}
         + '</div></div></div>'
 
         + '<div id="ttDeleteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">'
-        + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
+        + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
         + '<p style="font-weight:700;font-size:1rem;margin:0 0 10px;">Delete Timetable Entry?</p>'
         + '<p id="ttDeleteDesc" style="font-size:0.85rem;color:#486581;margin:0 0 14px;"></p>'
         + '<div id="ttDeleteOptions" style="display:none;flex-direction:column;gap:8px;margin-bottom:16px;">'
@@ -11549,17 +11545,22 @@ ${allContent}
           });
           ttDeleteDayLabel.textContent = "Delete " + escapeHtml(dayLabel) + " only";
           ttDeleteOptions.querySelector("label:last-child input").nextElementSibling.textContent = "Delete all " + dayNames.length + " entries (" + dayNames.join(", ") + ")";
+          var dayRadio = ttDeleteOptions.querySelector('input[value="day"]');
+          if (dayRadio) dayRadio.checked = true;
         } else {
           ttDeleteOptions.style.display = "none";
         }
+        var cleaned = false;
         ttDeleteModal.style.display = "flex";
         document.body.style.overflow = "hidden";
         function cleanup() {
+          if (cleaned) return;
+          cleaned = true;
           ttDeleteModal.style.display = "none";
           document.body.style.overflow = "";
-          ttDeleteConfirm.removeEventListener("click", onConfirm);
-          ttDeleteCancel.removeEventListener("click", onCancel);
-          ttDeleteModal.removeEventListener("click", onOverlayClick);
+          try { ttDeleteConfirm.removeEventListener("click", onConfirm); } catch (_e) {}
+          try { ttDeleteCancel.removeEventListener("click", onCancel); } catch (_e) {}
+          try { ttDeleteModal.removeEventListener("click", onOverlayClick); } catch (_e) {}
         }
         function onOverlayClick(e) { if (e.target === ttDeleteModal) { cleanup(); } }
         function onConfirm() {
