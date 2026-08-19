@@ -1,5 +1,8 @@
 ﻿/* Major section: Dashboard shell, routing, and student management module */
 
+// -- Null-safe event binding utility ---------------------------
+function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
+
 // Global employee action handlers
 window.handleEmployeeViewClick = function(employeeId) {
   var _eH = SU.escapeHtml;
@@ -847,6 +850,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const promoteStudentsTableBody = document.getElementById("promoteStudentsTableBody");
   const promoteStudentsEmptyState = document.getElementById("promoteStudentsEmptyState");
   const promoteStudentsMessage = document.getElementById("promoteStudentsMessage");
+  const promoteStudentsCount = document.getElementById("promoteStudentsCount");
+  const promoteSelectedCount = document.getElementById("promoteSelectedCount");
+  const promoteListCount = document.getElementById("promoteListCount");
+  const promoteSelectAllCheckbox = document.getElementById("promoteSelectAllCheckbox");
   const studentToolsShell = document.getElementById("studentToolsShell");
   const studentDirectoryGrid = document.getElementById("studentDirectoryGrid");
   const studentDirectoryEmptyState = document.getElementById("studentDirectoryEmptyState");
@@ -948,6 +955,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const superAdminBypass = currentUser.role === superAdminRole;
   var DEMO_EMAIL_LIST = new Set(["admin@sagarsoft.com","teacher@sagarsoft.com","student@sagarsoft.com","parent@sagarsoft.com"]);
   var isDemoUser = currentUser && DEMO_EMAIL_LIST.has(String(currentUser.email || "").trim().toLowerCase());
+  isolateSuperAdminData();
   const roleRouteAllowMap = {
     superadmin: ["*"],
     admin: ["*"],
@@ -1034,9 +1042,32 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function refreshDatabase() {
     database = window.SagarSoftDB.getDatabase();
+    isolateSuperAdminData();
     _studentsNormalized = false;
     normalizeStudentsDatasetInMemory();
     ensureLicenseSettings();
+  }
+
+  function isolateSuperAdminData() {
+    if (!superAdminBypass) return;
+    database.students = [];
+    database.teachers = [];
+    database.employees = [];
+    database.classes = [];
+    database.subjects = [];
+    database.attendance = [];
+    database.fees = [];
+    database.users = [];
+    database.activityLogs = [];
+    if (database.generalSettings) {
+      database.generalSettings.feeStructures = [];
+      database.generalSettings.discountTypes = [];
+      database.generalSettings.marksGrading = [];
+      database.generalSettings.notices = [];
+      database.generalSettings.events = [];
+      database.generalSettings.classAssignments = [];
+      database.generalSettings.salaryPayments = [];
+    }
   }
 
   function applySavedThemeSettings() {
@@ -1161,8 +1192,16 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       } else {
         var tableName = ch.table;
-        var arr = database[tableName];
-        if (!Array.isArray(arr)) { database[tableName] = []; arr = database[tableName]; }
+        var targetKey = (tableName === "notices" || tableName === "events") ? "generalSettings." + tableName : tableName;
+        var arr;
+        if (tableName === "notices" || tableName === "events") {
+          database.generalSettings = database.generalSettings || {};
+          if (!Array.isArray(database.generalSettings[tableName])) database.generalSettings[tableName] = [];
+          arr = database.generalSettings[tableName];
+        } else {
+          arr = database[tableName];
+          if (!Array.isArray(arr)) { database[tableName] = []; arr = database[tableName]; }
+        }
         var recId = ch.record.id || ch.record.source_id;
         var idx = -1;
         if (recId) {
@@ -1230,8 +1269,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const existingSchoolId = license.schoolId ? String(license.schoolId).trim() : "";
     const isActivatedSchool = existingSchoolId && (license.activated === true || license.status === "active");
     const accountSettings = database.generalSettings.accountSettings || {};
+    var _persistedSchoolId = "";
+    try { _persistedSchoolId = localStorage.getItem("ss_school_id_persistent") || ""; } catch (_e) {}
+    var _finalExistingId = existingSchoolId || _persistedSchoolId || "";
     const defaultLicense = {
-      schoolId: existingSchoolId || "",
+      schoolId: _finalExistingId,
       schoolName: fallbackSchoolName,
       activated: false,
       subscriptionPlan: "monthly",
@@ -1443,6 +1485,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const license = ensureLicenseSettings();
     const accountSettings = database.generalSettings.accountSettings || {};
     license.schoolId = String(payload.school_id || license.schoolId || "").trim();
+    if (!license.schoolId) {
+      try { license.schoolId = localStorage.getItem("ss_school_id_persistent") || ""; } catch (_e) {}
+    }
     license.schoolName = String(payload.school_name || license.schoolName || "").trim();
     license.activated = String(payload.activation_status || payload.status || "").toLowerCase() === "active" && !payload.modules_locked;
     license.subscriptionPlan = normalizePortalPlan(payload.plan || license.subscriptionPlan);
@@ -1662,6 +1707,99 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
+  function showSSModal(opts) {
+    var existing = document.getElementById("ssGenericModal");
+    if (existing) existing.remove();
+    var tone = opts.tone || "info";
+    var iconMap = { danger: "&#9888;", warning: "&#9888;", success: "&#10003;", info: "&#8505;", confirm: "&#9888;" };
+    var toneColorMap = { danger: "#E5485B", warning: "#D97706", success: "#059669", info: "#6D4AFF", confirm: "#D97706" };
+    var icon = opts.icon || iconMap[tone] || iconMap.info;
+    var color = toneColorMap[tone] || toneColorMap.info;
+    var buttonsHTML = "";
+    if (opts.buttons) {
+      buttonsHTML = opts.buttons.map(function (btn) {
+        var cls = "ss-modal-btn";
+        if (btn.tone === "danger") cls += " ss-modal-btn--delete";
+        else if (btn.tone === "cancel") cls += " ss-modal-btn--cancel";
+        else if (btn.tone === "primary") cls += " ss-modal-btn--primary";
+        return '<button class="' + cls + '" type="button" data-ss-btn="' + escapeAttr(btn.id || "") + '">' + escapeHtml(btn.label) + '</button>';
+      }).join("");
+    } else {
+      buttonsHTML = '<button class="ss-modal-btn ss-modal-btn--cancel" type="button" data-ss-btn="cancel">Cancel</button>'
+        + '<button class="ss-modal-btn ss-modal-btn--delete" type="button" data-ss-btn="confirm">Confirm</button>';
+    }
+    var bodyHTML = "";
+    if (opts.html) {
+      bodyHTML = opts.html;
+    } else if (opts.message) {
+      bodyHTML = '<p style="font-size:0.88rem;color:#486581;margin:0 0 6px;">' + escapeHtml(opts.message) + '</p>';
+      if (opts.warning) bodyHTML += '<p class="ss-modal-warning">' + escapeHtml(opts.warning) + '</p>';
+    }
+    var modal = document.createElement("div");
+    modal.id = "ssGenericModal";
+    modal.className = "ss-modal-overlay";
+    modal.innerHTML = '<div class="ss-modal-box">'
+      + '<div class="ss-modal-header">'
+      + '<div style="display:flex;align-items:center;gap:8px;">'
+      + '<span style="font-size:1.3rem;color:' + color + ';">' + icon + '</span>'
+      + '<h3>' + escapeHtml(opts.title || "Confirm") + '</h3>'
+      + '</div>'
+      + '<button class="ss-modal-close" type="button">&times;</button>'
+      + '</div>'
+      + '<div class="ss-modal-body">' + bodyHTML + '</div>'
+      + '<div class="ss-modal-footer">' + buttonsHTML + '</div>'
+      + '</div>';
+    document.body.appendChild(modal);
+    document.body.style.overflow = "hidden";
+    requestAnimationFrame(function() { modal.classList.add("ss-modal-visible"); });
+    return new Promise(function (resolve) {
+      function close(result) {
+        modal.classList.remove("ss-modal-visible");
+        document.body.style.overflow = "";
+        setTimeout(function() { modal.remove(); }, 200);
+        resolve(result);
+      }
+      modal.querySelector(".ss-modal-close").addEventListener("click", function() { close(null); });
+      modal.querySelectorAll("[data-ss-btn]").forEach(function (btn) {
+        btn.addEventListener("click", function() {
+          var val = btn.getAttribute("data-ss-btn");
+          close(val === "cancel" || val === "close" ? null : val);
+        });
+      });
+      modal.addEventListener("click", function(e) { if (e.target === modal) close(null); });
+    });
+  }
+
+  function showToast(message, type) {
+    var existing = document.getElementById("ssToastContainer");
+    if (!existing) {
+      existing = document.createElement("div");
+      existing.id = "ssToastContainer";
+      existing.style.cssText = "position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;";
+      document.body.appendChild(existing);
+    }
+    var typeColors = { success: "#059669", error: "#E5485B", warning: "#D97706", info: "#6D4AFF" };
+    var typeBg = { success: "#f0fdf4", error: "#fef2f2", warning: "#fffbeb", info: "#f5f3ff" };
+    var typeIcons = { success: "&#10003;", error: "&#10005;", warning: "&#9888;", info: "&#8505;" };
+    var color = typeColors[type] || typeColors.info;
+    var bg = typeBg[type] || typeBg.info;
+    var icon = typeIcons[type] || typeIcons.info;
+    var toast = document.createElement("div");
+    toast.style.cssText = "pointer-events:auto;background:" + bg + ";border:1px solid " + color + "30;border-left:4px solid " + color + ";border-radius:10px;padding:12px 16px;box-shadow:0 8px 24px rgba(0,0,0,0.12);display:flex;align-items:center;gap:10px;min-width:280px;max-width:420px;animation:ssToastSlideIn 0.3s ease;cursor:pointer;font-size:0.85rem;color:#102A43;";
+    toast.innerHTML = '<span style="font-size:1.1rem;color:' + color + ';">' + icon + '</span><span style="flex:1;">' + escapeHtml(message) + '</span>';
+    toast.addEventListener("click", function() {
+      toast.style.animation = "ssToastSlideOut 0.3s ease forwards";
+      setTimeout(function() { toast.remove(); }, 300);
+    });
+    existing.appendChild(toast);
+    setTimeout(function() {
+      if (toast.parentNode) {
+        toast.style.animation = "ssToastSlideOut 0.3s ease forwards";
+        setTimeout(function() { toast.remove(); }, 300);
+      }
+    }, 4000);
+  }
+
   function renderStudentSearchResult(student) {
     return '<div class="gsac-item" data-student-id="' + escapeAttr(student.id || "") + '">' +
       '<div class="gsac-item-main">' +
@@ -1686,25 +1824,21 @@ document.addEventListener("DOMContentLoaded", function () {
     const input = document.getElementById(inputId);
     const dropdown = document.getElementById(dropdownId);
     if (!input || !dropdown) return;
-    const studentSearchIndex = (database.students || []).map(function (student) {
-      return {
-        id: student.id || "",
-        name: student.name || "",
-        className: student.className || "",
-        admissionNo: student.admissionNo || "",
-        nameSearch: String(student.name || "").toLowerCase(),
-        admissionSearch: String(student.admissionNo || "").toLowerCase()
-      };
-    });
 
     initializeSearchWithDropdown(
       input,
       dropdown,
       function(searchTerm) {
-        const matches = [];
-        for (let index = 0; index < studentSearchIndex.length && matches.length < 10; index += 1) {
-          const student = studentSearchIndex[index];
-          if (student.nameSearch.includes(searchTerm) || student.admissionSearch.includes(searchTerm)) {
+        var students = database.students || [];
+        var matches = [];
+        for (let index = 0; index < students.length && matches.length < 10; index += 1) {
+          const student = students[index];
+          const name = String(student.name || "").toLowerCase();
+          const admissionNo = String(student.admissionNo || "").toLowerCase();
+          const rollNo = String(student.rollNo || "").toLowerCase();
+          const className = String(student.className || "").toLowerCase();
+          const fatherName = String(student.fatherName || "").toLowerCase();
+          if (name.includes(searchTerm) || admissionNo.includes(searchTerm) || rollNo.includes(searchTerm) || className.includes(searchTerm) || fatherName.includes(searchTerm)) {
             matches.push(student);
           }
         }
@@ -1833,6 +1967,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
     window.SagarSoftDB.saveDatabase(nextDatabase);
     database = window.SagarSoftDB.getDatabase();
+    isolateSuperAdminData();
     ensureLicenseSettings();
     ensurePortalSyncData();
     normalizeStudentsDatasetInMemory();
@@ -1921,8 +2056,15 @@ document.addEventListener("DOMContentLoaded", function () {
     if (currentUser.role !== superAdminRole && license.activated) {
       displayName = profile.name || license.schoolName || database.school.name || displayName;
       if (profile.logo) {
-        displayAvatarHtml = `<img src="${escapeAttr(profile.logo)}" alt="School logo" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+        profileAvatar.style.background = "#fff";
+        displayAvatarHtml = `<img src="${escapeAttr(profile.logo)}" alt="School logo" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">`;
+        getNormalizedLogo(profile.logo).then(function (normalized) {
+          if (normalized && normalized !== profile.logo) {
+            profileAvatar.innerHTML = `<img src="${escapeAttr(normalized)}" alt="School logo" style="width:100%;height:100%;object-fit:contain;border-radius:50%;">`;
+          }
+        });
       } else {
+        profileAvatar.style.background = "";
         displayAvatarHtml = getInitials(displayName);
       }
     }
@@ -2262,6 +2404,39 @@ document.addEventListener("DOMContentLoaded", function () {
 
   function syncPortalActivationAndNotifications() {
     renderNotificationList();
+    var _cfg = window.SagarSoftDB && window.SagarSoftDB.getConfig ? window.SagarSoftDB.getConfig() : {};
+    var _schoolId = _cfg.schoolId || "";
+    var _session = null;
+    try { _session = JSON.parse(sessionStorage.getItem("sagarsoft_session") || localStorage.getItem("sagarsoft_session") || "null"); } catch (_e) {}
+    var _isSuperAdmin = _session && _session.role === "superadmin";
+    if (_schoolId && !_isSuperAdmin && _cfg.apiBaseUrl && _cfg.apiKey) {
+      var _headers = { "Content-Type": "application/json" };
+      if (_cfg.authToken) _headers["Authorization"] = "Bearer " + _cfg.authToken;
+      if (_cfg.apiKey) _headers["x-sagarsoft-api-key"] = _cfg.apiKey;
+      fetch(_cfg.apiBaseUrl + "/api/school/notifications/" + encodeURIComponent(_schoolId), { headers: _headers, cache: "no-store" })
+        .then(function(r) { return r.json().catch(function() { return {}; }); })
+        .then(function(data) {
+          if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
+            ensurePortalSyncData();
+            var added = 0;
+            data.notifications.forEach(function(note) {
+              var noteId = "PORTAL-" + String(note.id || "");
+              if (!note.id || database.portalSync.appliedNotificationIds.indexOf(noteId) >= 0) return;
+              database.notifications.unshift({
+                id: noteId, title: note.title || "Portal Notification", message: note.message || "-",
+                createdAt: note.created_at || new Date().toISOString(), read: false, source: "portal"
+              });
+              database.portalSync.appliedNotificationIds.push(noteId);
+              added++;
+            });
+            if (added > 0) {
+              database.notifications = database.notifications.slice(0, 100);
+              renderNotificationList();
+            }
+          }
+        })
+        .catch(function() {});
+    }
   }
 
   function escapePrintHtml(value) {
@@ -2908,9 +3083,9 @@ document.addEventListener("DOMContentLoaded", function () {
         resolve("");
         return;
       }
-      const image = new Image();
-      let isSettled = false;
-      const done = function (value) {
+      var image = new Image();
+      var isSettled = false;
+      var done = function (value) {
         if (isSettled) {
           return;
         }
@@ -2919,12 +3094,12 @@ document.addEventListener("DOMContentLoaded", function () {
       };
       image.onload = function () {
         try {
-          const canvas = document.createElement("canvas");
-          const width = Math.max(1, image.naturalWidth || image.width || 1);
-          const height = Math.max(1, image.naturalHeight || image.height || 1);
+          var canvas = document.createElement("canvas");
+          var width = Math.max(1, image.naturalWidth || image.width || 1);
+          var height = Math.max(1, image.naturalHeight || image.height || 1);
           canvas.width = width;
           canvas.height = height;
-          const ctx = canvas.getContext("2d");
+          var ctx = canvas.getContext("2d");
           if (!ctx) {
             done(src);
             return;
@@ -2932,20 +3107,31 @@ document.addEventListener("DOMContentLoaded", function () {
           ctx.fillStyle = "#ffffff";
           ctx.fillRect(0, 0, width, height);
           ctx.drawImage(image, 0, 0, width, height);
-          done(canvas.toDataURL("image/png", 1));
+          var result = canvas.toDataURL("image/png");
+          done(result);
         } catch (error) {
-          done(src);
+          done("");
         }
       };
       image.onerror = function () {
-        done(src);
+        done("");
       };
       setTimeout(function () {
-        done(src);
-      }, 2500);
-      image.crossOrigin = "anonymous";
-      image.referrerPolicy = "no-referrer";
+        done("");
+      }, 5000);
       image.src = src;
+    });
+  }
+
+  var _logoCache = {};
+  function getNormalizedLogo(src) {
+    if (!src) { return Promise.resolve(""); }
+    if (_logoCache[src]) { return Promise.resolve(_logoCache[src]); }
+    return normalizeImageForPrintShared(src).then(function (result) {
+      if (result && result !== src) {
+        _logoCache[src] = result;
+      }
+      return result || src;
     });
   }
 
@@ -3073,6 +3259,7 @@ document.addEventListener("DOMContentLoaded", function () {
               height: 64px;
               border-radius: 12px;
               object-fit: cover;
+              background-color: #fff;
               filter: none !important;
               mix-blend-mode: normal !important;
               -webkit-print-color-adjust: exact;
@@ -3250,60 +3437,17 @@ document.addEventListener("DOMContentLoaded", function () {
                 padding: 1px 2px;
               }
             }
-            .mobile-print-toolbar {
-              display: none;
-              position: sticky;
-              top: 0;
-              z-index: 9999;
-              gap: 8px;
-              padding: 10px;
-              background: #0b1f3a;
-              box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-            }
-            .mobile-print-toolbar button {
-              flex: 1;
-              min-height: 42px;
-              border: 0;
-              border-radius: 8px;
-              font-weight: 800;
-              color: #0b1f3a;
-              background: #fff;
-            }
-            .mobile-print-toolbar .print-now {
-              color: #fff;
-              background: #0e8a72;
-            }
-            @media screen and (max-width: 760px) {
-              body { background: #eef6f8; }
-              .mobile-print-toolbar { display: flex; }
-              .print-wrap { padding: 10px; }
-            }
-            @media print {
-              .mobile-print-toolbar { display: none !important; }
-            }
           </style>
         </head>
         <body class="${paperSize ? 'print-' + paperSize : ''}">
-          <nav class="mobile-print-toolbar">
-            <button type="button" onclick="if (window.history.length > 1) { window.history.back(); } else { window.close(); }">Back</button>
-            <button type="button" onclick="window.close();">Cancel</button>
-            <button class="print-now" type="button" onclick="window.print();">Print</button>
-          </nav>
           <main class="print-wrap">
             ${reportHeaderHtml}
             ${config.subtitle ? `<p class="report-subtitle">${config.subtitle}</p>` : ""}
             ${contentMarkup}
             ${tableMarkup}
             ${config.footerHtml || ""}
-          </main>
-          <script>
-            window.addEventListener("load", function () {
-              setTimeout(function () {
-                window.print();
-              }, 500);
-            });
-          </script>
-        </body>
+        </main>
+      </body>
       </html>
     `;
     if (config.returnHtml) {
@@ -3313,12 +3457,64 @@ document.addEventListener("DOMContentLoaded", function () {
       await openPrintHtmlWindow(printHtml, "width=1200,height=900");
       return;
     }
-    const popup = popupWindow;
+    var popup = popupWindow;
     popup.document.write(printHtml);
     popup.document.close();
     popup.focus();
+    setupPrintCleanup(popup);
     await waitForPrintResources(popup);
-    popup.print();
+    hideOpenerForPrint();
+    try { popup.print(); } catch (e) {}
+  }
+
+  function setupPrintCleanup(popup) {
+    var cleaned = false;
+    function restoreOpener() {
+      try {
+        var el = document.documentElement;
+        el.style.visibility = "";
+        el.style.opacity = "";
+      } catch (e) {}
+    }
+    function safeClose() {
+      if (cleaned) return;
+      cleaned = true;
+      restoreOpener();
+      try { if (popup && !popup.closed) popup.close(); } catch (e) {}
+    }
+    try {
+      popup.addEventListener("afterprint", safeClose);
+    } catch (e) {}
+    try {
+      popup.addEventListener("beforeunload", safeClose);
+    } catch (e) {}
+    var printDetected = false;
+    var pollTimer = setInterval(function () {
+      try {
+        if (!popup || popup.closed) { clearInterval(pollTimer); safeClose(); return; }
+        if (popup.matchMedia && popup.matchMedia("print").matches) {
+          printDetected = true;
+        }
+        if (printDetected && popup.matchMedia && !popup.matchMedia("print").matches) {
+          clearInterval(pollTimer);
+          safeClose();
+        }
+      } catch (e) {
+        clearInterval(pollTimer);
+      }
+    }, 300);
+    setTimeout(function () {
+      clearInterval(pollTimer);
+      safeClose();
+    }, 45000);
+  }
+
+  function hideOpenerForPrint() {
+    try {
+      var el = document.documentElement;
+      el.style.visibility = "hidden";
+      el.style.opacity = "0";
+    } catch (e) {}
   }
 
   async function openPrintHtmlWindow(html, popupOptions, popupErrorMessage) {
@@ -3326,7 +3522,15 @@ document.addEventListener("DOMContentLoaded", function () {
       await window.SagarSoftDesktop.openPrintHtml({ html: html });
       return;
     }
-    const popup = window.open("", "_blank", popupOptions || "width=1200,height=900");
+    var popupFeatures = "width=" + screen.availWidth + ",height=" + screen.availHeight + ",left=0,top=0";
+    if (popupOptions && /width=\d+/i.test(popupOptions)) {
+      var wMatch = popupOptions.match(/width=(\d+)/i);
+      var w = parseInt(wMatch && wMatch[1], 10) || 0;
+      if (w > 0 && w < 1200) {
+        popupFeatures = popupOptions;
+      }
+    }
+    var popup = window.open("", "_blank", popupFeatures);
     if (!popup) {
       openAppMessageBox("Error", popupErrorMessage || "Please allow popups to print.", "error");
       return;
@@ -3334,19 +3538,10 @@ document.addEventListener("DOMContentLoaded", function () {
     popup.document.write(html);
     popup.document.close();
     popup.focus();
+    setupPrintCleanup(popup);
     await waitForPrintResources(popup);
-    popup.print();
-    var dialogOpened = false;
-    var closeTimer = setInterval(function() {
-      try {
-        if (popup.closed) { clearInterval(closeTimer); return; }
-        if (popup.matchMedia('print').matches) dialogOpened = true;
-        if (dialogOpened && !popup.matchMedia('print').matches) {
-          clearInterval(closeTimer);
-          popup.close();
-        }
-      } catch(e) { clearInterval(closeTimer); }
-    }, 200);
+    hideOpenerForPrint();
+    try { popup.print(); } catch (e) {}
   }
 
   async function openThermalPrintWindow(html, popupOptions, popupErrorMessage) {
@@ -3528,13 +3723,13 @@ document.addEventListener("DOMContentLoaded", function () {
             </div>
             <div class="stat-item">
               <span class="stat-label">Boys</span>
-              <button class="stat-link" type="button" data-action="class-view-boys" data-id="${classItem.id}">
+              <button class="stat-link stat-link--boys" type="button" data-action="class-view-boys" data-id="${classItem.id}" style="--pct:${boysPercentage}">
                 ${boysCount} (${boysPercentage}%)
               </button>
             </div>
             <div class="stat-item">
               <span class="stat-label">Girls</span>
-              <button class="stat-link" type="button" data-action="class-view-girls" data-id="${classItem.id}">
+              <button class="stat-link stat-link--girls" type="button" data-action="class-view-girls" data-id="${classItem.id}" style="--pct:${girlsPercentage}">
                 ${girlsCount} (${girlsPercentage}%)
               </button>
             </div>
@@ -4441,30 +4636,62 @@ document.addEventListener("DOMContentLoaded", function () {
   function renderDashboardNotices() {
     var el = document.getElementById("dashboardNoticeBoard");
     if (!el) return;
-    var notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
-    var recent = notices.filter(function (n) { return n.pushed !== false; }).slice(-5).reverse();
+    var cache = window.SagarSoftCache;
+    var notices = (cache && typeof cache.getNotices === "function") ? cache.getNotices() : [];
+    if (!notices.length) notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
+    var now = new Date();
+    var todayStr = now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+    var active = notices.filter(function (n) {
+      if (n.pushed === false) return false;
+      if (n.expiryDate && n.expiryDate < todayStr) return false;
+      return true;
+    });
+    active.sort(function (a, b) {
+      var da = a.createdAt || "";
+      var db = b.createdAt || "";
+      return da > db ? -1 : da < db ? 1 : 0;
+    });
+    var recent = active.slice(0, 5);
     if (!recent.length) {
-      el.innerHTML = '<div class="dash-empty"><i class="fas fa-bullhorn"></i>No pushed notices yet.</div>';
+      el.innerHTML = '<div class="dash-empty"><i class="fas fa-bullhorn"></i>No active notices.</div>';
       return;
     }
     el.innerHTML = recent.map(function (n) {
       var priority = n.priority || "normal";
+      var priorityLabel = priority.charAt(0).toUpperCase() + priority.slice(1);
       var date = n.createdAt || "";
-      var target = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
-      return '<div class="dash-notice">' +
+      var content = (n.content || "").replace(/\n/g, " ");
+      var preview = content.length > 100 ? content.substring(0, 100) + "..." : content;
+      return '<div class="dash-notice" data-notice-id="' + escapeAttr(n.id) + '" style="cursor:pointer;">' +
         '<span class="dash-notice__dot dash-notice__dot--' + escapeAttr(priority) + '"></span>' +
         '<div class="dash-notice__content">' +
           '<p class="dash-notice__title">' + escapeHtml(n.title) + '</p>' +
-          '<p class="dash-notice__meta">' + escapeHtml(date) + ' &middot; ' + escapeHtml(target) + '</p>' +
+          '<p class="dash-notice__preview" style="font-size:0.72rem;color:#5a7a96;margin:2px 0 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;">' + escapeHtml(preview) + '</p>' +
+          '<p class="dash-notice__meta" style="margin:3px 0 0;">' +
+            '<span style="font-size:0.68rem;color:#8a97a5;">' + escapeHtml(date) + '</span>' +
+            ' <span style="font-size:0.6rem;padding:1px 6px;border-radius:8px;background:' + (priority === "urgent" ? "#fde8e8" : priority === "important" ? "#fff3e0" : "#e8f5e9") + ';color:' + (priority === "urgent" ? "#d32f2f" : priority === "important" ? "#e65100" : "#2e7d32") + ';font-weight:600;">' + escapeHtml(priorityLabel) + '</span>' +
+            (n.expiryDate ? ' <span style="font-size:0.65rem;color:#999;">Exp: ' + escapeHtml(n.expiryDate) + '</span>' : '') +
+          '</p>' +
         '</div>' +
       '</div>';
     }).join("");
+    el.querySelectorAll(".dash-notice[data-notice-id]").forEach(function (card) {
+      card.addEventListener("click", function () {
+        var nid = card.getAttribute("data-notice-id");
+        var notice = active.find(function (n) { return n.id === nid; });
+        if (!notice) return;
+        var content = (notice.content || "").replace(/\n/g, "<br>");
+        openAppMessageBox(notice.title || "Notice", content, "info");
+      });
+    });
   }
 
   function renderDashboardEvents() {
     var el = document.getElementById("dashboardEventCalendar");
     if (!el) return;
-    var events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
+    var cache = window.SagarSoftCache;
+    var events = (cache && typeof cache.getEvents === "function") ? cache.getEvents() : [];
+    if (!events.length) events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
     var today = new Date();
     var todayStr = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
 
@@ -4506,30 +4733,39 @@ document.addEventListener("DOMContentLoaded", function () {
     for (var day = 1; day <= daysInMonth; day++) {
       var ds = year + "-" + String(month + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
       var isToday = day === today.getDate();
-      var hasEvent = events.some(function (ev) { return ev.date === ds; });
+      var dayEvts = events.filter(function (ev) { var sd = ev.date || ev.start_date || ""; return sd === ds; });
+      var hasEvent = dayEvts.length > 0;
       var hasBday = birthdays.some(function (b) { return b.day === day; });
       var evType = "";
-      if (hasEvent) { var found = events.find(function (ev) { return ev.date === ds; }); evType = found ? (found.type || "custom") : "custom"; }
+      if (hasEvent) { evType = dayEvts[0].type || dayEvts[0].event_type || "custom"; }
       var cls = "dash-cal__cell";
       if (isToday) cls += " dash-cal__cell--today";
       if (hasEvent) cls += " dash-cal__cell--event dash-cal__cell--" + escapeAttr(evType);
       if (hasBday && !hasEvent) cls += " dash-cal__cell--event dash-cal__cell--birthday";
       var title = day;
-      if (hasBday) { var bNames = birthdays.filter(function (b) { return b.day === day; }).map(function (b) { return b.name; }).join(", "); title = "🎂 " + bNames; }
-      if (hasEvent) { title = events.find(function (ev) { return ev.date === ds; }).title; }
+      if (hasBday) { var bNames = birthdays.filter(function (b) { return b.day === day; }).map(function (b) { return b.name; }).join(", "); title = bNames; }
+      if (hasEvent) { title = dayEvts.map(function (ev) { return ev.title; }).join(", "); }
       calHtml += '<div class="' + cls + '" title="' + escapeAttr(title) + '">' + day + '</div>';
     }
     calHtml += '</div></div>';
 
     calHtml += '<div class="dash-cal__side">';
-    var upcoming = events.filter(function (ev) { return ev.date >= todayStr; }).sort(function (a, b) { return a.date > b.date ? 1 : a.date < b.date ? -1 : 0; }).slice(0, 3);
+    var upcoming = events.filter(function (ev) {
+      var sd = ev.date || ev.start_date || "";
+      return sd >= todayStr;
+    }).sort(function (a, b) {
+      var da = a.date || a.start_date || "";
+      var db = b.date || b.start_date || "";
+      return da > db ? 1 : da < db ? -1 : 0;
+    }).slice(0, 3);
     if (upcoming.length) {
       calHtml += '<div class="dash-events-upcoming">';
       calHtml += '<div class="dash-events-upcoming__header"><strong>Upcoming</strong></div>';
       upcoming.forEach(function (ev) {
-        var d = new Date(ev.date);
+        var evDate = ev.date || ev.start_date || "";
+        var d = new Date(evDate);
         var dayLabel = d.getDate() + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()];
-        var type = ev.type || "custom";
+        var type = ev.type || ev.event_type || "custom";
         calHtml += '<div class="dash-events-upcoming__item">' +
           '<span class="dash-events-upcoming__date">' + dayLabel + '</span>' +
           '<span class="dash-events-upcoming__dot dash-events-upcoming__dot--' + escapeAttr(type) + '"></span>' +
@@ -4541,7 +4777,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (birthdays.length) {
       calHtml += '<div class="dash-birthdays">';
-      calHtml += '<div class="dash-birthdays__header"><strong>🎂 Birthdays</strong></div>';
+      calHtml += '<div class="dash-birthdays__header"><strong>Birthdays</strong></div>';
       birthdays.forEach(function (b) {
         var cls = b.isToday ? " dash-birthdays__item--today" : "";
         calHtml += '<div class="dash-birthdays__item' + cls + '">' +
@@ -4980,7 +5216,7 @@ document.addEventListener("DOMContentLoaded", function () {
       wireToolbar("studentRulesToolbar", studentEditor);
       wireToolbar("employeeRulesToolbar", employeeEditor);
 
-      document.getElementById("saveStudentRulesBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("saveStudentRulesBtn"), "click", async function () {
         var msg = document.getElementById("studentRulesMsg");
         settings.rulesAndRegulations.students = studentEditor.innerHTML.trim();
         database.school.rulesRegulations = studentEditor.textContent.trim();
@@ -4992,7 +5228,7 @@ document.addEventListener("DOMContentLoaded", function () {
         msg.className = "rules-save-msg " + (saved ? "rules-save-msg--success" : "rules-save-msg--error");
       });
 
-      document.getElementById("saveEmployeeRulesBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("saveEmployeeRulesBtn"), "click", async function () {
         var msg = document.getElementById("employeeRulesMsg");
         settings.rulesAndRegulations.employees = employeeEditor.innerHTML.trim();
         addActivity("Rules updated", "Employee rules and regulations updated.");
@@ -5188,6 +5424,122 @@ document.addEventListener("DOMContentLoaded", function () {
       }).catch(function (err) { console.warn("Scanner stop error:", err); });
       if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
     });
+  }
+
+  function processScannedIdentifier(scannedText, dateValue) {
+    var text = String(scannedText || "").trim();
+    if (!text) return null;
+    var parts = text.split(":");
+    var entityType = null;
+    var scannedId = text;
+    if (parts.length >= 2) {
+      var prefix = parts[0].toUpperCase();
+      if (prefix === "ATTEND") {
+        entityType = (parts[1] || "").toUpperCase() === "EMPLOYEE" ? "employee" : "student";
+        scannedId = parts.slice(2).join(":");
+      } else if (prefix === "STUDENT") {
+        entityType = "student";
+        scannedId = parts.slice(1).join(":");
+      } else if (prefix === "EMPLOYEE") {
+        entityType = "employee";
+        scannedId = parts.slice(1).join(":");
+      }
+    }
+    if (!entityType) {
+      var studentMatch = (database.students || []).find(function (s) { return String(s.admissionNo || "") === text || String(s.id || "") === text; });
+      if (studentMatch) { entityType = "student"; scannedId = text; }
+      else {
+        var empMatch = (getEmployees() || []).find(function (e) { return String(e.id || "") === text || String(e.employeeId || "") === text; });
+        if (empMatch) { entityType = "employee"; scannedId = text; }
+      }
+    }
+    if (!entityType) return { found: false, scannedId: scannedId, entityType: null, person: null };
+    var person = null;
+    if (entityType === "student") {
+      person = (database.students || []).find(function (s) { return String(s.admissionNo || "") === scannedId || String(s.id || "") === scannedId; });
+    } else {
+      person = (getEmployees() || []).find(function (e) { return String(e.id || "") === scannedId || String(e.employeeId || "") === scannedId; });
+    }
+    if (!person) return { found: false, scannedId: scannedId, entityType: entityType, person: null };
+    var targetDate = dateValue || getTodayDateISO();
+    var existing = getAttendanceRecordFor(entityType, person.id, targetDate);
+    if (existing && normalizeAttendanceStatus(existing.status) === "Present") {
+      return { found: true, alreadyPresent: true, entityType: entityType, person: person, date: targetDate, existingRecord: existing };
+    }
+    saveAttendanceRecord(entityType, person.id, targetDate, "Present", entityType === "student" ? { className: person.className } : { role: person.role || person.designation });
+    saveDatabase("Scanner attendance...");
+    return { found: true, alreadyPresent: false, entityType: entityType, person: person, date: targetDate };
+  }
+
+  var _scannerBuffer = "";
+  var _scannerTimer = null;
+  var _scannerActive = false;
+
+  function initKeyboardScanner() {
+    if (_scannerActive) return;
+    _scannerActive = true;
+    document.addEventListener("keydown", function (e) {
+      if (e.ctrlKey || e.altKey || e.metaKey) return;
+      var tag = (e.target.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || e.target.isContentEditable) return;
+      if (e.key === "Enter" && _scannerBuffer.length >= 3) {
+        e.preventDefault();
+        var scannedText = _scannerBuffer;
+        _scannerBuffer = "";
+        clearTimeout(_scannerTimer);
+        _scannerTimer = null;
+        handleKeyboardScan(scannedText);
+        return;
+      }
+      if (e.key.length === 1) {
+        _scannerBuffer += e.key;
+        clearTimeout(_scannerTimer);
+        _scannerTimer = setTimeout(function () { _scannerBuffer = ""; }, 150);
+      }
+    });
+  }
+
+  function handleKeyboardScan(scannedText) {
+    var result = processScannedIdentifier(scannedText, getTodayDateISO());
+    if (!result) return;
+    var overlay = document.createElement("div");
+    overlay.style.cssText = "position:fixed;top:20px;right:20px;z-index:10000;min-width:300px;max-width:400px;padding:16px 20px;border-radius:12px;font-family:'Segoe UI',sans-serif;box-shadow:0 8px 32px rgba(0,0,0,0.18);animation:slideUp 0.3s ease;";
+    if (!result.found) {
+      overlay.style.background = "#fff";
+      overlay.style.border = "2px solid #ef4444";
+      overlay.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<span style="font-size:24px;color:#ef4444;">&#10006;</span>' +
+        '<strong style="color:#102542;font-size:14px;">Not Found</strong></div>' +
+        '<p style="margin:0;font-size:13px;color:#5a7a96;">Scanned ID: <strong style="color:#102542;">' + result.scannedId + '</strong></p>';
+    } else if (result.alreadyPresent) {
+      var personName = result.person.name || "-";
+      var timeStr = result.existingRecord && result.existingRecord.createdAt ? new Date(result.existingRecord.createdAt).toLocaleTimeString() : "earlier today";
+      overlay.style.background = "#fff";
+      overlay.style.border = "2px solid #f59e0b";
+      overlay.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<span style="font-size:24px;color:#f59e0b;">&#9888;</span>' +
+        '<strong style="color:#102542;font-size:14px;">Already Marked</strong></div>' +
+        '<p style="margin:0 0 4px;font-size:13px;color:#102542;"><strong>' + personName + '</strong></p>' +
+        '<p style="margin:0;font-size:12px;color:#5a7a96;">Already present ' + timeStr + '</p>';
+    } else {
+      var pName = result.person.name || "-";
+      var pId = result.entityType === "student" ? (result.person.admissionNo || result.person.id) : (result.person.employeeId || result.person.id);
+      var now = new Date();
+      var timeNow = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      overlay.style.background = "#fff";
+      overlay.style.border = "2px solid #10b981";
+      overlay.innerHTML =
+        '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">' +
+        '<span style="font-size:24px;color:#10b981;">&#10004;</span>' +
+        '<strong style="color:#102542;font-size:14px;">Attendance Marked</strong></div>' +
+        '<p style="margin:0 0 2px;font-size:13px;color:#102542;"><strong>' + pName + '</strong></p>' +
+        '<p style="margin:0 0 2px;font-size:12px;color:#5a7a96;">' + result.entityType.charAt(0).toUpperCase() + result.entityType.slice(1) + ' ID: ' + pId + '</p>' +
+        '<p style="margin:0;font-size:12px;color:#10b981;">Present &middot; ' + timeNow + '</p>';
+    }
+    document.body.appendChild(overlay);
+    setTimeout(function () { if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 3500);
   }
 
   function openMobileAppDownloadModal() {
@@ -5756,8 +6108,13 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (moduleGuideCard) {
-      const shouldShowGuideCard = guidePanelRoutes.includes(route) || (!isEmployeeModuleRoute && !isFullWidthModuleRoute);
+      var isSuperAdminAccountSettings = superAdminBypass && route === "account-settings";
+      const shouldShowGuideCard = isSuperAdminAccountSettings ? false : (guidePanelRoutes.includes(route) || (!isEmployeeModuleRoute && !isFullWidthModuleRoute));
       moduleGuideCard.style.display = shouldShowGuideCard ? "block" : "none";
+      var splitGridEl = moduleGuideCard.closest(".split-grid");
+      if (splitGridEl) {
+        splitGridEl.classList.toggle("split-grid--single-panel", isSuperAdminAccountSettings);
+      }
     }
 
     if (viewModule) {
@@ -5788,7 +6145,7 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">🏫</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Institute Profile</p><p class="gs-form-section__subtitle">Update school information</p></div>
           </div>
           <div class="gs-form-grid">
@@ -5909,8 +6266,8 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;">💰</div>
-            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view — edits are managed in Fee Structure</p></div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;">??</div>
+            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view ï¿½ edits are managed in Fee Structure</p></div>
           </div>
           <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Fee Particulars for*</label><select class="gs-field__input" id="feeParticularClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
           <div id="feeParticularRows" class="gs-row-list" style="margin-top:1rem;"></div>
@@ -5976,7 +6333,7 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;">📋</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#ea580c,#f97316);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Fee Structure</p><p class="gs-form-section__subtitle">Define fee types and amounts per class</p></div>
           </div>
           <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Select Class</label><select class="gs-field__input" id="feeStructureClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
@@ -6161,7 +6518,7 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">🏷</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Section A: Manage Discount Types</p><p class="gs-form-section__subtitle">Create reusable discount templates</p></div>
           </div>
           <div class="gs-form-grid" style="grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.75rem;">
@@ -6180,7 +6537,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
         <article class="gs-form-section" style="margin-top:1.25rem;">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;">📋</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Section B: Assign Discount</p><p class="gs-form-section__subtitle">Assign a discount type to students</p></div>
           </div>
           <div class="invoice-entry-cards" style="margin-bottom:0.75rem;">
@@ -6239,7 +6596,7 @@ document.addEventListener("DOMContentLoaded", function () {
       function showAssignMessage(text, type) {
         var el = document.getElementById("assignDiscountMessage");
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : "✕";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : "?";
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
       }
 
@@ -6310,8 +6667,8 @@ document.addEventListener("DOMContentLoaded", function () {
             var assignedCount = database.students.filter(function (s) { return s.discountTypeId === dt.id; }).length;
             if (assignedCount > 0) {
               var msg = document.getElementById("dtMessage");
-              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" — it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
-              msg.querySelector(".gs-message__icon").textContent = "✕";
+              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" ï¿½ it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
+              msg.querySelector(".gs-message__icon").textContent = "?";
               msg.className = "gs-message gs-message--error gs-message--visible";
               return;
             }
@@ -6327,7 +6684,7 @@ document.addEventListener("DOMContentLoaded", function () {
         });
       }
 
-      document.getElementById("dtCancelEditBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("dtCancelEditBtn"), "click", function () {
         editingDiscountTypeId = null;
         document.getElementById("dtNameInput").value = "";
         document.getElementById("dtPercentInput").value = "";
@@ -6337,7 +6694,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("dtCancelEditBtn").style.display = "none";
       });
 
-      document.getElementById("dtSaveBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("dtSaveBtn"), "click", async function () {
         var name = document.getElementById("dtNameInput").value.trim();
         var percentage = parseFloat(document.getElementById("dtPercentInput").value) || 0;
         var description = document.getElementById("dtDescInput").value.trim();
@@ -6345,14 +6702,14 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!name) {
           var msg = document.getElementById("dtMessage");
           msg.querySelector(".gs-message__text").textContent = "Discount type name is required.";
-          msg.querySelector(".gs-message__icon").textContent = "✕";
+          msg.querySelector(".gs-message__icon").textContent = "?";
           msg.className = "gs-message gs-message--error gs-message--visible";
           return;
         }
         if (percentage <= 0 || percentage > 100) {
           var msg = document.getElementById("dtMessage");
           msg.querySelector(".gs-message__text").textContent = "Percentage must be between 1 and 100.";
-          msg.querySelector(".gs-message__icon").textContent = "✕";
+          msg.querySelector(".gs-message__icon").textContent = "?";
           msg.className = "gs-message gs-message--error gs-message--visible";
           return;
         }
@@ -6362,7 +6719,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (duplicateName) {
           var msg = document.getElementById("dtMessage");
           msg.querySelector(".gs-message__text").textContent = "A discount type with this name already exists.";
-          msg.querySelector(".gs-message__icon").textContent = "✕";
+          msg.querySelector(".gs-message__icon").textContent = "?";
           msg.className = "gs-message gs-message--error gs-message--visible";
           return;
         }
@@ -6404,7 +6761,7 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("dtStatusInput").value = "active";
         var msg = document.getElementById("dtMessage");
         msg.querySelector(".gs-message__text").textContent = "Discount type saved successfully.";
-        msg.querySelector(".gs-message__icon").textContent = "✓";
+        msg.querySelector(".gs-message__icon").textContent = "?";
         msg.className = "gs-message gs-message--success gs-message--visible";
         renderTypesTable();
         refreshAllTypeDropdowns();
@@ -6548,7 +6905,7 @@ document.addEventListener("DOMContentLoaded", function () {
           var percent = dt ? dt.percentage : (student.discountInFee || "-");
           return '<article style="padding:8px 10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">' +
             '<div><strong>' + escapeHtml(student.name) + '</strong> <small style="color:#888;">(' + escapeHtml(student.admissionNo || "-") + ')</small>' +
-            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' — <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
+            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' ï¿½ <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
             '</article>';
         }).join("");
       }
@@ -6846,7 +7203,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
       });
 
-      document.getElementById("saveFailCriteriaBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("saveFailCriteriaBtn"), "click", async function () {
         settings.failCriteria = {
           overallPercent: Number(document.getElementById("failOverallInput").value || 0),
           subjectPercent: Number(document.getElementById("failSubjectInput").value || 0),
@@ -6874,7 +7231,7 @@ document.addEventListener("DOMContentLoaded", function () {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">🎨</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Theme & Language</p><p class="gs-form-section__subtitle">Customize appearance and select your preferred language</p></div>
           </div>
           <div class="gs-form-grid">
@@ -6891,17 +7248,17 @@ document.addEventListener("DOMContentLoaded", function () {
           <div class="gs-message" id="themeMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
         </article>
       `;
-      moduleGuide.innerHTML = `<article class="gs-form-section"><div class="gs-form-section__header"><div class="gs-form-section__icon" style="background:rgba(27,95,122,0.1);color:var(--primary-color);">ℹ</div><div><p class="gs-form-section__title">Current Settings</p></div></div><div style="display:grid;gap:0.5rem;"><p style="font-size:0.88rem;color:var(--text-muted);"><strong>Language:</strong> ${escapeHtml(theme.language || "English")}</p></div></article>`;
+      moduleGuide.innerHTML = `<article class="gs-form-section"><div class="gs-form-section__header"><div class="gs-form-section__icon" style="background:rgba(27,95,122,0.1);color:var(--primary-color);">?</div><div><p class="gs-form-section__title">Current Settings</p></div></div><div style="display:grid;gap:0.5rem;"><p style="font-size:0.88rem;color:var(--text-muted);"><strong>Language:</strong> ${escapeHtml(theme.language || "English")}</p></div></article>`;
 
       function setThemeMessage(text, type) {
         var el = document.getElementById("themeMessage");
         if (!el) return;
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : type === "error" ? "?" : "?";
       }
 
-      document.getElementById("saveThemeBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("saveThemeBtn"), "click", async function () {
         var selectedLang = document.getElementById("languageSettingSelect").value;
         settings.themeLanguage = {
           sidebarBackground: document.getElementById("sidebarBgColorInput").value,
@@ -7561,7 +7918,7 @@ document.addEventListener("DOMContentLoaded", function () {
         const copyLabel = getCopyLabel(copyType);
 
         const headerHtml = `<section style="text-align:center;margin-bottom:0.5mm;padding:0.5mm 0;">
-          ${printableLogo ? `<img src="${printableLogo}" style="width:5mm;height:5mm;border-radius:0.5mm;object-fit:cover;">` : `<span style="display:inline-flex;width:5mm;height:5mm;border-radius:0.5mm;background:linear-gradient(135deg,#1e5eff,#30b59c);color:#fff;align-items:center;justify-content:center;font-size:4pt;font-weight:700;">${getInitials(profile.name || "S")}</span>`}
+          ${printableLogo ? `<img src="${printableLogo}" style="width:5mm;height:5mm;border-radius:0.5mm;object-fit:cover;background-color:#fff;">` : `<span style="display:inline-flex;width:5mm;height:5mm;border-radius:0.5mm;background:linear-gradient(135deg,#1e5eff,#30b59c);color:#fff;align-items:center;justify-content:center;font-size:4pt;font-weight:700;">${getInitials(profile.name || "S")}</span>`}
           <div style="font-size:6.5pt;font-weight:700;margin:0.2mm 0;">${escapeHtml(profile.name || "-")}</div>
           <div style="font-size:4pt;color:#4e678f;margin:0;">${escapeHtml(profile.slogan || "School Management System")}</div>
           <div style="font-size:3.5pt;color:#4e678f;margin-top:0.2mm;">${escapeHtml(profile.phone || "-")} | PSRA ${escapeHtml(profile.psra || "-")}</div>
@@ -7927,7 +8284,7 @@ ${allContent}
         `;
       }
 
-      document.getElementById("collectFeeBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("collectFeeBtn"), "click", function () {
         const student = getSelectedStudentFromSearch();
         if (!student) {
           message.textContent = "Please select student from search suggestions.";
@@ -8117,11 +8474,6 @@ ${allContent}
                   <p><strong>Remaining:</strong> ${escapeHtml(latestReceiptData.remaining || "-")}</p>
                 </section>
               </main>
-              <script>
-                window.addEventListener("load", function () {
-                  setTimeout(function () { window.print(); }, 300);
-                });
-              </script>
             </body>
           </html>
         `;
@@ -8462,7 +8814,7 @@ ${allContent}
         alert(`SMS reminders processed. Success: ${smsSuccess}, Failed: ${smsFail}${missingPhone ? `, Missing Phone: ${missingPhone}` : ""}.`);
       }
 
-      document.getElementById("sendSelectedReminderBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("sendSelectedReminderBtn"), "click", async function () {
         await sendReminder();
       });
 
@@ -8652,7 +9004,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("clearAllFeesDataBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("clearAllFeesDataBtn"), "click", async function () {
         const confirmed = await openAppConfirm(
           "Delete All Fee Records",
           "This will PERMANENTLY DELETE ALL fee records from the system. This action cannot be undone. Are you absolutely sure?",
@@ -8676,7 +9028,7 @@ ${allContent}
         }
       });
 
-      document.getElementById("printFeesReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printFeesReportBtn"), "click", function () {
         const rows = getReportRows();
         if (!rows.length) {
           return;
@@ -9118,7 +9470,7 @@ ${allContent}
           <div style="position:relative;display:grid;gap:10px;padding:10px;background:#fff;border:1px solid #dce5f4;border-radius:12px;overflow:hidden;">
             <span style="position:absolute;inset:42% auto auto 50%;transform:translate(-50%,-50%) rotate(-18deg);font-size:1.2rem;font-weight:800;color:rgba(29,156,97,0.24);white-space:nowrap;pointer-events:none;z-index:0;">Computer Generated Paid Slip</span>
             <div style="position:relative;z-index:1;display:grid;grid-template-columns:70px 1fr;gap:10px;align-items:center;">
-              ${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;">` : `<span style="width:62px;height:62px;border-radius:10px;background:#1e5eff;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">SS</span>`}
+              ${profile.logo ? `<img src="${profile.logo}" alt="School Logo" style="width:62px;height:62px;border-radius:10px;object-fit:cover;background-color:#fff;">` : `<span style="width:62px;height:62px;border-radius:10px;background:#1e5eff;color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:700;">SS</span>`}
               <div>
                 <h3 style="margin:0;font-size:1.02rem;">${escapeHtml(profile.name || database.school.name || "School Name")}</h3>
                 <p style="margin:2px 0;">${escapeHtml(profile.slogan || "-")}</p>
@@ -9205,11 +9557,6 @@ ${allContent}
                     <p>${escapeHtml(profile.name || database.school.name || "School Name")}</p>
                   </section>
                 </main>
-                <script>
-                  window.addEventListener("load", function () {
-                    setTimeout(function () { window.print(); }, 300);
-                  });
-                </script>
               </body>
             </html>
           `;
@@ -9246,7 +9593,7 @@ ${allContent}
         }, null, paperSize);
       }
 
-      document.getElementById("submitSalaryBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("submitSalaryBtn"), "click", function () {
         const employee = getSelectedEmployee();
         if (!employee) {
           message.textContent = "Please select employee from search suggestions.";
@@ -9454,7 +9801,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("printSalarySheetBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printSalarySheetBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -9709,7 +10056,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("printSalaryReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printSalaryReportBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -9770,6 +10117,21 @@ ${allContent}
         .sort(function (a, b) { return Number(a.order || 0) - Number(b.order || 0); });
     }
 
+    var TT_PERIOD_TYPES = ["Regular", "Assembly", "Break", "Lunch Break", "Prayer Break", "Activity", "Library", "Free Period"];
+
+    function isNonTeachingPeriodType(periodType) {
+      var t = String(periodType || "Regular").toLowerCase();
+      return t === "assembly" || t === "break" || t === "lunch break" || t === "prayer break" || t === "free period";
+    }
+
+    function getPeriodTypeBadgeClass(periodType) {
+      var t = String(periodType || "Regular").toLowerCase();
+      if (t === "assembly") return "tt-badge--assembly";
+      if (t === "break" || t === "lunch break" || t === "prayer break") return "tt-badge--break";
+      if (t === "free period") return "tt-badge--free";
+      return "tt-badge--regular";
+    }
+
     function getClassRooms() {
       return (settings.classRooms || []).slice().sort(function (a, b) {
         return String(a.name || "").localeCompare(String(b.name || ""));
@@ -9777,15 +10139,137 @@ ${allContent}
     }
 
     function getTimetableEntries() {
+      return expandRecurringEntries(Array.isArray(settings.timetableEntries) ? settings.timetableEntries : []);
+    }
+
+    function getRawTimetableEntries() {
       return Array.isArray(settings.timetableEntries) ? settings.timetableEntries : [];
     }
 
+    function expandRecurringEntries(rawEntries) {
+      var expanded = [];
+      for (var i = 0; i < rawEntries.length; i++) {
+        var entry = rawEntries[i];
+        if (entry.scheduleType === "recurring" && Array.isArray(entry.recurringDays) && entry.recurringDays.length > 0) {
+          for (var d = 0; d < entry.recurringDays.length; d++) {
+            expanded.push({
+              id: entry.id + "-" + entry.recurringDays[d],
+              className: entry.className,
+              weekdayId: entry.recurringDays[d],
+              periodId: entry.periodId,
+              periodLabel: entry.periodLabel,
+              periodType: entry.periodType || "Regular",
+              subjectName: entry.subjectName,
+              teacherId: entry.teacherId,
+              teacherName: entry.teacherName,
+              roomId: entry.roomId,
+              roomName: entry.roomName,
+              scheduleType: "recurring",
+              recurringGroupId: entry.recurringGroupId || entry.id,
+              recurringDays: entry.recurringDays,
+              updatedAt: entry.updatedAt
+            });
+          }
+        } else {
+          expanded.push(entry);
+        }
+      }
+      return expanded;
+    }
+
+    function checkTimetableConflicts(className, periodId, excludeGroupId, targetDays) {
+      var entries = getRawTimetableEntries();
+      var weekdays = getTimetableWeekdays();
+      var conflicts = [];
+      var seenTeacherDayConflict = {};
+      var seenRoomDayConflict = {};
+      for (var d = 0; d < targetDays.length; d++) {
+        var dayId = targetDays[d];
+        for (var i = 0; i < entries.length; i++) {
+          var existing = entries[i];
+          var existingGroupId = existing.recurringGroupId || existing.id;
+          if (excludeGroupId && existingGroupId === excludeGroupId) continue;
+          var existingDays = existing.scheduleType === "recurring" && Array.isArray(existing.recurringDays) ? existing.recurringDays : [existing.weekdayId];
+          if (existingDays.indexOf(dayId) < 0) continue;
+          if (existing.periodId !== periodId) continue;
+          var dayName = "";
+          for (var w = 0; w < weekdays.length; w++) {
+            if (weekdays[w].id === dayId) { dayName = weekdays[w].name; break; }
+          }
+          if (existing.className === className) {
+            conflicts.push({ type: "class", day: dayName, dayId: dayId, detail: "Class already has a timetable entry for this period." });
+          }
+          if (existing.teacherId && existing.teacherId !== "") {
+            var teacherConflict = false;
+            var conflictClassName = "";
+            for (var t = 0; t < entries.length; t++) {
+              var other = entries[t];
+              var otherGroupId = other.recurringGroupId || other.id;
+              if (excludeGroupId && otherGroupId === excludeGroupId) continue;
+              var otherDays = other.scheduleType === "recurring" && Array.isArray(other.recurringDays) ? other.recurringDays : [other.weekdayId];
+              if (otherDays.indexOf(dayId) < 0) continue;
+              if (other.periodId !== periodId) continue;
+              if (other.teacherId === existing.teacherId && other.className !== className) {
+                teacherConflict = true;
+                conflictClassName = other.className;
+                break;
+              }
+            }
+            if (teacherConflict) {
+              var tk = existing.teacherId + "-" + dayId;
+              if (!seenTeacherDayConflict[tk]) {
+                seenTeacherDayConflict[tk] = true;
+                var teacherEntry = null;
+                for (var ei = 0; ei < (settings.teachers || []).length; ei++) {
+                  if (settings.teachers[ei].id === existing.teacherId) { teacherEntry = settings.teachers[ei]; break; }
+                }
+                var teacherLabel = teacherEntry ? (teacherEntry.name || existing.teacherId) : existing.teacherId;
+                conflicts.push({ type: "teacher", day: dayName, dayId: dayId, detail: "Teacher " + teacherLabel + " is already assigned in class " + conflictClassName + " during this period." });
+              }
+            }
+          }
+          if (existing.roomId && existing.roomId !== "") {
+            var roomConflict = false;
+            var roomConflictClassName = "";
+            for (var r = 0; r < entries.length; r++) {
+              var roomOther = entries[r];
+              var roomOtherGroup = roomOther.recurringGroupId || roomOther.id;
+              if (excludeGroupId && roomOtherGroup === excludeGroupId) continue;
+              var roomOtherDays = roomOther.scheduleType === "recurring" && Array.isArray(roomOther.recurringDays) ? roomOther.recurringDays : [roomOther.weekdayId];
+              if (roomOtherDays.indexOf(dayId) < 0) continue;
+              if (roomOther.periodId !== periodId) continue;
+              if (roomOther.roomId === existing.roomId && roomOther.className !== className) {
+                roomConflict = true;
+                roomConflictClassName = roomOther.className;
+                break;
+              }
+            }
+            if (roomConflict) {
+              var rk = existing.roomId + "-" + dayId;
+              if (!seenRoomDayConflict[rk]) {
+                seenRoomDayConflict[rk] = true;
+                var roomEntry = null;
+                for (var ri2 = 0; ri2 < (settings.classRooms || []).length; ri2++) {
+                  if (settings.classRooms[ri2].id === existing.roomId) { roomEntry = settings.classRooms[ri2]; break; }
+                }
+                var roomLabel = roomEntry ? (roomEntry.name || existing.roomId) : existing.roomId;
+                conflicts.push({ type: "room", day: dayName, dayId: dayId, detail: "Room " + roomLabel + " is already in use in class " + roomConflictClassName + " during this period." });
+              }
+            }
+          }
+        }
+      }
+      return conflicts;
+    }
+
     function upsertTimetableEntry(entry) {
-      const rows = getTimetableEntries();
+      const rows = getRawTimetableEntries();
       const index = rows.findIndex(function (item) {
         return item.className === entry.className &&
-          item.weekdayId === entry.weekdayId &&
-          item.periodId === entry.periodId;
+          item.periodId === entry.periodId &&
+          (item.scheduleType === "recurring" && Array.isArray(item.recurringDays)
+            ? item.recurringDays.indexOf(entry.weekdayId) >= 0
+            : item.weekdayId === entry.weekdayId);
       });
       if (index >= 0) {
         rows[index] = { ...rows[index], ...entry };
@@ -9810,7 +10294,7 @@ ${allContent}
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">📅</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">&#128197;</div>
             <div><p class="gs-form-section__title">Manage Weekdays</p><p class="gs-form-section__subtitle">Configure school week schedule</p></div>
           </div>
           <div class="gs-form-grid">
@@ -9825,7 +10309,7 @@ ${allContent}
           <div class="gs-form-section__header">
             <div><p class="gs-form-section__title">All Weekdays</p></div>
           </div>
-          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>Weekday</th><th>Short Label</th><th>Status</th><th>Actions</th></tr></thead><tbody id="weekdayTableBody"></tbody></table></div>
+          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th style="width:30px;"></th><th>Weekday</th><th>Short Label</th><th>Status</th><th>Actions</th></tr></thead><tbody id="weekdayTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -9837,10 +10321,20 @@ ${allContent}
       const message = document.getElementById("weekdayMessage");
       let editingId = "";
 
+      function normalizeWeekdayOrders() {
+        var days = settings.timetableWeekdays || [];
+        var sorted = days.slice().sort(function (a, b) { return Number(a.order || 0) - Number(b.order || 0); });
+        for (var i = 0; i < sorted.length; i++) {
+          sorted[i].order = i + 1;
+        }
+        settings.timetableWeekdays = sorted;
+      }
+
       function renderRows() {
         tableBody.innerHTML = getTimetableWeekdays(true).map(function (day) {
           return `
-            <tr>
+            <tr class="tt-reorder-row" draggable="true" data-weekday-id="${day.id}">
+              <td><span class="tt-reorder-handle" title="Drag to reorder">&#9776;</span></td>
               <td>${escapeHtml(day.name || "-")}</td>
               <td>${escapeHtml(day.shortLabel || "-")}</td>
               <td><span class="status-pill ${day.active ? "active" : "inactive"}">${day.active ? "Active" : "Inactive"}</span></td>
@@ -9855,15 +10349,77 @@ ${allContent}
         }).join("");
       }
 
+      var weekdayDragData = null;
+      tableBody.addEventListener("dragstart", function (e) {
+        var row = e.target.closest(".tt-reorder-row");
+        if (!row) return;
+        weekdayDragData = { id: row.dataset.weekdayId };
+        row.classList.add("tt-reorder-dragging");
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", row.dataset.weekdayId);
+      });
+      tableBody.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        var row = e.target.closest(".tt-reorder-row");
+        if (!row || !weekdayDragData || row.dataset.weekdayId === weekdayDragData.id) return;
+        e.dataTransfer.dropEffect = "move";
+        var rect = row.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+        row.classList.remove("tt-reorder-over", "tt-reorder-over-bottom");
+        if (e.clientY < midY) {
+          row.classList.add("tt-reorder-over");
+        } else {
+          row.classList.add("tt-reorder-over-bottom");
+        }
+      });
+      tableBody.addEventListener("dragleave", function (e) {
+        var row = e.target.closest(".tt-reorder-row");
+        if (row) {
+          row.classList.remove("tt-reorder-over", "tt-reorder-over-bottom");
+        }
+      });
+      tableBody.addEventListener("drop", function (e) {
+        e.preventDefault();
+        var row = e.target.closest(".tt-reorder-row");
+        if (!row || !weekdayDragData) return;
+        row.classList.remove("tt-reorder-over", "tt-reorder-over-bottom");
+        var targetId = row.dataset.weekdayId;
+        if (weekdayDragData.id === targetId) return;
+        var days = settings.timetableWeekdays || [];
+        var dragIdx = days.findIndex(function (d) { return d.id === weekdayDragData.id; });
+        var dropIdx = days.findIndex(function (d) { return d.id === targetId; });
+        if (dragIdx < 0 || dropIdx < 0) return;
+        var rect = row.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+        var insertBefore = e.clientY < midY;
+        var dragItem = days.splice(dragIdx, 1)[0];
+        var newIdx = days.findIndex(function (d) { return d.id === targetId; });
+        if (!insertBefore) newIdx += 1;
+        days.splice(newIdx, 0, dragItem);
+        settings.timetableWeekdays = days;
+        normalizeWeekdayOrders();
+        saveDatabase("Reordering weekdays...", [{ table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        showToast("Weekdays reordered.", "success");
+        renderRows();
+        weekdayDragData = null;
+      });
+      tableBody.addEventListener("dragend", function () {
+        weekdayDragData = null;
+        var rows = tableBody.querySelectorAll(".tt-reorder-row");
+        for (var i = 0; i < rows.length; i++) {
+          rows[i].classList.remove("tt-reorder-dragging", "tt-reorder-over", "tt-reorder-over-bottom");
+        }
+      });
+
       function setWeekdayMessage(text, type) {
         var el = document.getElementById("weekdayMessage");
         if (!el) return;
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : type === "error" ? "?" : "?";
       }
 
-      document.getElementById("saveWeekdayBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveWeekdayBtn"), "click", function () {
         const dayName = nameInput.value.trim();
         const shortLabel = shortInput.value.trim();
         if (!dayName || !shortLabel) {
@@ -9899,6 +10455,7 @@ ${allContent}
         shortInput.value = "";
         statusInput.value = "active";
         setWeekdayMessage("Weekday saved successfully.", "success");
+        showToast("Weekday saved successfully.", "success");
         renderRows();
       });
 
@@ -9918,17 +10475,98 @@ ${allContent}
           nameInput.value = weekday.name || "";
           shortInput.value = weekday.shortLabel || "";
           statusInput.value = weekday.active ? "active" : "inactive";
+          var formSection = nameInput.closest(".gs-form-section");
+          if (formSection) {
+            var header = formSection.querySelector(".gs-form-section__header");
+            if (header) {
+              header.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;">&#9998;</div><div><p class="gs-form-section__title">Editing Weekday: ' + escapeHtml(weekday.name || "-") + '</p></div>';
+            }
+          }
+          document.getElementById("saveWeekdayBtn").textContent = "Update Weekday";
+          var cancelEditBtn = document.getElementById("cancelWeekdayEditBtn");
+          if (!cancelEditBtn) {
+            cancelEditBtn = document.createElement("button");
+            cancelEditBtn.id = "cancelWeekdayEditBtn";
+            cancelEditBtn.className = "gs-btn-outline";
+            cancelEditBtn.type = "button";
+            cancelEditBtn.textContent = "Cancel Edit";
+            cancelEditBtn.style.marginLeft = "8px";
+            document.getElementById("saveWeekdayBtn").parentNode.insertBefore(cancelEditBtn, document.getElementById("saveWeekdayBtn").nextSibling);
+            cancelEditBtn.addEventListener("click", function () {
+              editingId = "";
+              nameInput.value = "";
+              shortInput.value = "";
+              statusInput.value = "active";
+              document.getElementById("saveWeekdayBtn").textContent = "Save Weekday";
+              var hdr = nameInput.closest(".gs-form-section").querySelector(".gs-form-section__header");
+              if (hdr) hdr.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">&#128197;</div><div><p class="gs-form-section__title">Manage Weekdays</p><p class="gs-form-section__subtitle">Configure school weekdays</p></div>';
+              cancelEditBtn.remove();
+            });
+          }
+          nameInput.focus();
+          nameInput.scrollIntoView({ behavior: "smooth", block: "center" });
           return;
         }
-        const hasUsage = getTimetableEntries().some(function (item) {
+        var weekdayUsageCount = getRawTimetableEntries().filter(function (item) {
           return item.weekdayId === weekdayId;
-        });
-        if (hasUsage) {
-          setWeekdayMessage("This weekday is already used in timetable entries.", "error");
+        }).length;
+        if (weekdayUsageCount > 0) {
+          showSSModal({
+            title: "Weekday In Use",
+            tone: "warning",
+            html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">This weekday is used in <strong>' + weekdayUsageCount + '</strong> timetable entry' + (weekdayUsageCount > 1 ? 's' : '') + '.</p><p style="font-size:0.88rem;color:#102A43;margin:0 0 8px;">What would you like to do?</p>',
+            buttons: [
+              { id: "cancel", label: "Cancel", tone: "cancel" },
+              { id: "deactivate", label: "Deactivate Weekday", tone: "primary" },
+              { id: "delete-and-remove", label: "Delete Weekday & Remove Entries", tone: "danger" }
+            ]
+          }).then(function (choice) {
+            if (choice === "deactivate") {
+              var idx = (settings.timetableWeekdays || []).findIndex(function (d) { return d.id === weekdayId; });
+              if (idx >= 0) {
+                settings.timetableWeekdays[idx].active = false;
+                saveDatabase("Deactivating weekday...", [{ table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+                addActivity("Weekday deactivated", weekday.name + " deactivated (used in timetable).");
+                setWeekdayMessage("Weekday deactivated.", "success");
+                showToast("Weekday deactivated.", "success");
+                renderRows();
+              }
+            } else if (choice === "delete-and-remove") {
+              settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; });
+              settings.timetableEntries = (settings.timetableEntries || []).filter(function (item) { return item.weekdayId !== weekdayId; });
+              trackDeletion(weekdayId);
+              saveDatabase("Deleting weekday and entries...", [
+                { table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" },
+                { table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }
+              ]);
+              addActivity("Weekday deleted with entries", weekday.name + " and " + weekdayUsageCount + " entry/entries removed.");
+              setWeekdayMessage("Weekday and related entries deleted.", "success");
+              showToast("Weekday and " + weekdayUsageCount + " entry/entries deleted.", "success");
+              renderRows();
+            }
+          });
           return;
         }
-        settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; }); trackDeletion(weekdayId);
-        saveDatabase("Deleting weekday...", [{ table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        showSSModal({
+          title: "Delete Weekday?",
+          tone: "danger",
+          message: "Are you sure you want to delete \"" + (weekday.name || "-") + "\"?",
+          warning: "This action cannot be undone.",
+          buttons: [
+            { id: "cancel", label: "Cancel", tone: "cancel" },
+            { id: "confirm", label: "Delete", tone: "danger" }
+          ]
+        }).then(function (choice) {
+          if (choice === "confirm") {
+            settings.timetableWeekdays = (settings.timetableWeekdays || []).filter(function (day) { return day.id !== weekdayId; });
+            trackDeletion(weekdayId);
+            saveDatabase("Deleting weekday...", [{ table: "school_settings", record: { id: "timetableWeekdays", source_id: "timetableWeekdays", data: settings.timetableWeekdays, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            addActivity("Weekday deleted", weekday.name + " deleted from timetable settings.");
+            setWeekdayMessage("Weekday deleted successfully.", "success");
+            showToast("Weekday deleted successfully.", "success");
+            renderRows();
+          }
+        });
         renderRows();
       });
 
@@ -9940,14 +10578,14 @@ ${allContent}
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">⏰</div>
-            <div><p class="gs-form-section__title">Manage Time Periods</p><p class="gs-form-section__subtitle">Set class periods and breaks</p></div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">&#9201;</div>
+            <div><p class="gs-form-section__title">Manage Time Periods</p><p class="gs-form-section__subtitle">Set class periods, breaks and activities</p></div>
           </div>
           <div class="gs-form-grid">
-            <div class="gs-field"><label class="gs-field__label">Period Name*</label><input class="gs-field__input" id="periodLabelInput" type="text" placeholder="e.g Period 1"></div>
+            <div class="gs-field"><label class="gs-field__label">Period Name*</label><input class="gs-field__input" id="periodLabelInput" type="text" placeholder="e.g Period 1, Assembly, Morning Break"></div>
             <div class="gs-field"><label class="gs-field__label">Start Time*</label><input class="gs-field__input" id="periodStartInput" type="time"></div>
             <div class="gs-field"><label class="gs-field__label">End Time*</label><input class="gs-field__input" id="periodEndInput" type="time"></div>
-            <div class="gs-field"><label class="gs-field__label">Type*</label><select class="gs-field__input" id="periodTypeInput"><option value="Teaching">Teaching</option><option value="Break">Break</option></select></div>
+            <div class="gs-field"><label class="gs-field__label">Type*</label><select class="gs-field__input" id="periodTypeInput">${TT_PERIOD_TYPES.map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join("")}</select></div>
             <div class="gs-field"><label class="gs-field__label">Status</label><select class="gs-field__input" id="periodStatusInput"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
           </div>
           <div class="gs-button-row"><button class="gs-btn-primary" id="savePeriodBtn" type="button">Save Period</button></div>
@@ -9956,8 +10594,11 @@ ${allContent}
         <article class="gs-form-section">
           <div class="gs-form-section__header">
             <div><p class="gs-form-section__title">All Time Periods</p></div>
+            <div class="gs-button-row">
+              <button class="tt-sort-btn" id="sortPeriodsByTimeBtn" type="button">&#128260; Sort by Start Time</button>
+            </div>
           </div>
-          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>Period</th><th>Start</th><th>End</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
+          <div class="gs-table-wrap"><table class="gs-table tt-periods-table"><thead><tr><th class="tt-col-drag"></th><th class="tt-col-period">Period</th><th class="tt-col-start">Start</th><th class="tt-col-end">End</th><th class="tt-col-type">Type</th><th class="tt-col-status">Status</th><th class="tt-col-actions">Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -9975,22 +10616,52 @@ ${allContent}
         if (!el) return;
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : type === "error" ? "?" : "?";
+      }
+
+      function normalizePeriodOrders() {
+        var periods = settings.timetablePeriods || [];
+        for (var i = 0; i < periods.length; i++) {
+          periods[i].order = i + 1;
+        }
+      }
+
+      function detectTimeOverlap(newStart, newEnd, excludeId) {
+        var periods = settings.timetablePeriods || [];
+        var overlaps = [];
+        for (var i = 0; i < periods.length; i++) {
+          var p = periods[i];
+          if (excludeId && p.id === excludeId) continue;
+          if (p.startTime && p.endTime && newStart && newEnd) {
+            if (newStart < p.endTime && newEnd > p.startTime) {
+              overlaps.push(p.label || "Unnamed");
+            }
+          }
+        }
+        return overlaps;
       }
 
       function renderRows() {
-        tableBody.innerHTML = getTimetablePeriods(true).map(function (period) {
+        var periods = getTimetablePeriods(true);
+        tableBody.innerHTML = periods.map(function (period) {
+          var pType = period.periodType || "Regular";
+          var badgeClass = getPeriodTypeBadgeClass(pType);
+          var toggleBtn = period.active
+            ? '<button class="gs-btn-outline tt-period-toggle" type="button" data-period-action="deactivate" data-id="' + period.id + '" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;border-color:#F59E0B;color:#D97706;">Deactivate</button>'
+            : '<button class="gs-btn-primary tt-period-toggle" type="button" data-period-action="activate" data-id="' + period.id + '" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;background:#10B981;border-color:#10B981;">Activate</button>';
           return `
-            <tr>
-              <td>${escapeHtml(period.label || "-")}</td>
+            <tr class="tt-reorder-row" draggable="true" data-period-id="${period.id}">
+              <td><span class="tt-reorder-handle" title="Drag to reorder">&#9776;</span></td>
+              <td><strong>${escapeHtml(period.label || "-")}</strong></td>
               <td>${escapeHtml(formatTimeLabel(period.startTime))}</td>
               <td>${escapeHtml(formatTimeLabel(period.endTime))}</td>
-              <td>${escapeHtml(period.periodType || "Teaching")}</td>
+              <td><span class="tt-badge ${badgeClass}">${escapeHtml(pType)}</span></td>
               <td><span class="gs-pill gs-pill--${period.active ? "active" : "inactive"}">${period.active ? "Active" : "Inactive"}</span></td>
               <td>
-                <div class="gs-actions">
+                <div class="gs-actions tt-actions-cell">
                   <button class="gs-btn-secondary" type="button" data-period-action="edit" data-id="${period.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Edit</button>
                   <button class="gs-btn-danger" type="button" data-period-action="delete" data-id="${period.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Delete</button>
+                  ${toggleBtn}
                 </div>
               </td>
             </tr>
@@ -9998,12 +10669,135 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("savePeriodBtn").addEventListener("click", function () {
+      var periodDragData = null;
+      tableBody.addEventListener("dragstart", function (e) {
+        var row = e.target.closest(".tt-reorder-row");
+        if (!row) return;
+        periodDragData = { id: row.dataset.periodId };
+        row.classList.add("tt-reorder-dragging");
+        e.dataTransfer.effectAllowed = "move";
+        e.dataTransfer.setData("text/plain", row.dataset.periodId);
+      });
+      tableBody.addEventListener("dragover", function (e) {
+        e.preventDefault();
+        var row = e.target.closest(".tt-reorder-row");
+        if (!row || !periodDragData || row.dataset.periodId === periodDragData.id) return;
+        e.dataTransfer.dropEffect = "move";
+        var rect = row.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+        row.classList.remove("tt-reorder-over", "tt-reorder-over-bottom");
+        if (e.clientY < midY) {
+          row.classList.add("tt-reorder-over");
+        } else {
+          row.classList.add("tt-reorder-over-bottom");
+        }
+      });
+      tableBody.addEventListener("dragleave", function (e) {
+        var row = e.target.closest(".tt-reorder-row");
+        if (row) {
+          row.classList.remove("tt-reorder-over", "tt-reorder-over-bottom");
+        }
+      });
+      tableBody.addEventListener("drop", function (e) {
+        e.preventDefault();
+        var row = e.target.closest(".tt-reorder-row");
+        if (!row || !periodDragData) return;
+        row.classList.remove("tt-reorder-over", "tt-reorder-over-bottom");
+        var targetId = row.dataset.periodId;
+        if (periodDragData.id === targetId) return;
+        var previousOrder = (settings.timetablePeriods || []).map(function (p) { return { id: p.id, order: p.order }; });
+        var periods = settings.timetablePeriods || [];
+        var dragIdx = periods.findIndex(function (p) { return p.id === periodDragData.id; });
+        var dropIdx = periods.findIndex(function (p) { return p.id === targetId; });
+        if (dragIdx < 0 || dropIdx < 0) return;
+        var rect = row.getBoundingClientRect();
+        var midY = rect.top + rect.height / 2;
+        var insertBefore = e.clientY < midY;
+        var dragItem = periods.splice(dragIdx, 1)[0];
+        var newIdx = periods.findIndex(function (p) { return p.id === targetId; });
+        if (!insertBefore) newIdx += 1;
+        periods.splice(newIdx, 0, dragItem);
+        settings.timetablePeriods = periods;
+        normalizePeriodOrders();
+        renderRows();
+        var savedOk = saveDatabase("Reordering time periods...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        Promise.resolve(savedOk).then(function (ok) {
+          if (ok === false) {
+            for (var ri = 0; ri < previousOrder.length; ri++) {
+              var prev = previousOrder[ri];
+              var pIdx = (settings.timetablePeriods || []).findIndex(function (p) { return p.id === prev.id; });
+              if (pIdx >= 0) settings.timetablePeriods[pIdx].order = prev.order;
+            }
+            normalizePeriodOrders();
+            renderRows();
+            showToast("Unable to save the new period order. Your previous order has been restored.", "error");
+          } else {
+            showToast("Time periods reordered.", "success");
+          }
+        });
+        periodDragData = null;
+      });
+      tableBody.addEventListener("dragend", function () {
+        periodDragData = null;
+        var rows = tableBody.querySelectorAll(".tt-reorder-row");
+        for (var i = 0; i < rows.length; i++) {
+          rows[i].classList.remove("tt-reorder-dragging", "tt-reorder-over", "tt-reorder-over-bottom");
+        }
+      });
+
+      safeOn(document.getElementById("sortPeriodsByTimeBtn"), "click", function () {
+        var periods = settings.timetablePeriods || [];
+        var hasTimes = periods.some(function (p) { return p.startTime && p.endTime; });
+        if (!hasTimes) {
+          showToast("No time data available to sort by.", "warning");
+          return;
+        }
+        showSSModal({
+          title: "Sort by Start Time?",
+          tone: "info",
+          html: '<p style="font-size:0.92rem;color:#486581;margin:0;">This will reorder all time periods based on their start times.</p>',
+          buttons: [
+            { id: "cancel", label: "Cancel", tone: "cancel" },
+            { id: "sort-ok", label: "Sort", tone: "primary" }
+          ]
+        }).then(function (result) {
+          if (result === "sort-ok") {
+            periods.sort(function (a, b) {
+              return (a.startTime || "").localeCompare(b.startTime || "");
+            });
+            for (var i = 0; i < periods.length; i++) {
+              periods[i].order = i + 1;
+            }
+            settings.timetablePeriods = periods;
+            saveDatabase("Sorting time periods...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            showToast("Time periods sorted by start time.", "success");
+            renderRows();
+          }
+        });
+      });
+
+      safeOn(document.getElementById("savePeriodBtn"), "click", function () {
         const label = labelInput.value.trim();
         const start = startInput.value;
         const end = endInput.value;
-        if (!label || !start || !end) {
-          setPeriodMessage("Please fill period name, start and end time.", "error");
+        if (!label) {
+          setPeriodMessage("Please enter a period name.", "error");
+          labelInput.focus();
+          return;
+        }
+        if (!start || !end) {
+          setPeriodMessage("Please fill start and end time.", "error");
+          return;
+        }
+        if (start >= end) {
+          setPeriodMessage("Start time must be before end time.", "error");
+          return;
+        }
+        var duplicateLabel = (settings.timetablePeriods || []).find(function (p) {
+          return p.label && p.label.toLowerCase() === label.toLowerCase() && p.id !== editingId;
+        });
+        if (duplicateLabel) {
+          setPeriodMessage("A period with this name already exists.", "error");
           return;
         }
         const record = {
@@ -10011,7 +10805,7 @@ ${allContent}
           label: label,
           startTime: start,
           endTime: end,
-          periodType: typeInput.value || "Teaching",
+          periodType: typeInput.value || "Regular",
           active: statusInput.value === "active",
           order: editingId
             ? Number(((settings.timetablePeriods || []).find(function (item) { return item.id === editingId; }) || {}).order || 0)
@@ -10029,9 +10823,10 @@ ${allContent}
         labelInput.value = "";
         startInput.value = "";
         endInput.value = "";
-        typeInput.value = "Teaching";
+        typeInput.value = "Regular";
         statusInput.value = "active";
         setPeriodMessage("Time period saved successfully.", "success");
+        showToast("Time period saved successfully.", "success");
         renderRows();
       });
 
@@ -10051,20 +10846,170 @@ ${allContent}
           labelInput.value = period.label || "";
           startInput.value = period.startTime || "";
           endInput.value = period.endTime || "";
-          typeInput.value = period.periodType || "Teaching";
+          typeInput.value = period.periodType || "Regular";
           statusInput.value = period.active ? "active" : "inactive";
+          var formSection = labelInput.closest(".gs-form-section");
+          if (formSection) {
+            var header = formSection.querySelector(".gs-form-section__header");
+            if (header) {
+              header.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;">&#9998;</div><div><p class="gs-form-section__title">Editing Time Period: ' + escapeHtml(period.label || "-") + '</p></div>';
+            }
+          }
+          document.getElementById("savePeriodBtn").textContent = "Update Time Period";
+          var cancelEditBtn = document.getElementById("cancelPeriodEditBtn");
+          if (!cancelEditBtn) {
+            cancelEditBtn = document.createElement("button");
+            cancelEditBtn.id = "cancelPeriodEditBtn";
+            cancelEditBtn.className = "gs-btn-outline";
+            cancelEditBtn.type = "button";
+            cancelEditBtn.textContent = "Cancel Edit";
+            cancelEditBtn.style.marginLeft = "8px";
+            document.getElementById("savePeriodBtn").parentNode.insertBefore(cancelEditBtn, document.getElementById("savePeriodBtn").nextSibling);
+            cancelEditBtn.addEventListener("click", function () {
+              editingId = "";
+              labelInput.value = "";
+              startInput.value = "";
+              endInput.value = "";
+              typeInput.value = "Regular";
+              statusInput.value = "active";
+              document.getElementById("savePeriodBtn").textContent = "Save Period";
+              var hdr = labelInput.closest(".gs-form-section").querySelector(".gs-form-section__header");
+              if (hdr) hdr.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;">&#9201;</div><div><p class="gs-form-section__title">Manage Time Periods</p><p class="gs-form-section__subtitle">Set class periods, breaks and activities</p></div>';
+              cancelEditBtn.remove();
+            });
+          }
+          labelInput.focus();
+          labelInput.scrollIntoView({ behavior: "smooth", block: "center" });
           return;
         }
-        const hasUsage = getTimetableEntries().some(function (item) {
+        if (action === "deactivate" || action === "activate") {
+          var newActive = action === "activate";
+          var actionLabel = newActive ? "Activate" : "Deactivate";
+          showSSModal({
+            title: actionLabel + " Time Period?",
+            tone: newActive ? "info" : "warning",
+            html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">Are you sure you want to ' + actionLabel.toLowerCase() + ' <strong>"' + escapeHtml(period.label || "-") + '"</strong>?</p>'
+              + (newActive ? '' : '<p style="font-size:0.85rem;color:#64748b;margin:0;">This period will no longer appear in the active periods list.</p>'),
+            buttons: [
+              { id: "cancel", label: "Cancel", tone: "cancel" },
+              { id: "confirm", label: actionLabel, tone: newActive ? "primary" : "warning" }
+            ]
+          }).then(function (choice) {
+            if (choice === "confirm") {
+              var idx = (settings.timetablePeriods || []).findIndex(function (p) { return p.id === periodId; });
+              if (idx >= 0) {
+                settings.timetablePeriods[idx].active = newActive;
+                saveDatabase(actionLabel + "ing time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+                addActivity("Time period " + (newActive ? "activated" : "deactivated"), period.label + " " + (newActive ? "activated" : "deactivated") + ".");
+                setPeriodMessage("Time period " + (newActive ? "activated" : "deactivated") + ".", "success");
+                showToast("Time period " + (newActive ? "activated" : "deactivated") + ".", "success");
+                renderRows();
+              }
+            }
+          });
+          return;
+        }
+        var usageCount = getRawTimetableEntries().filter(function (item) {
           return item.periodId === periodId;
-        });
-        if (hasUsage) {
-          setPeriodMessage("This period is already used in timetable entries.", "error");
+        }).length;
+        if (usageCount > 0) {
+          showSSModal({
+            title: "Time Period Is In Use",
+            tone: "warning",
+            html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">"<strong>' + escapeHtml(period.label || "-") + '</strong>" is currently used in <strong>' + usageCount + '</strong> timetable entry' + (usageCount > 1 ? 's' : '') + '.</p><p style="font-size:0.88rem;color:#102A43;margin:0 0 8px;">What would you like to do?</p>',
+            buttons: [
+              { id: "cancel", label: "Cancel", tone: "cancel" },
+              { id: "deactivate", label: "Deactivate Period", tone: "primary" },
+              { id: "delete-and-remove", label: "Delete Period & Remove Entries", tone: "danger" }
+            ]
+          }).then(function (choice) {
+            if (choice === "deactivate") {
+              var idx = (settings.timetablePeriods || []).findIndex(function (p) { return p.id === periodId; });
+              if (idx >= 0) {
+                settings.timetablePeriods[idx].active = false;
+                saveDatabase("Deactivating time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+                addActivity("Time period deactivated", period.label + " deactivated (used in timetable).");
+                setPeriodMessage("Time period deactivated.", "success");
+                showToast("Time period deactivated.", "success");
+                renderRows();
+              }
+            } else if (choice === "delete-and-remove") {
+              var affectedEntries = getRawTimetableEntries().filter(function (item) { return item.periodId === periodId; });
+              var entryCount = affectedEntries.length;
+              var recurringCount = affectedEntries.filter(function (item) { return item.scheduleType === "recurring"; }).length;
+              var detailParts = [];
+              if (entryCount > 0) detailParts.push(entryCount + " timetable entry" + (entryCount > 1 ? "s" : ""));
+              if (recurringCount > 0) detailParts.push(recurringCount + " recurring group" + (recurringCount > 1 ? "s" : ""));
+              var detailText = detailParts.length > 0 ? detailParts.join(" and ") : entryCount + " entry" + (entryCount > 1 ? "s" : "");
+              showSSModal({
+                title: "Delete Period & Timetable Entries?",
+                tone: "danger",
+                html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 10px;">This action will permanently delete:</p>'
+                  + '<div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin:0 0 10px;">'
+                  + '<p style="font-size:0.88rem;color:#102A43;margin:0 0 4px;"><strong>Period:</strong> ' + escapeHtml(period.label || "-") + '</p>'
+                  + '<p style="font-size:0.88rem;color:#102A43;margin:0;"><strong>Timetable entries:</strong> ' + entryCount + (recurringCount > 0 ? ' (including ' + recurringCount + ' recurring)' : '') + '</p>'
+                  + '</div>'
+                  + '<p style="font-size:0.85rem;color:#B91C1C;margin:0;font-weight:600;">This action cannot be undone.</p>',
+                buttons: [
+                  { id: "cancel2", label: "Cancel", tone: "cancel" },
+                  { id: "confirm-delete-all", label: "Delete Everything", tone: "danger" }
+                ]
+              }).then(function (choice2) {
+                if (choice2 === "confirm-delete-all") {
+                  var rawEntries = getRawTimetableEntries();
+                  var remainingEntries = [];
+                  for (var ri = 0; ri < rawEntries.length; ri++) {
+                    var rawEntry = rawEntries[ri];
+                    if (rawEntry.periodId === periodId) {
+                      if (rawEntry.scheduleType === "recurring" && Array.isArray(rawEntry.recurringDays)) {
+                        var remainingDays = rawEntry.recurringDays.filter(function (d) { return d !== rawEntry.weekdayId; });
+                        if (remainingDays.length > 0 && rawEntry.recurringDays.length > 1) {
+                          remainingEntries.push(Object.assign({}, rawEntry, { recurringDays: remainingDays }));
+                        }
+                      }
+                      continue;
+                    }
+                    remainingEntries.push(rawEntry);
+                  }
+                  settings.timetableEntries = remainingEntries;
+                  settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; });
+                  trackDeletion(periodId);
+                  normalizePeriodOrders();
+                  saveDatabase("Deleting time period and entries...", [
+                    { table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" },
+                    { table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }
+                  ]);
+                  addActivity("Time period deleted with entries", period.label + " and " + entryCount + " entry/entries removed.");
+                  setPeriodMessage("Time period and related entries deleted.", "success");
+                  showToast("Time period and " + entryCount + " entry/entries deleted.", "success");
+                  renderRows();
+                }
+              });
+            }
+          });
           return;
         }
-        settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; }); trackDeletion(periodId);
-        saveDatabase("Deleting time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-        renderRows();
+        showSSModal({
+          title: "Delete Time Period?",
+          tone: "danger",
+          html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">Are you sure you want to permanently delete <strong>"' + escapeHtml(period.label || "-") + '"</strong>?</p>'
+            + '<p style="font-size:0.85rem;color:#64748b;margin:0;">This time period is not currently used in any timetable entry.</p>',
+          buttons: [
+            { id: "cancel", label: "Cancel", tone: "cancel" },
+            { id: "confirm", label: "Delete Permanently", tone: "danger" }
+          ]
+        }).then(function (choice) {
+          if (choice === "confirm") {
+            settings.timetablePeriods = (settings.timetablePeriods || []).filter(function (item) { return item.id !== periodId; });
+            trackDeletion(periodId);
+            normalizePeriodOrders();
+            saveDatabase("Deleting time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            addActivity("Time period deleted", period.label + " deleted from timetable periods.");
+            setPeriodMessage("Time period deleted.", "success");
+            showToast("Time period deleted.", "success");
+            renderRows();
+          }
+        });
       });
 
       renderRows();
@@ -10089,9 +11034,9 @@ ${allContent}
       }
 
       moduleSummary.innerHTML = `
-        <article class="gs-form-section">
+        <article class="gs-form-section" id="roomFormSection">
           <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;">🏫</div>
+            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Manage Class Rooms</p><p class="gs-form-section__subtitle">Assign rooms to classes</p></div>
           </div>
           <div class="gs-form-grid">
@@ -10106,7 +11051,7 @@ ${allContent}
           <div class="gs-form-section__header">
             <div><p class="gs-form-section__title">All Class Rooms</p></div>
           </div>
-          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>Room Name</th><th>Capacity</th><th>Location</th><th>Actions</th></tr></thead><tbody id="roomTableBody"></tbody></table></div>
+          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>Room Name</th><th>Capacity</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead><tbody id="roomTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -10123,20 +11068,28 @@ ${allContent}
         if (!el) return;
         el.className = "gs-message gs-message--" + type + " gs-message--visible";
         el.querySelector(".gs-message__text").textContent = text;
-        el.querySelector(".gs-message__icon").textContent = type === "success" ? "✓" : type === "error" ? "✕" : "⚠";
+        el.querySelector(".gs-message__icon").textContent = type === "success" ? "?" : type === "error" ? "?" : "?";
       }
 
       function renderRows() {
-        tableBody.innerHTML = getClassRooms().map(function (room) {
+        var rooms = getClassRooms();
+        tableBody.innerHTML = rooms.map(function (room) {
+          var isActive = room.status !== "inactive";
+          var statusPill = '<span class="gs-pill gs-pill--' + (isActive ? "active" : "inactive") + '">' + (isActive ? "Active" : "Inactive") + '</span>';
+          var toggleBtn = isActive
+            ? '<button class="gs-btn-outline" type="button" data-room-action="deactivate" data-id="' + room.id + '" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;border-color:#F59E0B;color:#D97706;">Deactivate</button>'
+            : '<button class="gs-btn-primary" type="button" data-room-action="activate" data-id="' + room.id + '" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;background:#10B981;border-color:#10B981;">Activate</button>';
           return `
             <tr>
               <td>${escapeHtml(room.name || "-")}</td>
               <td>${Number(room.capacity || 0)}</td>
               <td>${escapeHtml(room.location || "-")}</td>
+              <td>${statusPill}</td>
               <td>
                 <div class="gs-actions">
                   <button class="gs-btn-secondary" type="button" data-room-action="edit" data-id="${room.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Edit</button>
                   <button class="gs-btn-danger" type="button" data-room-action="delete" data-id="${room.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Delete</button>
+                  ${toggleBtn}
                 </div>
               </td>
             </tr>
@@ -10144,7 +11097,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("saveRoomBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveRoomBtn"), "click", function () {
         const roomName = nameInput.value.trim();
         if (!roomName) {
           setRoomMessage("Please select a class.", "error");
@@ -10188,19 +11141,84 @@ ${allContent}
           nameInput.value = room.name || "";
           capacityInput.value = Number(room.capacity || 0);
           locationInput.value = room.location || "";
+          var formSection = document.getElementById("roomFormSection");
+          if (formSection) {
+            var header = formSection.querySelector(".gs-form-section__header");
+            if (header) {
+              header.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;">&#9998;</div><div><p class="gs-form-section__title">Editing Room: ' + escapeHtml(room.name || "-") + '</p></div>';
+            }
+          }
+          document.getElementById("saveRoomBtn").textContent = "Update Room";
+          var cancelBtn = document.getElementById("cancelRoomEditBtn");
+          if (!cancelBtn) {
+            cancelBtn = document.createElement("button");
+            cancelBtn.id = "cancelRoomEditBtn";
+            cancelBtn.className = "gs-btn-outline";
+            cancelBtn.type = "button";
+            cancelBtn.textContent = "Cancel Edit";
+            cancelBtn.style.marginLeft = "8px";
+            document.getElementById("saveRoomBtn").parentNode.insertBefore(cancelBtn, document.getElementById("saveRoomBtn").nextSibling);
+            cancelBtn.addEventListener("click", function () {
+              editingId = "";
+              nameInput.value = "";
+              capacityInput.value = "";
+              locationInput.value = "";
+              document.getElementById("saveRoomBtn").textContent = "Save Room";
+              var hdr = document.getElementById("roomFormSection").querySelector(".gs-form-section__header");
+              if (hdr) hdr.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;">??</div><div><p class="gs-form-section__title">Manage Class Rooms</p><p class="gs-form-section__subtitle">Assign rooms to classes</p></div>';
+              cancelBtn.remove();
+            });
+          }
+          nameInput.focus();
+          nameInput.scrollIntoView({ behavior: "smooth", block: "center" });
           return;
         }
-        const hasUsage = getTimetableEntries().some(function (item) {
-          return item.roomId === roomId;
+        if (action === "deactivate" || action === "activate") {
+          var newActive = action === "activate";
+          var actionLabel = newActive ? "Activate" : "Deactivate";
+          showSSModal({
+            title: actionLabel + " Room?",
+            tone: newActive ? "info" : "warning",
+            html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">Are you sure you want to ' + actionLabel.toLowerCase() + ' <strong>"' + escapeHtml(room.name || "-") + '"</strong>?</p>'
+              + (newActive ? '' : '<p style="font-size:0.85rem;color:#64748b;margin:0;">This room will no longer appear in the active rooms list.</p>'),
+            buttons: [
+              { id: "cancel", label: "Cancel", tone: "cancel" },
+              { id: "confirm", label: actionLabel, tone: newActive ? "primary" : "warning" }
+            ]
+          }).then(function (choice) {
+            if (choice === "confirm") {
+              var idx = (settings.classRooms || []).findIndex(function (r) { return r.id === roomId; });
+              if (idx >= 0) {
+                settings.classRooms[idx].status = newActive ? "active" : "inactive";
+                settings.classRooms[idx].updatedAt = new Date().toISOString();
+                saveDatabase(actionLabel + "ing room...", [{ table: "school_settings", record: { id: "classRooms", source_id: "classRooms", data: settings.classRooms, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+                addActivity("Room " + (newActive ? "activated" : "deactivated"), room.name + " " + (newActive ? "activated" : "deactivated") + ".");
+                setRoomMessage("Room " + (newActive ? "activated" : "deactivated") + ".", "success");
+                showToast("Room " + (newActive ? "activated" : "deactivated") + ".", "success");
+                renderRows();
+              }
+            }
+          });
+          return;
+        }
+        showSSModal({
+          title: "Delete Room?",
+          desc: "Are you sure you want to permanently delete \"" + escapeHtml(room.name) + "\"? This cannot be undone.",
+          tone: "danger",
+          buttons: [
+            { id: "room-delete-ok", label: "Delete", className: "ss-modal__btn ss-modal__btn--danger" },
+            { id: "room-delete-cancel", label: "Cancel", className: "ss-modal__btn ss-modal__btn--secondary" }
+          ],
+          resolveWith: "room-delete-cancel"
+        }).then(function (result) {
+          if (result === "room-delete-ok") {
+            settings.classRooms = (settings.classRooms || []).filter(function (item) { return item.id !== roomId; });
+            trackDeletion(roomId);
+            saveDatabase("Deleting classroom...", [{ table: "school_settings", record: { id: "classRooms", source_id: "classRooms", data: settings.classRooms, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            showToast("Room deleted permanently.", "success");
+            renderRows();
+          }
         });
-        if (hasUsage) {
-          message.textContent = "This room is already used in timetable entries.";
-          message.className = "form-message error";
-          return;
-        }
-        settings.classRooms = (settings.classRooms || []).filter(function (item) { return item.id !== roomId; }); trackDeletion(roomId);
-        saveDatabase("Deleting classroom...", [{ table: "school_settings", record: { id: "classRooms", source_id: "classRooms", data: settings.classRooms, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-        renderRows();
       });
 
       renderRows();
@@ -10208,119 +11226,824 @@ ${allContent}
     }
 
     if (route === "create-timetable") {
-      const classOptionsMarkup = classOptions.map(function (className) {
-        return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
-      }).join("");
-      const weekdayOptionsMarkup = getTimetableWeekdays().map(function (weekday) {
-        return `<option value="${weekday.id}">${escapeHtml(weekday.name)}</option>`;
+      var ttClassOptions = classOptions;
+      var ttWeekdays = getTimetableWeekdays();
+      var ttPeriods = getTimetablePeriods();
+      var ttSubjects = [];
+      var ttTeachers = getEmployees().filter(function (e) { return String(e.status || "").toLowerCase() === "active"; });
+      var ttRooms = getClassRooms().filter(function (r) { return r.status !== "inactive"; });
+      var ttSelectedClass = "";
+      var ttSelectedPeriod = "";
+      var ttSelectedPeriodType = "Regular";
+      var ttScheduleType = "recurring";
+      var ttSelectedDays = ttWeekdays.map(function (d) { return d.id; });
+
+      var weekdaysCheckboxesMarkup = ttWeekdays.map(function (w) {
+        return '<label class="tt-day-cb-label" data-day-id="' + w.id + '"><input type="checkbox" class="tt-day-cb" value="' + w.id + '" checked> ' + escapeHtml(w.shortLabel || w.name) + '</label>';
       }).join("");
 
-      moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong class="module-center-title">Create Timetable</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin:10px 0;">
-            <div style="flex:1 1 180px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Select Class*</label><select id="timetableClassSelect" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
-            <div style="flex:1 1 180px;min-width:0;"><label style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Select Weekday*</label><select id="timetableWeekdaySelect" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;"><option value="">Select Weekday</option>${weekdayOptionsMarkup}</select></div>
-          </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:500px;width:100%;"><thead><tr><th>Period</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Class Room</th></tr></thead><tbody id="createTimetableTableBody"></tbody></table></div>
-          <div class="form-actions"><button class="primary-button" id="saveTimetableBtn" type="button">Save Timetable</button></div>
-          <p class="form-message" id="createTimetableMessage"></p>
-        </article>
-      `;
+      var weekdaysHeaderMarkup = ttWeekdays.map(function (w) {
+        return '<th style="padding:8px 6px;font-size:0.78rem;text-align:center;white-space:nowrap;">' + escapeHtml(w.shortLabel || w.name) + '</th>';
+      }).join("");
+
+      moduleSummary.innerHTML = '<article class="gs-form-section" style="overflow-x:hidden;">'
+        + '<div class="gs-form-section__header">'
+        + '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#6D4AFF,#8B6FFF);color:#fff;font-size:1rem;">&#128197;</div>'
+        + '<div><p class="gs-form-section__title">Create Timetable</p></div>'
+        + '</div>'
+        + '</article>'
+
+        + '<article class="gs-form-section" style="margin-bottom:16px;">'
+        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Timetable Entry</p></div></div>'
+        + '<div class="gs-form-grid" style="grid-template-columns:1fr 1fr;">'
+        + '<div class="gs-field"><label class="gs-field__label">Select Class*</label><select class="gs-field__input" id="ttFormClass"><option value="">Select Class</option>' + ttClassOptions.map(function (c) { return '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>'; }).join("") + '</select></div>'
+        + '<div class="gs-field"><label class="gs-field__label">Select Period*</label><select class="gs-field__input" id="ttFormPeriod"><option value="">Select Period</option>' + ttPeriods.map(function (p) { return '<option value="' + escapeAttr(p.id) + '">' + escapeHtml(p.label || "-") + ' (' + escapeHtml(formatTimeLabel(p.startTime)) + ' - ' + escapeHtml(formatTimeLabel(p.endTime)) + ')</option>'; }).join("") + '</select></div>'
+        + '</div>'
+
+        + '<div id="ttEntryFieldsRow" style="display:none;">'
+        + '<div id="ttNonTeachingInfo" style="display:none;margin:10px 0;padding:12px 14px;background:#f0f7ff;border:1px solid #c5dff8;border-radius:8px;font-size:0.84rem;color:#1e6091;"></div>'
+        + '<div id="ttTeachingFields">'
+        + '<div class="gs-form-grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:8px;">'
+        + '<div class="gs-field"><label class="gs-field__label">Select Subject*</label><select class="gs-field__input" id="ttFormSubject"><option value="">Select Subject</option></select></div>'
+        + '<div class="gs-field"><label class="gs-field__label">Select Teacher*</label><select class="gs-field__input" id="ttFormTeacher"><option value="">Select Teacher</option></select></div>'
+        + '<div class="gs-field"><label class="gs-field__label">Select Room*</label><select class="gs-field__input" id="ttFormRoom"><option value="">Select Room</option></select></div>'
+        + '</div>'
+        + '</div>'
+        + '</div>'
+
+        + '<div style="margin-top:14px;">'
+        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Schedule Type</label>'
+        + '<div style="display:flex;gap:12px;flex-wrap:wrap;">'
+        + '<div class="tt-sched-card tt-sched-card--active" data-sched="recurring" style="flex:1;min-width:180px;padding:14px 16px;border:2px solid #6D4AFF;border-radius:12px;background:#f8f7ff;cursor:pointer;">'
+        + '<div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;color:#6D4AFF;">&#9200; Fixed / Repeat</div>'
+        + '<div style="font-size:0.78rem;color:#486581;">Same period repeats on multiple days.</div>'
+        + '</div>'
+        + '<div class="tt-sched-card" data-sched="custom" style="flex:1;min-width:180px;padding:14px 16px;border:2px solid #e6e8f0;border-radius:12px;background:#fff;cursor:pointer;">'
+        + '<div style="font-weight:700;font-size:0.9rem;margin-bottom:4px;color:#486581;">&#128197; Custom Weekly</div>'
+        + '<div style="font-size:0.78rem;color:#486581;">Different days have different subjects.</div>'
+        + '</div>'
+        + '</div>'
+        + '</div>'
+
+        + '<div id="ttRepeatSection" style="margin-top:14px;">'
+        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Repeat On</label>'
+        + '<div style="display:flex;flex-wrap:wrap;gap:6px;" id="ttDayCheckboxes">' + weekdaysCheckboxesMarkup + '</div>'
+        + '<div style="margin-top:8px;padding:8px 12px;background:#f0f7ff;border:1px solid #c5dff8;border-radius:8px;font-size:0.8rem;color:#1e6091;">This period will be applied to all selected days.</div>'
+        + '</div>'
+
+        + '<div id="ttCustomSection" style="display:none;margin-top:14px;">'
+        + '<label class="gs-field__label" style="margin-bottom:8px;display:block;">Weekly Configuration</label>'
+        + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:480px;width:100%;border-collapse:collapse;"><thead><tr><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Day</th><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Subject</th><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Teacher</th><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Room</th></tr></thead><tbody id="ttCustomBody"></tbody></table></div>'
+        + '</div>'
+
+        + '<div id="ttConflictBanner" style="display:none;margin-top:12px;background:#fff0f2;border:1px solid #f5c6cb;border-radius:8px;padding:10px 14px;font-size:0.84rem;color:#842029;"></div>'
+
+        + '<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid #e6e8f0;">'
+        + '<button class="gs-btn-outline" id="ttCancelBtn" type="button">Cancel</button>'
+        + '<button class="gs-btn-primary" id="ttSaveBtn" type="button">Save Timetable</button>'
+        + '</div>'
+        + '<p class="form-message" id="ttFormMessage"></p>'
+        + '</article>'
+
+        + '<article class="gs-form-section">'
+        + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Weekly Timetable</p><p class="gs-form-section__subtitle" id="ttPreviewClassLabel">Select class to view timetable</p></div></div>'
+        + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:500px;width:100%;border-collapse:collapse;" id="ttPreviewTable"><thead><tr><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Period / Time</th>' + weekdaysHeaderMarkup + '</tr></thead><tbody id="ttPreviewBody"></tbody></table></div>'
+        + '<p class="empty-state" id="ttPreviewEmpty" hidden>No timetable entries yet. Create your first timetable entry to see it here.</p>'
+        + '</article>'
+
+        + '<div id="ttRecurringModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">'
+        + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
+        + '<p style="font-weight:700;font-size:1rem;margin:0 0 10px;">Recurring Entry Detected</p>'
+        + '<p id="ttModalDesc" style="font-size:0.85rem;color:#486581;margin:0 0 14px;"></p>'
+        + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">'
+        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttModalChoice" value="single" checked> <span id="ttModalSingleLabel">Update this day only</span></label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttModalChoice" value="all"> Update entire recurring schedule</label>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+        + '<button class="gs-btn-primary" id="ttModalConfirm" type="button" style="padding:8px 20px;">Confirm</button>'
+        + '<button id="ttModalCancel" type="button" style="padding:8px 16px;border:1px solid #dde4ea;border-radius:8px;background:#fff;cursor:pointer;font-size:0.85rem;">Cancel</button>'
+        + '</div></div></div>'
+
+        + '<div id="ttDeleteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">'
+        + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;max-height:85vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
+        + '<p style="font-weight:700;font-size:1rem;margin:0 0 10px;">Delete Timetable Entry?</p>'
+        + '<p id="ttDeleteDesc" style="font-size:0.85rem;color:#486581;margin:0 0 14px;"></p>'
+        + '<div id="ttDeleteOptions" style="display:none;flex-direction:column;gap:8px;margin-bottom:16px;">'
+        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttDeleteChoice" value="day" checked> <span id="ttDeleteDayLabel">Delete this day only</span></label>'
+        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttDeleteChoice" value="all"> Delete all repeated entries</label>'
+        + '</div>'
+        + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
+        + '<button class="gs-btn-danger" id="ttDeleteConfirm" type="button" style="padding:8px 20px;">Delete</button>'
+        + '<button id="ttDeleteCancel" type="button" style="padding:8px 16px;border:1px solid #dde4ea;border-radius:8px;background:#fff;cursor:pointer;font-size:0.85rem;">Cancel</button>'
+        + '</div></div></div>';
+
       moduleGuide.innerHTML = "";
 
-      const classSelect = document.getElementById("timetableClassSelect");
-      const weekdaySelect = document.getElementById("timetableWeekdaySelect");
-      const tableBody = document.getElementById("createTimetableTableBody");
-      const message = document.getElementById("createTimetableMessage");
+      var ttFormClass = document.getElementById("ttFormClass");
+      var ttFormPeriod = document.getElementById("ttFormPeriod");
+      var ttFormSubject = document.getElementById("ttFormSubject");
+      var ttFormTeacher = document.getElementById("ttFormTeacher");
+      var ttFormRoom = document.getElementById("ttFormRoom");
+      var ttEntryFieldsRow = document.getElementById("ttEntryFieldsRow");
+      var ttRepeatSection = document.getElementById("ttRepeatSection");
+      var ttCustomSection = document.getElementById("ttCustomSection");
+      var ttCustomBody = document.getElementById("ttCustomBody");
+      var ttConflictBanner = document.getElementById("ttConflictBanner");
+      var ttFormMessage = document.getElementById("ttFormMessage");
+      var ttPreviewBody = document.getElementById("ttPreviewBody");
+      var ttPreviewEmpty = document.getElementById("ttPreviewEmpty");
+      var ttModal = document.getElementById("ttRecurringModal");
+      var ttModalDesc = document.getElementById("ttModalDesc");
+      var ttModalConfirm = document.getElementById("ttModalConfirm");
+      var ttModalCancel = document.getElementById("ttModalCancel");
+      var ttModalSingleLabel = document.getElementById("ttModalSingleLabel");
+      var ttNonTeachingInfo = document.getElementById("ttNonTeachingInfo");
+      var ttTeachingFields = document.getElementById("ttTeachingFields");
 
-      function renderRows() {
-        const selectedClass = classSelect.value;
-        const selectedDay = weekdaySelect.value;
-        if (!selectedClass || !selectedDay) {
-          tableBody.innerHTML = "";
-          return;
+      var ttDeleteModal = document.getElementById("ttDeleteModal");
+      var ttDeleteDesc = document.getElementById("ttDeleteDesc");
+      var ttDeleteOptions = document.getElementById("ttDeleteOptions");
+      var ttDeleteConfirm = document.getElementById("ttDeleteConfirm");
+      var ttDeleteCancel = document.getElementById("ttDeleteCancel");
+      var ttDeleteDayLabel = document.getElementById("ttDeleteDayLabel");
+
+      function updatePeriodTypeUI() {
+        var period = ttPeriods.find(function (p) { return p.id === ttSelectedPeriod; }) || {};
+        ttSelectedPeriodType = period.periodType || "Regular";
+        var isNonTeaching = isNonTeachingPeriodType(ttSelectedPeriodType);
+        ttNonTeachingInfo.style.display = isNonTeaching ? "block" : "none";
+        ttTeachingFields.style.display = isNonTeaching ? "none" : "block";
+        if (isNonTeaching) {
+          var msg = ttSelectedPeriodType === "Assembly"
+            ? "This is an Assembly period. Subject, Teacher and Room are not required."
+            : ttSelectedPeriodType === "Break"
+            ? "This is a Break period. Subject, Teacher and Room are not required."
+            : "This is a " + ttSelectedPeriodType + " period. Subject, Teacher and Room are not required.";
+          ttNonTeachingInfo.innerHTML = "&#8505; " + escapeHtml(msg);
+          setScheduleType("recurring");
+          var customCard = document.querySelector('.tt-sched-card[data-sched="custom"]');
+          if (customCard) customCard.style.display = "none";
+        } else {
+          var customCard2 = document.querySelector('.tt-sched-card[data-sched="custom"]');
+          if (customCard2) customCard2.style.display = "";
         }
-        const subjects = getClassSubjects(selectedClass);
-        const teachers = getEmployees().filter(function (employee) {
-          return String(employee.status || "").toLowerCase() === "active";
-        });
-        const rooms = getClassRooms();
-        const entries = getTimetableEntries().filter(function (item) {
-          return item.className === selectedClass && item.weekdayId === selectedDay;
-        });
-        tableBody.innerHTML = getTimetablePeriods().map(function (period) {
-          const existing = entries.find(function (entry) { return entry.periodId === period.id; }) || null;
-          const subjectOptions = subjects.map(function (subject) {
-            return `<option value="${escapeAttr(subject.name)}" ${existing && existing.subjectName === subject.name ? "selected" : ""}>${escapeHtml(subject.name)}</option>`;
-          }).join("");
-          const teacherOptions = teachers.map(function (teacher) {
-            return `<option value="${teacher.id}" ${existing && existing.teacherId === teacher.id ? "selected" : ""}>${escapeHtml(teacher.name || "-")} (${escapeHtml(teacher.role || "Teacher")})</option>`;
-          }).join("");
-          const roomOptions = rooms.map(function (room) {
-            return `<option value="${room.id}" ${existing && existing.roomId === room.id ? "selected" : ""}>${escapeHtml(room.name || "-")}</option>`;
-          }).join("");
-          return `
-            <tr>
-              <td>${escapeHtml(period.label || "-")}</td>
-              <td>${escapeHtml(formatTimeLabel(period.startTime))} - ${escapeHtml(formatTimeLabel(period.endTime))}</td>
-              <td>
-                <select class="table-inline-input" data-timetable-subject data-period-id="${period.id}">
-                  <option value="">Select Subject</option>
-                  ${subjectOptions}
-                </select>
-              </td>
-              <td>
-                <select class="table-inline-input" data-timetable-teacher data-period-id="${period.id}">
-                  <option value="">Select Teacher</option>
-                  ${teacherOptions}
-                </select>
-              </td>
-              <td>
-                <select class="table-inline-input" data-timetable-room data-period-id="${period.id}">
-                  <option value="">Select Room</option>
-                  ${roomOptions}
-                </select>
-              </td>
-            </tr>
-          `;
+      }
+
+      function populateSubjectDropdown() {
+        if (!ttSelectedClass) { ttFormSubject.innerHTML = '<option value="">Select Subject</option>'; return; }
+        var subjects = getClassSubjects(ttSelectedClass);
+        ttFormSubject.innerHTML = '<option value="">Select Subject</option>' + subjects.map(function (s) {
+          return '<option value="' + escapeAttr(s.name) + '">' + escapeHtml(s.name) + '</option>';
         }).join("");
       }
 
-      [classSelect, weekdaySelect].forEach(function (input) {
-        input.addEventListener("change", renderRows);
-      });
+      function populateTeacherDropdown() {
+        ttFormTeacher.innerHTML = '<option value="">Select Teacher</option>' + ttTeachers.map(function (t) {
+          return '<option value="' + escapeAttr(t.id) + '">' + escapeHtml(t.name || "-") + ' (' + escapeHtml(t.role || "Teacher") + ')</option>';
+        }).join("");
+      }
 
-      document.getElementById("saveTimetableBtn").addEventListener("click", function () {
-        const selectedClass = classSelect.value;
-        const selectedDay = weekdaySelect.value;
-        if (!selectedClass || !selectedDay) {
-          message.textContent = "Please select class and weekday.";
-          message.className = "form-message error";
+      function populateRoomDropdown() {
+        ttFormRoom.innerHTML = '<option value="">Select Room</option>' + ttRooms.map(function (r) {
+          return '<option value="' + escapeAttr(r.id) + '">' + escapeHtml(r.name || "-") + '</option>';
+        }).join("");
+      }
+
+      function setScheduleType(type) {
+        ttScheduleType = type;
+        document.querySelectorAll(".tt-sched-card").forEach(function (card) {
+          var isActive = card.getAttribute("data-sched") === type;
+          card.classList.toggle("tt-sched-card--active", isActive);
+          card.style.borderColor = isActive ? "#6D4AFF" : "#e6e8f0";
+          card.style.background = isActive ? "#f8f7ff" : "#fff";
+          card.querySelector("div:first-child").style.color = isActive ? "#6D4AFF" : "#486581";
+        });
+        ttRepeatSection.style.display = type === "recurring" ? "block" : "none";
+        ttCustomSection.style.display = type === "custom" ? "block" : "none";
+        if (type === "custom") { renderCustomTable(); }
+        ttConflictBanner.style.display = "none";
+      }
+
+      function getSelectedDays() {
+        if (ttScheduleType === "recurring") {
+          var cbs = document.querySelectorAll(".tt-day-cb:checked");
+          var days = [];
+          cbs.forEach(function (cb) { days.push(cb.value); });
+          return days;
+        }
+        return ttWeekdays.map(function (d) { return d.id; });
+      }
+
+      function renderCustomTable() {
+        if (!ttSelectedClass || !ttSelectedPeriod) { ttCustomBody.innerHTML = '<tr><td colspan="4" style="padding:12px;text-align:center;color:#829AB1;font-size:0.84rem;">Select class and period first.</td></tr>'; return; }
+        var subjects = getClassSubjects(ttSelectedClass);
+        var existingEntries = getTimetableEntries().filter(function (item) { return item.className === ttSelectedClass && item.periodId === ttSelectedPeriod; });
+        ttCustomBody.innerHTML = ttWeekdays.map(function (day) {
+          var existing = existingEntries.find(function (e) { return e.weekdayId === day.id; }) || null;
+          var subOpts = subjects.map(function (s) { return '<option value="' + escapeAttr(s.name) + '"' + (existing && existing.subjectName === s.name ? " selected" : "") + '>' + escapeHtml(s.name) + '</option>'; }).join("");
+          var tchOpts = ttTeachers.map(function (t) { return '<option value="' + escapeAttr(t.id) + '"' + (existing && existing.teacherId === t.id ? " selected" : "") + '>' + escapeHtml(t.name || "-") + '</option>'; }).join("");
+          var rmOpts = ttRooms.map(function (r) { return '<option value="' + escapeAttr(r.id) + '"' + (existing && existing.roomId === r.id ? " selected" : "") + '>' + escapeHtml(r.name || "-") + '</option>'; }).join("");
+          return '<tr style="border-bottom:1px solid #f0f2f5;">'
+            + '<td style="padding:8px 6px;font-weight:600;font-size:0.82rem;white-space:nowrap;">' + escapeHtml(day.shortLabel || day.name) + '</td>'
+            + '<td style="padding:8px 4px;"><select class="table-inline-input tt-custom-subject" data-day="' + day.id + '" style="width:100%;"><option value="">Select Subject</option>' + subOpts + '</select></td>'
+            + '<td style="padding:8px 4px;"><select class="table-inline-input tt-custom-teacher" data-day="' + day.id + '" style="width:100%;"><option value="">Select Teacher</option>' + tchOpts + '</select></td>'
+            + '<td style="padding:8px 4px;"><select class="table-inline-input tt-custom-room" data-day="' + day.id + '" style="width:100%;"><option value="">Select Room</option>' + rmOpts + '</select></td>'
+            + '</tr>';
+        }).join("");
+      }
+
+      function renderPreview() {
+        if (!ttSelectedClass) { ttPreviewBody.innerHTML = ""; ttPreviewEmpty.hidden = false; return; }
+        var entries = getTimetableEntries().filter(function (item) { return item.className === ttSelectedClass; });
+        var entryMap = new Map(entries.map(function (e) { return [e.periodId + "-" + e.weekdayId, e]; }));
+        var previewClassLabel = document.getElementById("ttPreviewClassLabel");
+        if (previewClassLabel) previewClassLabel.textContent = "Class: " + ttSelectedClass;
+        ttPreviewBody.innerHTML = ttPeriods.map(function (period) {
+          var pType = period.periodType || "Regular";
+          var isNonTeach = isNonTeachingPeriodType(pType);
+          var cells = ttWeekdays.map(function (day) {
+            var entry = entryMap.get(period.id + "-" + day.id);
+            if (!entry) return '<td class="tt-cell tt-cell--empty" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" style="padding:8px 6px;text-align:center;color:#cbd5e1;font-size:0.8rem;">-</td>';
+            if (isNonTeach) {
+              var icon = pType.toLowerCase() === "assembly" ? "&#127891;" : "&#9749;";
+              return '<td class="tt-cell tt-cell--' + (pType.toLowerCase() === "assembly" ? "assembly" : "break") + '">'
+                + '<div class="tt-cell__type">' + icon + ' <strong>' + escapeHtml(pType.toUpperCase()) + '</strong></div>'
+                + '<div class="tt-cell__time">' + escapeHtml(formatTimeLabel(period.startTime)) + ' - ' + escapeHtml(formatTimeLabel(period.endTime)) + '</div>'
+                + '</td>';
+            }
+            var dragData = encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id,subject:entry.subjectName,teacher:entry.teacherId,room:entry.roomId}));
+            return '<td class="tt-cell tt-cell--regular" draggable="true" data-tt-drag="' + dragData + '" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '">'
+              + '<div class="tt-cell__subject">' + escapeHtml(entry.subjectName || "-") + '</div>'
+              + '<div class="tt-cell__teacher">' + escapeHtml(entry.teacherName || "-") + '</div>'
+              + '<div class="tt-cell__room">' + escapeHtml(entry.roomName || "-") + '</div>'
+              + '<div class="tt-cell__actions">'
+              + '<span class="tt-drag-handle" title="Drag to rearrange">&#8942;&#8942;</span> '
+              + '<button class="tt-cell__menu-btn" data-tt-edit="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Edit">&#9998;</button>'
+              + '<button class="tt-cell__menu-btn tt-cell__menu-btn--danger" data-tt-delete="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Delete">&#10005;</button>'
+              + '</div>'
+              + '</td>';
+          }).join("");
+          var rowClass = isNonTeach ? "tt-row--" + (pType.toLowerCase() === "assembly" ? "assembly" : "break") : "";
+          return '<tr class="' + rowClass + '" style="border-bottom:1px solid #f0f2f5;">'
+            + '<td class="tt-period-label"><strong>' + escapeHtml(period.label || "-") + '</strong><br><span class="tt-period-time">' + escapeHtml(formatTimeLabel(period.startTime)) + ' - ' + escapeHtml(formatTimeLabel(period.endTime)) + '</span></td>'
+            + cells + '</tr>';
+        }).join("");
+        ttPreviewEmpty.hidden = ttPeriods.length > 0;
+      }
+
+      function loadExistingEntry() {
+        if (!ttSelectedClass || !ttSelectedPeriod) {
+          ttFormSubject.value = "";
+          ttFormTeacher.value = "";
+          ttFormRoom.value = "";
           return;
         }
-        const periods = getTimetablePeriods();
-        periods.forEach(function (period) {
-          const subjectInput = tableBody.querySelector(`select[data-timetable-subject][data-period-id="${period.id}"]`);
-          const teacherInput = tableBody.querySelector(`select[data-timetable-teacher][data-period-id="${period.id}"]`);
-          const roomInput = tableBody.querySelector(`select[data-timetable-room][data-period-id="${period.id}"]`);
-          const subjectName = subjectInput ? subjectInput.value : "";
-          const teacherId = teacherInput ? teacherInput.value : "";
-          const roomId = roomInput ? roomInput.value : "";
-          if (!subjectName) {
-            settings.timetableEntries = getTimetableEntries().filter(function (item) {
-              return !(item.className === selectedClass && item.weekdayId === selectedDay && item.periodId === period.id);
+        var entries = getTimetableEntries().filter(function (item) { return item.className === ttSelectedClass && item.periodId === ttSelectedPeriod; });
+        if (entries.length === 0) {
+          ttFormSubject.value = "";
+          ttFormTeacher.value = "";
+          ttFormRoom.value = "";
+          return;
+        }
+        var first = entries[0];
+        ttFormSubject.value = first.subjectName || "";
+        ttFormTeacher.value = first.teacherId || "";
+        ttFormRoom.value = first.roomId || "";
+        if (first.scheduleType === "recurring" && Array.isArray(first.recurringDays)) {
+          ttScheduleType = "recurring";
+          document.querySelectorAll(".tt-day-cb").forEach(function (cb) {
+            cb.checked = first.recurringDays.indexOf(cb.value) >= 0;
+          });
+          setScheduleType("recurring");
+        } else {
+          setScheduleType("custom");
+        }
+      }
+
+      document.querySelectorAll(".tt-sched-card").forEach(function (card) {
+        card.addEventListener("click", function () {
+          setScheduleType(card.getAttribute("data-sched"));
+        });
+      });
+
+      ttFormClass.addEventListener("change", function () {
+        ttSelectedClass = ttFormClass.value;
+        populateSubjectDropdown();
+        ttEntryFieldsRow.style.display = ttSelectedClass ? "block" : "none";
+        loadExistingEntry();
+        renderCustomTable();
+        renderPreview();
+      });
+
+      ttFormPeriod.addEventListener("change", function () {
+        ttSelectedPeriod = ttFormPeriod.value;
+        updatePeriodTypeUI();
+        loadExistingEntry();
+        renderCustomTable();
+        renderPreview();
+      });
+
+      ttFormSubject.addEventListener("change", function () { renderPreview(); });
+
+      document.getElementById("ttDayCheckboxes").addEventListener("change", function () {
+        ttSelectedDays = getSelectedDays();
+      });
+
+      function showDeleteModal(entryData) {
+        var raw = getRawTimetableEntries();
+        var dayLabel = "";
+        for (var w = 0; w < ttWeekdays.length; w++) { if (ttWeekdays[w].id === entryData.day) { dayLabel = ttWeekdays[w].name; break; } }
+        var period = ttPeriods.find(function (p) { return p.id === entryData.period; }) || {};
+        var isRecurring = false;
+        var recurringGroupId = null;
+        var recurringDays = [];
+        var matchingEntry = null;
+        var entryClass = (entryData.class || "").trim();
+        var entryPeriod = (entryData.period || "").trim();
+        var entryDay = (entryData.day || "").trim();
+        for (var i = 0; i < raw.length; i++) {
+          var e = raw[i];
+          var eClass = (e.className || "").trim();
+          var ePeriod = (e.periodId || "").trim();
+          if (eClass === entryClass && ePeriod === entryPeriod) {
+            var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
+            if (eDays.indexOf(entryDay) >= 0) {
+              matchingEntry = e;
+              if (e.scheduleType === "recurring" && Array.isArray(e.recurringDays) && e.recurringDays.length > 1) {
+                isRecurring = true;
+                recurringGroupId = e.recurringGroupId || e.id;
+                recurringDays = e.recurringDays;
+              }
+              break;
+            }
+          }
+        }
+        if (!matchingEntry) {
+          showToast("Could not find the timetable entry to delete. Please refresh and try again.", "error");
+          return;
+        }
+        var subjectName = matchingEntry.subjectName || "(no subject)";
+        ttDeleteDesc.innerHTML = 'Are you sure you want to remove <strong>' + escapeHtml(subjectName) + '</strong> from <strong>' + escapeHtml(dayLabel) + '</strong>, <strong>' + escapeHtml(period.label || "-") + '</strong> for <strong>' + escapeHtml(entryClass) + '</strong>?';
+        if (isRecurring) {
+          ttDeleteOptions.style.display = "flex";
+          var dayNames = recurringDays.map(function (d) {
+            for (var w = 0; w < ttWeekdays.length; w++) { if (ttWeekdays[w].id === d) return ttWeekdays[w].shortLabel || ttWeekdays[w].name; }
+            return d;
+          });
+          ttDeleteDayLabel.textContent = "Delete " + escapeHtml(dayLabel) + " only";
+          ttDeleteOptions.querySelector("label:last-child input").nextElementSibling.textContent = "Delete all " + dayNames.length + " entries (" + dayNames.join(", ") + ")";
+          var dayRadio = ttDeleteOptions.querySelector('input[value="day"]');
+          if (dayRadio) dayRadio.checked = true;
+        } else {
+          ttDeleteOptions.style.display = "none";
+        }
+        var cleaned = false;
+        if (ttDeleteModal.parentNode !== document.body) {
+          document.body.appendChild(ttDeleteModal);
+        }
+        ttDeleteModal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+        function cleanup() {
+          if (cleaned) return;
+          cleaned = true;
+          ttDeleteModal.style.display = "none";
+          document.body.style.overflow = "";
+          try { ttDeleteConfirm.removeEventListener("click", onConfirm); } catch (_e) {}
+          try { ttDeleteCancel.removeEventListener("click", onCancel); } catch (_e) {}
+          try { ttDeleteModal.removeEventListener("click", onOverlayClick); } catch (_e) {}
+        }
+        function onOverlayClick(e) { if (e.target === ttDeleteModal) { cleanup(); } }
+        function onConfirm() {
+          var choice = isRecurring ? (document.querySelector('input[name="ttDeleteChoice"]:checked') || {}).value : "day";
+          cleanup();
+          if (choice === "all") {
+            settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== recurringGroupId; });
+          } else {
+            if (isRecurring) {
+              settings.timetableEntries = getRawTimetableEntries().map(function (item) {
+                if ((item.recurringGroupId || item.id) === recurringGroupId) {
+                  var remDays = (item.recurringDays || []).filter(function (d) { return d !== entryDay; });
+                  if (remDays.length === 0) return null;
+                  return Object.assign({}, item, { recurringDays: remDays });
+                }
+                return item;
+              }).filter(Boolean);
+            } else {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+                var iClass = (item.className || "").trim();
+                var iPeriod = (item.periodId || "").trim();
+                var iDay = (item.weekdayId || "").trim();
+                return !(iClass === entryClass && iPeriod === entryPeriod && iDay === entryDay);
+              });
+            }
+          }
+          saveDatabase("Deleting timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+          addActivity("Timetable entry deleted", subjectName + " removed from " + entryClass + " on " + dayLabel + ".");
+          ttFormMessage.textContent = "Timetable entry deleted successfully.";
+          ttFormMessage.className = "form-message success";
+          showToast("Timetable entry deleted successfully.", "success");
+          renderPreview();
+        }
+        function onCancel() { cleanup(); }
+        ttDeleteConfirm.addEventListener("click", onConfirm);
+        ttDeleteCancel.addEventListener("click", onCancel);
+        ttDeleteModal.addEventListener("click", onOverlayClick);
+      }
+
+      document.getElementById("ttPreviewBody").addEventListener("click", function (event) {
+        var editBtn = event.target.closest("[data-tt-edit]");
+        if (editBtn) {
+          try {
+            var data = JSON.parse(decodeURIComponent(editBtn.getAttribute("data-tt-edit")));
+            var raw = getRawTimetableEntries();
+            for (var i = 0; i < raw.length; i++) {
+              var e = raw[i];
+              if (e.className === data.class && e.periodId === data.period) {
+                var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
+                if (eDays.indexOf(data.day) >= 0) {
+                  ttFormClass.value = data.class;
+                  ttSelectedClass = data.class;
+                  ttFormPeriod.value = data.period;
+                  ttSelectedPeriod = data.period;
+                  populateSubjectDropdown();
+                  updatePeriodTypeUI();
+                  ttEntryFieldsRow.style.display = "block";
+                  ttFormSubject.value = e.subjectName || "";
+                  ttFormTeacher.value = e.teacherId || "";
+                  ttFormRoom.value = e.roomId || "";
+                  if (e.scheduleType === "recurring" && Array.isArray(e.recurringDays)) {
+                    ttScheduleType = "recurring";
+                    document.querySelectorAll(".tt-day-cb").forEach(function (cb) { cb.checked = e.recurringDays.indexOf(cb.value) >= 0; });
+                    setScheduleType("recurring");
+                  } else {
+                    setScheduleType("custom");
+                  }
+                  window.scrollTo({ top: 0, behavior: "smooth" });
+                  ttFormMessage.textContent = "Editing entry. Modify and click Save Timetable.";
+                  ttFormMessage.className = "form-message";
+                  break;
+                }
+              }
+            }
+          } catch (err) { /* ignore */ }
+          return;
+        }
+        var deleteBtn = event.target.closest("[data-tt-delete]");
+        if (deleteBtn) {
+          try {
+            var dData = JSON.parse(decodeURIComponent(deleteBtn.getAttribute("data-tt-delete")));
+            showDeleteModal(dData);
+          } catch (err) { /* ignore */ }
+        }
+      });
+
+      // Drag & Drop handlers
+      var ttDragData = null;
+      var ttPreviewTable = document.getElementById("ttPreviewTable");
+      if (ttPreviewTable) {
+        ttPreviewTable.addEventListener("dragstart", function (e) {
+          var cell = e.target.closest("[data-tt-drag]");
+          if (!cell) return;
+          try {
+            ttDragData = JSON.parse(decodeURIComponent(cell.getAttribute("data-tt-drag")));
+            cell.classList.add("tt-dragging");
+            e.dataTransfer.effectAllowed = "move";
+            e.dataTransfer.setData("text/plain", cell.getAttribute("data-tt-drag"));
+          } catch (err) { ttDragData = null; }
+        });
+        ttPreviewTable.addEventListener("dragend", function (e) {
+          var cell = e.target.closest("[data-tt-drag]");
+          if (cell) cell.classList.remove("tt-dragging");
+          ttPreviewTable.querySelectorAll(".tt-drag-over").forEach(function (el) { el.classList.remove("tt-drag-over"); });
+          ttPreviewTable.querySelectorAll(".tt-cell--drop-valid, .tt-cell--drop-invalid").forEach(function (el) {
+            el.classList.remove("tt-cell--drop-valid", "tt-cell--drop-invalid");
+          });
+          ttDragData = null;
+        });
+        ttPreviewTable.addEventListener("dragover", function (e) {
+          var cell = e.target.closest("[data-tt-drop]");
+          if (!cell) return;
+          e.preventDefault();
+          if (!ttDragData) return;
+          var dropTarget = null;
+          try { dropTarget = JSON.parse(decodeURIComponent(cell.getAttribute("data-tt-drop"))); } catch (err) { return; }
+          var isSameCell = ttDragData.class === dropTarget.class && ttDragData.period === dropTarget.period && ttDragData.day === dropTarget.day;
+          if (isSameCell) return;
+          var raw = getRawTimetableEntries();
+          var targetOccupied = raw.some(function (item) {
+            if (item.className !== dropTarget.class || item.periodId !== dropTarget.period) return false;
+            var days = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
+            return days.indexOf(dropTarget.day) >= 0;
+          });
+          cell.classList.add("tt-drag-over");
+          if (targetOccupied) {
+            cell.classList.add("tt-cell--drop-invalid");
+            cell.classList.remove("tt-cell--drop-valid");
+          } else {
+            cell.classList.add("tt-cell--drop-valid");
+            cell.classList.remove("tt-cell--drop-invalid");
+          }
+        });
+        ttPreviewTable.addEventListener("dragleave", function (e) {
+          var cell = e.target.closest("[data-tt-drop]");
+          if (cell) {
+            cell.classList.remove("tt-drag-over", "tt-cell--drop-valid", "tt-cell--drop-invalid");
+          }
+        });
+        ttPreviewTable.addEventListener("drop", function (e) {
+          e.preventDefault();
+          var cell = e.target.closest("[data-tt-drop]");
+          if (!cell || !ttDragData) return;
+          cell.classList.remove("tt-drag-over", "tt-cell--drop-valid", "tt-cell--drop-invalid");
+          var dropTarget = null;
+          try { dropTarget = JSON.parse(decodeURIComponent(cell.getAttribute("data-tt-drop"))); } catch (err) { return; }
+          var isSameCell = ttDragData.class === dropTarget.class && ttDragData.period === dropTarget.period && ttDragData.day === dropTarget.day;
+          if (isSameCell) return;
+          var raw = getRawTimetableEntries();
+          var targetEntry = null;
+          for (var ti = 0; ti < raw.length; ti++) {
+            var te = raw[ti];
+            if (te.className !== dropTarget.class || te.periodId !== dropTarget.period) continue;
+            var teDays = te.scheduleType === "recurring" && Array.isArray(te.recurringDays) ? te.recurringDays : [te.weekdayId];
+            if (teDays.indexOf(dropTarget.day) >= 0) { targetEntry = te; break; }
+          }
+          var sourceEntry = null;
+          for (var si = 0; si < raw.length; si++) {
+            var se = raw[si];
+            if (se.className !== ttDragData.class || se.periodId !== ttDragData.period) continue;
+            var seDays = se.scheduleType === "recurring" && Array.isArray(se.recurringDays) ? se.recurringDays : [se.weekdayId];
+            if (seDays.indexOf(ttDragData.day) >= 0) { sourceEntry = se; break; }
+          }
+          if (!sourceEntry) return;
+          var sourceIsRecurring = sourceEntry.scheduleType === "recurring" && Array.isArray(sourceEntry.recurringDays) && sourceEntry.recurringDays.length > 1;
+          var sourceDayLabel = "";
+          for (var w = 0; w < ttWeekdays.length; w++) { if (ttWeekdays[w].id === ttDragData.day) { sourceDayLabel = ttWeekdays[w].shortLabel || ttWeekdays[w].name; break; } }
+          var targetDayLabel = "";
+          for (var w2 = 0; w2 < ttWeekdays.length; w2++) { if (ttWeekdays[w2].id === dropTarget.day) { targetDayLabel = ttWeekdays[w2].shortLabel || ttWeekdays[w2].name; break; } }
+          function executeDragMove(moveAllDays) {
+            var raw2 = getRawTimetableEntries();
+            var src2 = null;
+            for (var si2 = 0; si2 < raw2.length; si2++) {
+              var se2 = raw2[si2];
+              if (se2.className !== ttDragData.class || se2.periodId !== ttDragData.period) continue;
+              var se2Days = se2.scheduleType === "recurring" && Array.isArray(se2.recurringDays) ? se2.recurringDays : [se2.weekdayId];
+              if (se2Days.indexOf(ttDragData.day) >= 0) { src2 = se2; break; }
+            }
+            if (!src2) return;
+            if (targetEntry && targetEntry !== src2) {
+              settings.timetableEntries = raw2.map(function (item) {
+                if (item === src2) {
+                  var updated = Object.assign({}, item, { periodId: dropTarget.period, weekdayId: dropTarget.day, updatedAt: new Date().toISOString() });
+                  if (updated.scheduleType === "recurring") {
+                    if (moveAllDays) {
+                      updated.weekdayId = dropTarget.day;
+                    } else {
+                      delete updated.scheduleType;
+                      delete updated.recurringGroupId;
+                      var remainingDays = (updated.recurringDays || []).filter(function (d) { return d !== ttDragData.day; });
+                      if (remainingDays.length === 0) return null;
+                      updated.recurringDays = remainingDays;
+                      delete updated.recurringDays;
+                    }
+                  }
+                  return updated;
+                }
+                if (item === targetEntry) {
+                  var relocated = Object.assign({}, item, { periodId: ttDragData.period, weekdayId: ttDragData.day, updatedAt: new Date().toISOString() });
+                  if (relocated.scheduleType === "recurring") {
+                    delete relocated.scheduleType;
+                    delete relocated.recurringGroupId;
+                    delete relocated.recurringDays;
+                  }
+                  return relocated;
+                }
+                return item;
+              }).filter(Boolean);
+            } else {
+              settings.timetableEntries = raw2.map(function (item) {
+                if (item === src2) {
+                  var updated3 = Object.assign({}, item, { periodId: dropTarget.period, weekdayId: dropTarget.day, updatedAt: new Date().toISOString() });
+                  if (updated3.scheduleType === "recurring") {
+                    if (moveAllDays) {
+                      var newDays = updated3.recurringDays.map(function (d) {
+                        return d === ttDragData.day ? dropTarget.day : d;
+                      });
+                      updated3.recurringDays = newDays;
+                      updated3.weekdayId = newDays[0];
+                    } else {
+                      delete updated3.scheduleType;
+                      delete updated3.recurringGroupId;
+                      delete updated3.recurringDays;
+                    }
+                  }
+                  return updated3;
+                }
+                return item;
+              });
+            }
+            saveDatabase("Moving timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            addActivity("Timetable entry moved", "Entry moved from " + ttDragData.day + " " + ttDragData.period + " to " + dropTarget.day + " " + dropTarget.period + ".");
+            showToast("Timetable entry moved successfully.", "success");
+            renderPreview();
+          }
+          if (targetEntry) {
+            var srcLabel = sourceEntry.subjectName || "(empty)";
+            var tgtLabel = targetEntry.subjectName || "(empty)";
+            var tgtClass = targetEntry.className === sourceEntry.className ? "this class" : targetEntry.className;
+            showSSModal({
+              title: "Cell Occupied",
+              tone: "warning",
+              html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">The target cell already has <strong>' + escapeHtml(tgtLabel) + '</strong> (' + escapeHtml(tgtClass) + ').</p><p style="font-size:0.88rem;color:#102A43;margin:0;">What would you like to do?</p>',
+              buttons: [
+                { id: "swap-cancel", label: "Cancel", className: "ss-modal__btn ss-modal__btn--secondary" },
+                { id: "swap-ok", label: "Swap Entries", className: "ss-modal__btn ss-modal__btn--primary" }
+              ],
+              resolveWith: "swap-cancel"
+            }).then(function (result) {
+              if (result === "swap-ok") {
+                executeDragMove(false);
+              }
+            });
+          } else if (sourceIsRecurring) {
+            showSSModal({
+              title: "Move Recurring Entry",
+              tone: "info",
+              html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">This entry appears on multiple days.</p><p style="font-size:0.88rem;color:#102A43;margin:0 0 8px;">Would you like to move just <strong>' + escapeHtml(sourceDayLabel) + '</strong> or the entire schedule?</p>',
+              buttons: [
+                { id: "recurring-cancel", label: "Cancel", className: "ss-modal__btn ss-modal__btn--secondary" },
+                { id: "recurring-day", label: "Move " + escapeHtml(sourceDayLabel) + " Only", className: "ss-modal__btn ss-modal__btn--secondary" },
+                { id: "recurring-all", label: "Move Entire Schedule", className: "ss-modal__btn ss-modal__btn--primary" }
+              ],
+              resolveWith: "recurring-cancel"
+            }).then(function (result) {
+              if (result === "recurring-day") {
+                executeDragMove(false);
+              } else if (result === "recurring-all") {
+                executeDragMove(true);
+              }
+            });
+          } else {
+            executeDragMove(false);
+          }
+          ttDragData = null;
+          renderPreview();
+        });
+      }
+
+      function showModal(desc, singleLabel, callback) {
+        ttModalDesc.textContent = desc;
+        ttModalSingleLabel.textContent = singleLabel || "Update this day only";
+        ttModal.style.display = "flex";
+        function cleanup() { ttModal.style.display = "none"; ttModalConfirm.removeEventListener("click", onConfirm); ttModalCancel.removeEventListener("click", onCancel); }
+        function onConfirm() { var c = document.querySelector('input[name="ttModalChoice"]:checked'); cleanup(); callback(c ? c.value : "single"); }
+        function onCancel() { cleanup(); callback(null); }
+        ttModalConfirm.addEventListener("click", onConfirm);
+        ttModalCancel.addEventListener("click", onCancel);
+      }
+
+      function checkConflictsForDays(className, periodId, targetDays, excludeGroupId) {
+        var raw = getRawTimetableEntries();
+        var conflicts = [];
+        var currentPeriodType = ttSelectedPeriodType || "Regular";
+        for (var d = 0; d < targetDays.length; d++) {
+          var dayId = targetDays[d];
+          var dayLabel = "";
+          for (var w = 0; w < ttWeekdays.length; w++) { if (ttWeekdays[w].id === dayId) { dayLabel = ttWeekdays[w].name; break; } }
+          for (var i = 0; i < raw.length; i++) {
+            var e = raw[i];
+            var eGroup = e.recurringGroupId || e.id;
+            if (excludeGroupId && eGroup === excludeGroupId) continue;
+            var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
+            if (eDays.indexOf(dayId) < 0) continue;
+            if (e.periodId !== periodId) continue;
+            var period = ttPeriods.find(function (p) { return p.id === periodId; }) || {};
+            var pLabel = period.label || "-";
+            if (e.className === className) {
+              conflicts.push({ type: "class", day: dayLabel, period: pLabel, detail: "Class already has an entry for this period." });
+            }
+            if (!isNonTeachingPeriodType(currentPeriodType)) {
+              var tVal = ttFormTeacher.value;
+              if (tVal && e.teacherId === tVal && e.className !== className) {
+                var tName = ttTeachers.find(function (t) { return t.id === tVal; });
+                conflicts.push({ type: "teacher", day: dayLabel, period: pLabel, detail: (tName ? tName.name : "Teacher") + " is already assigned to " + e.className + "." });
+              }
+              var rVal = ttFormRoom.value;
+              if (rVal && e.roomId === rVal && e.className !== className) {
+                var rName = ttRooms.find(function (r) { return r.id === rVal; });
+                conflicts.push({ type: "room", day: dayLabel, period: pLabel, detail: (rName ? rName.name : "Room") + " is already occupied by " + e.className + "." });
+              }
+            }
+          }
+        }
+        return conflicts;
+      }
+
+      function doSave(singleDayOverride, allDaysOverride) {
+        var className = ttFormClass.value;
+        var periodId = ttFormPeriod.value;
+        if (!className || !periodId) {
+          ttFormMessage.textContent = "Please select class and period.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        var targetDays = getSelectedDays();
+        if (targetDays.length === 0) {
+          ttFormMessage.textContent = "Please select at least one day.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        var isNonTeaching = isNonTeachingPeriodType(ttSelectedPeriodType);
+        var subjectName = isNonTeaching ? "" : ttFormSubject.value;
+        var teacherId = isNonTeaching ? "" : ttFormTeacher.value;
+        var roomId = isNonTeaching ? "" : ttFormRoom.value;
+        if (!isNonTeaching && !subjectName) {
+          ttFormMessage.textContent = "Please select a subject.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        var period = ttPeriods.find(function (p) { return p.id === periodId; }) || {};
+        var teacher = isNonTeaching ? null : getEmployeeById(teacherId);
+        var room = isNonTeaching ? null : ttRooms.find(function (r) { return r.id === roomId; }) || null;
+        var conflicts = checkConflictsForDays(className, periodId, targetDays, allDaysOverride);
+        if (conflicts.length > 0) {
+          ttConflictBanner.innerHTML = '<strong>&#9888;&#65039; Timetable Conflicts Found:</strong><br>' + conflicts.slice(0, 8).map(function (c) { return '&#8226; ' + c.day + ' &mdash; ' + c.period + ': ' + c.detail; }).join("<br>") + (conflicts.length > 8 ? '<br>...and ' + (conflicts.length - 8) + ' more.' : "");
+          ttConflictBanner.style.display = "block";
+          ttFormMessage.textContent = "Please resolve conflicts before saving.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        ttConflictBanner.style.display = "none";
+        if (ttScheduleType === "recurring") {
+          var groupId = "RCG-" + generateId();
+          for (var d = 0; d < targetDays.length; d++) {
+            settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+              var iDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
+              return !(item.className === className && item.periodId === periodId && iDays.indexOf(targetDays[d]) >= 0);
+            });
+          }
+          settings.timetableEntries = getRawTimetableEntries();
+          settings.timetableEntries.push({
+            id: "TT-" + className + "-" + groupId + "-" + periodId,
+            className: className,
+            weekdayId: targetDays[0],
+            periodId: periodId,
+            periodLabel: period.label || "",
+            periodType: ttSelectedPeriodType,
+            subjectName: subjectName,
+            teacherId: teacher ? teacher.id : "",
+            teacherName: teacher ? teacher.name : "",
+            roomId: room ? room.id : "",
+            roomName: room ? room.name : "",
+            scheduleType: "recurring",
+            recurringGroupId: groupId,
+            recurringDays: targetDays.slice(),
+            updatedAt: new Date().toISOString()
+          });
+        } else {
+          var raw = getRawTimetableEntries();
+          var existingRaw = null;
+          for (var ei = 0; ei < raw.length; ei++) {
+            var re = raw[ei];
+            if (re.scheduleType === "recurring" && re.periodId === periodId && re.className === className) {
+              var reDays = re.recurringDays || [];
+              if (reDays.indexOf(targetDays[0]) >= 0) { existingRaw = re; break; }
+            }
+          }
+          if (existingRaw && !singleDayOverride && !allDaysOverride) {
+            var edDesc = "This period is part of a recurring schedule (" + (existingRaw.recurringDays || []).length + " days). What would you like to do?";
+            showModal(edDesc, "Update this day only", function (choice) {
+              if (choice === null) return;
+              doSave(choice === "single" ? targetDays[0] : null, choice === "all" ? existingRaw.recurringGroupId : null);
             });
             return;
           }
-          const teacher = getEmployeeById(teacherId);
-          const room = getClassRooms().find(function (roomItem) { return roomItem.id === roomId; }) || null;
-          upsertTimetableEntry({
-            id: `TT-${selectedClass}-${selectedDay}-${period.id}`,
-            className: selectedClass,
-            weekdayId: selectedDay,
-            periodId: period.id,
-            periodLabel: period.label,
+          if (existingRaw) {
+            if (allDaysOverride) {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== allDaysOverride; });
+            } else if (singleDayOverride) {
+              var remDays = (existingRaw.recurringDays || []).filter(function (d) { return d !== singleDayOverride; });
+              if (remDays.length === 0) {
+                settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== existingRaw.recurringGroupId; });
+              } else {
+                settings.timetableEntries = getRawTimetableEntries().map(function (item) {
+                  if ((item.recurringGroupId || item.id) === existingRaw.recurringGroupId && item.periodId === periodId) {
+                    return Object.assign({}, item, { recurringDays: remDays });
+                  }
+                  return item;
+                });
+              }
+            } else {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== existingRaw.recurringGroupId; });
+            }
+          }
+          settings.timetableEntries = getRawTimetableEntries();
+          settings.timetableEntries.push({
+            id: "TT-" + className + "-" + targetDays[0] + "-" + periodId,
+            className: className,
+            weekdayId: targetDays[0],
+            periodId: periodId,
+            periodLabel: period.label || "",
+            periodType: ttSelectedPeriodType,
             subjectName: subjectName,
             teacherId: teacher ? teacher.id : "",
             teacherName: teacher ? teacher.name : "",
@@ -10328,14 +12051,132 @@ ${allContent}
             roomName: room ? room.name : "",
             updatedAt: new Date().toISOString()
           });
-        });
+        }
         saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-        addActivity("Timetable updated", `Timetable updated for ${selectedClass}.`);
-        message.textContent = "Timetable saved successfully.";
-        message.className = "form-message success";
+        addActivity("Timetable updated", "Timetable updated for " + className + ".");
+        ttFormMessage.textContent = "Timetable saved successfully.";
+        ttFormMessage.className = "form-message success";
+        showToast("Timetable saved successfully.", "success");
+        renderPreview();
+      }
+
+      safeOn(document.getElementById("ttSaveBtn"), "click", function () {
+        var className = ttFormClass.value;
+        var periodId = ttFormPeriod.value;
+        if (!className || !periodId) {
+          ttFormMessage.textContent = "Please select class and period.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        var isNonTeaching = isNonTeachingPeriodType(ttSelectedPeriodType);
+        var subjectName = isNonTeaching ? "" : ttFormSubject.value;
+        if (!isNonTeaching && !subjectName) {
+          ttFormMessage.textContent = "Please select a subject.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        var targetDays = getSelectedDays();
+        if (ttScheduleType === "recurring" && targetDays.length === 0) {
+          ttFormMessage.textContent = "Please select at least one day.";
+          ttFormMessage.className = "form-message error";
+          return;
+        }
+        if (ttScheduleType === "custom") {
+          var customBody = ttCustomBody;
+          var customConflicts = [];
+          ttWeekdays.forEach(function (day) {
+            var subEl = customBody.querySelector('.tt-custom-subject[data-day="' + day.id + '"]');
+            var tchEl = customBody.querySelector('.tt-custom-teacher[data-day="' + day.id + '"]');
+            var rmEl = customBody.querySelector('.tt-custom-room[data-day="' + day.id + '"]');
+            if (subEl && subEl.value) {
+              var cks = checkConflictsForDays(className, periodId, [day.id], null);
+              customConflicts = customConflicts.concat(cks);
+            }
+          });
+          if (customConflicts.length > 0) {
+            ttConflictBanner.innerHTML = '<strong>&#9888;&#65039; Timetable Conflicts Found:</strong><br>' + customConflicts.slice(0, 8).map(function (c) { return '&#8226; ' + c.day + ' &mdash; ' + c.period + ': ' + c.detail; }).join("<br>");
+            ttConflictBanner.style.display = "block";
+            ttFormMessage.textContent = "Please resolve conflicts before saving.";
+            ttFormMessage.className = "form-message error";
+            return;
+          }
+          ttConflictBanner.style.display = "none";
+          ttWeekdays.forEach(function (day) {
+            var subEl = customBody.querySelector('.tt-custom-subject[data-day="' + day.id + '"]');
+            var tchEl = customBody.querySelector('.tt-custom-teacher[data-day="' + day.id + '"]');
+            var rmEl = customBody.querySelector('.tt-custom-room[data-day="' + day.id + '"]');
+            var subName = isNonTeaching ? "" : (subEl ? subEl.value : "");
+            var tchId = isNonTeaching ? "" : (tchEl ? tchEl.value : "");
+            var rmId = isNonTeaching ? "" : (rmEl ? rmEl.value : "");
+            if (!isNonTeaching && !subName) {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+                return !(item.className === className && item.weekdayId === day.id && item.periodId === periodId);
+              });
+              return;
+            }
+            var tch = getEmployeeById(tchId);
+            var rm = ttRooms.find(function (r) { return r.id === rmId; }) || null;
+            var period = ttPeriods.find(function (p) { return p.id === periodId; }) || {};
+            settings.timetableEntries = getRawTimetableEntries();
+            var existIdx = -1;
+            for (var xi = 0; xi < getRawTimetableEntries().length; xi++) {
+              var xe = getRawTimetableEntries()[xi];
+              if (xe.className === className && xe.weekdayId === day.id && xe.periodId === periodId) { existIdx = xi; break; }
+            }
+            var newEntry = {
+              id: "TT-" + className + "-" + day.id + "-" + periodId,
+              className: className,
+              weekdayId: day.id,
+              periodId: periodId,
+              periodLabel: period.label || "",
+              periodType: ttSelectedPeriodType,
+              subjectName: subName,
+              teacherId: tch ? tch.id : "",
+              teacherName: tch ? tch.name : "",
+              roomId: rm ? rm.id : "",
+              roomName: rm ? rm.name : "",
+              updatedAt: new Date().toISOString()
+            };
+            if (existIdx >= 0) {
+              settings.timetableEntries[existIdx] = newEntry;
+            } else {
+              settings.timetableEntries.push(newEntry);
+            }
+          });
+          saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+          addActivity("Timetable updated", "Timetable updated for " + className + ".");
+          ttFormMessage.textContent = "Timetable saved successfully.";
+          ttFormMessage.className = "form-message success";
+          showToast("Timetable saved successfully.", "success");
+          renderPreview();
+          return;
+        }
+        doSave(null, null);
       });
 
-      renderRows();
+      safeOn(document.getElementById("ttCancelBtn"), "click", function () {
+        ttFormClass.value = "";
+        ttFormPeriod.value = "";
+        ttSelectedClass = "";
+        ttSelectedPeriod = "";
+        ttSelectedPeriodType = "Regular";
+        ttFormSubject.value = "";
+        ttFormTeacher.value = "";
+        ttFormRoom.value = "";
+        ttEntryFieldsRow.style.display = "none";
+        ttConflictBanner.style.display = "none";
+        ttFormMessage.textContent = "";
+        ttFormMessage.className = "form-message";
+        setScheduleType("recurring");
+        var customCard = document.querySelector('.tt-sched-card[data-sched="custom"]');
+        if (customCard) customCard.style.display = "";
+        renderCustomTable();
+        renderPreview();
+      });
+
+      populateTeacherDropdown();
+      populateRoomDropdown();
+      renderPreview();
       return;
     }
 
@@ -10394,15 +12235,21 @@ ${allContent}
           </tr>
         `;
         body.innerHTML = matrix.periods.map(function (period) {
+          const pType = period.periodType || "Regular";
+          const isNonTeach = isNonTeachingPeriodType(pType);
           const dayCells = matrix.weekdays.map(function (day) {
             const entry = matrix.entryMap.get(`${period.id}-${day.id}`);
             if (!entry) {
               return `<td>-</td>`;
             }
+            if (isNonTeach) {
+              const icon = pType.toLowerCase() === "assembly" ? "&#127891;" : "&#9749;";
+              return `<td class="tt-cell tt-cell--${pType.toLowerCase() === "assembly" ? "assembly" : "break"}"><strong>${icon} ${escapeHtml(pType.toUpperCase())}</strong><br><span>${escapeHtml(formatTimeLabel(period.startTime))} - ${escapeHtml(formatTimeLabel(period.endTime))}</span></td>`;
+            }
             return `<td><strong>${escapeHtml(entry.subjectName || "-")}</strong><br><span>${escapeHtml(entry.teacherName || "-")}</span><br><span>${escapeHtml(entry.roomName || "-")}</span></td>`;
           }).join("");
           return `
-            <tr>
+            <tr class="${isNonTeach ? 'tt-row--' + (pType.toLowerCase() === "assembly" ? "assembly" : "break") : ''}">
               <td>${escapeHtml(period.label || "-")}</td>
               <td>${escapeHtml(formatTimeLabel(period.startTime))} - ${escapeHtml(formatTimeLabel(period.endTime))}</td>
               ${dayCells}
@@ -10412,7 +12259,7 @@ ${allContent}
         emptyState.hidden = matrix.periods.length > 0;
       }
 
-      document.getElementById("printClassTimetableBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printClassTimetableBtn"), "click", function () {
         const matrix = getMatrix();
         if (!matrix) {
           return;
@@ -10421,17 +12268,22 @@ ${allContent}
           return day.shortLabel || day.name;
         }));
         const rows = matrix.periods.map(function (period) {
+          const pType = period.periodType || "Regular";
+          const isNonTeach = isNonTeachingPeriodType(pType);
           const dayCells = matrix.weekdays.map(function (day) {
             const entry = matrix.entryMap.get(`${period.id}-${day.id}`);
-            const value = entry ? `${entry.subjectName || "-"} / ${entry.teacherName || "-"} / ${entry.roomName || "-"}` : "-";
-            return escapeHtml(value);
+            if (!entry) return escapeHtml("-");
+            if (isNonTeach) return escapeHtml(pType.toUpperCase());
+            return escapeHtml(`${entry.subjectName || "-"} / ${entry.teacherName || "-"} / ${entry.roomName || "-"}`);
           }).join("");
           return [
             escapeHtml(period.label || "-"),
             `${formatTimeLabel(period.startTime)} - ${formatTimeLabel(period.endTime)}`
           ].concat(matrix.weekdays.map(function (day) {
             const entry = matrix.entryMap.get(`${period.id}-${day.id}`);
-            return escapeHtml(entry ? `${entry.subjectName || "-"} / ${entry.teacherName || "-"} / ${entry.roomName || "-"}` : "-");
+            if (!entry) return escapeHtml("-");
+            if (isNonTeach) return escapeHtml(pType.toUpperCase());
+            return escapeHtml(`${entry.subjectName || "-"} / ${entry.teacherName || "-"} / ${entry.roomName || "-"}`);
           }));
         });
         openPrintReport({
@@ -10518,7 +12370,7 @@ ${allContent}
         emptyState.hidden = rows.length > 0;
       }
 
-      document.getElementById("printTeacherTimetableBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printTeacherTimetableBtn"), "click", function () {
         const teacher = getEmployeeById(teacherSelect.value);
         const rows = getRows();
         if (!teacher || !rows.length) {
@@ -10718,7 +12570,7 @@ ${allContent}
         emptyState.hidden = exams.length !== 0;
       }
 
-      document.getElementById("saveExamBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveExamBtn"), "click", function () {
         const examName = nameInput.value.trim();
         const startDate = startDateInput.value;
         const endDate = endDateInput.value;
@@ -10872,7 +12724,7 @@ ${allContent}
         input.addEventListener("change", renderMarksTable);
       });
 
-      document.getElementById("updateExamMarksBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("updateExamMarksBtn"), "click", function () {
         const examId = examSelect.value;
         const className = classSelect.value;
         if (!examId || !className) {
@@ -11181,6 +13033,7 @@ ${allContent}
                   height: 64px;
                   border-radius: 12px;
                   object-fit: cover;
+                  background-color: #fff;
                   filter: none !important;
                   mix-blend-mode: normal !important;
                   -webkit-print-color-adjust: exact;
@@ -11314,7 +13167,7 @@ ${allContent}
       }
 
 
-      document.getElementById("generateResultCardBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("generateResultCardBtn"), "click", function () {
         const examId = examSelect.value;
         const student = getSelectedStudent();
         if (!examId || !student) {
@@ -11349,7 +13202,7 @@ ${allContent}
         }, 0);
       });
 
-      document.getElementById("generateResultCardClasswiseBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("generateResultCardClasswiseBtn"), "click", function () {
         const examId = examSelect.value;
         const selectedClass = classSelect.value;
         if (!examId || selectedClass === "all" || !selectedClass) {
@@ -11646,7 +13499,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("printResultSheetBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printResultSheetBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -11735,7 +13588,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("saveExamScheduleBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveExamScheduleBtn"), "click", function () {
         if (!examSelect.value || !classSelect.value || !subjectSelect.value || !dateInput.value || !startTimeInput.value || !endTimeInput.value) {
           message.textContent = "Please fill all schedule fields.";
           message.className = "form-message error";
@@ -11831,7 +13684,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("printDateSheetBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printDateSheetBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -11918,7 +13771,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("printBlankAwardListBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printBlankAwardListBtn"), "click", function () {
         const rows = getRows();
         const exam = getExamById(examSelect.value);
         if (!rows.length || !exam || !subjectSelect.value) {
@@ -11961,32 +13814,54 @@ ${allContent}
 
       moduleSummary.innerHTML = `
         <article style="overflow-x:hidden;">
-          <strong class="module-center-title" style="display:block;margin-bottom:12px;">Add/update Attendance</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-            <div style="flex:1 1 140px;min-width:0;">
-              <label for="studentsAttendanceDateInput" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Date*</label>
-              <input id="studentsAttendanceDateInput" type="date" value="${getTodayDateISO()}" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
+          <div class="att-setup">
+            <div class="att-setup__header">
+              <span class="att-step-badge">1</span>
+              <div>
+                <strong class="att-setup__title">Select Date & Class</strong>
+                <p class="att-setup__subtitle">Choose the date and class to mark attendance</p>
+              </div>
             </div>
-            <div style="flex:1 1 140px;min-width:0;">
-              <label for="studentsAttendanceClassSelect" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Search Class*</label>
-              <select id="studentsAttendanceClassSelect" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
-                <option value="all">Select Class</option>
-                ${classOptionsMarkup}
-              </select>
+            <div class="att-setup__fields">
+              <div class="att-field">
+                <label for="studentsAttendanceDateInput">Date</label>
+                <input id="studentsAttendanceDateInput" type="date" value="${getTodayDateISO()}">
+              </div>
+              <div class="att-field">
+                <label for="studentsAttendanceClassSelect">Class</label>
+                <select id="studentsAttendanceClassSelect">
+                  <option value="all">Select Class</option>
+                  ${classOptionsMarkup}
+                </select>
+              </div>
+            </div>
+            <div class="att-setup__actions">
+              <button class="primary-button att-submit-btn" id="attSubmitBtn" type="button">Submit</button>
             </div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
-            <button class="table-action-btn" type="button" data-mark-all-status="Present" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Present</button>
-            <button class="table-action-btn" type="button" data-mark-all-status="On-leave" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">On-leave</button>
-            <button class="table-action-btn" type="button" data-mark-all-status="Absent" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Absent</button>
+          <div class="att-student-section" id="attStudentSection" style="display:none;">
+            <div class="att-student-section__header">
+              <span class="att-step-badge att-step-badge--done">2</span>
+              <div>
+                <strong class="att-student-section__title">Student Attendance</strong>
+                <p class="att-student-section__subtitle">Mark attendance for each student</p>
+              </div>
+            </div>
+            <div class="att-mark-all">
+              <button class="table-action-btn" type="button" data-mark-all-status="Present">Present</button>
+              <button class="table-action-btn" type="button" data-mark-all-status="On-leave">On-leave</button>
+              <button class="table-action-btn" type="button" data-mark-all-status="Absent">Absent</button>
+            </div>
+            <div class="att-student-list">
+              <table class="att-table att-table--student"><thead><tr>
+                <th>SrNo.</th><th>Photo</th><th>Roll No.</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
+              </tr></thead><tbody id="studentsAttendanceTableBody"></tbody></table>
+            </div>
+            <div class="form-actions" style="margin-top:10px;">
+              <button class="primary-button" id="saveStudentsAttendanceBtn" type="button">Update Attendance</button>
+            </div>
+            <p class="form-message" id="studentsAttendanceMessage"></p>
           </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:550px;width:100%;"><thead><tr>
-            <th>SrNo.</th><th>Roll No.</th><th>Photo</th><th>Student Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
-          </tr></thead><tbody id="studentsAttendanceTableBody"></tbody></table></div>
-          <div class="form-actions" style="margin-top:10px;">
-            <button class="primary-button" id="saveStudentsAttendanceBtn" type="button">Update Attendance</button>
-          </div>
-          <p class="form-message" id="studentsAttendanceMessage"></p>
         </article>
       `;
 
@@ -11995,6 +13870,7 @@ ${allContent}
       if (_pg) _pg.style.display = "none";
       var _ps = moduleSummary.closest(".panel-card");
       if (_ps) _ps.style.gridColumn = "1 / -1";
+      if (_ps) _ps.classList.add("att-white-heading");
       const dateInput = document.getElementById("studentsAttendanceDateInput");
       const classSelect = document.getElementById("studentsAttendanceClassSelect");
       const tableBody = document.getElementById("studentsAttendanceTableBody");
@@ -12035,8 +13911,8 @@ ${allContent}
           return `
             <tr>
               <td>${index + 1}</td>
-              <td>${escapeHtml(student.admissionNo || "-")}</td>
               <td>${student.picture ? `<img src="${student.picture}" alt="${escapeAttr(student.name)}" class="employee-table-avatar">` : `<span class="student-avatar">${getInitials(student.name || "S")}</span>`}</td>
+              <td>${escapeHtml(student.admissionNo || "-")}</td>
               <td>${escapeHtml(student.name || "-")}</td>
               <td>${escapeHtml(student.fatherName || "-")}</td>
               <td>${statusButtonsMarkup(student.id, student.currentStatus)}</td>
@@ -12129,7 +14005,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("saveStudentsAttendanceBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveStudentsAttendanceBtn"), "click", function () {
         const rows = getRows();
         var _attendanceChanges = [];
         rows.forEach(function (student) {
@@ -12150,36 +14026,68 @@ ${allContent}
       });
 
       [dateInput, classSelect].forEach(function (input) {
-        input.addEventListener("change", renderTable);
+        input.addEventListener("change", function () {
+          var _sec = document.getElementById("attStudentSection");
+          if (_sec && _sec.style.display !== "none") {
+            renderTable();
+          }
+        });
       });
 
-      renderTable();
+      safeOn(document.getElementById("attSubmitBtn"), "click", function () {
+        var _sec = document.getElementById("attStudentSection");
+        if (_sec) _sec.style.display = "";
+        renderTable();
+      });
+
       return;
     }
 
     if (route === "employees-attendance") {
       moduleSummary.innerHTML = `
         <article style="overflow-x:hidden;">
-          <strong class="module-center-title" style="display:block;margin-bottom:12px;">Add/update Attendance</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
-            <div style="flex:1 1 140px;min-width:0;">
-              <label for="employeesAttendanceDateInput" style="display:block;font-size:0.82rem;font-weight:600;margin-bottom:4px;">Date*</label>
-              <input id="employeesAttendanceDateInput" type="date" value="${getTodayDateISO()}" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
+          <div class="att-setup">
+            <div class="att-setup__header">
+              <span class="att-step-badge">1</span>
+              <div>
+                <strong class="att-setup__title">Select Date</strong>
+                <p class="att-setup__subtitle">Choose the date to mark employee attendance</p>
+              </div>
+            </div>
+            <div class="att-setup__fields" style="grid-template-columns:1fr;">
+              <div class="att-field">
+                <label for="employeesAttendanceDateInput">Date</label>
+                <input id="employeesAttendanceDateInput" type="date" value="${getTodayDateISO()}">
+              </div>
+            </div>
+            <div class="att-setup__actions">
+              <button class="primary-button att-submit-btn" id="empSubmitBtn" type="button">Submit</button>
             </div>
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">
-            <button class="table-action-btn" type="button" data-mark-all-emp-status="Present" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Present</button>
-            <button class="table-action-btn" type="button" data-mark-all-emp-status="On-leave" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">On-leave</button>
-            <button class="table-action-btn" type="button" data-mark-all-emp-status="Absent" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;">Absent</button>
+          <div class="att-student-section" id="empEmployeeSection" style="display:none;">
+            <div class="att-student-section__header">
+              <span class="att-step-badge att-step-badge--done">2</span>
+              <div>
+                <strong class="att-student-section__title">Employee Attendance</strong>
+                <p class="att-student-section__subtitle">Mark attendance for each employee</p>
+              </div>
+            </div>
+            <div class="att-mark-all">
+              <button class="table-action-btn" type="button" data-mark-all-emp-status="Present">Present</button>
+              <button class="table-action-btn" type="button" data-mark-all-emp-status="On-leave">On-leave</button>
+              <button class="table-action-btn" type="button" data-mark-all-emp-status="Absent">Absent</button>
+            </div>
+            <div class="att-student-list">
+              <table class="att-table"><thead><tr>
+                <th>SrNo.</th><th>Employee Name</th><th>Father Name</th><th>Status</th><th>WhatsApp</th>
+              </tr></thead><tbody id="employeesAttendanceTableBody"></tbody></table>
+            </div>
+            <div class="form-actions" style="margin-top:10px;">
+              <button class="table-action-btn" id="sendEmployeeAbsenteesBtn" type="button">Send Absentees Message</button>
+              <button class="primary-button" id="saveEmployeesAttendanceBtn" type="button">Update Attendance</button>
+            </div>
+            <p class="form-message" id="employeesAttendanceMessage"></p>
           </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:550px;width:100%;"><thead><tr>
-            <th>SrNo.</th><th>Employee Name</th><th>Father Name</th><th>Employee Role</th><th>Status</th><th>WhatsApp</th>
-          </tr></thead><tbody id="employeesAttendanceTableBody"></tbody></table></div>
-          <div class="form-actions" style="margin-top:10px;">
-            <button class="table-action-btn" id="sendEmployeeAbsenteesBtn" type="button">Send Absentees Message</button>
-            <button class="primary-button" id="saveEmployeesAttendanceBtn" type="button">Update Attendance</button>
-          </div>
-          <p class="form-message" id="employeesAttendanceMessage"></p>
         </article>
       `;
 
@@ -12191,7 +14099,14 @@ ${allContent}
       const dateInput = document.getElementById("employeesAttendanceDateInput");
       const tableBody = document.getElementById("employeesAttendanceTableBody");
       const message = document.getElementById("employeesAttendanceMessage");
+      const empSubmitBtn = document.getElementById("empSubmitBtn");
+      const empEmployeeSection = document.getElementById("empEmployeeSection");
       let rowStatusState = {};
+
+      safeOn(empSubmitBtn, "click", function () {
+        empEmployeeSection.style.display = "";
+        renderTable();
+      });
 
       function getRows() {
         return getEmployees().filter(function (employee) {
@@ -12224,9 +14139,10 @@ ${allContent}
           return `
             <tr>
               <td>${index + 1}</td>
-              <td>${escapeHtml(employee.name || "-")}</td>
-              <td>${escapeHtml(employee.fatherOrHusbandName || "-")}</td>
-              <td>${escapeHtml(employee.role || employee.designation || "-")}</td>
+              <td class="att-info">
+                <span class="att-info__name">${escapeHtml(employee.name || "-")}</span>
+                <span class="att-info__meta">${escapeHtml(employee.fatherOrHusbandName || "-")} • ${escapeHtml(employee.role || employee.designation || "-")}</span>
+              </td>
               <td>${statusButtonsMarkup(employee.id, employee.currentStatus)}</td>
               <td><button class="table-action-btn" type="button" data-attendance-wa-employee="${employee.id}">WhatsApp</button></td>
             </tr>
@@ -12291,7 +14207,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("saveEmployeesAttendanceBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveEmployeesAttendanceBtn"), "click", function () {
         const rows = getRows();
         rows.forEach(function (employee) {
           const statusValue = rowStatusState[employee.id] || "Absent";
@@ -12305,7 +14221,7 @@ ${allContent}
         refreshAttendanceOverview();
       });
 
-      document.getElementById("sendEmployeeAbsenteesBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("sendEmployeeAbsenteesBtn"), "click", async function () {
         window.SagarSoftDB.LoadingManager.show("Sending employee absentees SMS...");
         try {
           const rows = getRows();
@@ -12391,83 +14307,226 @@ ${allContent}
 
     if (route === "class-wise-report") {
       moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong>Class wise Report</strong>
-          <div style="margin:10px 0 4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date</label><input id="classWiseAttendanceDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;max-width:220px;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-          <div id="classWiseAttendanceCards" class="stats-grid"></div>
+        <article class="cwr-report">
+          <div class="cwr-header">
+            <div>
+              <strong class="cwr-header__title">Class wise Attendance Report</strong>
+              <p class="cwr-header__subtitle">Daily attendance summary across active classes</p>
+            </div>
+            <div class="cwr-header__actions">
+              <div class="cwr-header__date">
+                <label for="classWiseAttendanceDateInput" class="cwr-header__label">Date</label>
+                <input id="classWiseAttendanceDateInput" type="date" value="${new Date().toISOString().slice(0, 10)}">
+              </div>
+              <button class="table-action-btn cwr-print-btn" id="cwrPrintBtn" type="button">Print</button>
+            </div>
+          </div>
+          <div id="cwrSummaryCards" class="cwr-summary"></div>
+          <div id="cwrDailyOverview" class="cwr-daily"></div>
+          <div class="cwr-section">
+            <strong class="cwr-section__title">Class Breakdown</strong>
+            <div id="cwrClassCards" class="cwr-classes"></div>
+          </div>
         </article>
       `;
       moduleGuide.innerHTML = "";
+      var _pg = moduleGuide.closest(".panel-card");
+      if (_pg) _pg.style.display = "none";
+      var _ps = moduleSummary.closest(".panel-card");
+      if (_ps) _ps.style.gridColumn = "1 / -1";
       const dateInput = document.getElementById("classWiseAttendanceDateInput");
-      const cards = document.getElementById("classWiseAttendanceCards");
+      const summaryEl = document.getElementById("cwrSummaryCards");
+      const dailyEl = document.getElementById("cwrDailyOverview");
+      const classCardsEl = document.getElementById("cwrClassCards");
+      const printBtn = document.getElementById("cwrPrintBtn");
 
-      function renderCards() {
-        const dateValue = dateInput.value;
-        cards.innerHTML = classOptions.map(function (className) {
-          const classStudents = database.students.filter(function (student) {
-            return String(student.status || "").toLowerCase() === "active" && student.className === className;
-          });
-          const total = classStudents.length;
-          let present = 0;
-          let leave = 0;
-          let absent = 0;
-          classStudents.forEach(function (student) {
-            const attendance = getAttendanceRecordFor("student", student.id, dateValue);
-            const status = normalizeAttendanceStatus(attendance ? attendance.status : "Absent");
-            if (status === "Present") {
-              present += 1;
-            } else if (status === "On-leave") {
-              leave += 1;
-            } else {
-              absent += 1;
-            }
-          });
-          const presentPercent = total ? Math.round((present / total) * 100) : 0;
-          const leavePercent = total ? Math.round((leave / total) * 100) : 0;
-          const absentPercent = total ? Math.round((absent / total) * 100) : 0;
-          return `
-            <article class="stat-card attendance-class-card">
-              <p class="panel-label">Attendance ${escapeHtml(dateValue)} for</p>
-              <strong>${escapeHtml(className)}</strong>
-              <div class="attendance-circle" title="Present: ${presentPercent}% | On-leave: ${leavePercent}% | Absent: ${absentPercent}%"
-                style="--p:${presentPercent};--l:${leavePercent};--a:${absentPercent};">
-                <span>${total}</span>
-              </div>
-              <div class="attendance-legend">
-                <p><span class="dot present"></span> Present ${presentPercent}%</p>
-                <p><span class="dot leave"></span> On-leave ${leavePercent}%</p>
-                <p><span class="dot absent"></span> Absent ${absentPercent}%</p>
-              </div>
-            </article>
-          `;
+      safeOn(printBtn, "click", function () { window.print(); });
+
+      function computeClassData(className, dateValue) {
+        var classStudents = database.students.filter(function (student) {
+          return String(student.status || "").toLowerCase() === "active" && student.className === className;
+        });
+        var total = classStudents.length;
+        var present = 0;
+        var leave = 0;
+        var absent = 0;
+        classStudents.forEach(function (student) {
+          var attendance = getAttendanceRecordFor("student", student.id, dateValue);
+          var status = normalizeAttendanceStatus(attendance ? attendance.status : "Absent");
+          if (status === "Present") present += 1;
+          else if (status === "On-leave") leave += 1;
+          else absent += 1;
+        });
+        var hasRecords = classStudents.some(function (student) {
+          return getAttendanceRecordFor("student", student.id, dateValue) !== null;
+        });
+        return {
+          className: className,
+          total: total,
+          present: present,
+          leave: leave,
+          absent: absent,
+          presentPercent: total ? Math.round((present / total) * 100) : 0,
+          leavePercent: total ? Math.round((leave / total) * 100) : 0,
+          absentPercent: total ? Math.round((absent / total) * 100) : 0,
+          hasRecords: hasRecords
+        };
+      }
+
+      function donutSVG(rate, size, stroke) {
+        var r = (size - stroke) / 2;
+        var circ = 2 * Math.PI * r;
+        var filled = (rate / 100) * circ;
+        var empty = circ - filled;
+        var color = rate >= 75 ? "#1d9c61" : rate >= 50 ? "#f0a327" : "#d64b4b";
+        return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="rgba(16,37,66,0.06)" stroke-width="' + stroke + '"/>' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="' + stroke + '" stroke-linecap="round" stroke-dasharray="' + filled + ' ' + empty + '" transform="rotate(-90 ' + (size/2) + ' ' + (size/2) + ')"/>' +
+          '<text x="50%" y="50%" text-anchor="middle" dy=".35em" font-size="' + (size * 0.22) + '" font-weight="800" fill="#1e1b4b">' + rate + '%</text>' +
+          '</svg>';
+      }
+
+      function miniDonut(rate, size, stroke) {
+        var r = (size - stroke) / 2;
+        var circ = 2 * Math.PI * r;
+        var filled = (rate / 100) * circ;
+        var empty = circ - filled;
+        var color = rate >= 75 ? "#1d9c61" : rate >= 50 ? "#f0a327" : "#d64b4b";
+        return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="rgba(16,37,66,0.06)" stroke-width="' + stroke + '"/>' +
+          '<circle cx="' + (size/2) + '" cy="' + (size/2) + '" r="' + r + '" fill="none" stroke="' + color + '" stroke-width="' + stroke + '" stroke-linecap="round" stroke-dasharray="' + filled + ' ' + empty + '" transform="rotate(-90 ' + (size/2) + ' ' + (size/2) + ')"/>' +
+          '</svg>';
+      }
+
+      function renderReport() {
+        var dateValue = dateInput.value;
+        var allData = classOptions.map(function (cn) { return computeClassData(cn, dateValue); });
+        var totalClasses = allData.length;
+        var totalStudents = 0;
+        var totalPresent = 0;
+        var totalLeave = 0;
+        var totalAbsent = 0;
+        allData.forEach(function (d) {
+          totalStudents += d.total;
+          totalPresent += d.present;
+          totalLeave += d.leave;
+          totalAbsent += d.absent;
+        });
+        var overallRate = totalStudents ? Math.round((totalPresent / totalStudents) * 100) : 0;
+        var dateLabel = dateValue;
+
+        var summaryHTML = '<div class="cwr-stat" style="--accent:#7c5cbf;"><div class="cwr-stat__icon" style="background:rgba(124,92,191,0.1);color:#7c5cbf;">&#9632;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalClasses + '</span><span class="cwr-stat__label">Total Classes</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#3b82f6;"><div class="cwr-stat__icon" style="background:rgba(59,130,246,0.1);color:#3b82f6;">&#9679;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalStudents + '</span><span class="cwr-stat__label">Total Students</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#1d9c61;"><div class="cwr-stat__icon" style="background:rgba(29,156,97,0.1);color:#1d9c61;">&#10003;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalPresent + '</span><span class="cwr-stat__label">Present</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#f0a327;"><div class="cwr-stat__icon" style="background:rgba(240,163,39,0.1);color:#f0a327;">&#9679;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalLeave + '</span><span class="cwr-stat__label">On Leave</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#d64b4b;"><div class="cwr-stat__icon" style="background:rgba(214,75,75,0.1);color:#d64b4b;">&#10007;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + totalAbsent + '</span><span class="cwr-stat__label">Absent</span></div></div>' +
+          '<div class="cwr-stat" style="--accent:#6366f1;"><div class="cwr-stat__icon" style="background:rgba(99,102,241,0.1);color:#6366f1;">&#9733;</div><div class="cwr-stat__info"><span class="cwr-stat__value">' + overallRate + '%</span><span class="cwr-stat__label">Attendance Rate</span></div></div>';
+        summaryEl.innerHTML = summaryHTML;
+
+        var presentP = totalStudents ? Math.round((totalPresent / totalStudents) * 100) : 0;
+        var leaveP = totalStudents ? Math.round((totalLeave / totalStudents) * 100) : 0;
+        var absentP = totalStudents ? Math.round((totalAbsent / totalStudents) * 100) : 0;
+        var unmarked = Math.max(0, totalStudents - totalPresent - totalLeave - totalAbsent);
+        dailyEl.innerHTML =
+          '<div class="cwr-daily__left">' +
+            '<strong class="cwr-daily__heading">Daily Overview</strong>' +
+            '<span class="cwr-daily__date">' + escapeHtml(dateLabel) + '</span>' +
+          '</div>' +
+          '<div class="cwr-daily__donut">' + donutSVG(overallRate, 140, 12) +
+            '<span class="cwr-daily__rate-label">Rate</span>' +
+          '</div>' +
+          '<div class="cwr-daily__legend">' +
+            '<div class="cwr-daily__row"><span class="cwr-dot cwr-dot--present"></span><span class="cwr-daily__label">Present</span><span class="cwr-daily__val">' + totalPresent + ' <em>(' + presentP + '%)</em></span></div>' +
+            '<div class="cwr-daily__row"><span class="cwr-dot cwr-dot--leave"></span><span class="cwr-daily__label">On Leave</span><span class="cwr-daily__val">' + totalLeave + ' <em>(' + leaveP + '%)</em></span></div>' +
+            '<div class="cwr-daily__row"><span class="cwr-dot cwr-dot--absent"></span><span class="cwr-daily__label">Absent</span><span class="cwr-daily__val">' + totalAbsent + ' <em>(' + absentP + '%)</em></span></div>' +
+            (unmarked > 0 ? '<div class="cwr-daily__row"><span class="cwr-dot cwr-dot--unmarked"></span><span class="cwr-daily__label">Unmarked</span><span class="cwr-daily__val">' + unmarked + ' students</span></div>' : '') +
+          '</div>';
+
+        classCardsEl.innerHTML = allData.map(function (d) {
+          if (!d.hasRecords || d.total === 0) {
+            return '<div class="cwr-class-card cwr-class-card--empty">' +
+              '<div class="cwr-class-card__head"><strong class="cwr-class-card__name">' + escapeHtml(d.className) + '</strong></div>' +
+              '<div class="cwr-class-card__empty">' +
+                '<span class="cwr-class-card__empty-icon">&#9744;</span>' +
+                '<p class="cwr-class-card__empty-text">Attendance Not Marked</p>' +
+                '<p class="cwr-class-card__empty-sub">No attendance records found for this class on ' + escapeHtml(dateValue) + '.</p>' +
+              '</div>' +
+            '</div>';
+          }
+          var presentBar = d.total ? (d.present / d.total * 100) : 0;
+          var leaveBar = d.total ? (d.leave / d.total * 100) : 0;
+          var absentBar = d.total ? (d.absent / d.total * 100) : 0;
+          return '<div class="cwr-class-card">' +
+            '<div class="cwr-class-card__head">' +
+              '<strong class="cwr-class-card__name">' + escapeHtml(d.className) + '</strong>' +
+              '<span class="cwr-class-card__meta">' + escapeHtml(dateValue) + ' &middot; ' + d.total + ' students</span>' +
+            '</div>' +
+            '<div class="cwr-class-card__donut">' + miniDonut(d.presentPercent, 80, 8) +
+              '<span class="cwr-class-card__rate">' + d.presentPercent + '%</span>' +
+            '</div>' +
+            '<div class="cwr-class-card__breakdown">' +
+              '<div class="cwr-class-card__row"><span class="cwr-dot cwr-dot--present"></span><span class="cwr-class-card__row-label">Present</span><span class="cwr-class-card__row-val">' + d.present + ' (' + d.presentPercent + '%)</span></div>' +
+              '<div class="cwr-class-card__bar"><div class="cwr-class-card__bar-fill cwr-class-card__bar-fill--present" style="width:' + presentBar + '%"></div></div>' +
+              '<div class="cwr-class-card__row"><span class="cwr-dot cwr-dot--leave"></span><span class="cwr-class-card__row-label">On Leave</span><span class="cwr-class-card__row-val">' + d.leave + ' (' + d.leavePercent + '%)</span></div>' +
+              '<div class="cwr-class-card__bar"><div class="cwr-class-card__bar-fill cwr-class-card__bar-fill--leave" style="width:' + leaveBar + '%"></div></div>' +
+              '<div class="cwr-class-card__row"><span class="cwr-dot cwr-dot--absent"></span><span class="cwr-class-card__row-label">Absent</span><span class="cwr-class-card__row-val">' + d.absent + ' (' + d.absentPercent + '%)</span></div>' +
+              '<div class="cwr-class-card__bar"><div class="cwr-class-card__bar-fill cwr-class-card__bar-fill--absent" style="width:' + absentBar + '%"></div></div>' +
+            '</div>' +
+          '</div>';
         }).join("");
       }
 
-      dateInput.addEventListener("change", renderCards);
-      renderCards();
+      dateInput.addEventListener("change", renderReport);
+      renderReport();
       return;
     }
 
     if (route === "students-attendance-report") {
       moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong>Students Attendance Report</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;">
-            <div id="studentsAttendanceReportSearchContainer" style="position:relative;flex:1 1 180px;min-width:0;">
-              <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search student by roll no / name" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
-              <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
+        <article class="ar-report">
+          <div class="ar-header">
+            <div class="ar-header__left">
+              <strong class="ar-header__title">Students Attendance Report</strong>
+              <p class="ar-header__subtitle">Daily attendance entries for the selected date range</p>
             </div>
-            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">From: <input id="studentsAttendanceReportFromDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
-            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">To: <input id="studentsAttendanceReportToDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
-            <button class="primary-button" id="downloadStudentsAttendancePdfBtn" type="button" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;">Download PDF</button>
+            <div class="ar-header__controls">
+              <div class="ar-date-group">
+                <label for="studentsAttendanceReportFromDate">From</label>
+                <input id="studentsAttendanceReportFromDate" type="date">
+              </div>
+              <div class="ar-date-group">
+                <label for="studentsAttendanceReportToDate">To</label>
+                <input id="studentsAttendanceReportToDate" type="date">
+              </div>
+            </div>
           </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:650px;width:100%;"><thead><tr>
-            <th>Sr#</th><th>Roll No</th><th>Photo</th><th>Student Name</th><th>Class</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
-          </tr></thead><tbody id="studentsAttendanceReportTableBody"></tbody></table></div>
-          <p class="empty-state" id="studentsAttendanceReportEmptyState" hidden>No student attendance report found.</p>
+          <div id="studentsAttendanceReportStats" class="ar-stats"></div>
+          <div class="ar-table-wrap">
+            <div class="ar-toolbar">
+              <div class="ar-toolbar__exports">
+                <button class="table-action-btn" id="downloadStudentsAttendancePdfBtn" type="button">Download PDF</button>
+              </div>
+              <div class="ar-toolbar__search" id="studentsAttendanceReportSearchContainer">
+                <span class="ar-toolbar__search-icon">&#128269;</span>
+                <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search by roll no / name">
+                <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown"></div>
+              </div>
+            </div>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+              <table class="ar-table"><thead><tr>
+                <th>Sr#</th><th>Roll No</th><th>Photo</th><th>Student Name</th><th>Class</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
+              </tr></thead><tbody id="studentsAttendanceReportTableBody"></tbody></table>
+            </div>
+            <p class="ar-empty" id="studentsAttendanceReportEmptyState" hidden>No student attendance report found.</p>
+          </div>
         </article>
       `;
       moduleGuide.innerHTML = "";
+      var _pg = moduleGuide.closest(".panel-card");
+      if (_pg) _pg.style.display = "none";
+      var _ps = moduleSummary.closest(".panel-card");
+      if (_ps) _ps.style.gridColumn = "1 / -1";
+      if (_ps) _ps.classList.add("att-white-heading");
       const searchInput = document.getElementById("studentsAttendanceReportSearchInput");
       const searchDropdown = document.getElementById("studentsAttendanceReportSearchDropdown");
       const searchContainer = document.getElementById("studentsAttendanceReportSearchContainer");
@@ -12475,6 +14534,7 @@ ${allContent}
       const toDateInput = document.getElementById("studentsAttendanceReportToDate");
       const tableBody = document.getElementById("studentsAttendanceReportTableBody");
       const emptyState = document.getElementById("studentsAttendanceReportEmptyState");
+      const statsEl = document.getElementById("studentsAttendanceReportStats");
 
       initializeStudentProfessionalSearch(
         "studentsAttendanceReportSearchInput",
@@ -12518,32 +14578,41 @@ ${allContent}
 
       function renderTable() {
         const rows = getRows();
+        var totalPresent = 0;
+        var totalLeave = 0;
+        var totalAbsent = 0;
+        rows.forEach(function (r) { totalPresent += r.present; totalLeave += r.leave; totalAbsent += r.absent; });
+        statsEl.innerHTML =
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(124,92,191,0.1);color:#7c5cbf;">&#9632;</div><div class="ar-stat__info"><span class="ar-stat__value">' + rows.length + '</span><span class="ar-stat__label">Total Records</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(29,156,97,0.1);color:#1d9c61;">&#10003;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalPresent + '</span><span class="ar-stat__label">Present</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(240,163,39,0.1);color:#f0a327;">&#9679;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalLeave + '</span><span class="ar-stat__label">On Leave</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(214,75,75,0.1);color:#d64b4b;">&#10007;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalAbsent + '</span><span class="ar-stat__label">Absent</span></div></div>';
         tableBody.innerHTML = rows.map(function (row, index) {
           return `
             <tr>
               <td>${index + 1}</td>
               <td>${escapeHtml(row.student.admissionNo || "-")}</td>
-              <td>${row.student.picture ? `<img src="${row.student.picture}" alt="${escapeAttr(row.student.name)}" class="employee-table-avatar">` : `<span class="student-avatar">${getInitials(row.student.name || "S")}</span>`}</td>
-              <td>${escapeHtml(row.student.name || "-")}</td>
+              <td>${row.student.picture ? '<img src="' + row.student.picture + '" alt="' + escapeAttr(row.student.name) + '" class="ar-photo">' : '<span class="ar-avatar">' + getInitials(row.student.name || "S") + '</span>'}</td>
+              <td class="ar-name">${escapeHtml(row.student.name || "-")}</td>
               <td>${escapeHtml(row.student.className || "-")}</td>
               <td>${row.present}</td>
               <td>${row.leave}</td>
               <td>${row.absent}</td>
-              <td>${row.percent}%</td>
+              <td class="ar-percent">${row.percent}%</td>
             </tr>
           `;
         }).join("");
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("downloadStudentsAttendancePdfBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("downloadStudentsAttendancePdfBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
         }
         openPrintReport({
           title: "Students Attendance Report",
-          subtitle: `${fromDateInput.value} to ${toDateInput.value}`,
+          subtitle: fromDateInput.value + " to " + toDateInput.value,
           headers: ["Sr#", "Roll", "Name", "Class", "Present", "On-leave", "Absent", "Attendance %"],
           rows: rows.map(function (row, index) {
             return [
@@ -12554,7 +14623,7 @@ ${allContent}
               row.present,
               row.leave,
               row.absent,
-              `${row.percent}%`
+              row.percent + "%"
             ];
           })
         });
@@ -12583,24 +14652,50 @@ ${allContent}
 
     if (route === "employees-attendance-report") {
       moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong>Employees Attendance Report</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;">
-            <div id="employeesAttendanceReportSearchContainer" style="position:relative;flex:1 1 180px;min-width:0;">
-              <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search employee by name / phone" style="width:100%;box-sizing:border-box;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;">
-              <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
+        <article class="ar-report">
+          <div class="ar-header">
+            <div class="ar-header__left">
+              <strong class="ar-header__title">Employees Attendance Report</strong>
+              <p class="ar-header__subtitle">Daily attendance entries for the selected date range</p>
             </div>
-            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">From: <input id="employeesAttendanceReportFromDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
-            <label style="display:flex;align-items:center;gap:4px;flex:1 1 120px;min-width:0;">To: <input id="employeesAttendanceReportToDate" type="date" style="flex:1;min-width:0;padding:8px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;box-sizing:border-box;"></label>
-            <button class="primary-button" id="downloadEmployeesAttendancePdfBtn" type="button" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;">Download PDF</button>
+            <div class="ar-header__controls">
+              <div class="ar-date-group">
+                <label for="employeesAttendanceReportFromDate">From</label>
+                <input id="employeesAttendanceReportFromDate" type="date">
+              </div>
+              <div class="ar-date-group">
+                <label for="employeesAttendanceReportToDate">To</label>
+                <input id="employeesAttendanceReportToDate" type="date">
+              </div>
+            </div>
           </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:650px;width:100%;"><thead><tr>
-            <th>Sr#</th><th>Employee Name</th><th>Photo</th><th>Role</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
-          </tr></thead><tbody id="employeesAttendanceReportTableBody"></tbody></table></div>
-          <p class="empty-state" id="employeesAttendanceReportEmptyState" hidden>No employee attendance report found.</p>
+          <div id="employeesAttendanceReportStats" class="ar-stats"></div>
+          <div class="ar-table-wrap">
+            <div class="ar-toolbar">
+              <div class="ar-toolbar__exports">
+                <button class="table-action-btn" id="downloadEmployeesAttendancePdfBtn" type="button">Download PDF</button>
+              </div>
+              <div class="ar-toolbar__search" id="employeesAttendanceReportSearchContainer">
+                <span class="ar-toolbar__search-icon">&#128269;</span>
+                <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search by name / phone">
+                <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown"></div>
+              </div>
+            </div>
+            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+              <table class="ar-table"><thead><tr>
+                <th>Sr#</th><th>Employee Name</th><th>Role</th><th>Phone</th><th>Present</th><th>On-leave</th><th>Absent</th><th>Attendance %</th>
+              </tr></thead><tbody id="employeesAttendanceReportTableBody"></tbody></table>
+            </div>
+            <p class="ar-empty" id="employeesAttendanceReportEmptyState" hidden>No employee attendance report found.</p>
+          </div>
         </article>
       `;
       moduleGuide.innerHTML = "";
+      var _pg = moduleGuide.closest(".panel-card");
+      if (_pg) _pg.style.display = "none";
+      var _ps = moduleSummary.closest(".panel-card");
+      if (_ps) _ps.style.gridColumn = "1 / -1";
+      if (_ps) _ps.classList.add("att-white-heading");
       const searchInput = document.getElementById("employeesAttendanceReportSearchInput");
       const searchDropdown = document.getElementById("employeesAttendanceReportSearchDropdown");
       const searchContainer = document.getElementById("employeesAttendanceReportSearchContainer");
@@ -12608,6 +14703,7 @@ ${allContent}
       const toDateInput = document.getElementById("employeesAttendanceReportToDate");
       const tableBody = document.getElementById("employeesAttendanceReportTableBody");
       const emptyState = document.getElementById("employeesAttendanceReportEmptyState");
+      const statsEl = document.getElementById("employeesAttendanceReportStats");
 
       initializeEmployeeProfessionalSearch(
         "employeesAttendanceReportSearchInput",
@@ -12651,31 +14747,40 @@ ${allContent}
 
       function renderTable() {
         const rows = getRows();
+        var totalPresent = 0;
+        var totalLeave = 0;
+        var totalAbsent = 0;
+        rows.forEach(function (r) { totalPresent += r.present; totalLeave += r.leave; totalAbsent += r.absent; });
+        statsEl.innerHTML =
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(124,92,191,0.1);color:#7c5cbf;">&#9632;</div><div class="ar-stat__info"><span class="ar-stat__value">' + rows.length + '</span><span class="ar-stat__label">Total Records</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(29,156,97,0.1);color:#1d9c61;">&#10003;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalPresent + '</span><span class="ar-stat__label">Present</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(240,163,39,0.1);color:#f0a327;">&#9679;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalLeave + '</span><span class="ar-stat__label">On Leave</span></div></div>' +
+          '<div class="ar-stat"><div class="ar-stat__icon" style="background:rgba(214,75,75,0.1);color:#d64b4b;">&#10007;</div><div class="ar-stat__info"><span class="ar-stat__value">' + totalAbsent + '</span><span class="ar-stat__label">Absent</span></div></div>';
         tableBody.innerHTML = rows.map(function (row, index) {
           return `
             <tr>
               <td>${index + 1}</td>
-              <td>${escapeHtml(row.employee.name || "-")}</td>
+              <td class="ar-name">${escapeHtml(row.employee.name || "-")}</td>
               <td>${escapeHtml(row.employee.role || row.employee.designation || "-")}</td>
               <td>${escapeHtml(row.employee.phone || "-")}</td>
               <td>${row.present}</td>
               <td>${row.leave}</td>
               <td>${row.absent}</td>
-              <td>${row.percent}%</td>
+              <td class="ar-percent">${row.percent}%</td>
             </tr>
           `;
         }).join("");
         emptyState.hidden = rows.length !== 0;
       }
 
-      document.getElementById("downloadEmployeesAttendancePdfBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("downloadEmployeesAttendancePdfBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
         }
         openPrintReport({
           title: "Employees Attendance Report",
-          subtitle: `${fromDateInput.value} to ${toDateInput.value}`,
+          subtitle: fromDateInput.value + " to " + toDateInput.value,
           headers: ["Sr#", "Employee", "Role", "Phone", "Present", "On-leave", "Absent", "Attendance %"],
           rows: rows.map(function (row, index) {
             return [
@@ -12686,7 +14791,7 @@ ${allContent}
               row.present,
               row.leave,
               row.absent,
-              `${row.percent}%`
+              row.percent + "%"
             ];
           })
         });
@@ -13011,7 +15116,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("clearEmployeeFormBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("clearEmployeeFormBtn"), "click", function () {
         employeeForm.reset();
         employeePictureData = "";
         message.textContent = "";
@@ -13121,7 +15226,11 @@ ${allContent}
             <button class="primary-button" id="printAllEmployeeCardsBtn" type="button">Print All Cards</button>
           </div>
           <div class="id-cards-grid" id="employeeIdCardsGrid"></div>
-          <p class="empty-state" id="employeeIdCardsEmptyState" hidden>No employee found.</p>
+          <div class="empty-state" id="employeeIdCardsEmptyState" hidden style="text-align:center;padding:2rem 1rem;">
+            <div style="font-size:2.5rem;margin-bottom:0.5rem;opacity:0.4;">&#128269;</div>
+            <strong style="display:block;font-size:1rem;color:#102542;margin-bottom:0.25rem;">No employees found</strong>
+            <span style="font-size:0.85rem;color:#5a7a96;">Try another name or phone number.</span>
+          </div>
         </article>
       `;
 
@@ -13155,191 +15264,167 @@ ${allContent}
 
       function renderEmployeeCards() {
         const employees = getFilteredEmployees();
+        const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+        const schoolName = profile.name || database.school.name || "School";
+        const schoolTagline = profile.slogan || "";
         cardsGrid.innerHTML = employees.map(function (employee) {
+          const barcodeValue = employee.id || "-";
+          const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+          const qrValue = "ATTEND:EMPLOYEE:" + barcodeValue;
+          const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
           return `
-            <article class="id-card-modern">
-              <div class="id-card-modern__inner">
-                <div class="id-card-modern__head">
-                  <div class="id-card-modern__school">${escapeHtml(database.school.name || "SagarSoft School")}</div>
-                  ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
-                </div>
-                <div class="id-card-modern__profile">
-                  ${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" class="student-avatar student-avatar--image">` : `<span class="student-avatar">${getInitials(employee.name || "E")}</span>`}
-                  <div class="id-card-modern__meta">
-                    <strong>${escapeHtml(employee.name || "-")}</strong>
-                    <span>${escapeHtml(employee.role || "-")}</span>
+            <div class="id-card-modern-wrap">
+              <article class="id-card-modern">
+                <div class="id-card-modern__inner">
+                  <div class="id-card-modern__header">
+                    ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
+                    <div class="id-card-modern__header-text">
+                      <div class="id-card-modern__school-name">${schoolName}</div>
+                      ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+                    </div>
+                  </div>
+                  <div class="id-card-modern__body">
+                    <div class="id-card-modern__photo-area">
+                      ${employee.picture ? `<img src="${employee.picture}" alt="${escapeAttr(employee.name)}" class="student-avatar student-avatar--image">` : `<span class="student-avatar">${getInitials(employee.name || "E")}</span>`}
+                    </div>
+                    <div class="id-card-modern__info-area">
+                      <div class="id-card-modern__name">${escapeHtml(employee.name || "-")}</div>
+                      <div class="id-card-modern__type-label">EMPLOYEE</div>
+                      <dl class="id-card-modern__info-grid">
+                        <div class="id-card-modern__info-row">
+                          <dt>ID</dt><dd>${escapeHtml(employee.id || "-")}</dd>
+                          <dt>Role</dt><dd>${escapeHtml(employee.role || "-")}</dd>
+                        </div>
+                        <div class="id-card-modern__info-row">
+                          <dt>Joined</dt><dd>${escapeHtml(employee.dateOfJoining || "-")}</dd>
+                          <dt>Mobile</dt><dd>${escapeHtml(getEmployeeDisplayPhone(employee))}</dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                  <div class="id-card-modern__footer">
+                    <div class="id-card-modern__barcode-area">
+                      <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
+                      <span class="id-card-modern__barcode-text">${barcodeValue}</span>
+                    </div>
+                    <div class="id-card-modern__qr-area">
+                      <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
+                    </div>
                   </div>
                 </div>
-                <div class="id-card-modern__rows">
-                  <article><strong>Date of Joining</strong><span style="color:inherit;">${escapeHtml(employee.dateOfJoining || "-")}</span></article>
-                  <article><strong>Employee Role</strong><span style="color:inherit;">${escapeHtml(employee.role || "-")}</span></article>
-                </div>
-                <div class="form-actions">
-                  <button class="table-action-btn" type="button" data-emp-action="sms" data-id="${employee.id}">SMS</button>
-                  <button class="table-action-btn" type="button" data-emp-action="whatsapp" data-id="${employee.id}">WhatsApp</button>
-                  <button class="table-action-btn" type="button" data-emp-action="print-id-card" data-id="${employee.id}">Print Card</button>
-                </div>
+              </article>
+              <div class="form-actions">
+                <button class="table-action-btn" type="button" data-emp-action="sms" data-id="${employee.id}">SMS</button>
+                <button class="table-action-btn" type="button" data-emp-action="whatsapp" data-id="${employee.id}">WhatsApp</button>
+                <button class="table-action-btn" type="button" data-emp-action="print-id-card" data-id="${employee.id}">Print Card</button>
               </div>
-            </article>
+            </div>
           `;
         }).join("");
         emptyState.hidden = employees.length !== 0;
       }
 
+
       async function buildEmployeeCardsPrintHtml(employees) {
-        if (!employees.length) {
+        const sourceEmployees = Array.isArray(employees) ? employees : [];
+        if (!sourceEmployees.length) {
           return "";
         }
         const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-        const printableLogo = await normalizeImageForPrintShared(profile.logo || instituteLogo || "");
-        const cardsMarkup = await Promise.all(employees.map(async function (employee) {
-          const printablePhoto = employee.picture ? await normalizeImageForPrintShared(employee.picture) : "";
-          const qrData = encodeURIComponent("ATTEND:EMPLOYEE:" + employee.id);
-          const employeeQrUrl = "https://quickchart.io/qr?text=" + qrData + "&size=80&margin=1&ecLevel=H&dark=102542";
-          return `
-            <article class="pvc-card pvc-card--employee">
-              <div class="pvc-card__topband"></div>
-              <header class="pvc-card__header">
-                ${printableLogo ? `<img src="${printableLogo}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
-                <div>
-                  <strong class="pvc-card__school">${escapeHtml(profile.name || database.school.name || "School")}</strong>
-                  <span class="pvc-card__type">EMPLOYEE ID CARD</span>
-                </div>
-              </header>
-              <section class="pvc-card__body">
-                ${printablePhoto ? `<img src="${printablePhoto}" alt="${escapeAttr(employee.name)}" class="pvc-card__photo">` : `<span class="pvc-card__photo pvc-card__photo--fallback">${getInitials(employee.name || "E")}</span>`}
-                <div class="pvc-card__meta">
-                  <strong class="pvc-card__name">${escapeHtml(employee.name || "-")}</strong>
-                  <span class="pvc-card__line">${escapeHtml(employee.role || "-")}</span>
-                  <span class="pvc-card__line">Phone: ${escapeHtml(getEmployeeDisplayPhone(employee))}</span>
-                  <span class="pvc-card__line">Join: ${escapeHtml(employee.dateOfJoining || "-")}</span>
-                </div>
-              </section>
-              <footer class="pvc-card__footer">
-                <span>ID: ${escapeHtml(employee.id || "-")}</span>
-                <span>${escapeHtml((profile.phone || database.school.phone || "-"))}</span>
-              </footer>
-              <img src="${employeeQrUrl}" alt="QR" class="pvc-card__qr">
-            </article>
-          `;
-        }));
-
-        return `
-          <!DOCTYPE html>
-          <html><head><meta charset="utf-8"><title></title>
-            <style>
-              * { box-sizing: border-box; }
-              body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #fff; color: #102542; padding: 10mm; }
-              .pvc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(85.6mm, 1fr)); gap: 8mm; justify-items: center; }
-              .pvc-card {
-                position: relative;
-                width: 85.6mm;
-                height: 54mm;
-                border-radius: 3mm;
-                border: 0.35mm solid #000;
-                overflow: hidden;
-                background: #fff;
-                color: #102542;
-                break-inside: avoid;
-              }
-              .pvc-card__topband {
-                height: 9mm;
-                background: linear-gradient(120deg, #0f2f58, #1e5eff 68%, #1d9c61);
-              }
-              .pvc-card__header {
-                position: absolute;
-                left: 3mm;
-                right: 3mm;
-                top: 1.5mm;
-                display: grid;
-                grid-template-columns: 10mm 1fr;
-                gap: 2.2mm;
-                align-items: center;
-                color: #fff;
-              }
-              .pvc-card__logo {
-                width: 9.5mm;
-                height: 9.5mm;
-                border-radius: 2mm;
-                border: 0.25mm solid rgba(255,255,255,.9);
-                object-fit: contain;
-                background: #fff;
-              }
-              .pvc-card__logo--fallback {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 2.7mm;
-                font-weight: 700;
-                background: rgba(255,255,255,.18);
-              }
-              .pvc-card__school { display: block; font-size: 2.8mm; line-height: 1.1; font-weight: 700; }
-              .pvc-card__type { display: block; font-size: 2.1mm; opacity: .96; letter-spacing: .08mm; }
-              .pvc-card__body {
-                position: absolute;
-                left: 4mm;
-                right: 4mm;
-                top: 13mm;
-                display: grid;
-                justify-items: center;
-                gap: 1.5mm;
-                text-align: center;
-              }
-              .pvc-card__photo {
-                width: 19mm;
-                height: 19mm;
-                border-radius: 50%;
-                border: 0.25mm solid #000;
-                object-fit: cover;
-                background: #fff;
-              }
-              .pvc-card__photo--fallback {
-                display: inline-flex;
-                align-items: center;
-                justify-content: center;
-                font-size: 4.6mm;
-                font-weight: 700;
-                color: #17335b;
-              }
-              .pvc-card__meta { display: grid; gap: .65mm; justify-items: center; }
-              .pvc-card__name { font-size: 3.2mm; line-height: 1.1; }
-              .pvc-card__line { font-size: 2.35mm; line-height: 1.05; color: #274669; }
-              .pvc-card__qr {
-                position: absolute;
-                right: 2.4mm;
-                bottom: 7.2mm;
-                width: 9mm;
-                height: 9mm;
-                border-radius: 0.5mm;
-              }
-              .pvc-card__footer {
-                position: absolute;
-                left: 3mm;
-                right: 3mm;
-                bottom: 2.4mm;
-                display: flex;
-                justify-content: space-between;
-                gap: 2mm;
-                font-size: 2.2mm;
-                color: #345676;
-              }
-              @media print {
-                * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                @page { margin: 8mm; size: auto; }
-              }
-            </style>
-          </head>
-          <body>
-            <div class="pvc-grid">${cardsMarkup.join("")}</div>
-            <script>
-              window.addEventListener("load", function () {
-                setTimeout(function () {
-                  window.print();
-                }, 500);
-              });
-            </script>
-          </body></html>
-        `;
+        const rawLogo = String(profile.logo || "");
+        const logo = rawLogo ? (await normalizeImageForPrintShared(rawLogo)) || rawLogo : "";
+        const schoolName = profile.name || database.school.name || "School";
+        const schoolTagline = profile.slogan || "";
+        const safeAttr = function (value) {
+          try { return escapePrintAttr(value); } catch (_error) { return ""; }
+        };
+        const safeHtml = function (value, fallback) {
+          try { return escapePrintHtml(value); } catch (_error) { return fallback || "-"; }
+        };
+        const safeEmployees = sourceEmployees.filter(Boolean).map(function (employee) {
+          return {
+            id: employee.id || "",
+            name: employee.name || "-",
+            picture: employee.picture || "",
+            role: employee.role || "-",
+            phone: getEmployeeDisplayPhone(employee),
+            dateOfJoining: employee.dateOfJoining || ""
+          };
+        });
+        const cardsMarkup = safeEmployees.map(function (employee) {
+          const photo = employee.picture;
+          const barcodeValue = employee.id || "-";
+          const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+          const qrValue = "ATTEND:EMPLOYEE:" + barcodeValue;
+          const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
+          return '<article class="pvc-card">' +
+            '<div class="pvc-card__header">' +
+              (logo ? '<img src="' + safeAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
+              '<div class="pvc-card__header-text">' +
+                '<strong class="pvc-card__school">' + safeHtml(schoolName) + '</strong>' +
+                (schoolTagline ? '<span class="pvc-card__tagline">' + safeHtml(schoolTagline) + '</span>' : '') +
+              '</div>' +
+            '</div>' +
+            '<div class="pvc-card__body">' +
+              '<div class="pvc-card__photo-area">' +
+                (photo ? '<img src="' + safeAttr(photo) + '" alt="' + safeAttr(employee.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(employee.name || "E") + '</span>') +
+              '</div>' +
+              '<div class="pvc-card__info-area pvc-card__info-area--employee">' +
+                '<div class="pvc-card__name">' + safeHtml(employee.name || "-") + '</div>' +
+                '<div class="pvc-card__type-label">EMPLOYEE</div>' +
+                '<div class="pvc-card__info-grid">' +
+                  '<div class="pvc-card__info-row">' +
+                    '<span class="pvc-card__field"><span class="pvc-card__label">ID:</span> <span class="pvc-card__value">' + safeHtml(employee.id) + '</span></span>' +
+                    '<span class="pvc-card__field"><span class="pvc-card__label">Role:</span> <span class="pvc-card__value">' + safeHtml(employee.role) + '</span></span>' +
+                  '</div>' +
+                  '<div class="pvc-card__info-row">' +
+                    '<span class="pvc-card__field"><span class="pvc-card__label">Joined:</span> <span class="pvc-card__value">' + safeHtml(employee.dateOfJoining || "-") + '</span></span>' +
+                    '<span class="pvc-card__field"><span class="pvc-card__label">Mobile:</span> <span class="pvc-card__value">' + safeHtml(employee.phone || "-") + '</span></span>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+            '<div class="pvc-card__footer">' +
+              '<div class="pvc-card__barcode-area">' +
+                '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
+                '<span class="pvc-card__barcode-text">' + safeHtml(barcodeValue) + '</span>' +
+              '</div>' +
+              '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
+            '</div>' +
+          '</article>';
+        }).join("");
+        return '<!DOCTYPE html><html><head><title></title><meta charset="utf-8"><style>' +
+          '*{box-sizing:border-box;margin:0;padding:0}' +
+          'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;color:#102542;padding:10mm;-webkit-font-smoothing:antialiased}' +
+          '.pvc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:8mm;justify-items:center}' +
+          '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:2.5mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;break-inside:avoid;aspect-ratio:85.6/54;display:flex;flex-direction:column}' +
+          '.pvc-card::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;background-image:radial-gradient(circle at 15% 20%,rgba(15,47,88,.5) .4mm,transparent .4mm),radial-gradient(circle at 85% 25%,rgba(15,47,88,.4) .4mm,transparent .4mm),radial-gradient(circle at 50% 80%,rgba(15,47,88,.3) .4mm,transparent .4mm),radial-gradient(circle at 25% 60%,rgba(27,95,122,.3) .4mm,transparent .4mm),radial-gradient(circle at 75% 70%,rgba(27,95,122,.3) .4mm,transparent .4mm);background-size:6mm 6mm}' +
+          '.pvc-card__header{display:flex;align-items:center;gap:2mm;padding:1.5mm 3mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 50%,#1b5f7a 100%);color:#fff;flex-shrink:0}' +
+          '.pvc-card__logo{width:7mm;height:7mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(255,255,255,.3);background:#fff}' +
+          '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2mm;font-weight:700;color:#0f2f58;width:7mm;height:7mm;border-radius:50%;background:#fff;border:.3mm solid rgba(255,255,255,.3)}' +
+          '.pvc-card__header-text{flex:1;min-width:0}' +
+          '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
+          '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
+          '.pvc-card__body{display:flex;flex-direction:column;align-items:center;gap:.5mm;padding:1.5mm 3mm;flex:1;min-height:0}' +
+          '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0}' +
+          '.pvc-card__photo{width:13mm;height:13mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+          '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:13mm;height:13mm;border-radius:50%}' +
+          '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
+          '.pvc-card__info-area--employee{padding-left:2mm}' +
+          '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
+          '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
+          '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.3mm;width:100%}' +
+          '.pvc-card__info-row{display:grid;grid-template-columns:1fr 1fr;gap:.4mm 2mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
+          '.pvc-card__field{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:.3mm}' +
+          '.pvc-card__label{font-weight:700;color:#0f2f58;flex-shrink:0}' +
+          '.pvc-card__value{color:#3a5a7c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+          '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
+          '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
+          '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
+          '.pvc-card__barcode-img{width:100%;max-width:45mm;height:6mm;object-fit:contain;display:block}' +
+          '.pvc-card__barcode-text{font-size:1.5mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.15mm}' +
+          '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:6mm;size:auto}body{padding:3mm 0 0 0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
+          '</style></head><body><div class="pvc-grid">' + cardsMarkup + '</div></body></html>';
       }
 
       async function printEmployeeCards(employees, title) {
@@ -13410,7 +15495,7 @@ ${allContent}
         printEmployeeCards([employee], `Employee ID Card - ${employee.name}`);
       });
 
-      document.getElementById("printAllEmployeeCardsBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printAllEmployeeCardsBtn"), "click", function () {
         printEmployeeCards(getFilteredEmployees(), "Employee ID Cards");
       });
       searchInput.addEventListener("input", renderEmployeeCards);
@@ -13917,6 +16002,7 @@ ${allContent}
                 height: 64px;
                 border-radius: 12px;
                 object-fit: cover;
+                background-color: #fff;
                 filter: none !important;
                 mix-blend-mode: normal !important;
                 -webkit-print-color-adjust: exact;
@@ -14064,6 +16150,56 @@ ${allContent}
                   padding: 0;
                 }
               }
+              .qp-question-rich {
+                position: relative;
+                overflow: visible;
+                height: auto;
+                min-height: 0;
+                max-height: none;
+              }
+              .qp-question-rich img {
+                max-width: 100%;
+                height: auto;
+                display: block;
+              }
+              .qp-question-rich table {
+                border-collapse: collapse;
+                max-width: 100%;
+                margin: 6px 0;
+                height: auto;
+              }
+              .qp-question-rich td,
+              .qp-question-rich th {
+                border: 1px solid #1f2f45;
+                padding: 4px 6px;
+                vertical-align: top;
+                height: auto;
+              }
+              .qp-question-rich figure {
+                margin: 6px 0;
+                max-width: 100%;
+                overflow: visible;
+                height: auto;
+              }
+              .qp-question-rich svg {
+                max-width: 100%;
+                height: auto;
+              }
+              .qp-question-rich .ss-qe-obj,
+              .qp-question-rich .ss-qe-figure {
+                height: auto;
+                min-height: 0;
+                position: relative;
+                top: auto;
+                left: auto;
+                overflow: visible;
+              }
+              .report-content .qp-question-rich,
+              .report-card .qp-question-rich {
+                height: auto;
+                min-height: 0;
+                max-height: none;
+              }
             </style>
           </head>
           <body class="${config.compactPrint ? "compact-print" : ""}">
@@ -14074,13 +16210,6 @@ ${allContent}
             ${tableMarkup}
             ${config.footerHtml || ""}
           </main>
-          <script>
-            window.addEventListener("load", function () {
-              setTimeout(function () {
-                window.print();
-              }, 500);
-            });
-          </script>
           </body>
         </html>
       `;
@@ -14269,7 +16398,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("printExamReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printExamReportBtn"), "click", function () {
         const rows = getRows();
         const exam = getExamById(examSelect.value);
         if (!rows.length) {
@@ -14517,8 +16646,8 @@ ${allContent}
           '</p></article></div>';
       }
 
-      document.getElementById("progressShowBtn").addEventListener("click", renderPR);
-      document.getElementById("progressPrintBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("progressShowBtn"), "click", renderPR);
+      safeOn(document.getElementById("progressPrintBtn"), "click", function () {
         var c = document.getElementById("progressContent");
         if (!c || !c.innerHTML.trim() || c.innerHTML.includes("empty-state")) return;
         var w = window.open("", "_blank", "width=900,height=700");
@@ -14604,7 +16733,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("printInfoReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printInfoReportBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -14716,7 +16845,7 @@ ${allContent}
         }).join("");
       }
 
-      document.getElementById("printAttendanceReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printAttendanceReportBtn"), "click", function () {
         const rows = getRows();
         if (!rows.length) {
           return;
@@ -14844,7 +16973,7 @@ ${allContent}
           }).join("");
         }
 
-        document.getElementById("printFeeReportBtn").addEventListener("click", function () {
+        safeOn(document.getElementById("printFeeReportBtn"), "click", function () {
           const rows = getRows();
           if (!rows.length) {
             return;
@@ -14992,19 +17121,19 @@ ${allContent}
         };
       }
 
-      document.getElementById("printAccountsBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printAccountsBtn"), "click", function () {
         var pd = getStatementPrintData();
         if (!pd.rows.length) return;
         openPrintReport(pd);
       });
 
-      document.getElementById("pdfAccountsBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("pdfAccountsBtn"), "click", function () {
         var pd = getStatementPrintData();
         if (!pd.rows.length) return;
         openPrintReport(pd);
       });
 
-      document.getElementById("excelAccountsBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("excelAccountsBtn"), "click", function () {
         var data = getStatementRows();
         if (!data.rows.length) return;
         var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
@@ -15024,7 +17153,7 @@ ${allContent}
         URL.revokeObjectURL(link.href);
       });
 
-      document.getElementById("clearAccountsHistoryBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("clearAccountsHistoryBtn"), "click", function () {
         showStyledDeleteConfirmation("all account ledger history", function () {
           var settings = database.generalSettings || {};
           settings.accountsLedger = [];
@@ -15094,7 +17223,7 @@ ${allContent}
         printState = { title: title, subtitle: subtitle, headers: headers, rows: rows };
       }
 
-      document.getElementById("generateCustomReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("generateCustomReportBtn"), "click", function () {
         const type = typeSelect.value;
         const classValue = classSelect.value;
         const monthValue = monthInput.value;
@@ -15154,7 +17283,7 @@ ${allContent}
         setData("Custom Report - Accounts", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Date", "Type", "Source", "Reference", "Amount"], rows);
       });
 
-      document.getElementById("printCustomReportBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printCustomReportBtn"), "click", function () {
         if (!printState) {
           return;
         }
@@ -15387,7 +17516,7 @@ ${allContent}
              return;
            }
          });
-         document.getElementById("saveLedgerBtn").addEventListener("click", async function () {
+         safeOn(document.getElementById("saveLedgerBtn"), "click", async function () {
           const btn = this;
           const date = document.getElementById("ledgerDateInput").value;
           const category = document.getElementById("ledgerCategoryInput").value.trim();
@@ -15527,7 +17656,7 @@ ${allContent}
         input.addEventListener("input", renderStatement);
         input.addEventListener("change", renderStatement);
       });
-      document.getElementById("printStatementBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printStatementBtn"), "click", function () {
         const rows = getFilteredStatementRows();
         openPrintReport({
           title: "Account Statement",
@@ -15590,7 +17719,6 @@ ${allContent}
         const html = String(row.questionHtml || "").trim();
         const text = qpStripHtml(row.questionText || row.questionHtml || "");
           if (html) {
-            const hasAbsoluteLayout = /position\s*:\s*absolute/i.test(html);
             return `
               <div style="margin:0 0 8px;">
                 <style>
@@ -15600,7 +17728,7 @@ ${allContent}
                 </style>
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                   <strong style="flex:0 0 auto;line-height:1.55;">Q${qNo}.</strong>
-                  <div class="qp-question-rich" style="flex:1;position:relative;min-height:${hasAbsoluteLayout ? 180 : 0}px;">${html}</div>
+                  <div class="qp-question-rich" style="flex:1;overflow:visible;">${html}</div>
                 </div>
             </div>
           `;
@@ -15659,43 +17787,18 @@ ${allContent}
             <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Title*</label><input id="qpQuestionTitle" type="text" placeholder="e.g Choose the correct option" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
             <div style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Editor*</label>
-              <div class="question-rich-editor-shell" style="max-width:100%;overflow-x:hidden;">
-                <div id="qpEditorToolbar" class="question-editor-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;padding:6px;">
-                  <select id="qpFontFamily" class="table-inline-input" style="font-size:0.78rem;padding:4px;">
-                    <option value="Calibri, Arial, sans-serif">Calibri (Body)</option>
-                    <option value="Arial, sans-serif">Arial</option>
-                    <option value="'Times New Roman', serif">Times New Roman</option>
-                    <option value="Georgia, serif">Georgia</option>
-                    <option value="'Courier New', monospace">Courier New</option>
-                  </select>
-                  <button class="table-action-btn" type="button" data-qp-cmd="bold" style="padding:3px 6px;font-size:0.75rem;">Bold</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="italic" style="padding:3px 6px;font-size:0.75rem;">Italic</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="underline" style="padding:3px 6px;font-size:0.75rem;">Underline</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="strikeThrough" style="padding:3px 6px;font-size:0.75rem;">Strike</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="subscript" style="padding:3px 6px;font-size:0.75rem;">Xâ‚‚</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="superscript" style="padding:3px 6px;font-size:0.75rem;">XÂ²</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="insertUnorderedList" style="padding:3px 6px;font-size:0.75rem;">UL</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="insertOrderedList" style="padding:3px 6px;font-size:0.75rem;">OL</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="justifyLeft" style="padding:3px 6px;font-size:0.75rem;">Left</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="justifyCenter" style="padding:3px 6px;font-size:0.75rem;">Center</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="justifyRight" style="padding:3px 6px;font-size:0.75rem;">Right</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="outdent" style="padding:3px 6px;font-size:0.75rem;">Outdent</button>
-                  <button class="table-action-btn" type="button" data-qp-cmd="indent" style="padding:3px 6px;font-size:0.75rem;">Indent</button>
-                  <input id="qpFontSizeInput" class="table-inline-input" type="number" min="8" value="16" style="width:50px;padding:3px;font-size:0.78rem;" title="Size px">
-                  <button class="table-action-btn" type="button" id="qpApplyFontSize" style="padding:3px 6px;font-size:0.75rem;">Size</button>
-                  <input id="qpTextColorInput" class="table-inline-input" type="color" value="#0f2748" style="width:28px;height:24px;padding:1px;" title="Text Color">
-                  <button class="table-action-btn" type="button" id="qpApplyTextColor" style="padding:3px 6px;font-size:0.75rem;">Color</button>
-                  <input id="qpBgColorInput" class="table-inline-input" type="color" value="#fff59d" style="width:28px;height:24px;padding:1px;" title="Highlight">
-                  <button class="table-action-btn" type="button" id="qpApplyBgColor" style="padding:3px 6px;font-size:0.75rem;">Highlight</button>
-                  <button class="table-action-btn" type="button" id="qpClearFormat" style="padding:3px 6px;font-size:0.75rem;">Clear</button>
-                  <button class="table-action-btn" type="button" id="qpGrowSelected" style="padding:3px 6px;font-size:0.75rem;">+ Item</button>
-                  <button class="table-action-btn" type="button" id="qpShrinkSelected" style="padding:3px 6px;font-size:0.75rem;">- Item</button>
-                  <button class="table-action-btn" type="button" id="qpInsertTable" style="padding:3px 6px;font-size:0.75rem;">Table</button>
-                  <button class="table-action-btn" type="button" id="qpInsertImage" style="padding:3px 6px;font-size:0.75rem;">Image</button>
-                  <input id="qpImageInput" type="file" accept="image/*" hidden>
-                </div>
-                <div id="qpEditorArea" class="question-rich-editor" contenteditable="true" style="min-height:120px;max-width:100%;overflow-x:auto;"></div>
+              <div class="ss-qe" id="ssQE">
+                <div class="ss-qe-toolbar" id="ssQEToolbar"></div>
+                <div class="ss-qe-content" id="ssQEContent" contenteditable="true" spellcheck="true"></div>
+                <div class="ss-qe-status" id="ssQEStatus">0 words | 0 chars</div>
               </div>
+              <input type="file" id="ssQEImgInput" accept="image/*" multiple style="display:none;">
+              <input type="file" id="ssQELinkInput" accept=".pdf,.doc,.docx" style="display:none;">
+              <div class="ss-qe-shapes-panel" id="ssQEShapesPanel" style="display:none;"></div>
+              <div class="ss-qe-table-panel" id="ssQETablePanel" style="display:none;"></div>
+              <div class="ss-qe-equation-panel" id="ssQEEquationPanel" style="display:none;"></div>
+              <div class="ss-qe-color-panel" id="ssQEColorPanel" style="display:none;"></div>
+              <div class="ss-qe-spchar-panel" id="ssQESpCharPanel" style="display:none;"></div>
             </div>
             <div id="qpMcqOptionsField" hidden style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">MCQ Options</label>
@@ -15734,7 +17837,6 @@ ${allContent}
         const existingChapterSelect = document.getElementById("qpExistingChapterName");
         const chapterNameInput = document.getElementById("qpChapterName");
         const questionTitleInput = document.getElementById("qpQuestionTitle");
-        const editorArea = document.getElementById("qpEditorArea");
         const mcqField = document.getElementById("qpMcqOptionsField");
         const mcqRows = document.getElementById("qpMcqRows");
         const fillField = document.getElementById("qpFillOptionsField");
@@ -15744,967 +17846,2152 @@ ${allContent}
         const answerLinesInput = document.getElementById("qpAnswerLines");
         const message = document.getElementById("qpChapterMessage");
         const tableBody = document.getElementById("qpChapterBody");
-        const editorToolbar = document.getElementById("qpEditorToolbar");
-        const imageInput = document.getElementById("qpImageInput");
 
+        // â”€â”€ Question Type UI Functions (subject-chapters route) â”€â”€
+        var _qpAutoTitleDefaults = {
+          mcq: "Choose The Correct Option",
+          fill: "Fill In The Blanks",
+          truefalse: "Tick The Correct Option",
+          short: "Answer The Following Question",
+          long: "Answer The Following Question In Detail"
+        };
+        var _lastAutoTitle = "";
+        var _isEditing = false;
+        var _editingQuestionId = null;
         function renderSubjectSelect() {
-          subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : `<option value="">Select class first</option>`;
-          renderExistingChapterSelect();
+          subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : '<option value="">Select class first</option>';
         }
-
-        function getExistingChapterNames() {
-          const className = classSelect.value;
-          const subject = subjectSelect.value;
-          return (settings.questionChapters || []).filter(function (row) {
-            return (!className || row.className === className) &&
-              (!subject || row.subject === subject) &&
-              String(row.chapterName || "").trim();
-          }).map(function (row) {
-            return String(row.chapterName || "").trim();
-          }).filter(function (value, index, arr) {
-            return value && arr.indexOf(value) === index;
-          });
-        }
-
         function renderExistingChapterSelect() {
-          const currentValue = existingChapterSelect ? existingChapterSelect.value : "";
-          const chapters = getExistingChapterNames();
-          existingChapterSelect.innerHTML = `<option value="">New / No Chapter</option>${chapters.map(function (name) {
-            return `<option value="${escapeAttr(name)}" ${currentValue === name ? "selected" : ""}>${escapeHtml(name)}</option>`;
-          }).join("")}`;
-        }
-
-        function createMcqRow(value) {
-          const row = document.createElement("div");
-          row.className = "question-option-row";
-          row.innerHTML = `<span class="menu-icon">OP</span><input type="text" class="question-option-input" value="${escapeAttr(value || "")}" placeholder="Option text">`;
-          return row;
-        }
-
-        function renderMcqRows(values) {
-          const rows = Array.isArray(values) && values.length ? values : ["", "", "", ""];
-          mcqRows.innerHTML = "";
-          rows.forEach(function (value) {
-            mcqRows.appendChild(createMcqRow(value));
-          });
-        }
-
-        function getMcqValues() {
-          return Array.from(mcqRows.querySelectorAll(".question-option-input")).map(function (input) {
-            return String(input.value || "").trim();
-          }).filter(Boolean);
-        }
-
-        function renderTypeMode() {
-          const type = typeSelect.value;
-          const isMcq = type === "mcq";
-          const isFill = type === "fill";
-          const isTrueFalse = type === "truefalse";
-          const isShortLong = type === "short" || type === "long";
-          mcqField.hidden = !isMcq;
-          fillField.hidden = !(isFill || isTrueFalse);
-          linesField.hidden = !isShortLong;
-          mcqField.style.display = isMcq ? "" : "none";
-          fillField.style.display = (isFill || isTrueFalse) ? "" : "none";
-          linesField.style.display = isShortLong ? "" : "none";
-          if (isMcq && !mcqRows.children.length) {
-            renderMcqRows();
-          }
-          if (isShortLong) {
-            answerLinesInput.value = type === "long" ? "6" : "3";
-          }
-          if (isTrueFalse) {
-            fillOpt1.value = "True";
-            fillOpt2.value = "False";
-          } else if (isFill && (!fillOpt1.value || !fillOpt2.value)) {
-            fillOpt1.value = "true";
-            fillOpt2.value = "false";
-          }
-        }
-
-        function getEditorHtml() {
-          return String(editorArea.innerHTML || "").trim();
-        }
-
-        function clearEditor() {
-          editorArea.innerHTML = "";
-        }
-
-        function getEditorText() {
-          const html = getEditorHtml();
-          return qpStripHtml(html);
-        }
-
-        function renderChapterRows() {
-          tableBody.innerHTML = (settings.questionChapters || []).map(function (row) {
-            return `<tr>
-              <td>${escapeHtml(row.className || "-")}</td>
-              <td>${escapeHtml(row.subject || "-")}</td>
-              <td>${escapeHtml(row.chapterName || "-")}</td>
-              <td>${escapeHtml(row.section || "-")}</td>
-              <td>${escapeHtml(qpTypeLabel(row.questionType))}</td>
-              <td>${Number(row.marks || 0)}</td>
-              <td>${escapeHtml(row.questionTitle || "-")}</td>
-              <td>${escapeHtml(qpStripHtml(row.questionText || row.questionHtml || "").slice(0, 90) || "-")}</td>
-              <td><button class="table-action-btn danger" type="button" data-qp-delete="${escapeAttr(row.id)}">Delete</button></td>
-            </tr>`;
+          var className = classSelect.value;
+          var subject = subjectSelect.value;
+          var chapters = (settings.questionChapters || []).filter(function(row) {
+            return row.className === className && row.subject === subject;
+          }).map(function(row) { return row.chapterName || ""; }).filter(Boolean);
+          var unique = chapters.filter(function(v, i, a) { return a.indexOf(v) === i; });
+          existingChapterSelect.innerHTML = '<option value="">Select Existing Chapter</option>' + unique.map(function(name) {
+            return '<option value="' + name.replace(/"/g, '&quot;') + '">' + escapeHtml(name) + '</option>';
           }).join("");
         }
-
-        document.getElementById("qpAddMcq").addEventListener("click", function () {
-          mcqRows.appendChild(createMcqRow(""));
-        });
-        document.getElementById("qpRemoveMcq").addEventListener("click", function () {
-          if (mcqRows.children.length > 1) {
-            mcqRows.removeChild(mcqRows.lastElementChild);
+        function renderTypeMode() {
+          var val = typeSelect.value;
+          mcqField.hidden = val !== "mcq";
+          fillField.hidden = val !== "fill" && val !== "truefalse";
+          linesField.hidden = val !== "short" && val !== "long";
+          if (val === "fill") { fillOpt1.value = "true"; fillOpt2.value = "false"; }
+          if (val === "truefalse") { fillOpt1.value = "True"; fillOpt2.value = "False"; }
+          if (val === "short") { answerLinesInput.value = 3; }
+          if (val === "long") { answerLinesInput.value = 6; }
+          // Auto-fill question title based on type
+          var currentTitle = (questionTitleInput.value || "").trim();
+          var newDefault = _qpAutoTitleDefaults[val] || "";
+          if (!currentTitle || currentTitle === _lastAutoTitle) {
+            questionTitleInput.value = newDefault;
           }
-        });
+          _lastAutoTitle = newDefault;
+        }
+        var mcqOptions = ["", ""];
+        function renderMcqRows() {
+          mcqRows.innerHTML = mcqOptions.map(function(opt, idx) {
+            var labels = ["A", "B", "C", "D", "E", "F", "G", "H"];
+            return '<div class="question-option-row" style="display:flex;align-items:center;gap:4px;flex:1 1 180px;min-width:140px;">' +
+              '<span style="font-weight:700;font-size:0.78rem;min-width:18px;">' + (labels[idx] || "O" + (idx + 1)) + '.</span>' +
+              '<input type="text" class="mcq-opt-input" data-idx="' + idx + '" value="' + escapeHtml(opt) + '" placeholder="Option ' + (labels[idx] || idx + 1) + '" style="flex:1;min-width:80px;padding:4px 6px;border:1px solid #dde4ea;border-radius:4px;font-size:0.78rem;">' +
+            '</div>';
+          }).join("");
+          mcqRows.querySelectorAll(".mcq-opt-input").forEach(function(inp) {
+            safeOn(inp, "input", function() { mcqOptions[parseInt(inp.getAttribute("data-idx"))] = inp.value; });
+          });
+        }
+        function renderChapterRows() {
+          var className = classSelect.value;
+          var subject = subjectSelect.value;
+          var rows = (settings.questionChapters || []).filter(function(row) {
+            return row.className === className && row.subject === subject;
+          });
+          if (!rows.length) { tableBody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:16px;color:#888;">No questions saved yet.</td></tr>'; return; }
+          tableBody.innerHTML = rows.map(function(row, idx) {
+            var text = qpStripHtml(row.questionHtml || row.questionText || "");
+            var preview = text.length > 80 ? text.substring(0, 80) + "..." : text;
+            return '<tr style="border-bottom:1px solid #eee;">' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.className || "-") + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.subject || "-") + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.chapterName || "-") + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.section || "-") + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(qpTypeLabel(row.questionType)) + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(String(row.marks || "-")) + '</td>' +
+              '<td style="padding:4px 6px;">' + escapeHtml(row.questionTitle || "-") + '</td>' +
+              '<td style="padding:4px 6px;font-size:0.75rem;color:#556;">' + escapeHtml(preview) + '</td>' +
+              '<td style="padding:4px 6px;"><button class="table-action-btn danger" type="button" data-delete-qidx="' + idx + '">Delete</button></td>' +
+            '</tr>';
+          }).join("");
+          tableBody.querySelectorAll("[data-delete-qidx]").forEach(function(btn) {
+            safeOn(btn, "click", function() {
+              var delIdx = parseInt(btn.getAttribute("data-delete-qidx"));
+              var allRows = (settings.questionChapters || []).filter(function(r) {
+                return r.className === className && r.subject === subject;
+              });
+              var target = allRows[delIdx];
+              if (!target) return;
+              settings.questionChapters = (settings.questionChapters || []).filter(function(r) { return r !== target; });
+              saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+              renderChapterRows();
+              openAppMessageBox("Deleted", "Question deleted successfully.", "success");
+            });
+          });
+        }
 
-        document.getElementById("qpSaveQuestion").addEventListener("click", function () {
-          const className = classSelect.value;
-          const subject = subjectSelect.value;
-          const section = sectionSelect.value;
-          const questionType = typeSelect.value;
-          const marks = Number(marksInput.value);
-          const chapterName = String(existingChapterSelect.value || chapterNameInput.value || "").trim();
-          const questionTitle = String(questionTitleInput.value || "").trim();
-          const questionHtml = getEditorHtml();
-          const questionText = getEditorText();
-          const hasQuestionContent = Boolean(questionText) || /<(img|table)\b/i.test(questionHtml);
-          const options = questionType === "mcq"
-            ? getMcqValues()
-            : ((questionType === "fill" || questionType === "truefalse")
-              ? [String(fillOpt1.value || "").trim(), String(fillOpt2.value || "").trim()].filter(Boolean)
-              : []);
-          const answerLines = (questionType === "short" || questionType === "long") ? Math.max(1, Number(answerLinesInput.value || 3)) : 0;
-          const correctAnswer = "";
-
-          if (!className || !subject || !section || !questionType || !questionTitle || !(marks > 0) || !hasQuestionContent) {
-            message.textContent = "Please fill required fields.";
-            message.className = "form-message error";
-            openAppMessageBox("Error", "Please fill required fields.", "error");
-            return;
-          }
-          if (questionType === "mcq" && options.length < 2) {
-            message.textContent = "For MCQ, add at least two options.";
-            message.className = "form-message error";
-            openAppMessageBox("Error", "For MCQ, add at least two options.", "error");
-            return;
-          }
-
-          settings.questionChapters.unshift({
-            id: `QCH-${generateId()}`,
+        // â”€â”€ Save Question Button Handler â”€â”€
+        safeOn(document.getElementById("qpSaveQuestion"), "click", function() {
+          var className = classSelect.value;
+          var subject = subjectSelect.value;
+          var section = sectionSelect.value;
+          var qType = typeSelect.value;
+          var marks = marksInput.value;
+          var chapterName = existingChapterSelect.value || chapterNameInput.value;
+          var qTitle = questionTitleInput.value;
+          var editorHtml = getEditorHtml();
+          var editorText = getEditorText();
+          if (!className) { openAppMessageBox("Missing Field", "Please select a Class.", "warning"); return; }
+          if (!subject) { openAppMessageBox("Missing Field", "Please select a Subject.", "warning"); return; }
+          if (!chapterName) { openAppMessageBox("Missing Field", "Please enter or select a Chapter Name.", "warning"); return; }
+          if (!qType) { openAppMessageBox("Missing Field", "Please select a Question Type.", "warning"); return; }
+          if (!marks || parseInt(marks) < 1) { openAppMessageBox("Missing Field", "Please enter valid Marks.", "warning"); return; }
+          if (!editorText.trim() && qType !== "mcq") { openAppMessageBox("Missing Content", "Please enter question content in the editor.", "warning"); return; }
+          var questionData = {
             className: className,
             subject: subject,
             chapterName: chapterName,
-            questionTitle: questionTitle,
-            section: section,
-            questionType: questionType,
-            marks: marks,
-            questionHtml: questionHtml,
-            questionText: questionText,
-            options: options,
-            correctAnswer: correctAnswer,
-            answerLines: answerLines
-          });
-          saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          renderChapterRows();
-          message.textContent = "Question saved successfully.";
-          message.className = "form-message success";
-          openAppMessageBox("Success", "Question saved successfully.", "success");
-
-          chapterNameInput.value = "";
-          existingChapterSelect.value = "";
-          questionTitleInput.value = "";
-          clearEditor();
-          fillOpt1.value = "true";
-          fillOpt2.value = "false";
-          answerLinesInput.value = "3";
-          renderMcqRows();
-          renderExistingChapterSelect();
-        });
-
-        tableBody.addEventListener("click", function (event) {
-          const button = event.target.closest("[data-qp-delete]");
-          if (!button) {
-            return;
-          }
-          const rowId = button.getAttribute("data-qp-delete");
-          settings.questionChapters = (settings.questionChapters || []).filter(function (row) {
-            return String(row.id) !== String(rowId);
-          });
-              saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-              renderChapterRows();
-              renderExistingChapterSelect();
-              openAppMessageBox("Success", "Question deleted successfully.", "success");
-            });
-
-        // Override editor behavior with in-editor toolbar (no external dependency).
-        function getRawEditorHtml() {
-          const clone = editorArea.cloneNode(true);
-          clone.querySelectorAll(".qp-resize-handle, .qp-move-handle").forEach(function (node) {
-            node.remove();
-          });
-          clone.querySelectorAll(".qp-editor-table-wrap, img, table, .qp-shape, .qp-icon").forEach(function (node) {
-            node.style.outline = "";
-          });
-          clone.querySelectorAll(".qp-editor-table-wrap").forEach(function (wrap) {
-            wrap.style.border = "none";
-            wrap.style.background = "transparent";
-            wrap.style.padding = "0";
-            wrap.style.overflow = "visible";
-            wrap.style.resize = "none";
-            wrap.style.cursor = "default";
-          });
-          clone.querySelectorAll("table").forEach(function (tbl) {
-            tbl.style.background = "transparent";
-          });
-          return String(clone.innerHTML || "").trim();
-        }
-
-        function clearRawEditor() {
-          editorArea.innerHTML = "";
-        }
-
-        function getRawEditorText() {
-          return qpStripHtml(editorArea.textContent || "");
-        }
-
-        let selectedEditorNode = null;
-        let activeTableResize = null;
-        let qpObjectContextMenu = null;
-
-        function setSelectedEditorNode(node) {
-          if (selectedEditorNode && selectedEditorNode !== node) {
-            selectedEditorNode.style.outline = "";
-          }
-          selectedEditorNode = node;
-          if (selectedEditorNode) {
-            const isTableWrap = selectedEditorNode.classList && selectedEditorNode.classList.contains("qp-editor-table-wrap");
-            if (isTableWrap) {
-              selectedEditorNode.style.outline = "";
-            } else {
-              selectedEditorNode.style.outline = "2px solid #1d9c61";
-            }
-          }
-        }
-
-        function hideObjectContextMenu() {
-          if (qpObjectContextMenu && qpObjectContextMenu.parentNode) {
-            qpObjectContextMenu.parentNode.removeChild(qpObjectContextMenu);
-          }
-          qpObjectContextMenu = null;
-        }
-
-        function applyObjectWrapInline(node) {
-          if (!node) return;
-          node.dataset.wrapMode = "inline";
-          node.classList.remove("qp-wrap-behind");
-          node.style.float = "";
-          node.style.position = "";
-          node.style.zIndex = "";
-          node.style.display = "inline-block";
-          node.style.margin = "6px";
-          node.style.transform = "";
-          node.dataset.tx = "0";
-          node.dataset.ty = "0";
-        }
-
-        function applyObjectWrapBehind(node) {
-          if (!node) return;
-          editorArea.style.position = "relative";
-          node.dataset.wrapMode = "behind";
-          node.classList.add("qp-wrap-behind");
-          node.style.float = "";
-          node.style.display = "inline-block";
-          node.style.position = "absolute";
-          node.style.zIndex = "0";
-          node.style.margin = "0";
-          if (!node.style.left) node.style.left = "24px";
-          if (!node.style.top) node.style.top = "24px";
-        }
-
-        function showObjectContextMenu(node, x, y) {
-          hideObjectContextMenu();
-          const menu = document.createElement("div");
-          menu.className = "qp-object-menu";
-          menu.style.position = "fixed";
-          menu.style.left = `${x}px`;
-          menu.style.top = `${y}px`;
-          menu.style.zIndex = "99999";
-          const isTableOrImage = node.tagName === "TABLE" || node.classList.contains("qp-editor-table-wrap") || node.tagName === "IMG";
-          menu.innerHTML = `
-            <button type="button" class="qp-object-menu__item" data-action="moveUp">Move Up</button>
-            <button type="button" class="qp-object-menu__item" data-action="moveDown">Move Down</button>
-            <button type="button" class="qp-object-menu__item" data-action="behind">Wrap Behind</button>
-            <button type="button" class="qp-object-menu__item" data-action="inline">Wrap Inline</button>
-            <button type="button" class="qp-object-menu__item danger" data-action="remove">Remove</button>
-          `;
-          menu.addEventListener("click", function (event) {
-            const item = event.target.closest("[data-action]");
-            if (!item) return;
-            const action = item.getAttribute("data-action");
-            if (action === "moveUp") {
-              const prev = node.previousElementSibling;
-              if (prev) { node.parentNode.insertBefore(node, prev); }
-            } else if (action === "moveDown") {
-              const next = node.nextElementSibling;
-              if (next) { node.parentNode.insertBefore(next, node); }
-            } else if (action === "behind") {
-              applyObjectWrapBehind(node);
-            } else if (action === "inline") {
-              applyObjectWrapInline(node);
-            } else if (action === "remove") {
-              node.remove();
-            }
-            hideObjectContextMenu();
-          });
-          document.body.appendChild(menu);
-          qpObjectContextMenu = menu;
-          setTimeout(function () {
-            document.addEventListener("click", hideObjectContextMenu, { once: true });
-          }, 0);
-        }
-
-        function makeInteractive(el) {
-          if (!el) return;
-          const isTableNode = el.tagName === "TABLE";
-          const isTableWrapper = el.classList.contains("qp-editor-table-wrap");
-          if (isTableWrapper) {
-            el.style.resize = "none";
-            el.style.overflow = "visible";
-            el.style.border = "none";
-            el.style.outline = "none";
-            el.style.boxShadow = "none";
-            el.style.padding = "0";
-          }
-          if (el.dataset.editorInteractive === "1") return;
-          el.dataset.editorInteractive = "1";
-          const cornerSize = 16;
-          el.style.resize = "none";
-          el.style.overflow = "visible";
-          el.style.maxWidth = "none";
-          el.style.border = isTableWrapper ? "none" : "";
-          el.style.padding = isTableWrapper ? "0" : "4px";
-          el.style.display = "inline-block";
-          el.style.cursor = isTableNode ? "default" : (isTableWrapper ? "text" : "move");
-          el.style.verticalAlign = "top";
-          if (isTableWrapper && !el.querySelector(".qp-resize-handle")) {
-            const moveHandle = document.createElement("span");
-            moveHandle.className = "qp-move-handle";
-            moveHandle.setAttribute("contenteditable", "false");
-            el.appendChild(moveHandle);
-            const handle = document.createElement("span");
-            handle.className = "qp-resize-handle";
-            handle.setAttribute("contenteditable", "false");
-            el.appendChild(handle);
-          }
-          if (el.tagName === "IMG") {
-            el.style.maxWidth = "none";
-            el.style.minWidth = "28px";
-            el.style.minHeight = "28px";
-          }
-          el.addEventListener("mouseenter", function () {
-            if (selectedEditorNode !== el) {
-              el.style.outline = "1px dashed #7a8da8";
-            }
-          });
-          el.addEventListener("mouseleave", function () {
-            if (selectedEditorNode !== el) {
-              el.style.outline = "";
-            }
-          });
-          let dragging = false;
-          let resizing = false;
-          let startX = 0;
-          let startY = 0;
-          let startTx = 0;
-          let startTy = 0;
-          let startWidth = 0;
-          let startHeight = 0;
-          el.addEventListener("click", function (event) {
-            setSelectedEditorNode(el);
-            event.stopPropagation();
-          });
-          if (isTableWrapper) {
-            el.addEventListener("mousemove", function (event) {
-              const rect = el.getBoundingClientRect();
-              const nearTopLeft = (event.clientX - rect.left) <= cornerSize && (event.clientY - rect.top) <= cornerSize;
-              const nearBottomRight = (rect.right - event.clientX) <= cornerSize && (rect.bottom - event.clientY) <= cornerSize;
-              if (nearTopLeft) {
-                el.style.cursor = "move";
-              } else if (nearBottomRight) {
-                el.style.cursor = "nwse-resize";
-              } else {
-                el.style.cursor = "text";
-              }
-            });
-          }
-          el.addEventListener("contextmenu", function (event) {
-            event.preventDefault();
-            setSelectedEditorNode(el);
-            showObjectContextMenu(el, event.clientX, event.clientY);
-          });
-          el.addEventListener("mousedown", function (event) {
-            if (isTableNode) return;
-            if (isTableWrapper) {
-              const isMoveHandle = event.target && event.target.classList && event.target.classList.contains("qp-move-handle");
-              const rect = el.getBoundingClientRect();
-              const isHandle = event.target && event.target.classList && event.target.classList.contains("qp-resize-handle");
-              const nearBottomRight = (rect.right - event.clientX) <= cornerSize && (rect.bottom - event.clientY) <= cornerSize;
-              if (isHandle || nearBottomRight) {
-                resizing = true;
-                startX = event.clientX;
-                startY = event.clientY;
-                startWidth = rect.width;
-                startHeight = rect.height;
-                event.preventDefault();
-                return;
-              }
-              if (isMoveHandle) {
-                dragging = true;
-                startX = event.clientX;
-                startY = event.clientY;
-                startTx = parseFloat(el.dataset.tx || "0");
-                startTy = parseFloat(el.dataset.ty || "0");
-                event.preventDefault();
-                return;
-              }
-              return;
-            }
-            if (el.tagName === "IMG") {
-              const rect = el.getBoundingClientRect();
-              const nearBottomRight = (rect.right - event.clientX) <= cornerSize && (rect.bottom - event.clientY) <= cornerSize;
-              if (nearBottomRight) {
-                resizing = true;
-                startX = event.clientX;
-                startY = event.clientY;
-                startWidth = rect.width;
-                startHeight = rect.height;
-                event.preventDefault();
-                return;
-              }
-            }
-            if (event.button !== 0) return;
-            if (String(el.dataset.wrapMode || "") === "behind") {
-              editorArea.style.position = "relative";
-              dragging = true;
-              startX = event.clientX;
-              startY = event.clientY;
-              startTx = parseFloat(el.style.left || "0");
-              startTy = parseFloat(el.style.top || "0");
-              event.preventDefault();
-              return;
-            }
-            dragging = true;
-            startX = event.clientX;
-            startY = event.clientY;
-            startTx = parseFloat(el.dataset.tx || "0");
-            startTy = parseFloat(el.dataset.ty || "0");
-            event.preventDefault();
-          });
-          document.addEventListener("mousemove", function (event) {
-            if (resizing) {
-              const nextWidth = Math.max(40, startWidth + (event.clientX - startX));
-              const nextHeight = Math.max(28, startHeight + (event.clientY - startY));
-              if (isTableWrapper) {
-                el.style.width = `${nextWidth}px`;
-                const table = el.querySelector("table");
-                if (table) {
-                  table.style.width = "100%";
-                }
-              } else if (el.tagName === "IMG") {
-                el.style.width = `${nextWidth}px`;
-                el.style.height = `${nextHeight}px`;
-                el.style.objectFit = "contain";
-              }
-              return;
-            }
-            if (!dragging) return;
-            if (String(el.dataset.wrapMode || "") === "behind") {
-              const nextLeft = startTx + (event.clientX - startX);
-              const nextTop = startTy + (event.clientY - startY);
-              el.style.left = `${nextLeft}px`;
-              el.style.top = `${nextTop}px`;
-            } else {
-              const nextX = startTx + (event.clientX - startX);
-              const nextY = startTy + (event.clientY - startY);
-              el.dataset.tx = String(nextX);
-              el.dataset.ty = String(nextY);
-              el.style.transform = `translate(${nextX}px, ${nextY}px)`;
-            }
-          });
-          document.addEventListener("mouseup", function () {
-            dragging = false;
-            resizing = false;
-          });
-        }
-
-        function enableTableGridResizing(table) {
-          if (!table || table.dataset.gridResizeBound === "1") return;
-          table.dataset.gridResizeBound = "1";
-          table.style.tableLayout = "fixed";
-
-          table.addEventListener("mousemove", function (event) {
-            const cell = event.target && event.target.closest ? event.target.closest("td,th") : null;
-            if (!cell || !table.contains(cell)) return;
-            const rect = cell.getBoundingClientRect();
-            const nearRight = (rect.right - event.clientX) <= 6;
-            const nearBottom = (rect.bottom - event.clientY) <= 6;
-            if (nearRight && nearBottom) {
-              cell.style.cursor = "nwse-resize";
-            } else if (nearRight) {
-              cell.style.cursor = "col-resize";
-            } else if (nearBottom) {
-              cell.style.cursor = "row-resize";
-            } else {
-              cell.style.cursor = "text";
-            }
-          });
-
-          table.addEventListener("mousedown", function (event) {
-            const cell = event.target && event.target.closest ? event.target.closest("td,th") : null;
-            if (!cell || !table.contains(cell) || event.button !== 0) return;
-            const rect = cell.getBoundingClientRect();
-            const nearRight = (rect.right - event.clientX) <= 6;
-            const nearBottom = (rect.bottom - event.clientY) <= 6;
-            if (!nearRight && !nearBottom) return;
-
-            activeTableResize = {
-              table: table,
-              rowIndex: cell.parentElement ? cell.parentElement.rowIndex : -1,
-              colIndex: cell.cellIndex,
-              startX: event.clientX,
-              startY: event.clientY,
-              startWidth: rect.width,
-              startHeight: rect.height,
-              resizeCol: nearRight,
-              resizeRow: nearBottom
-            };
-            event.preventDefault();
-          });
-        }
-
-        document.addEventListener("mousemove", function (event) {
-          if (!activeTableResize) return;
-          const state = activeTableResize;
-          const rows = Array.from(state.table.rows || []);
-          if (!rows.length) return;
-
-          if (state.resizeCol) {
-            const nextWidth = Math.max(40, state.startWidth + (event.clientX - state.startX));
-            rows.forEach(function (row) {
-              const cell = row.cells && row.cells[state.colIndex];
-              if (cell) cell.style.width = `${nextWidth}px`;
-            });
-          }
-
-          if (state.resizeRow && state.rowIndex >= 0) {
-            const nextHeight = Math.max(28, state.startHeight + (event.clientY - state.startY));
-            const row = rows[state.rowIndex];
-            if (row) {
-              Array.from(row.cells || []).forEach(function (cell) {
-                cell.style.height = `${nextHeight}px`;
-              });
-            }
-          }
-        });
-
-        document.addEventListener("mouseup", function () {
-          activeTableResize = null;
-        });
-
-        function bindInteractiveElements() {
-          editorArea.querySelectorAll("img, table, .qp-shape, .qp-icon, .qp-editor-table-wrap").forEach(function (node) {
-            makeInteractive(node);
-          });
-          editorArea.querySelectorAll(".qp-editor-table-wrap, img, .qp-shape, .qp-icon").forEach(function (node) {
-            node.setAttribute("contenteditable", "false");
-          });
-          editorArea.querySelectorAll(".qp-resize-handle, .qp-move-handle").forEach(function (node) {
-            node.setAttribute("contenteditable", "false");
-          });
-          editorArea.querySelectorAll("table").forEach(function (table) {
-            enableTableGridResizing(table);
-          });
-          editorArea.querySelectorAll("table td, table th").forEach(function (cell) {
-            if (!cell.hasAttribute("contenteditable")) {
-              cell.setAttribute("contenteditable", "true");
-            }
-          });
-        }
-
-        function openTableSizeDialog(onCreate) {
-          const overlay = document.createElement("div");
-          overlay.className = "app-modal-overlay";
-          overlay.style.position = "fixed";
-          overlay.style.inset = "0";
-          overlay.style.background = "rgba(12,25,44,0.45)";
-          overlay.style.display = "flex";
-          overlay.style.alignItems = "center";
-          overlay.style.justifyContent = "center";
-          overlay.style.zIndex = "99999";
-          const panel = document.createElement("div");
-          panel.className = "app-modal app-modal--compact";
-          panel.style.width = "min(92vw, 460px)";
-          panel.style.background = "#f5f9fc";
-          panel.style.border = "1px solid #c8d5e2";
-          panel.style.borderRadius = "16px";
-          panel.style.boxShadow = "0 18px 35px rgba(12,25,44,0.28)";
-          panel.style.padding = "18px";
-          panel.innerHTML = `
-            <h3 class="app-modal-title">Insert Table</h3>
-            <p class="app-modal-detail">Set rows and columns for your table.</p>
-            <div class="form-grid">
-              <div class="field-group">
-                <label for="qpTblRows">Rows</label>
-                <input id="qpTblRows" type="number" min="1" value="2">
-              </div>
-              <div class="field-group">
-                <label for="qpTblCols">Columns</label>
-                <input id="qpTblCols" type="number" min="1" value="2">
-              </div>
-            </div>
-            <div class="form-actions">
-              <button type="button" class="table-action-btn" id="qpTblCancel">Cancel</button>
-              <button type="button" class="table-action-btn success" id="qpTblCreate">Create Table</button>
-            </div>
-          `;
-          const titleNode = panel.querySelector(".app-modal-title");
-          if (titleNode) {
-            titleNode.style.margin = "0 0 8px";
-            titleNode.style.fontSize = "1.2rem";
-            titleNode.style.color = "#113350";
-          }
-          const detailNode = panel.querySelector(".app-modal-detail");
-          if (detailNode) {
-            detailNode.style.margin = "0 0 12px";
-            detailNode.style.color = "#4d647e";
-          }
-          overlay.appendChild(panel);
-          document.body.appendChild(overlay);
-          const close = function () {
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+            section: section || "Section A",
+            questionType: qType,
+            marks: parseInt(marks) || 1,
+            questionTitle: qTitle || "",
+            questionHtml: editorHtml,
+            questionText: editorText,
+            options: [],
+            answerLines: 0
           };
-          panel.querySelector("#qpTblCancel").addEventListener("click", close);
-          overlay.addEventListener("click", function (event) {
-            if (event.target === overlay) close();
-          });
-          panel.querySelector("#qpTblCreate").addEventListener("click", function () {
-            const rows = Math.max(1, Number(panel.querySelector("#qpTblRows").value || 2));
-            const cols = Math.max(1, Number(panel.querySelector("#qpTblCols").value || 2));
-            close();
-            onCreate(rows, cols);
-          });
+          if (qType === "mcq") {
+            questionData.options = mcqOptions.filter(function(o) { return String(o).trim() !== ""; });
+            if (questionData.options.length < 2) { openAppMessageBox("MCQ Error", "Please enter at least 2 MCQ options.", "warning"); return; }
+          }
+          if (qType === "fill" || qType === "truefalse") {
+            questionData.options = [fillOpt1.value || "true", fillOpt2.value || "false"];
+          }
+          if (qType === "short" || qType === "long") {
+            questionData.answerLines = parseInt(answerLinesInput.value) || (qType === "short" ? 3 : 6);
+          }
+          settings.questionChapters = settings.questionChapters || [];
+          if (_isEditing && _editingQuestionId) {
+            // UPDATE existing question
+            var existing = settings.questionChapters.find(function(r) { return String(r.id) === String(_editingQuestionId); });
+            if (!existing) { openAppMessageBox("Error", "Question not found for update.", "error"); return; }
+            Object.keys(questionData).forEach(function(k) { existing[k] = questionData[k]; });
+            saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            _isEditing = false;
+            _editingQuestionId = null;
+            sessionStorage.removeItem("sagarsoft_edit_question_id");
+            document.getElementById("qpSaveQuestion").textContent = "Save Question";
+            renderChapterRows();
+            clearEditor();
+            mcqOptions = ["", ""];
+            renderMcqRows();
+            questionTitleInput.value = "";
+            marksInput.value = "";
+            chapterNameInput.value = "";
+            openAppMessageBox("Updated", "Question updated successfully.", "success");
+          } else {
+            // CREATE new question
+            questionData.id = "QC-" + Date.now().toString(36) + "-" + Math.random().toString(36).substr(2, 4);
+            questionData.createdAt = new Date().toISOString();
+            settings.questionChapters.push(questionData);
+            saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+            renderChapterRows();
+            clearEditor();
+            mcqOptions = ["", ""];
+            renderMcqRows();
+            questionTitleInput.value = "";
+            marksInput.value = "";
+            chapterNameInput.value = "";
+            openAppMessageBox("Saved", "Question saved successfully.", "success");
+          }
+        });
+
+        // â”€â”€ MCQ Add/Remove Handlers â”€â”€
+        safeOn(document.getElementById("qpAddMcq"), "click", function() {
+          if (mcqOptions.length >= 8) return;
+          mcqOptions.push("");
+          renderMcqRows();
+        });
+        safeOn(document.getElementById("qpRemoveMcq"), "click", function() {
+          if (mcqOptions.length <= 2) return;
+          mcqOptions.pop();
+          renderMcqRows();
+        });
+
+        // â”€â”€ Document Object Model State Manager â”€â”€
+        var _qeDoc = {
+          objects: new Map(),
+          selectedIds: new Set(),
+          zCounter: 100,
+          interaction: { state: "idle", type: null, startX: 0, startY: 0, objId: null, handle: null, origState: null },
+          clipboard: null,
+          undoStack: [],
+          redoStack: []
+        };
+
+        var _qe = {
+          el: null, toolbar: null, status: null, activePanel: null,
+          selectedEl: null, selectedType: null,
+          contextMenu: null, propsPanel: null,
+          wordFontSizes: [8, 9, 10, 11, 12, 14, 16, 18, 20, 22, 24, 26, 28, 36, 48, 72],
+          fontFamilies: ["Arial", "Calibri", "Times New Roman", "Cambria", "Poppins", "Inter", "Segoe UI", "Georgia", "Courier New", "Verdana", "Noto Nastaliq Urdu", "Jameel Noori Nastaleeq"]
+        };
+
+        function _qeGenId() { return "qeobj-" + Date.now().toString(36) + "-" + Math.random().toString(36).substr(2, 6); }
+
+        function _qeCreateObj(el, type, meta) {
+          var id = el.getAttribute("data-obj-id") || _qeGenId();
+          el.setAttribute("data-obj-id", id);
+          var rect = el.getBoundingClientRect();
+          // Read SVG fill/stroke from existing element for state persistence
+          var svgMeta = meta || {};
+          if (type === "shape" && !meta) {
+            var svg = el.querySelector("svg");
+            if (svg) {
+              var shape = svg.querySelector("rect, circle, ellipse, polygon, line, path, polyline");
+              if (shape) {
+                svgMeta.fill = shape.getAttribute("fill") || "#4fc3f7";
+                svgMeta.stroke = shape.getAttribute("stroke") || "#0277bd";
+                svgMeta.strokeWidth = parseInt(shape.getAttribute("stroke-width")) || 1;
+              }
+            }
+          }
+          // For tables, read actual dimensions from the <table> element, not wrapper
+          var objW, objH;
+          if (type === "table") {
+            var tbl = el.querySelector("table");
+            objW = tbl ? tbl.offsetWidth : (rect.width || 120);
+            objH = tbl ? tbl.offsetHeight : (rect.height || 80);
+          } else {
+            objW = parseInt(el.style.width) || rect.width || 120;
+            objH = parseInt(el.style.height) || rect.height || 80;
+          }
+          var obj = {
+            id: id, el: el, type: type,
+            x: parseInt(el.style.left) || 0,
+            y: parseInt(el.style.top) || 0,
+            w: objW,
+            h: objH,
+            rotation: parseFloat(el.getAttribute("data-rotation")) || 0,
+            zIndex: parseInt(el.style.zIndex) || 100,
+            wrapMode: el.getAttribute("data-wrap") || "inline",
+            selected: false, locked: false,
+            meta: svgMeta
+          };
+          _qeDoc.objects.set(id, obj);
+          return obj;
         }
 
-        function insertAtCursor(html) {
-          editorArea.focus();
-          const selection = window.getSelection ? window.getSelection() : null;
-          if (selection && selection.rangeCount) {
-            const range = selection.getRangeAt(0);
-            range.deleteContents();
-            const temp = document.createElement("div");
-            temp.innerHTML = html;
-            const frag = document.createDocumentFragment();
-            let node = null;
-            let lastNode = null;
-            while ((node = temp.firstChild)) {
-              lastNode = frag.appendChild(node);
-            }
-            range.insertNode(frag);
-            if (lastNode) {
-              range.setStartAfter(lastNode);
-              range.setEndAfter(lastNode);
-              selection.removeAllRanges();
-              selection.addRange(range);
+        function _qeGetObject(el) {
+          var fig = el.closest ? (el.closest(".ss-qe-figure") || el.closest(".ss-qe-float-table")) : null;
+          if (fig) {
+            var id = fig.getAttribute("data-obj-id");
+            if (id && _qeDoc.objects.has(id)) return _qeDoc.objects.get(id);
+            return _qeCreateObj(fig, fig.classList.contains("ss-qe-image-figure") ? "image" : fig.classList.contains("ss-qe-float-table") ? "table" : "shape");
+          }
+          return null;
+        }
+
+        function _qeSyncTransform(id) {
+          var obj = _qeDoc.objects.get(id);
+          if (!obj || !obj.el) return;
+          obj.el.style.position = "relative";
+          obj.el.style.left = obj.x + "px";
+          obj.el.style.top = obj.y + "px";
+          obj.el.style.zIndex = obj.zIndex;
+          // For tables, set <table> element dimensions, not wrapper
+          if (obj.type === "table") {
+            var tbl = obj.el.querySelector("table");
+            if (tbl) {
+              tbl.style.width = obj.w + "px";
+              tbl.style.height = obj.h + "px";
+              obj.el.style.width = "";
+              obj.el.style.height = "";
             }
           } else {
-            editorArea.innerHTML += html;
+            obj.el.style.width = obj.w + "px";
+            obj.el.style.height = obj.h + "px";
           }
-          bindInteractiveElements();
-        }
-
-        function openGlyphPicker(title, categories, className) {
-          const overlay = document.createElement("div");
-          overlay.style.position = "fixed";
-          overlay.style.inset = "0";
-          overlay.style.background = "rgba(15, 39, 72, 0.22)";
-          overlay.style.zIndex = "9999";
-          const panel = document.createElement("div");
-          panel.style.position = "absolute";
-          panel.style.left = "50%";
-          panel.style.top = "50%";
-          panel.style.transform = "translate(-50%, -50%)";
-          panel.style.width = "min(980px, 96vw)";
-          panel.style.height = "min(76vh, 740px)";
-          panel.style.background = "#fff";
-          panel.style.borderRadius = "10px";
-          panel.style.padding = "12px";
-          panel.style.boxShadow = "0 16px 42px rgba(12, 28, 48, 0.28)";
-          panel.style.display = "grid";
-          panel.style.gridTemplateRows = "auto 1fr";
-          panel.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><strong style="font-size:1rem;">${escapeHtml(title)}</strong><button id="qpClosePicker" class="table-action-btn" type="button">Close</button></div>`;
-          const shell = document.createElement("div");
-          shell.style.display = "grid";
-          shell.style.gridTemplateColumns = "240px minmax(0,1fr)";
-          shell.style.gap = "0";
-          shell.style.border = "1px solid #d4dbe6";
-          shell.style.borderRadius = "8px";
-          shell.style.overflow = "hidden";
-          const sidebar = document.createElement("aside");
-          sidebar.style.background = "#f7f7f7";
-          sidebar.style.borderRight = "1px solid #d7dce6";
-          sidebar.style.overflowY = "auto";
-          const body = document.createElement("section");
-          body.style.background = "#fff";
-          body.style.overflowY = "auto";
-          body.style.padding = "10px";
-          let activeCategory = null;
-          function setActiveButton(btn) {
-            Array.from(sidebar.querySelectorAll("button")).forEach(function (node) {
-              node.style.background = "transparent";
-              node.style.borderLeft = "3px solid transparent";
-              node.style.fontWeight = "500";
-            });
-            if (btn) {
-              btn.style.background = "#ffffff";
-              btn.style.borderLeft = "3px solid #1f2f45";
-              btn.style.fontWeight = "700";
+          if (obj.rotation) {
+            obj.el.style.transform = "rotate(" + obj.rotation + "deg)";
+          } else {
+            obj.el.style.transform = "";
+          }
+          // Shape SVGs: fill container and preserve aspect ratio via viewBox
+          var svg = obj.el.querySelector("svg");
+          if (svg && obj.type !== "image") {
+            svg.style.width = "100%";
+            svg.style.height = "100%";
+            svg.style.display = "block";
+            svg.style.position = "absolute";
+            svg.style.top = "0";
+            svg.style.left = "0";
+            svg.style.pointerEvents = "none";
+            // Ensure figure-inner is positioned for absolute SVG and text editor
+            var inner = obj.el.querySelector(".ss-qe-figure-inner");
+            if (inner) {
+              inner.style.width = "100%";
+              inner.style.height = "100%";
+              inner.style.position = "relative";
+              inner.style.display = "block";
+              inner.style.overflow = "hidden";
             }
           }
-          function renderCategory(catKey) {
-            body.innerHTML = "";
-            activeCategory = catKey;
-            const list = categories[catKey] || [];
-            const titleNode = document.createElement("div");
-            titleNode.style.margin = "2px 2px 10px";
-            titleNode.style.color = "#4f5f78";
-            titleNode.style.fontSize = "0.9rem";
-            titleNode.textContent = `${catKey} (${list.length})`;
-            body.appendChild(titleNode);
-            const grid = document.createElement("div");
-            grid.style.display = "grid";
-            grid.style.gridTemplateColumns = "repeat(auto-fill, minmax(58px, 1fr))";
-            grid.style.gap = "10px";
-            list.forEach(function (glyph) {
-              const isImageItem = (typeof glyph === "object" && glyph && glyph.src) || (typeof glyph === "string" && String(glyph).startsWith("data:image/"));
-              const glyphSrc = typeof glyph === "object" && glyph ? String(glyph.src || "") : (isImageItem ? String(glyph) : "");
-              const glyphText = typeof glyph === "object" && glyph ? String(glyph.label || glyph.name || "") : String(glyph || "");
-              const btn = document.createElement("button");
-              btn.type = "button";
-              btn.className = "table-action-btn icon-cell";
-              btn.style.fontSize = isImageItem ? "14px" : "24px";
-              btn.style.minHeight = "46px";
-              btn.style.padding = "8px 6px";
-              if (isImageItem) {
-                const img = document.createElement("img");
-                img.src = glyphSrc;
-                img.alt = glyphText || "item";
-                img.style.maxWidth = "36px";
-                img.style.maxHeight = "36px";
-                img.style.objectFit = "contain";
-                btn.appendChild(img);
-              } else {
-                btn.textContent = glyphText;
+          // Images: fill container
+          if (obj.type === "image") {
+            var img = obj.el.querySelector("img");
+            if (img) { img.style.width = "100%"; img.style.height = "100%"; img.style.objectFit = "contain"; }
+            var inner = obj.el.querySelector(".ss-qe-figure-inner");
+            if (inner) {
+              inner.style.width = "100%";
+              inner.style.height = "100%";
+            }
+          }
+          // Tables: set actual table dimensions from object
+          if (obj.type === "table") {
+            var tbl = obj.el.querySelector("table");
+            if (tbl) {
+              tbl.style.width = obj.w + "px";
+              if (obj.h) tbl.style.height = obj.h + "px";
+              tbl.style.borderCollapse = "collapse";
+            }
+            // Wrapper adapts to table â€” no fixed width/height on wrapper
+            obj.el.style.width = "";
+            obj.el.style.height = "";
+          }
+        }
+
+        function _qeApplyWrapMode(id) {
+          var obj = _qeDoc.objects.get(id);
+          if (!obj || !obj.el) return;
+          var el = obj.el;
+          el.style.float = "";
+          el.style.position = "relative";
+          el.style.display = "";
+          el.style.clear = "";
+          el.style.margin = "8px 4px";
+          el.style.zIndex = obj.zIndex;
+          switch (obj.wrapMode) {
+            case "square": el.style.float = "left"; el.style.margin = "8px 12px 8px 0"; break;
+            case "tight": el.style.float = "left"; el.style.margin = "4px 6px 4px 0"; break;
+            case "topBottom": el.style.display = "block"; el.style.clear = "both"; el.style.margin = "8px auto"; break;
+            case "behind": el.style.position = "relative"; el.style.zIndex = 0; break;
+            case "front": el.style.position = "relative"; el.style.zIndex = 99999; break;
+            case "through": el.style.float = "left"; el.style.margin = "4px 6px 4px 0"; break;
+            default: break;
+          }
+        }
+
+        function _qeExec(cmd, val) {
+          // Save current selection before any DOM manipulation
+          var sel = window.getSelection();
+          var savedRanges = [];
+          if (sel && sel.rangeCount) { for (var i = 0; i < sel.rangeCount; i++) savedRanges.push(sel.getRangeAt(i).cloneRange()); }
+          _qe.el && _qe.el.focus();
+          // Restore selection if it was lost
+          if (savedRanges.length && sel && (!sel.rangeCount || sel.isCollapsed)) {
+            sel.removeAllRanges();
+            savedRanges.forEach(function(r) { sel.addRange(r); });
+          }
+          document.execCommand(cmd, false, val || null);
+          _qeUpdateStatus();
+          _qeUpdateToolbar();
+        }
+
+        function _qeInsertHTML(html) {
+          if (!_qe.el) return;
+          _qe.el.focus();
+          _qeDeselectAll();
+          document.execCommand("insertHTML", false, html);
+          _qeUpdateStatus();
+          setTimeout(function() { _qeWireAllObjects(); }, 0);
+        }
+
+        function _qeGetHTML() {
+          if (!_qe.el) return "";
+          var clone = _qe.el.cloneNode(true);
+          // Remove all editing UI elements
+          clone.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize, .ss-qe-figure-controls, .ss-qe-image-controls, .ss-qe-crop-overlay, .ss-qe-selection-box, .ss-qe-props-panel, .ss-qe-context-menu, .ss-qe-color-popup, .ss-qe-marquee-box").forEach(function(el) { el.remove(); });
+          // Remove selection classes
+          clone.querySelectorAll(".ss-qe-selected, .ss-qe-table-selected, .ss-qe-text-edit-mode, .ss-qe-marquee-highlight").forEach(function(el) {
+            el.classList.remove("ss-qe-selected", "ss-qe-table-selected", "ss-qe-text-edit-mode", "ss-qe-marquee-highlight");
+          });
+          // Remove editing attributes
+          clone.querySelectorAll("[data-obj-id]").forEach(function(el) { el.removeAttribute("data-obj-id"); });
+          clone.querySelectorAll("[data-wired], [data-drag-wired]").forEach(function(el) { el.removeAttribute("data-wired"); el.removeAttribute("data-drag-wired"); });
+          clone.querySelectorAll("[contenteditable]").forEach(function(el) { el.removeAttribute("contenteditable"); });
+          clone.querySelectorAll("[draggable]").forEach(function(el) { el.removeAttribute("draggable"); });
+          // Remove editing-related inline styles
+          clone.querySelectorAll("[style]").forEach(function(el) {
+            var style = el.getAttribute("style");
+            if (style) {
+              style = style.replace(/outline[^;]*;?/gi, "");
+              style = style.replace(/box-shadow[^;]*;?/gi, "");
+              style = style.replace(/cursor[^;]*;?/gi, "");
+              el.setAttribute("style", style);
+            }
+          });
+          return clone.innerHTML;
+        }
+        function _qeGetText() { return _qe.el ? _qe.el.innerText : ""; }
+        function _qeClear() {
+          if (_qe.el) {
+            _qe.el.innerHTML = "<p><br></p>";
+            _qeDeselectAll();
+            _qeDoc.objects.clear();
+            _qeDoc.zCounter = 100;
+            _qeUpdateStatus();
+          }
+        }
+
+        function _qeUpdateStatus() {
+          if (!_qe.status || !_qe.el) return;
+          var txt = _qe.el.innerText || "";
+          var words = txt.trim() ? txt.trim().split(/\s+/).length : 0;
+          _qe.status.textContent = words + " words | " + txt.length + " chars";
+        }
+
+        function _qeUpdateToolbar() {
+          if (!_qe.toolbar) return;
+          _qe.toolbar.querySelectorAll("[data-cmd]").forEach(function(b) {
+            var cmd = b.getAttribute("data-cmd");
+            if (["bold","italic","underline","strikethrough","superscript","subscript","justifyLeft","justifyCenter","justifyRight","justifyFull","insertUnorderedList","insertOrderedList"].indexOf(cmd) >= 0) {
+              try { b.classList.toggle("ss-qe-active", document.queryCommandState(cmd)); } catch(e){}
+            }
+          });
+        }
+
+        function _qeClosePanels() {
+          document.querySelectorAll(".ss-qe-shapes-panel,.ss-qe-table-panel,.ss-qe-equation-panel,.ss-qe-color-panel,.ss-qe-spchar-panel").forEach(function(p){ p.style.display = "none"; });
+          _qe.activePanel = null;
+        }
+
+        function _qeShowPanel(panelEl, anchorEl) {
+          if (_qe.activePanel === panelEl) { panelEl.style.display = "none"; _qe.activePanel = null; return; }
+          _qeClosePanels();
+          panelEl.style.display = "block";
+          _qe.activePanel = panelEl;
+          if (anchorEl) {
+            var rect = anchorEl.getBoundingClientRect();
+            var pRect = anchorEl.closest(".ss-qe").getBoundingClientRect();
+            panelEl.style.top = (rect.bottom - pRect.top + 4) + "px";
+            panelEl.style.left = Math.max(0, Math.min(rect.left - pRect.left, pRect.width - panelEl.offsetWidth - 8)) + "px";
+          }
+        }
+
+        // â”€â”€ Selection System â”€â”€
+        function _qeSelect(el, type) {
+          // Exit text edit mode if selecting a different object
+          if (_qeTextEditActive && _qeTextEditTarget && !el.contains(_qeTextEditTarget)) {
+            _qeExitTextEditMode();
+          }
+          _qeDeselectAll();
+          if (!el) return;
+          _qe.selectedEl = el;
+          _qe.selectedType = type;
+          el.classList.add("ss-qe-selected");
+          var obj = _qeGetObject(el);
+          if (obj) {
+            _qeDoc.selectedIds.add(obj.id);
+            obj.selected = true;
+          }
+          if (type === "image") {
+            var ic = el.querySelector(".ss-qe-image-controls");
+            if (ic) ic.style.display = "flex";
+          }
+          if (type === "table") el.classList.add("ss-qe-table-selected");
+          // Properties panel only opens via right-click context menu
+        }
+
+        function _qeDeselectAll() {
+          if (_qe.selectedEl) {
+            _qe.selectedEl.classList.remove("ss-qe-selected", "ss-qe-table-selected");
+            var ic = _qe.selectedEl.querySelector(".ss-qe-image-controls");
+            if (ic) ic.style.display = "none";
+            var obj = _qeGetObject(_qe.selectedEl);
+            if (obj) { obj.selected = false; _qeDoc.selectedIds.delete(obj.id); }
+          }
+          _qe.selectedEl = null;
+          _qe.selectedType = null;
+          _qeDoc.selectedIds.clear();
+          _qeHidePropsPanel();
+        }
+
+        // â”€â”€ Properties Panel â”€â”€
+        function _qeShowPropsPanel() {
+          _qeHidePropsPanel();
+          if (!_qe.selectedEl || !_qe.selectedType) return;
+          var obj = _qeGetObject(_qe.selectedEl);
+          if (!obj) return;
+          var panel = document.createElement("div");
+          panel.className = "ss-qe-props-panel";
+          var html = '<div class="ss-qe-props-header">' + (obj.type.charAt(0).toUpperCase() + obj.type.slice(1)) + ' Properties</div>';
+          if (obj.type === "image") {
+            html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Height</label><input type="number" data-prop="h" value="' + Math.round(obj.h) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Rotation</label><input type="number" data-prop="rotation" value="' + Math.round(obj.rotation) + '" step="15"></div>';
+            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="tight"' + (obj.wrapMode === "tight" ? " selected" : "") + '>Tight</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option><option value="behind"' + (obj.wrapMode === "behind" ? " selected" : "") + '>Behind Text</option><option value="front"' + (obj.wrapMode === "front" ? " selected" : "") + '>In Front</option><option value="through"' + (obj.wrapMode === "through" ? " selected" : "") + '>Through</option></select></div>';
+            html += '<div class="ss-qe-props-row"><label>Transparency</label><input type="range" data-prop="opacity" min="0" max="100" value="' + ((obj.meta.opacity || 1) * 100) + '" style="flex:1;"></div>';
+          } else if (obj.type === "shape") {
+            html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Height</label><input type="number" data-prop="h" value="' + Math.round(obj.h) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Rotation</label><input type="number" data-prop="rotation" value="' + Math.round(obj.rotation) + '" step="15"></div>';
+            html += '<div class="ss-qe-props-row"><label>Fill</label><input type="color" data-prop="fill" value="' + (obj.meta.fill || "#4fc3f7") + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Stroke</label><input type="color" data-prop="stroke" value="' + (obj.meta.stroke || "#0277bd") + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Stroke W</label><input type="number" data-prop="strokeWidth" value="' + (obj.meta.strokeWidth || 1) + '" min="0" max="20"></div>';
+            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="tight"' + (obj.wrapMode === "tight" ? " selected" : "") + '>Tight</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option><option value="behind"' + (obj.wrapMode === "behind" ? " selected" : "") + '>Behind Text</option><option value="front"' + (obj.wrapMode === "front" ? " selected" : "") + '>In Front</option><option value="through"' + (obj.wrapMode === "through" ? " selected" : "") + '>Through</option></select></div>';
+          } else if (obj.type === "table") {
+            html += '<div class="ss-qe-props-row"><label>Width</label><input type="number" data-prop="w" value="' + Math.round(obj.w) + '"></div>';
+            html += '<div class="ss-qe-props-row"><label>Wrap</label><select data-prop="wrapMode"><option value="inline"' + (obj.wrapMode === "inline" ? " selected" : "") + '>Inline</option><option value="square"' + (obj.wrapMode === "square" ? " selected" : "") + '>Square</option><option value="topBottom"' + (obj.wrapMode === "topBottom" ? " selected" : "") + '>Top & Bottom</option></select></div>';
+          }
+          html += '<div class="ss-qe-props-row"><label>Layer</label><div style="display:flex;gap:4px;flex:1;"><button class="ss-qe-props-btn" data-action="bringFwd" style="flex:1;padding:3px 6px;border:1px solid #dde4ea;border-radius:4px;cursor:pointer;font-size:10px;">Forward</button><button class="ss-qe-props-btn" data-action="sendBwd" style="flex:1;padding:3px 6px;border:1px solid #dde4ea;border-radius:4px;cursor:pointer;font-size:10px;">Backward</button></div></div>';
+          panel.innerHTML = html;
+          document.body.appendChild(panel);
+          _qe.propsPanel = panel;
+          var selRect = _qe.selectedEl.getBoundingClientRect();
+          panel.style.top = (selRect.top) + "px";
+          panel.style.left = (selRect.right + 8) + "px";
+          if (selRect.right + 8 + 240 > window.innerWidth) {
+            panel.style.left = (selRect.left - 248) + "px";
+          }
+          panel.querySelectorAll("[data-prop]").forEach(function(inp) {
+            var prop = inp.getAttribute("data-prop");
+            safeOn(inp, "input", function() {
+              if (prop === "w") { obj.w = Math.max(40, parseInt(inp.value) || 40); _qeSyncTransform(obj.id); }
+              else if (prop === "h") { obj.h = Math.max(20, parseInt(inp.value) || 20); _qeSyncTransform(obj.id); }
+              else if (prop === "rotation") { obj.rotation = parseInt(inp.value) || 0; _qeSyncTransform(obj.id); }
+              else if (prop === "wrapMode") { obj.wrapMode = inp.value; _qeApplyWrapMode(obj.id); }
+              else if (prop === "fill") { obj.meta.fill = inp.value; _qeUpdateShapeStyle(obj); }
+              else if (prop === "stroke") { obj.meta.stroke = inp.value; _qeUpdateShapeStyle(obj); }
+              else if (prop === "strokeWidth") { obj.meta.strokeWidth = parseInt(inp.value) || 1; _qeUpdateShapeStyle(obj); }
+              else if (prop === "opacity") { obj.meta.opacity = parseInt(inp.value) / 100; obj.el.style.opacity = obj.meta.opacity; }
+            });
+          });
+          panel.querySelectorAll("[data-action]").forEach(function(btn) {
+            safeOn(btn, "click", function() {
+              var action = btn.getAttribute("data-action");
+              if (action === "bringFwd") { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); }
+              else if (action === "sendBwd") { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); }
+            });
+          });
+        }
+
+        function _qeHidePropsPanel() {
+          if (_qe.propsPanel) { _qe.propsPanel.remove(); _qe.propsPanel = null; }
+        }
+
+        function _qeUpdateShapeStyle(obj) {
+          if (!obj.el) return;
+          var svg = obj.el.querySelector("svg");
+          if (!svg) return;
+          var shapes = svg.querySelectorAll("rect, circle, ellipse, polygon, line, path, polyline");
+          shapes.forEach(function(shape) {
+            if (obj.meta.fill) shape.setAttribute("fill", obj.meta.fill);
+            if (obj.meta.stroke) shape.setAttribute("stroke", obj.meta.stroke);
+            if (obj.meta.strokeWidth) shape.setAttribute("stroke-width", obj.meta.strokeWidth);
+          });
+          if (obj.meta.opacity !== undefined) {
+            obj.el.style.opacity = obj.meta.opacity;
+          }
+        }
+
+        // â”€â”€ Context Menu System â”€â”€
+        function _qeShowContextMenu(e, type, el, extra) {
+          e.preventDefault();
+          e.stopPropagation();
+          _qeHideContextMenu();
+          var menu = document.createElement("div");
+          menu.className = "ss-qe-context-menu";
+          var items = [];
+          if (type === "image") {
+            items = [
+              { label: "Wrap Text", submenu: [
+                { label: "Inline", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "inline"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Square", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "square"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Tight", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "tight"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Behind Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "behind"; _qeApplyWrapMode(obj.id); } } },
+                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Through", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "through"; _qeApplyWrapMode(obj.id); } } }
+              ]},
+              { label: "Replace", fn: function() { document.getElementById("ssQEImgInput").click(); } },
+              { label: "Crop", fn: function() { _qeStartCrop(el); } },
+              "---",
+              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Bring To Front", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 99999; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send To Back", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 1; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              "---",
+              { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
+              { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
+            ];
+          } else if (type === "shape") {
+            var isTextBox = el.querySelector(".ss-qe-shape-text-editor") !== null;
+            items = [
+              { label: "Wrap Text", submenu: [
+                { label: "Inline", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "inline"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Square", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "square"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Tight", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "tight"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Behind Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "behind"; _qeApplyWrapMode(obj.id); } } },
+                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Through", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "through"; _qeApplyWrapMode(obj.id); } } }
+              ]},
+              { label: "Edit Text", fn: function() { var txt = el.querySelector(".ss-qe-shape-text-editor"); if (txt) _qeEnterTextEditMode(el, txt); } },
+              "---",
+              { label: "Cut", fn: function() { _qeDoc.clipboard = { html: el.outerHTML, type: "shape" }; var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } },
+              { label: "Copy", fn: function() { _qeDoc.clipboard = { html: el.outerHTML, type: "shape" }; } },
+              { label: "Paste", fn: function() { if (_qeDoc.clipboard) _qeInsertHTML(_qeDoc.clipboard.html); } },
+              { label: "Duplicate", fn: function() { _qeDuplicateObject(el); } },
+              "---",
+              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Bring To Front", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 99999; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send To Back", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 1; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              "---",
+              { label: "Fill Color", fn: function(e) { var obj = _qeGetObject(el); var cur = (obj && obj.meta.fill) || "#4fc3f7"; _qeShowColorPopup(e, "Fill Color", cur, function(color) { if (obj) { obj.meta.fill = color; _qeUpdateShapeStyle(obj); } }); } },
+              { label: "Border Color", fn: function(e) { var obj = _qeGetObject(el); var cur = (obj && obj.meta.stroke) || "#0277bd"; _qeShowColorPopup(e, "Border Color", cur, function(color) { if (obj) { obj.meta.stroke = color; _qeUpdateShapeStyle(obj); } }); } },
+              { label: "Border Width", fn: function() { var obj = _qeGetObject(el); var cur = (obj && obj.meta.strokeWidth) || 1; _qeShowInputPopup({ title: "Border Width", defaultValue: cur, unit: "px", min: 0, max: 50, onApply: function(v) { if (obj) { obj.meta.strokeWidth = v; _qeUpdateShapeStyle(obj); } } }); } },
+              "---",
+              { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
+              { label: "Delete", fn: function() { if (el) { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); } }, cls: "danger" }
+            ];
+          } else if (type === "table") {
+            var tbl = el.querySelector("table") || el;
+            items = [
+              { label: "Wrap Text", submenu: [
+                { label: "Inline", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "inline"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Square", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "square"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Top & Bottom", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "topBottom"; _qeApplyWrapMode(obj.id); } } },
+                { label: "Behind Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "behind"; _qeApplyWrapMode(obj.id); } } },
+                { label: "In Front of Text", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.wrapMode = "front"; _qeApplyWrapMode(obj.id); } } }
+              ]},
+              "---",
+              { label: "Bring Forward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Bring To Front", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 99999; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send Backward", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              { label: "Send To Back", fn: function() { var obj = _qeGetObject(el); if (obj) { obj.zIndex = 1; _qeSyncTransform(obj.id); _qeApplyWrapMode(obj.id); } } },
+              "---",
+              { label: "Insert Row Above", fn: function() { _qeTableInsertRow(tbl, false); } },
+              { label: "Insert Row Below", fn: function() { _qeTableInsertRow(tbl, true); } },
+              { label: "Insert Column Left", fn: function() { _qeTableInsertCol(tbl, false); } },
+              { label: "Insert Column Right", fn: function() { _qeTableInsertCol(tbl, true); } },
+              "---",
+              { label: "Delete Row", fn: function() { if (extra) _qeTableDeleteRow(tbl, extra.closest("tr")); } },
+              { label: "Delete Column", fn: function() { if (extra) _qeTableDeleteCol(tbl, extra); } },
+              "---",
+              { label: "Properties", fn: function() { _qeShowPropsPanel(); } },
+              { label: "Delete Table", fn: function() { var obj = _qeGetObject(el); if (obj) _qeDoc.objects.delete(obj.id); el.remove(); _qeDeselectAll(); }, cls: "danger" }
+            ];
+          }
+          items.forEach(function(item) {
+            if (item.label === "---") {
+              var sep = document.createElement("div");
+              sep.className = "ss-qe-context-menu-sep";
+              menu.appendChild(sep);
+              return;
+            }
+            var btn = document.createElement("button");
+            btn.className = "ss-qe-context-menu-item" + (item.cls ? " " + item.cls : "");
+            btn.textContent = item.label;
+            if (item.submenu) {
+              btn.classList.add("ss-qe-context-menu-sub");
+              var sub = document.createElement("div");
+              sub.className = "ss-qe-context-menu-submenu";
+              item.submenu.forEach(function(si) {
+                var sb = document.createElement("button");
+                sb.className = "ss-qe-context-menu-item";
+                sb.textContent = si.label;
+                safeOn(sb, "click", function(ev) { ev.stopPropagation(); _qeHideContextMenu(); si.fn(); });
+                sub.appendChild(sb);
+              });
+              btn.appendChild(sub);
+            }
+            if (item.fn) safeOn(btn, "click", function(ev) { ev.stopPropagation(); _qeHideContextMenu(); item.fn(ev); });
+            menu.appendChild(btn);
+          });
+          document.body.appendChild(menu);
+          menu.style.left = e.clientX + "px";
+          menu.style.top = e.clientY + "px";
+          if (e.clientX + 200 > window.innerWidth) menu.style.left = (e.clientX - 200) + "px";
+          if (e.clientY + menu.offsetHeight > window.innerHeight) menu.style.top = (e.clientY - menu.offsetHeight) + "px";
+          _qe.contextMenu = menu;
+          setTimeout(function() {
+            safeOn(document, "mousedown", function handler(ev) {
+              if (_qe.contextMenu && !_qe.contextMenu.contains(ev.target)) { _qeHideContextMenu(); }
+              document.removeEventListener("mousedown", handler);
+            });
+          }, 10);
+        }
+
+        function _qeHideContextMenu() {
+          if (_qe.contextMenu) { _qe.contextMenu.remove(); _qe.contextMenu = null; }
+        }
+
+        // â”€â”€ Color Picker Popup (for context menu) â”€â”€
+        function _qeShowColorPopup(e, title, currentColor, onApply) {
+          _qeHideContextMenu();
+          var popup = document.createElement("div");
+          popup.className = "ss-qe-color-popup";
+          var presets = ["#4fc3f7","#0277bd","#ffffff","#000000","#ff0000","#ff9800","#ffeb3b","#4caf50","#2196f3","#9c27b0","#795548","#607d8b"];
+          var html = '<div class="ss-qe-color-popup-header">' + title + '</div>';
+          html += '<div class="ss-qe-color-popup-row"><input type="color" class="ss-qe-color-popup-input" value="' + (currentColor || "#4fc3f7") + '"><input type="text" class="ss-qe-color-popup-hex" value="' + (currentColor || "#4fc3f7") + '" maxlength="7"></div>';
+          html += '<div class="ss-qe-color-popup-presets">';
+          presets.forEach(function(c) { html += '<button type="button" class="ss-qe-color-popup-swatch" data-color="' + c + '" style="background:' + c + ';"></button>'; });
+          html += '</div>';
+          html += '<div class="ss-qe-color-popup-actions"><button type="button" class="ss-qe-color-popup-apply">Apply</button><button type="button" class="ss-qe-color-popup-cancel">Cancel</button></div>';
+          popup.innerHTML = html;
+          document.body.appendChild(popup);
+          var colorInput = popup.querySelector(".ss-qe-color-popup-input");
+          var hexInput = popup.querySelector(".ss-qe-color-popup-hex");
+          colorInput.addEventListener("input", function() { hexInput.value = colorInput.value; });
+          hexInput.addEventListener("input", function() { if (/^#[0-9a-f]{6}$/i.test(hexInput.value)) colorInput.value = hexInput.value; });
+          popup.querySelectorAll(".ss-qe-color-popup-swatch").forEach(function(sw) {
+            sw.addEventListener("click", function() {
+              var c = sw.getAttribute("data-color");
+              colorInput.value = c;
+              hexInput.value = c;
+            });
+          });
+          popup.querySelector(".ss-qe-color-popup-apply").addEventListener("click", function() {
+            onApply(hexInput.value);
+            popup.remove();
+          });
+          popup.querySelector(".ss-qe-color-popup-cancel").addEventListener("click", function() { popup.remove(); });
+          // Position at cursor
+          var px = e.clientX || (e.originalEvent && e.originalEvent.clientX) || 100;
+          var py = e.clientY || (e.originalEvent && e.originalEvent.clientY) || 100;
+          popup.style.left = px + "px";
+          popup.style.top = py + "px";
+          if (px + 220 > window.innerWidth) popup.style.left = (px - 220) + "px";
+          if (py + 200 > window.innerHeight) popup.style.top = (py - 200) + "px";
+          // Close on outside click
+          setTimeout(function() {
+            document.addEventListener("mousedown", function handler(ev) {
+              if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener("mousedown", handler); }
+            });
+          }, 10);
+        }
+
+        function _qeShowInputPopup(opts) {
+          _qeHideContextMenu();
+          var popup = document.createElement("div");
+          popup.className = "ss-qe-color-popup";
+          var html = '<div class="ss-qe-color-popup-header">' + (opts.title || "Input") + '</div>';
+          html += '<div class="ss-qe-color-popup-row"><input type="number" class="ss-qe-color-popup-hex" value="' + (opts.defaultValue || 0) + '" min="' + (opts.min || 0) + '" max="' + (opts.max || 999) + '" style="width:100%;"> ' + (opts.unit || "") + '</div>';
+          html += '<div class="ss-qe-color-popup-actions"><button type="button" class="ss-qe-color-popup-apply">Apply</button><button type="button" class="ss-qe-color-popup-cancel">Cancel</button></div>';
+          popup.innerHTML = html;
+          document.body.appendChild(popup);
+          var inp = popup.querySelector("input");
+          popup.querySelector(".ss-qe-color-popup-apply").addEventListener("click", function() {
+            var v = parseFloat(inp.value);
+            if (!isNaN(v)) opts.onApply(v);
+            popup.remove();
+          });
+          popup.querySelector(".ss-qe-color-popup-cancel").addEventListener("click", function() { popup.remove(); });
+          popup.style.left = "50%";
+          popup.style.top = "50%";
+          popup.style.transform = "translate(-50%, -50%)";
+          inp.focus();
+          inp.select();
+          setTimeout(function() {
+            document.addEventListener("mousedown", function handler(ev) {
+              if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener("mousedown", handler); }
+            });
+          }, 10);
+        }
+
+        function _qeShowUrlPopup(title, defaultUrl, onApply) {
+          _qeHideContextMenu();
+          var popup = document.createElement("div");
+          popup.className = "ss-qe-color-popup";
+          var html = '<div class="ss-qe-color-popup-header">' + (title || "URL") + '</div>';
+          html += '<div class="ss-qe-color-popup-row"><input type="url" class="ss-qe-color-popup-hex" value="' + (defaultUrl || "") + '" placeholder="https://" style="width:100%;"></div>';
+          html += '<div class="ss-qe-color-popup-actions"><button type="button" class="ss-qe-color-popup-apply">Apply</button><button type="button" class="ss-qe-color-popup-cancel">Cancel</button></div>';
+          popup.innerHTML = html;
+          document.body.appendChild(popup);
+          var inp = popup.querySelector("input");
+          popup.querySelector(".ss-qe-color-popup-apply").addEventListener("click", function() {
+            var v = (inp.value || "").trim();
+            if (v) onApply(v);
+            popup.remove();
+          });
+          popup.querySelector(".ss-qe-color-popup-cancel").addEventListener("click", function() { popup.remove(); });
+          popup.style.left = "50%";
+          popup.style.top = "50%";
+          popup.style.transform = "translate(-50%, -50%)";
+          inp.focus();
+          inp.select();
+          setTimeout(function() {
+            document.addEventListener("mousedown", function handler(ev) {
+              if (!popup.contains(ev.target)) { popup.remove(); document.removeEventListener("mousedown", handler); }
+            });
+          }, 10);
+        }
+
+        // â”€â”€ Text Edit Mode â”€â”€
+        var _qeTextEditActive = false;
+        var _qeTextEditTarget = null;
+
+        function _qeEnterTextEditMode(fig, txt) {
+          _qeTextEditActive = true;
+          _qeTextEditTarget = txt;
+          txt.setAttribute("contenteditable", "true");
+          txt.style.cursor = "text";
+          txt.focus();
+          // Select all text in the editor
+          var range = document.createRange();
+          range.selectNodeContents(txt);
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          // Add visual indicator
+          fig.classList.add("ss-qe-text-edit-mode");
+          // Listen for click outside to exit edit mode
+          setTimeout(function() {
+            safeOn(document, "mousedown", function handler(ev) {
+              if (!fig.contains(ev.target)) {
+                _qeExitTextEditMode();
+                document.removeEventListener("mousedown", handler);
               }
-              btn.addEventListener("click", function () {
-                if (isImageItem) {
-                  insertAtCursor(`<img class="${className}" src="${escapeAttr(glyphSrc)}" alt="${escapeAttr(glyphText || "item")}" style="max-width:100%;width:180px;height:auto;">`);
-                } else {
-                  const safe = escapeHtml(glyphText);
-                  insertAtCursor(`<span class="${className}" style="font-size:24px;line-height:1.2;">${safe}</span>`);
+            });
+          }, 10);
+        }
+
+        function _qeExitTextEditMode() {
+          if (!_qeTextEditActive || !_qeTextEditTarget) return;
+          _qeTextEditTarget.setAttribute("contenteditable", "false");
+          _qeTextEditTarget.style.cursor = "";
+          if (_qeTextEditTarget.closest(".ss-qe-figure")) {
+            _qeTextEditTarget.closest(".ss-qe-figure").classList.remove("ss-qe-text-edit-mode");
+          }
+          _qeTextEditActive = false;
+          _qeTextEditTarget = null;
+        }
+
+        // â”€â”€ Object Manipulation â”€â”€
+        function _qeSetupObjectDrag(el) {
+          if (el.getAttribute("data-drag-wired")) return;
+          el.setAttribute("data-drag-wired", "1");
+          el.setAttribute("draggable", "false");
+          var startX, startY, startObjX, startObjY, isDragging = false;
+          safeOn(el, "mousedown", function(e) {
+            if (e.target.classList.contains("ss-qe-resize-handle") || e.target.classList.contains("ss-qe-rotate-handle") || e.target.classList.contains("ss-qe-fc-btn") || e.target.tagName === "BUTTON" || e.target.closest("button") || e.target.closest(".ss-qe-table-move-handle") || e.target.closest(".ss-qe-table-resize-handle") || e.target.closest(".ss-qe-col-resize") || e.target.closest(".ss-qe-row-resize")) return;
+            e.preventDefault();
+            e.stopPropagation();
+            var fig = e.target.closest(".ss-qe-figure");
+            var tbl = e.target.closest(".ss-qe-float-table");
+            if (fig) {
+              var type = fig.classList.contains("ss-qe-image-figure") ? "image" : "shape";
+              _qeSelect(fig, type);
+            } else if (tbl) {
+              _qeSelect(tbl, "table");
+            } else {
+              _qeSelect(el, _qe.selectedType || "shape");
+            }
+            var obj = _qeGetObject(el);
+            if (!obj) return;
+            _qeDoc.interaction = { state: "dragging", type: obj.type, startX: e.clientX, startY: e.clientY, objId: obj.id, origState: { x: obj.x, y: obj.y } };
+            startX = e.clientX;
+            startY = e.clientY;
+            startObjX = obj.x;
+            startObjY = obj.y;
+            isDragging = false;
+            function onMove(ev) {
+              var dx = ev.clientX - startX, dy = ev.clientY - startY;
+              if (Math.abs(dx) > 2 || Math.abs(dy) > 2) isDragging = true;
+              if (!isDragging) return;
+              obj.x = startObjX + dx;
+              obj.y = startObjY + dy;
+              obj.el.style.position = "relative";
+              _qeSyncTransform(obj.id);
+            }
+            function onUp() {
+              isDragging = false;
+              _qeDoc.interaction.state = "idle";
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        function _qeSetupResizeHandles(el) {
+          if (el.querySelector(".ss-qe-resize-handle")) return;
+          ["nw","ne","sw","se","n","s","e","w"].forEach(function(pos) {
+            var h = document.createElement("div");
+            h.className = "ss-qe-resize-handle ss-qe-rh-" + pos;
+            h.setAttribute("data-handle", pos);
+            safeOn(h, "mousedown", function(e) {
+              e.preventDefault(); e.stopPropagation();
+              var obj = _qeGetObject(el);
+              if (!obj) return;
+              var sX = e.clientX, sY = e.clientY;
+              var origW = obj.w, origH = obj.h, origX = obj.x, origY = obj.y;
+              var origRatio = origW / origH;
+              var centerX = origX + origW / 2;
+              var centerY = origY + origH / 2;
+              function onMove(ev) {
+                var dx = ev.clientX - sX, dy = ev.clientY - sY;
+                var nW = origW, nH = origH, nX = origX, nY = origY;
+                // Calculate new dimensions based on handle position
+                if (pos.indexOf("e") >= 0) nW = origW + dx;
+                if (pos.indexOf("w") >= 0) { nW = origW - dx; nX = origX + dx; }
+                if (pos.indexOf("s") >= 0) nH = origH + dy;
+                if (pos.indexOf("n") >= 0) { nH = origH - dy; nY = origY + dy; }
+                // Shift: maintain aspect ratio
+                if (e.shiftKey) {
+                  if (pos === "n" || pos === "s") nW = nH * origRatio;
+                  else if (pos === "e" || pos === "w") nH = nW / origRatio;
+                  else {
+                    // Corner: use the larger dimension
+                    if (Math.abs(dx) > Math.abs(dy)) nH = nW / origRatio;
+                    else nW = nH * origRatio;
+                  }
+                }
+                // Alt: resize from center
+                if (e.altKey) {
+                  var dW = nW - origW;
+                  var dH = nH - origH;
+                  nX = centerX - nW / 2;
+                  nY = centerY - nH / 2;
+                }
+                nW = Math.max(40, nW); nH = Math.max(20, nH);
+                obj.w = nW; obj.h = nH; obj.x = nX; obj.y = nY;
+                _qeSyncTransform(obj.id);
+                _qeShowPropsPanel();
+              }
+              function onUp() {
+                document.removeEventListener("mousemove", onMove);
+                document.removeEventListener("mouseup", onUp);
+              }
+              document.addEventListener("mousemove", onMove);
+              document.addEventListener("mouseup", onUp);
+            });
+            el.appendChild(h);
+          });
+        }
+
+        function _qeSetupRotateHandle(el) {
+          if (el.querySelector(".ss-qe-rotate-handle")) return;
+          var rh = document.createElement("div");
+          rh.className = "ss-qe-rotate-handle";
+          rh.innerHTML = "\u21BB";
+          rh.title = "Rotate";
+          el.appendChild(rh);
+          safeOn(rh, "mousedown", function(e) {
+            e.preventDefault(); e.stopPropagation();
+            var obj = _qeGetObject(el);
+            if (!obj) return;
+            var rect = el.getBoundingClientRect();
+            var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+            var startAngle = Math.atan2(e.clientY - cy, e.clientX - cx) * 180 / Math.PI;
+            var curRot = obj.rotation;
+            function onMove(ev) {
+              var angle = Math.atan2(ev.clientY - cy, ev.clientX - cx) * 180 / Math.PI;
+              var newRot = curRot + (angle - startAngle);
+              if (e.shiftKey) newRot = Math.round(newRot / 15) * 15;
+              obj.rotation = newRot;
+              _qeSyncTransform(obj.id);
+              _qeShowPropsPanel();
+            }
+            function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        function _qeSetupObject(el) {
+          _qeSetupObjectDrag(el);
+          _qeSetupResizeHandles(el);
+          _qeSetupRotateHandle(el);
+        }
+
+        // â”€â”€ Duplicate Object â”€â”€
+        function _qeDuplicateObject(el) {
+          var obj = _qeGetObject(el);
+          if (!obj) return;
+          var newId = _qeGenId();
+          var isTable = el.classList.contains("ss-qe-float-table");
+          var isImage = el.classList.contains("ss-qe-image-figure");
+          var isShape = !isTable && !isImage;
+          // Clone the element
+          var newEl = el.cloneNode(true);
+          // Strip ALL wiring and UI artifacts from clone
+          newEl.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize").forEach(function(h) { h.remove(); });
+          var controls = newEl.querySelector(".ss-qe-figure-controls");
+          if (controls) controls.remove();
+          var imgControls = newEl.querySelector(".ss-qe-image-controls");
+          if (imgControls) imgControls.remove();
+          // Remove ALL wiring flags and state attributes
+          newEl.removeAttribute("data-wired");
+          newEl.removeAttribute("data-drag-wired");
+          newEl.removeAttribute("data-obj-id");
+          newEl.classList.remove("ss-qe-selected", "ss-qe-table-selected", "ss-qe-text-edit-mode");
+          // Set new ID
+          newEl.setAttribute("data-obj-id", newId);
+          // Create new object state with all properties
+          var newObj = _qeCreateObj(newEl, obj.type, JSON.parse(JSON.stringify(obj.meta || {})));
+          newObj.x = obj.x + 20;
+          newObj.y = obj.y + 20;
+          newObj.w = obj.w;
+          newObj.h = obj.h;
+          newObj.rotation = obj.rotation;
+          newObj.zIndex = ++_qeDoc.zCounter;
+          newObj.wrapMode = obj.wrapMode;
+          newObj.locked = false;
+          newObj.selected = false;
+          // Apply saved fill/stroke from meta to SVG if shape
+          if (isShape && newObj.meta) {
+            var svg = newEl.querySelector("svg");
+            if (svg) {
+              svg.querySelectorAll("rect, circle, ellipse, polygon, line, path, polyline").forEach(function(shape) {
+                if (newObj.meta.fill) shape.setAttribute("fill", newObj.meta.fill);
+                if (newObj.meta.stroke) shape.setAttribute("stroke", newObj.meta.stroke);
+                if (newObj.meta.strokeWidth) shape.setAttribute("stroke-width", newObj.meta.strokeWidth);
+              });
+            }
+          }
+          // Apply transform
+          _qeSyncTransform(newObj.id);
+          _qeApplyWrapMode(newObj.id);
+          // Insert into DOM
+          if (el.parentNode) {
+            el.parentNode.insertBefore(newEl, el.nextSibling);
+          }
+          // Re-wire all objects (this will pick up the new clone)
+          setTimeout(function() { _qeWireAllObjects(); }, 0);
+        }
+
+        // â”€â”€ Crop Image â”€â”€
+        function _qeStartCrop(el) {
+          var img = el.querySelector("img");
+          if (!img) return;
+          var overlay = document.createElement("div");
+          overlay.className = "ss-qe-crop-overlay";
+          overlay.innerHTML = '<button class="ss-qe-crop-btn" data-action="crop">Apply</button><button class="ss-qe-crop-btn" data-action="cancel">Cancel</button>';
+          el.appendChild(overlay);
+          safeOn(overlay, "click", function(e) {
+            var action = e.target.getAttribute("data-action");
+            if (action === "crop") {
+              var rect = img.getBoundingClientRect();
+              var elRect = el.getBoundingClientRect();
+              var obj = _qeGetObject(el);
+              if (obj) {
+                obj.w = rect.width;
+                obj.h = rect.height;
+                _qeSyncTransform(obj.id);
+              }
+            }
+            overlay.remove();
+          });
+        }
+
+        // â”€â”€ Wire All Objects â”€â”€
+        function _qeWireAllObjects() {
+          if (!_qe.el) return;
+          _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(fig) {
+            // Check if already wired by looking at our object registry, not data-wired attribute
+            var existingId = fig.getAttribute("data-obj-id");
+            if (existingId && _qeDoc.objects.has(existingId)) return;
+            fig.setAttribute("draggable", "false");
+            _qeSetupObject(fig);
+            var type = fig.classList.contains("ss-qe-image-figure") ? "image" : "shape";
+            var obj = _qeCreateObj(fig, type);
+            // Read SVG fill/stroke and store in meta
+            var svg = fig.querySelector("svg");
+            if (svg && type === "shape") {
+              var shape = svg.querySelector("rect, circle, ellipse, polygon, line, path, polyline");
+              if (shape) {
+                if (!obj.meta.fill) obj.meta.fill = shape.getAttribute("fill") || "#4fc3f7";
+                if (!obj.meta.stroke) obj.meta.stroke = shape.getAttribute("stroke") || "#0277bd";
+                if (!obj.meta.strokeWidth) obj.meta.strokeWidth = parseInt(shape.getAttribute("stroke-width")) || 1;
+              }
+            }
+            _qeSyncTransform(obj.id);
+            _qeApplyWrapMode(obj.id);
+            safeOn(fig, "mousedown", function(e) {
+              if (e.target.closest("button") || e.target.closest(".ss-qe-resize-handle") || e.target.closest(".ss-qe-rotate-handle")) return;
+              e.stopPropagation();
+              _qeSelect(fig, type);
+            });
+            safeOn(fig, "dblclick", function(e) {
+              e.stopPropagation();
+              // Enter text edit mode for shapes with text editors
+              var txt = fig.querySelector(".ss-qe-shape-text-editor");
+              if (txt) {
+                _qeEnterTextEditMode(fig, txt);
+              }
+            });
+            safeOn(fig, "contextmenu", function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              _qeSelect(fig, type);
+              _qeShowContextMenu(e, type, fig);
+            });
+            fig.querySelectorAll(".ss-qe-fc-btn[data-action]").forEach(function(b) {
+              safeOn(b, "click", function(ev) {
+                ev.stopPropagation();
+                var action = b.getAttribute("data-action");
+                if (action === "delete" || action === "img-delete") {
+                  var obj = _qeGetObject(fig);
+                  if (obj) _qeDoc.objects.delete(obj.id);
+                  fig.remove(); _qeDeselectAll();
+                } else if (action === "img-caption") {
+                  var cap = fig.querySelector("figcaption");
+                  if (cap) cap.style.display = "block";
+                } else if (action === "img-alt") {
+                  var img = fig.querySelector("img");
+                  if (img) { _qeShowUrlPopup("Alt Text", img.getAttribute("alt") || "", function(v) { img.setAttribute("alt", v); }); }
                 }
               });
-              grid.appendChild(btn);
             });
-            if (!list.length) {
-              const empty = document.createElement("p");
-              empty.className = "empty-state";
-              empty.textContent = "No icons in this category yet.";
-              body.appendChild(empty);
-            }
-            body.appendChild(grid);
-          }
-          Object.keys(categories).forEach(function (key, index) {
-            const tab = document.createElement("button");
-            tab.type = "button";
-            tab.className = "table-action-btn";
-            tab.textContent = key;
-            tab.style.width = "100%";
-            tab.style.textAlign = "left";
-            tab.style.padding = "10px 14px";
-            tab.style.border = "none";
-            tab.style.borderRadius = "0";
-            tab.style.background = "transparent";
-            tab.style.boxShadow = "none";
-            tab.style.color = "#1e293b";
-            tab.addEventListener("click", function () {
-              renderCategory(key);
-              setActiveButton(tab);
-            });
-            sidebar.appendChild(tab);
-            if (index === 0) {
-              renderCategory(key);
-              setActiveButton(tab);
-            }
           });
-          shell.appendChild(sidebar);
-          shell.appendChild(body);
-          panel.appendChild(shell);
-          overlay.appendChild(panel);
-          overlay.addEventListener("click", function (event) {
-            if (event.target === overlay) {
-              document.body.removeChild(overlay);
-            }
-          });
-          panel.querySelector("#qpClosePicker").addEventListener("click", function () {
-            document.body.removeChild(overlay);
-          });
-          document.body.appendChild(overlay);
-        }
 
-
-
-        function setupAdvancedToolbar() {
-          function ensureCustomLibraries() {
-            if (!settings.editorCustomLibraries) {
-              settings.editorCustomLibraries = { icons: [], shapes: [], graphs: [], images: [] };
-            }
-            return settings.editorCustomLibraries;
-          }
-          function importLibrary(type) {
-            const input = document.createElement("input");
-            input.type = "file";
-            input.accept = "image/png";
-            input.multiple = true;
-            input.onchange = function () {
-              const files = Array.from(input.files || []).filter(function (f) { return /image\/png/i.test(String(f.type || "")); });
-              if (!files.length) {
-                openAppMessageBox("Error", "Please select PNG files only.", "error");
+          _qe.el.querySelectorAll(".ss-qe-float-table").forEach(function(ft) {
+            var existingId = ft.getAttribute("data-obj-id");
+            if (existingId && _qeDoc.objects.has(existingId)) return;
+            ft.setAttribute("draggable", "false");
+            var tbl = ft.querySelector("table");
+            var obj = _qeCreateObj(ft, "table");
+            _qeSyncTransform(obj.id);
+            _qeApplyWrapMode(obj.id);
+            _qeSetupObjectDrag(ft);
+            _qeSetupResizeHandles(ft);
+            _qeSetupRotateHandle(ft);
+            _qeSetupTableMoveHandle(ft);
+            _qeSetupTableResizeHandle(ft);
+            _qeSetupTableColResize(tbl);
+            _qeSetupTableRowResize(tbl);
+            safeOn(ft, "mousedown", function(e) {
+              if (e.target.closest("button") || e.target.closest(".ss-qe-table-move-handle") || e.target.closest(".ss-qe-table-resize-handle") || e.target.closest(".ss-qe-col-resize") || e.target.closest(".ss-qe-row-resize")) return;
+              // Clicking inside a cell: let the cell receive focus for typing
+              var cell = e.target.closest("td, th");
+              if (cell) {
+                // Do NOT stopPropagation - let the cell receive focus naturally
+                _qeSelect(ft, "table");
                 return;
               }
-              const promises = files.map(function (file) {
-                return new Promise(function (resolve) {
-                  const reader = new FileReader();
-                  reader.onload = function () { resolve({ src: String(reader.result || ""), label: file.name }); };
-                  reader.onerror = function () { resolve(null); };
-                  reader.readAsDataURL(file);
-                });
+              // Clicking on table border/wrapper: select table object, prevent default
+              e.stopPropagation();
+              _qeSelect(ft, "table");
+            });
+            safeOn(ft, "contextmenu", function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var cell = e.target.closest("td, th");
+              _qeSelect(ft, "table");
+              _qeShowContextMenu(e, "table", ft, cell);
+            });
+            _qeSetupTableSelection(ft, tbl);
+          });
+        }
+
+        // â”€â”€ Table Move Handle â”€â”€
+        function _qeSetupTableMoveHandle(ft) {
+          if (ft.querySelector(".ss-qe-table-move-handle")) return;
+          var handle = document.createElement("div");
+          handle.className = "ss-qe-table-move-handle";
+          handle.innerHTML = "\u2194";
+          handle.title = "Move Table";
+          ft.appendChild(handle);
+          safeOn(handle, "mousedown", function(e) {
+            e.preventDefault(); e.stopPropagation();
+            var obj = _qeGetObject(ft);
+            if (!obj) return;
+            var startX = e.clientX, startY = e.clientY;
+            var origX = obj.x, origY = obj.y;
+            function onMove(ev) {
+              obj.x = origX + (ev.clientX - startX);
+              obj.y = origY + (ev.clientY - startY);
+              _qeSyncTransform(obj.id);
+            }
+            function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        // â”€â”€ Table Resize Handle â”€â”€
+        function _qeSetupTableResizeHandle(ft) {
+          if (ft.querySelector(".ss-qe-table-resize-handle")) return;
+          var handle = document.createElement("div");
+          handle.className = "ss-qe-table-resize-handle";
+          ft.appendChild(handle);
+          safeOn(handle, "mousedown", function(e) {
+            e.preventDefault(); e.stopPropagation();
+            var obj = _qeGetObject(ft);
+            if (!obj) return;
+            var tbl = ft.querySelector("table");
+            if (!tbl) return;
+            var startX = e.clientX, startY = e.clientY;
+            var startTableW = tbl.offsetWidth;
+            var startTableH = tbl.offsetHeight;
+            function onMove(ev) {
+              var newW = Math.max(100, startTableW + (ev.clientX - startX));
+              var newH = Math.max(40, startTableH + (ev.clientY - startY));
+              // Update the actual table dimensions
+              tbl.style.width = newW + "px";
+              tbl.style.height = newH + "px";
+              // Store in object for save/load
+              obj.w = newW;
+              obj.h = newH;
+              _qeShowPropsPanel();
+            }
+            function onUp() { document.removeEventListener("mousemove", onMove); document.removeEventListener("mouseup", onUp); }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        // â”€â”€ Table Column Resize (Word-style border dragging) â”€â”€
+        function _qeSetupTableColResize(table) {
+          if (!table) return;
+          var _colResizeActive = false;
+          var _colResizeIdx = -1;
+          var _colResizeStartX = 0;
+          var _colResizeStartLeftW = 0;
+          var _colResizeStartRightW = 0;
+          var _colResizeAllRows = null;
+
+          // Detect column boundary proximity and change cursor
+          safeOn(table, "mousemove", function(e) {
+            if (_colResizeActive) return;
+            var cell = e.target.closest("td, th");
+            if (!cell) { table.style.cursor = ""; return; }
+            var tr = cell.closest("tr");
+            if (!tr) return;
+            var cells = Array.from(tr.children);
+            var idx = cells.indexOf(cell);
+            if (idx < 0) return;
+            var rect = cell.getBoundingClientRect();
+            var x = e.clientX;
+            var threshold = 6;
+            // Check right boundary of this cell (unless it's the last cell)
+            if (idx < cells.length - 1) {
+              var distRight = Math.abs(x - rect.right);
+              if (distRight <= threshold) {
+                table.style.cursor = "col-resize";
+                return;
+              }
+            }
+            // Check left boundary of this cell (unless it's the first cell)
+            if (idx > 0) {
+              var distLeft = Math.abs(x - rect.left);
+              if (distLeft <= threshold) {
+                table.style.cursor = "col-resize";
+                return;
+              }
+            }
+            table.style.cursor = "";
+          });
+
+          safeOn(table, "mousedown", function(e) {
+            var cell = e.target.closest("td, th");
+            if (!cell) return;
+            var tr = cell.closest("tr");
+            if (!tr) return;
+            var cells = Array.from(tr.children);
+            var idx = cells.indexOf(cell);
+            if (idx < 0) return;
+            var rect = cell.getBoundingClientRect();
+            var x = e.clientX;
+            var threshold = 6;
+            var boundaryIdx = -1;
+            var startLeftW = 0, startRightW = 0;
+            // Determine which boundary was clicked
+            if (idx < cells.length - 1 && Math.abs(x - rect.right) <= threshold) {
+              boundaryIdx = idx; // Right boundary of cell idx = left boundary of cell idx+1
+              startLeftW = cells[idx].offsetWidth;
+              startRightW = cells[idx + 1].offsetWidth;
+            } else if (idx > 0 && Math.abs(x - rect.left) <= threshold) {
+              boundaryIdx = idx - 1; // Left boundary of cell idx = right boundary of cell idx-1
+              startLeftW = cells[idx - 1].offsetWidth;
+              startRightW = cells[idx].offsetWidth;
+            }
+            if (boundaryIdx < 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _colResizeActive = true;
+            _colResizeIdx = boundaryIdx;
+            _colResizeStartX = x;
+            _colResizeStartLeftW = startLeftW;
+            _colResizeStartRightW = startRightW;
+            _colResizeAllRows = table.querySelectorAll("tr");
+            table.style.cursor = "col-resize";
+            document.body.style.cursor = "col-resize";
+            document.body.style.userSelect = "none";
+
+            function onMove(ev) {
+              var dx = ev.clientX - _colResizeStartX;
+              var newLeftW = Math.max(20, _colResizeStartLeftW + dx);
+              var newRightW = Math.max(20, _colResizeStartRightW - dx);
+              _colResizeAllRows.forEach(function(r) {
+                var lc = r.children[_colResizeIdx];
+                var rc = r.children[_colResizeIdx + 1];
+                if (lc) { lc.style.width = newLeftW + "px"; lc.style.minWidth = newLeftW + "px"; lc.style.maxWidth = newLeftW + "px"; }
+                if (rc) { rc.style.width = newRightW + "px"; rc.style.minWidth = newRightW + "px"; rc.style.maxWidth = newRightW + "px"; }
               });
-              Promise.all(promises).then(function (items) {
-                const valid = items.filter(function (item) { return item && item.src; });
-                if (!valid.length) {
-                  openAppMessageBox("Error", `No valid ${type} found in file.`, "error");
-                  return;
-                }
-                const libs = ensureCustomLibraries();
-                const current = Array.isArray(libs[type]) ? libs[type] : [];
-                libs[type] = current.concat(valid).filter(function (item, idx, arr) {
-                  return arr.findIndex(function (x) { return x.src === item.src; }) === idx;
-                });
-                saveDatabase("", [{ table: "school_settings", record: { id: "customLibraries", source_id: "customLibraries", data: database.generalSettings.customLibraries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-                openAppMessageBox("Success", `${valid.length} ${type} imported successfully.`, "success");
-              });
-            };
-            input.click();
-          }
-          const fontFamily = document.getElementById("qpFontFamily");
-          if (fontFamily) {
-            fontFamily.onchange = function () {
-              editorArea.focus();
-              document.execCommand("fontName", false, this.value);
-            };
-          }
-          const clearBtn = document.getElementById("qpClearFormat");
-          if (clearBtn) {
-            clearBtn.onclick = function () { editorArea.focus(); document.execCommand("removeFormat", false, null); };
-          }
-          const growBtn = document.getElementById("qpGrowSelected");
-          if (growBtn) {
-            growBtn.onclick = function () {
-              if (!selectedEditorNode) return;
-              const isTableNode = selectedEditorNode.tagName === "TABLE" || selectedEditorNode.classList.contains("qp-editor-table-wrap");
-              selectedEditorNode.style.width = `${Math.max(30, selectedEditorNode.offsetWidth + 40)}px`;
-              if (isTableNode) {
-                selectedEditorNode.style.height = `${Math.max(80, selectedEditorNode.offsetHeight + 20)}px`;
+              // Update table width to match
+              var tbl = table;
+              tbl.style.width = "";
+              // Force reflow to get natural width
+              var totalW = 0;
+              var firstRow = tbl.querySelector("tr");
+              if (firstRow) Array.from(firstRow.children).forEach(function(c) { totalW += c.offsetWidth; });
+              if (totalW > 0) tbl.style.width = totalW + "px";
+            }
+            function onUp() {
+              _colResizeActive = false;
+              table.style.cursor = "";
+              document.body.style.cursor = "";
+              document.body.style.userSelect = "";
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              // Update object dimensions
+              var obj = _qeGetObject(table.closest(".ss-qe-float-table"));
+              if (obj) { obj.w = table.offsetWidth; obj.h = table.offsetHeight; }
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        // â”€â”€ Table Row Resize (Word-style border dragging) â”€â”€
+        function _qeSetupTableRowResize(table) {
+          if (!table) return;
+          var _rowResizeActive = false;
+          var _rowResizeStartY = 0;
+          var _rowResizeStartH = 0;
+          var _rowResizeTarget = null;
+
+          // Detect row boundary proximity and change cursor
+          safeOn(table, "mousemove", function(e) {
+            if (_rowResizeActive) return;
+            var cell = e.target.closest("td, th");
+            if (!cell) { table.style.cursor = ""; return; }
+            var tr = cell.closest("tr");
+            if (!tr) return;
+            var rows = Array.from(table.querySelectorAll("tr"));
+            var rowIdx = rows.indexOf(tr);
+            if (rowIdx < 0) return;
+            var rect = tr.getBoundingClientRect();
+            var y = e.clientY;
+            var threshold = 6;
+            // Check bottom boundary of this row (unless it's the last row)
+            if (rowIdx < rows.length - 1) {
+              var distBottom = Math.abs(y - rect.bottom);
+              if (distBottom <= threshold) {
+                table.style.cursor = "row-resize";
+                return;
               }
-            };
-          }
-          const shrinkBtn = document.getElementById("qpShrinkSelected");
-          if (shrinkBtn) {
-            shrinkBtn.onclick = function () {
-              if (!selectedEditorNode) return;
-              const isTableNode = selectedEditorNode.tagName === "TABLE" || selectedEditorNode.classList.contains("qp-editor-table-wrap");
-              selectedEditorNode.style.width = `${Math.max(24, selectedEditorNode.offsetWidth - 40)}px`;
-              if (isTableNode) {
-                selectedEditorNode.style.height = `${Math.max(60, selectedEditorNode.offsetHeight - 20)}px`;
+            }
+            // Check top boundary of this row (unless it's the first row)
+            if (rowIdx > 0) {
+              var distTop = Math.abs(y - rect.top);
+              if (distTop <= threshold) {
+                table.style.cursor = "row-resize";
+                return;
               }
-            };
+            }
+            table.style.cursor = "";
+          });
+
+          safeOn(table, "mousedown", function(e) {
+            var cell = e.target.closest("td, th");
+            if (!cell) return;
+            var tr = cell.closest("tr");
+            if (!tr) return;
+            var rows = Array.from(table.querySelectorAll("tr"));
+            var rowIdx = rows.indexOf(tr);
+            if (rowIdx < 0) return;
+            var rect = tr.getBoundingClientRect();
+            var y = e.clientY;
+            var threshold = 6;
+            var targetRow = null;
+            var startY = 0, startH = 0;
+            // Determine which boundary was clicked
+            if (rowIdx < rows.length - 1 && Math.abs(y - rect.bottom) <= threshold) {
+              targetRow = tr; // Bottom boundary of this row
+              startY = y;
+              startH = tr.offsetHeight;
+            } else if (rowIdx > 0 && Math.abs(y - rect.top) <= threshold) {
+              targetRow = rows[rowIdx - 1]; // Top boundary = bottom of previous row
+              startY = y;
+              startH = targetRow.offsetHeight;
+            }
+            if (!targetRow) return;
+            e.preventDefault();
+            e.stopPropagation();
+            _rowResizeActive = true;
+            _rowResizeTarget = targetRow;
+            _rowResizeStartY = startY;
+            _rowResizeStartH = startH;
+            table.style.cursor = "row-resize";
+            document.body.style.cursor = "row-resize";
+            document.body.style.userSelect = "none";
+
+            function onMove(ev) {
+              var dy = ev.clientY - _rowResizeStartY;
+              var newH = Math.max(20, _rowResizeStartH + dy);
+              _rowResizeTarget.style.height = newH + "px";
+              _rowResizeTarget.querySelectorAll("td, th").forEach(function(c) { c.style.height = newH + "px"; });
+            }
+            function onUp() {
+              _rowResizeActive = false;
+              _rowResizeTarget = null;
+              table.style.cursor = "";
+              document.body.style.cursor = "";
+              document.body.style.userSelect = "";
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              var obj = _qeGetObject(table.closest(".ss-qe-float-table"));
+              if (obj) { obj.w = table.offsetWidth; obj.h = table.offsetHeight; }
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        // â”€â”€ Table Selection (click/double-click/triple-click) â”€â”€
+        function _qeSetupTableSelection(ft, table) {
+          if (!table) return;
+          // Click on cell: allow it to receive focus for typing
+          // Do NOT add mousedown handler here - it's handled by the ft mousedown above
+          // Double click on cell: ensure focus for editing
+          table.addEventListener("dblclick", function(e) {
+            var cell = e.target.closest("td, th");
+            if (cell) { cell.focus(); }
+          });
+        }
+
+        // â”€â”€ Table Operations â”€â”€
+        function _qeInsertTable(rows, cols) {
+          var wrapper = document.createElement("figure");
+          wrapper.className = "ss-qe-float-table";
+          wrapper.setAttribute("contenteditable", "false");
+          wrapper.setAttribute("data-obj-id", _qeGenId());
+          wrapper.setAttribute("data-wrap", "inline");
+          wrapper.setAttribute("data-z", String(++_qeDoc.zCounter));
+          wrapper.style.cssText = "display:inline-block;margin:8px 4px;position:relative;z-index:" + _qeDoc.zCounter + ";";
+          var moveHandle = document.createElement("div");
+          moveHandle.className = "ss-qe-table-move-handle";
+          moveHandle.innerHTML = "\u2194";
+          moveHandle.title = "Move Table";
+          wrapper.appendChild(moveHandle);
+          var resizeHandle = document.createElement("div");
+          resizeHandle.className = "ss-qe-table-resize-handle";
+          wrapper.appendChild(resizeHandle);
+          var t = document.createElement("table");
+          var initW = Math.max(300, cols * 120);
+          var colW = Math.floor(initW / cols);
+          t.style.cssText = "border-collapse:collapse;width:" + initW + "px;table-layout:fixed;";
+          var tbody = document.createElement("tbody");
+          for (var r = 0; r < rows; r++) {
+            var tr = document.createElement("tr");
+            for (var c = 0; c < cols; c++) {
+              var td = document.createElement("td");
+              td.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;width:" + colW + "px;min-height:24px;word-wrap:break-word;overflow-wrap:break-word;word-break:break-word;";
+              td.setAttribute("contenteditable", "true");
+              td.innerHTML = "";
+              tr.appendChild(td);
+            }
+            tbody.appendChild(tr);
           }
-          const imageBtn = document.getElementById("qpInsertImage");
-          if (imageBtn) {
-            imageBtn.onclick = function () {
-              imageInput.click();
-            };
+          t.appendChild(tbody);
+          wrapper.appendChild(t);
+          _qe.el.focus();
+          _qeDeselectAll();
+          document.execCommand("insertHTML", false, wrapper.outerHTML + "<p><br></p>");
+          _qeUpdateStatus();
+          setTimeout(function() { _qeWireAllObjects(); }, 0);
+        }
+
+        function _qeTableInsertRow(table, after) {
+          var firstRow = table.querySelector("tr");
+          if (!firstRow) return;
+          var cols = firstRow.children.length;
+          var newRow = document.createElement("tr");
+          for (var i = 0; i < cols; i++) {
+            var td = document.createElement("td");
+            td.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;";
+            td.setAttribute("contenteditable", "true");
+            td.innerHTML = "<br>";
+            newRow.appendChild(td);
           }
-          imageInput.onchange = function () {
-            const file = imageInput.files && imageInput.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function () {
-              insertAtCursor(`<img src="${String(reader.result || "")}" alt="editor-image" style="max-width:100%;width:320px;height:auto;"><p><br></p>`);
-            };
-            reader.readAsDataURL(file);
-            imageInput.value = "";
-          };
+          var rows = table.querySelectorAll("tr");
+          var ref = after ? rows[rows.length - 1] : rows[0];
+          if (ref && ref.parentNode) ref.parentNode.insertBefore(newRow, after ? null : ref);
+        }
 
-          editorToolbar.addEventListener("click", function (e) {
-            const btn = e.target.closest("[data-qp-cmd]");
-            if (!btn) return;
-            const cmd = btn.getAttribute("data-qp-cmd");
-            editorArea.focus();
-            document.execCommand(cmd, false, null);
+        function _qeTableDeleteRow(table, tr) {
+          var rows = table.querySelectorAll("tr");
+          if (rows.length <= 1) {
+            var ft = table.closest(".ss-qe-float-table");
+            if (ft) { var obj = _qeGetObject(ft); if (obj) _qeDoc.objects.delete(obj.id); ft.remove(); }
+            else table.remove();
+            return;
+          }
+          tr.remove();
+        }
+
+        function _qeTableInsertCol(table, after) {
+          var rows = table.querySelectorAll("tr");
+          rows.forEach(function(tr, ri) {
+            var cell = document.createElement(ri === 0 && table.querySelector("thead") ? "th" : "td");
+            cell.style.cssText = "border:1px solid #b0bec5;padding:6px 8px;" + (ri === 0 && table.querySelector("thead") ? "background:#f6f7f9;font-weight:600;" : "");
+            cell.setAttribute("contenteditable", "true");
+            cell.innerHTML = ri === 0 && table.querySelector("thead") ? "Header" : "<br>";
+            var ref = after ? tr.lastElementChild : tr.firstElementChild;
+            if (ref) ref.parentNode.insertBefore(cell, after ? null : ref);
           });
+        }
 
-          document.getElementById("qpApplyFontSize").addEventListener("click", function () {
-            const px = Math.max(8, Number(document.getElementById("qpFontSizeInput").value || 16));
-            editorArea.focus();
-            document.execCommand("fontSize", false, false);
-            document.execCommand("insertHTML", false, `<span style="font-size:${px}px;">${window.getSelection().toString() || "Text"}</span>`);
+        function _qeTableDeleteCol(table, td) {
+          var idx = Array.from(td.parentNode.children).indexOf(td);
+          table.querySelectorAll("tr").forEach(function(tr) { if (tr.children[idx]) tr.children[idx].remove(); });
+          if (!table.querySelector("td") && !table.querySelector("th")) {
+            var ft = table.closest(".ss-qe-float-table");
+            if (ft) { var obj = _qeGetObject(ft); if (obj) _qeDoc.objects.delete(obj.id); ft.remove(); }
+            else table.remove();
+          }
+        }
+
+        // â”€â”€ Shape Library â”€â”€
+        var _qeShapeLibrary = {
+          rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          circle: { label: "Circle", svg: '<svg viewBox="0 0 100 100" preserveAspectRatio="none"><circle cx="50" cy="50" r="47" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          ellipse: { label: "Ellipse", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><ellipse cx="60" cy="40" rx="57" ry="37" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          triangle: { label: "Triangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="60,3 117,77 3,77" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          diamond: { label: "Diamond", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="60,3 117,40 60,77 3,40" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          arrowRight: { label: "Arrow Right", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="2,15 70,15 70,2 118,40 70,78 70,65 2,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          arrowLeft: { label: "Arrow Left", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><polygon points="118,15 50,15 50,2 2,40 50,78 50,65 118,65" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          arrowUp: { label: "Arrow Up", svg: '<svg viewBox="0 0 80 120" preserveAspectRatio="none"><polygon points="65,118 40,50 15,118" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/><rect x="32" y="2" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          arrowDown: { label: "Arrow Down", svg: '<svg viewBox="0 0 80 120" preserveAspectRatio="none"><polygon points="65,2 40,70 15,2" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/><rect x="32" y="63" width="16" height="55" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
+          line: { label: "Line", svg: '<svg viewBox="0 0 120 20" preserveAspectRatio="none"><line x1="5" y1="10" x2="115" y2="10" stroke="#0277bd" stroke-width="1" stroke-linecap="round"/></svg>' },
+          callout: { label: "Callout", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="90" height="55" rx="6" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/><polygon points="30,57 40,77 55,57" fill="#4fc3f7" stroke="#0277bd" stroke-width="1" stroke-linejoin="round"/></svg>' },
+          textBox: { label: "Text Box", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="4" fill="#ffffff" stroke="#0277bd" stroke-width="1" stroke-dasharray="6,3"/></svg>' }
+        };
+
+        function _qeBuildShapesPanel() {
+          var panel = document.getElementById("ssQEShapesPanel");
+          if (!panel) return;
+          var html = '<div class="ss-qe-panel-header">Shapes</div><div class="ss-qe-shapes-grid">';
+          Object.keys(_qeShapeLibrary).forEach(function(key) {
+            var s = _qeShapeLibrary[key];
+            html += '<button type="button" class="ss-qe-shape-btn" data-shape="' + key + '" title="' + s.label + '">' + s.svg + '<span>' + s.label + '</span></button>';
           });
-
-          document.getElementById("qpApplyTextColor").addEventListener("click", function () {
-            const color = document.getElementById("qpTextColorInput").value;
-            editorArea.focus();
-            document.execCommand("foreColor", false, color);
-          });
-
-          document.getElementById("qpApplyBgColor").addEventListener("click", function () {
-            const color = document.getElementById("qpBgColorInput").value;
-            editorArea.focus();
-            document.execCommand("backColor", false, color);
-          });
-
-          document.getElementById("qpInsertTable").addEventListener("click", function () {
-            openTableSizeDialog(function (rows, cols) {
-              var html = '<p><br></p><div class="qp-editor-table-wrap" contenteditable="false" data-editor-interactive="1"><table style="width:100%;border-collapse:collapse;">';
-              for (var r = 0; r < rows; r++) {
-                html += "<tr>";
-                for (var c = 0; c < cols; c++) {
-                  html += '<td style="border:1px solid #0f2748;padding:8px;" contenteditable="true">&nbsp;</td>';
-                }
-                html += "</tr>";
-              }
-              html += "</table></div><p><br></p>";
-              insertAtCursor(html);
+          html += '</div>';
+          panel.innerHTML = html;
+          panel.querySelectorAll(".ss-qe-shape-btn").forEach(function(btn) {
+            safeOn(btn, "click", function() {
+              var key = btn.getAttribute("data-shape");
+              var shape = _qeShapeLibrary[key];
+              if (!shape) return;
+              var isTextBox = key === "textBox";
+              var inner = '<div class="ss-qe-figure-inner">' + shape.svg + (isTextBox ? '<div class="ss-qe-shape-text-editor" contenteditable="true" style="position:absolute;top:10%;left:10%;right:10%;bottom:10%;outline:none;font-size:14px;text-align:center;display:flex;align-items:center;justify-content:center;cursor:text;z-index:2;">Type here</div>' : '') + '</div>';
+              var id = _qeGenId();
+              var fig = '<figure class="ss-qe-figure" contenteditable="false" data-obj-id="' + id + '" data-z="' + (++_qeDoc.zCounter) + '" style="text-align:center;margin:8px 4px;position:relative;display:inline-block;width:120px;height:80px;z-index:' + _qeDoc.zCounter + ';">' + inner + '<div class="ss-qe-figure-controls"><button type="button" class="ss-qe-fc-btn" data-action="delete" title="Delete">\u2715</button></div></figure><p><br></p>';
+              _qeInsertHTML(fig);
+              _qeClosePanels();
             });
           });
         }
 
+        function _qeBuildTablePanel() {
+          var panel = document.getElementById("ssQETablePanel");
+          if (!panel) return;
+          var html = '<div class="ss-qe-panel-header">Insert Table</div><div class="ss-qe-table-grid">';
+          for (var r = 1; r <= 8; r++) for (var c = 1; c <= 8; c++) html += '<button type="button" class="ss-qe-table-cell" data-rows="' + r + '" data-cols="' + c + '"></button>';
+          html += '</div><div class="ss-qe-table-size-label">Insert Custom Table</div>';
+          html += '<div style="display:flex;gap:6px;align-items:center;margin-top:6px;"><input type="number" class="ss-qe-table-rows-input" min="1" max="50" value="3" style="width:50px;padding:4px;border:1px solid #dde4ea;border-radius:4px;font-size:0.75rem;"><span style="font-size:0.75rem;">\u00D7</span><input type="number" class="ss-qe-table-cols-input" min="1" max="20" value="3" style="width:50px;padding:4px;border:1px solid #dde4ea;border-radius:4px;font-size:0.75rem;"><button type="button" class="ss-qe-panel-btn ss-qe-table-insert-btn">Insert</button></div>';
+          panel.innerHTML = html;
+          var rowsInput = panel.querySelector(".ss-qe-table-rows-input"), colsInput = panel.querySelector(".ss-qe-table-cols-input"), hovLabel = panel.querySelector(".ss-qe-table-size-label");
+          panel.querySelectorAll(".ss-qe-table-cell").forEach(function(cell) {
+            safeOn(cell, "mouseenter", function() {
+              var r = parseInt(cell.getAttribute("data-rows")), c = parseInt(cell.getAttribute("data-cols"));
+              hovLabel.textContent = r + " \u00D7 " + c + " Table";
+              panel.querySelectorAll(".ss-qe-table-cell").forEach(function(sc) { sc.classList.toggle("ss-qe-table-cell-hl", parseInt(sc.getAttribute("data-rows")) <= r && parseInt(sc.getAttribute("data-cols")) <= c); });
+            });
+            safeOn(cell, "click", function() { _qeInsertTable(parseInt(cell.getAttribute("data-rows")), parseInt(cell.getAttribute("data-cols"))); _qeClosePanels(); });
+          });
+          var insBtn = panel.querySelector(".ss-qe-table-insert-btn");
+          if (insBtn) safeOn(insBtn, "click", function() { _qeInsertTable(parseInt(rowsInput.value) || 3, parseInt(colsInput.value) || 3); _qeClosePanels(); });
+        }
+
+        function _qeBuildEquationPanel() {
+          var panel = document.getElementById("ssQEEquationPanel");
+          if (!panel) return;
+          var eqs = [
+            { label: "Fraction", tex: "\\frac{a}{b}" }, { label: "Square Root", tex: "\\sqrt{x}" },
+            { label: "Cube Root", tex: "\\sqrt[3]{x}" }, { label: "Power", tex: "x^{n}" },
+            { label: "Subscript", tex: "x_{i}" }, { label: "Sum", tex: "\\sum_{i=1}^{n} x_i" },
+            { label: "Product", tex: "\\prod_{i=1}^{n} x_i" }, { label: "Integral", tex: "\\int_{a}^{b} f(x)\\,dx" },
+            { label: "Limit", tex: "\\lim_{x \\to \\infty} f(x)" }, { label: "Matrix 2\u00D72", tex: "\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}" },
+            { label: "Matrix 3\u00D73", tex: "\\begin{pmatrix} a & b & c \\\\ d & e & f \\\\ g & h & i \\end{pmatrix}" },
+            { label: "Binomial", tex: "\\binom{n}{k}" }, { label: "Log", tex: "\\log_{b}(x)" },
+            { label: "Sine", tex: "\\sin(\\theta)" }, { label: "Cosine", tex: "\\cos(\\theta)" },
+            { label: "Tangent", tex: "\\tan(\\theta)" }, { label: "Alpha", tex: "\\alpha" },
+            { label: "Beta", tex: "\\beta" }, { label: "Gamma", tex: "\\gamma" },
+            { label: "Delta", tex: "\\delta" }, { label: "Theta", tex: "\\theta" },
+            { label: "Lambda", tex: "\\lambda" }, { label: "Sigma", tex: "\\sigma" },
+            { label: "Omega", tex: "\\omega" }, { label: "Pi", tex: "\\pi" },
+            { label: "Infinity", tex: "\\infty" }, { label: "Not Equal", tex: "\\neq" },
+            { label: "Less Equal", tex: "\\leq" }, { label: "Greater Equal", tex: "\\geq" },
+            { label: "Therefore", tex: "\\therefore" }, { label: "Because", tex: "\\because" },
+            { label: "Approx", tex: "\\approx" }, { label: "Plus/Minus", tex: "\\pm" },
+            { label: "Times", tex: "\\times" }, { label: "Divide", tex: "\\div" },
+            { label: "H\u2082O", tex: "H_2O" }, { label: "CO\u2082", tex: "CO_2" },
+            { label: "E=mc\u00B2", tex: "E=mc^2" }, { label: "F=ma", tex: "F=ma" }
+          ];
+          var html = '<div class="ss-qe-panel-header">Math Equations <span class="ss-qe-panel-close" style="float:right;cursor:pointer;font-size:14px;" title="Close">\u2715</span></div>';
+          html += '<div class="ss-qe-eq-custom"><input type="text" class="ss-qe-eq-input" placeholder="Type LaTeX... (e.g. \\frac{1}{2})" style="flex:1;"><button type="button" class="ss-qe-panel-btn ss-qe-eq-insert-btn">Insert</button></div>';
+          html += '<div class="ss-qe-eq-grid">';
+          eqs.forEach(function(eq) {
+            var rendered = "";
+            try { rendered = katex.renderToString(eq.tex, { throwOnError: false }); } catch(e) { rendered = '<span style="font-size:0.7rem;">' + eq.tex + '</span>'; }
+            html += '<button type="button" class="ss-qe-eq-btn" data-tex="' + eq.tex.replace(/"/g, "&quot;") + '" title="' + eq.label + '">' + rendered + '</button>';
+          });
+          html += '</div>';
+          panel.innerHTML = html;
+          var eqInput = panel.querySelector(".ss-qe-eq-input"), insBtn = panel.querySelector(".ss-qe-eq-insert-btn"), closeBtn = panel.querySelector(".ss-qe-panel-close");
+          if (closeBtn) safeOn(closeBtn, "click", function() { panel.style.display = "none"; _qe.activePanel = null; });
+          if (insBtn) safeOn(insBtn, "click", function() { var tex = eqInput.value.trim(); if (!tex) return; _qeInsertEquation(tex); eqInput.value = ""; panel.style.display = "none"; _qe.activePanel = null; });
+          if (eqInput) safeOn(eqInput, "keydown", function(e) { if (e.key === "Enter") { e.preventDefault(); insBtn.click(); } if (e.key === "Escape") { panel.style.display = "none"; _qe.activePanel = null; } });
+          panel.querySelectorAll(".ss-qe-eq-btn").forEach(function(btn) {
+            safeOn(btn, "click", function() { _qeInsertEquation(btn.getAttribute("data-tex")); panel.style.display = "none"; _qe.activePanel = null; });
+          });
+        }
+
+        function _qeInsertEquation(tex) {
+          var rendered = "";
+          try { rendered = katex.renderToString(tex, { throwOnError: false, displayMode: false }); } catch(e) { rendered = '<span style="color:red;">' + tex + '</span>'; }
+          var html = '<span class="ss-qe-equation" contenteditable="false" data-tex="' + tex.replace(/"/g, "&quot;") + '" style="display:inline-block;margin:2px 4px;padding:2px 6px;background:#ffffff;border:1px solid #d0d0d0;border-radius:4px;cursor:pointer;vertical-align:middle;">' + rendered + '</span>&nbsp;';
+          _qeInsertHTML(html);
+        }
+
+        function _qeBuildSpCharPanel() {
+          var panel = document.getElementById("ssQESpCharPanel");
+          if (!panel) return;
+          var groups = {
+            "Greek": ["\u03B1","\u03B2","\u03B3","\u03B4","\u03B5","\u03B8","\u03BB","\u03C0","\u03C3","\u03C9","\u0394","\u03A3"],
+            "Math": ["\u00B1","\u00D7","\u00F7","\u2260","\u2264","\u2265","\u221E","\u2211","\u220F","\u222B","\u2248","\u221A"],
+            "Arrows": ["\u2190","\u2191","\u2192","\u2193","\u2194"],
+            "Symbols": ["\u00A9","\u00AE","\u2122","\u00B0","\u2022","\u2026","\u2013","\u2014","\u2018","\u2019","\u201C","\u201D"],
+            "Shapes": ["\u25CF","\u25CB","\u25A0","\u25B2","\u25BC","\u2605","\u2606"],
+            "Checks": ["\u2713","\u2717","\u271C"]
+          };
+          var html = '<div class="ss-qe-panel-header">Special Characters <span class="ss-qe-panel-close" style="float:right;cursor:pointer;font-size:14px;" title="Close">\u2715</span></div>';
+          Object.keys(groups).forEach(function(grp) {
+            html += '<div style="font-size:10px;font-weight:600;color:#6b7a8d;margin:6px 0 3px;text-transform:uppercase;letter-spacing:0.5px;">' + grp + '</div><div class="ss-qe-spchar-grid">';
+            groups[grp].forEach(function(ch) { html += '<button type="button" class="ss-qe-spchar-btn" data-char="' + ch + '">' + ch + '</button>'; });
+            html += '</div>';
+          });
+          panel.innerHTML = html;
+          var closeBtn = panel.querySelector(".ss-qe-panel-close");
+          if (closeBtn) safeOn(closeBtn, "click", function() { panel.style.display = "none"; _qe.activePanel = null; });
+          panel.querySelectorAll(".ss-qe-spchar-btn").forEach(function(btn) { safeOn(btn, "click", function() { _qeInsertHTML(btn.getAttribute("data-char")); }); });
+        }
+
+        function _qeHandleImageUpload(files) {
+          Array.from(files).forEach(function(file) {
+            if (!file.type.startsWith("image/")) return;
+            var reader = new FileReader();
+            reader.onload = function() {
+              var id = _qeGenId();
+              var wrap = '<figure class="ss-qe-figure ss-qe-image-figure" contenteditable="false" data-obj-id="' + id + '" data-wrap="inline" data-z="' + (++_qeDoc.zCounter) + '" style="display:inline-block;margin:8px 4px;position:relative;max-width:100%;width:300px;height:200px;z-index:' + _qeDoc.zCounter + ';"><div class="ss-qe-figure-inner" style="position:relative;display:inline-block;width:100%;height:100%;"><img src="' + reader.result + '" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:4px;display:block;"><div class="ss-qe-image-controls" style="display:none;position:absolute;top:-32px;right:0;background:rgba(255,255,255,0.95);border-radius:6px;padding:2px 4px;box-shadow:0 2px 8px rgba(0,0,0,0.15);gap:2px;"><button type="button" class="ss-qe-fc-btn" data-action="img-delete" title="Delete">\u2715</button><button type="button" class="ss-qe-fc-btn" data-action="img-caption" title="Caption">\u270E</button><button type="button" class="ss-qe-fc-btn" data-action="img-alt" title="Alt Text">ALT</button></div></div><figcaption contenteditable="true" class="ss-qe-img-caption" style="text-align:center;font-size:0.8rem;color:#666;margin-top:4px;outline:none;"></figcaption></figure><p><br></p>';
+              _qeInsertHTML(wrap);
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+
+        function _qeSetFontSize(size) {
+          var sel = window.getSelection();
+          if (!sel || !sel.rangeCount) return;
+          if (sel.isCollapsed) {
+            document.execCommand("fontSize", false, "7");
+            _qe.el.querySelectorAll("font[size='7']").forEach(function(f) {
+              var span = document.createElement("span");
+              span.style.fontSize = size + "pt";
+              while (f.firstChild) span.appendChild(f.firstChild);
+              f.parentNode.replaceChild(span, f);
+            });
+            return;
+          }
+          // Save selection as text offsets for robust restoration
+          var range = sel.getRangeAt(0);
+          var startContainer = range.startContainer;
+          var startOffset = range.startOffset;
+          var endContainer = range.endContainer;
+          var endOffset = range.endOffset;
+          // Compute text offsets relative to editor
+          function getTextOffset(node, offset) {
+            var walker = document.createTreeWalker(_qe.el, NodeFilter.SHOW_TEXT, null, false);
+            var total = 0;
+            var current;
+            while (current = walker.nextNode()) {
+              if (current === node) return total + offset;
+              total += current.textContent.length;
+            }
+            return total;
+          }
+          var startTextOffset = getTextOffset(startContainer, startOffset);
+          var endTextOffset = getTextOffset(endContainer, endOffset);
+          // Apply fontSize
+          document.execCommand("fontSize", false, "7");
+          _qe.el.querySelectorAll("font[size='7']").forEach(function(f) {
+            var span = document.createElement("span");
+            span.style.fontSize = size + "pt";
+            while (f.firstChild) span.appendChild(f.firstChild);
+            f.parentNode.replaceChild(span, f);
+          });
+          // Restore selection using text offsets
+          try {
+            var walker2 = document.createTreeWalker(_qe.el, NodeFilter.SHOW_TEXT, null, false);
+            var totalLen = 0;
+            var startNode = null, startOff = 0, endNode = null, endOff = 0;
+            var node;
+            while (node = walker2.nextNode()) {
+              var nodeLen = node.textContent.length;
+              if (!startNode && totalLen + nodeLen >= startTextOffset) {
+                startNode = node;
+                startOff = startTextOffset - totalLen;
+              }
+              if (totalLen + nodeLen >= endTextOffset) {
+                endNode = node;
+                endOff = endTextOffset - totalLen;
+                break;
+              }
+              totalLen += nodeLen;
+            }
+            if (startNode && endNode) {
+              var newRange = document.createRange();
+              newRange.setStart(startNode, startOff);
+              newRange.setEnd(endNode, endOff);
+              sel.removeAllRanges();
+              sel.addRange(newRange);
+            }
+          } catch(e) {}
+        }
+
+        function _qeChangeFontSize(dir) {
+          var sel = window.getSelection();
+          if (!sel || !sel.rangeCount) return;
+          var node = sel.anchorNode;
+          if (node && node.nodeType === 3) node = node.parentNode;
+          var el = node && node.nodeType === 1 ? node : null;
+          var curSize = 12;
+          if (el) { try { curSize = parseFloat(window.getComputedStyle(el).fontSize) * 72 / 96; } catch(e){} }
+          var pt = Math.round(curSize), idx = -1;
+          _qe.wordFontSizes.forEach(function(s, i) { if (s <= pt) idx = i; });
+          var next = _qe.wordFontSizes[Math.max(0, Math.min(_qe.wordFontSizes.length - 1, idx + dir))];
+          _qeSetFontSize(next);
+          var sizeSelect = _qe.toolbar.querySelector(".ss-qe-font-size");
+          if (sizeSelect) sizeSelect.value = next;
+        }
+
+        function _qeInsertLink() {
+          _qeShowUrlPopup("Insert Link", "https://", function(url) { _qeExec("createLink", url); });
+        }
+
+        // â”€â”€ Toolbar â”€â”€
+        function _qeBuildToolbar() {
+          var tb = _qe.toolbar; if (!tb) return;
+          function btn(icon, title, cmd, val, cls) {
+            return '<button type="button" class="ss-qe-btn' + (cls ? " " + cls : "") + '" data-cmd="' + (cmd || "") + '" data-val="' + (val || "") + '" title="' + title + '">' + icon + '</button>';
+          }
+          function sep() { return '<span class="ss-qe-sep"></span>'; }
+          var icons = {
+            undo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 10h10a5 5 0 0 1 0 10H13"/><path d="M3 10l4-4M3 10l4 4"/></svg>',
+            redo: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10H11a5 5 0 0 0 0 10h1"/><path d="M21 10l-4-4M21 10l-4 4"/></svg>',
+            clear: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 20H7L3 16l9-9 8 8-4 4"/><path d="M6.5 13.5l8-8"/></svg>',
+            bold: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 4h8a4 4 0 0 1 0 8H6zM6 12h9a4 4 0 0 1 0 8H6z"/></svg>',
+            italic: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 4h-9M14 20H5M15 4L9 20"/></svg>',
+            underline: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3v7a6 6 0 0 0 12 0V3M4 21h16"/></svg>',
+            strikethrough: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.3 4.9c-1.1-1.3-2.9-2.1-4.8-1.9-3.1.3-5.4 2.7-5.5 5.4-.1 1.7.7 3.2 2 4.1M3 12h18M6.7 19.1c1.1 1.3 2.9 2.1 4.8 1.9 3.1-.3 5.4-2.7 5.5-5.4"/></svg>',
+            sup: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19l6-6-6-6"/><path d="M12 19h8"/></svg>',
+            sub: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5l6 6-6 6"/><path d="M12 5h8"/></svg>',
+            fontColor: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="17" width="18" height="4" rx="1" fill="currentColor"/><path d="M12 3L5 15h14L12 3z" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+            highlight: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none"><rect x="3" y="17" width="18" height="4" rx="1" fill="#ffeb3b"/><path d="M9 3h6l-1 10H10L9 3z" fill="currentColor" opacity="0.6"/></svg>',
+            alignL: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h12M3 18h16"/></svg>',
+            alignC: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M6 12h12M4 18h16"/></svg>',
+            alignR: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M9 12h12M5 18h16"/></svg>',
+            alignJ: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h18M3 18h18"/></svg>',
+            bullets: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="4" cy="6" r="1.5" fill="currentColor"/><circle cx="4" cy="12" r="1.5" fill="currentColor"/><circle cx="4" cy="18" r="1.5" fill="currentColor"/><path d="M8 6h13M8 12h13M8 18h13"/></svg>',
+            numbers: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><text x="2" y="8" font-size="7" fill="currentColor" stroke="none">1</text><text x="2" y="14" font-size="7" fill="currentColor" stroke="none">2</text><text x="2" y="20" font-size="7" fill="currentColor" stroke="none">3</text><path d="M8 6h13M8 12h13M8 18h13"/></svg>',
+            indent: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M9 12h12M3 18h18"/><path d="M3 12l4-3v6z" fill="currentColor"/></svg>',
+            outdent: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M9 12h12M3 18h18"/><path d="M7 12l-4-3v6z" fill="currentColor"/></svg>',
+            image: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/><path d="M21 15l-5-5L5 21"/></svg>',
+            table: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
+            link: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>',
+            equation: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><text x="3" y="17" font-size="14" font-style="italic" fill="currentColor" stroke="none">f(x)</text></svg>',
+            spchar: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><text x="3" y="16" font-size="14" fill="currentColor" stroke="none">\u03A3</text></svg>',
+            hline: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/></svg>',
+            pagebreak: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M4 9h16M12 9v11M8 16h8"/></svg>',
+            shapes: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3l9 18H3z"/></svg>',
+            rtl: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M3 12h10M3 18h14"/><text x="15" y="15" font-size="9" fill="currentColor" stroke="none">R</text></svg>',
+            code: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg>',
+            bringFwd: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="12" height="12" rx="1" fill="currentColor" opacity="0.2"/><rect x="9" y="9" width="12" height="12" rx="1"/><path d="M15 3v12M21 9h-12"/></svg>',
+            sendBwd: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="12" height="12" rx="1" fill="currentColor" opacity="0.2"/><rect x="3" y="3" width="12" height="12" rx="1"/><path d="M9 21V9M3 15h12"/></svg>',
+            delete: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"/></svg>'
+          };
+          var html = '';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.undo, "Undo (Ctrl+Z)", "undo") + btn(icons.redo, "Redo (Ctrl+Y)", "redo") + btn(icons.clear, "Clear Formatting", "removeFormat") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group"><select class="ss-qe-select ss-qe-font-family" title="Font Family">';
+          _qe.fontFamilies.forEach(function(f) { html += '<option value="' + f + '" style="font-family:' + f + ';">' + f + '</option>'; });
+          html += '</select><select class="ss-qe-select ss-qe-font-size" title="Font Size">';
+          _qe.wordFontSizes.forEach(function(s) { html += '<option value="' + s + '">' + s + '</option>'; });
+          html += '</select>' + btn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5M5 12l7-7 7 7"/></svg>', "Increase Font Size", "ss-qe-inc-size") + btn('<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>', "Decrease Font Size", "ss-qe-dec-size") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.bold, "Bold (Ctrl+B)", "bold") + btn(icons.italic, "Italic (Ctrl+I)", "italic") + btn(icons.underline, "Underline (Ctrl+U)", "underline") + btn(icons.strikethrough, "Strikethrough", "strikethrough") + btn(icons.sup, "Superscript", "superscript") + btn(icons.sub, "Subscript", "subscript") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group"><div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-font-color-btn" title="Text Color">' + icons.fontColor + '</button><input type="color" class="ss-qe-color-input" value="#ff0000" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div><div class="ss-qe-color-wrap"><button type="button" class="ss-qe-btn ss-qe-highlight-btn" title="Highlight Color">' + icons.highlight + '</button><input type="color" class="ss-qe-color-input" value="#ffff00" style="position:absolute;bottom:-2px;left:0;width:100%;height:4px;border:none;padding:0;cursor:pointer;opacity:0;"></div>' + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.alignL, "Align Left", "justifyLeft") + btn(icons.alignC, "Center", "justifyCenter") + btn(icons.alignR, "Align Right", "justifyRight") + btn(icons.alignJ, "Justify", "justifyFull") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.bullets, "Bullets", "insertUnorderedList") + btn(icons.numbers, "Numbering", "insertOrderedList") + btn(icons.indent, "Increase Indent", "indent") + btn(icons.outdent, "Decrease Indent", "outdent") + sep() + '</div>';
+          html += '<div class="ss-qe-btn-group">' + btn(icons.image, "Insert Image", "ss-qe-img") + btn(icons.table, "Insert Table", "ss-qe-table") + btn(icons.equation, "Math Equation", "ss-qe-equation") + btn(icons.spchar, "Special Characters", "ss-qe-spchar") + btn(icons.link, "Insert Link", "ss-qe-link") + btn(icons.hline, "Horizontal Line", "ss-qe-hline") + btn(icons.pagebreak, "Page Break", "ss-qe-pagebreak") + btn(icons.shapes, "Shapes", "ss-qe-shapes") + btn(icons.code, "Code Block", "formatBlock", "pre") + sep() + btn(icons.bringFwd, "Bring Forward", "ss-qe-bring-fwd") + btn(icons.sendBwd, "Send Backward", "ss-qe-send-bwd") + btn(icons.delete, "Delete Object", "ss-qe-delete") + sep() + btn(icons.rtl, "Toggle RTL/LTR", "ss-qe-rtl") + '</div>';
+          tb.innerHTML = html;
+
+          tb.querySelectorAll("[data-cmd]").forEach(function(b) {
+            // Prevent toolbar buttons from stealing focus from the editor
+            safeOn(b, "mousedown", function(e) { e.preventDefault(); });
+            safeOn(b, "click", function(e) {
+              e.preventDefault();
+              var cmd = b.getAttribute("data-cmd"), val = b.getAttribute("data-val");
+              if (["bold","italic","underline","strikethrough","superscript","subscript","justifyLeft","justifyCenter","justifyRight","justifyFull","insertUnorderedList","insertOrderedList","indent","outdent","undo","redo","removeFormat"].indexOf(cmd) >= 0) _qeExec(cmd, val);
+              else if (cmd === "formatBlock") _qeExec("formatBlock", val);
+              else if (cmd === "ss-qe-inc-size") _qeChangeFontSize(1);
+              else if (cmd === "ss-qe-dec-size") _qeChangeFontSize(-1);
+              else if (cmd === "ss-qe-img") document.getElementById("ssQEImgInput").click();
+              else if (cmd === "ss-qe-table") _qeShowPanel(document.getElementById("ssQETablePanel"), b);
+              else if (cmd === "ss-qe-equation") _qeShowPanel(document.getElementById("ssQEEquationPanel"), b);
+              else if (cmd === "ss-qe-spchar") _qeShowPanel(document.getElementById("ssQESpCharPanel"), b);
+              else if (cmd === "ss-qe-link") _qeInsertLink();
+              else if (cmd === "ss-qe-hline") _qeInsertHTML('<hr style="border:none;border-top:1px solid #b0bec5;margin:12px 0;">');
+              else if (cmd === "ss-qe-pagebreak") _qeInsertHTML('<div style="page-break-after:always;border-top:2px dashed #b0bec5;margin:20px 0;padding-top:8px;font-size:11px;color:#90a4ae;text-align:center;">\u2014 Page Break \u2014</div><p><br></p>');
+              else if (cmd === "ss-qe-shapes") _qeShowPanel(document.getElementById("ssQEShapesPanel"), b);
+              else if (cmd === "ss-qe-bring-fwd" && _qe.selectedEl) { var obj = _qeGetObject(_qe.selectedEl); if (obj) { obj.zIndex = ++_qeDoc.zCounter; _qeSyncTransform(obj.id); } }
+              else if (cmd === "ss-qe-send-bwd" && _qe.selectedEl) { var obj = _qeGetObject(_qe.selectedEl); if (obj) { obj.zIndex = Math.max(1, obj.zIndex - 1); _qeSyncTransform(obj.id); } }
+              else if (cmd === "ss-qe-delete" && _qe.selectedEl) { var obj = _qeGetObject(_qe.selectedEl); if (obj) _qeDoc.objects.delete(obj.id); _qe.selectedEl.remove(); _qeDeselectAll(); _qeUpdateStatus(); }
+              else if (cmd === "ss-qe-rtl") { var isRTL = _qe.el.getAttribute("dir") === "rtl"; _qe.el.setAttribute("dir", isRTL ? "ltr" : "rtl"); _qe.el.style.textAlign = isRTL ? "left" : "right"; }
+            });
+          });
+
+          var fontSelect = tb.querySelector(".ss-qe-font-family");
+          if (fontSelect) safeOn(fontSelect, "change", function() { _qeExec("fontName", fontSelect.value); });
+          var sizeSelect = tb.querySelector(".ss-qe-font-size");
+          if (sizeSelect) safeOn(sizeSelect, "change", function() { _qeSetFontSize(parseInt(sizeSelect.value) || 12); });
+          var fcBtn = tb.querySelector(".ss-qe-font-color-btn");
+          if (fcBtn) { safeOn(fcBtn, "click", function(e) {
+            e.preventDefault();
+            // Save selection
+            var sel = window.getSelection();
+            var savedRanges = [];
+            if (sel && sel.rangeCount) { for (var si = 0; si < sel.rangeCount; si++) savedRanges.push(sel.getRangeAt(si).cloneRange()); }
+            _qeShowColorPopup(e, "Text Color", "#ff0000", function(color) {
+              _qe.el.focus();
+              // Restore selection
+              if (savedRanges.length) { var ns = window.getSelection(); ns.removeAllRanges(); savedRanges.forEach(function(r) { ns.addRange(r); }); }
+              _qeExec("foreColor", color);
+            });
+          }); }
+          var hlBtn = tb.querySelector(".ss-qe-highlight-btn");
+          if (hlBtn) { safeOn(hlBtn, "click", function(e) {
+            e.preventDefault();
+            var sel = window.getSelection();
+            var savedRanges = [];
+            if (sel && sel.rangeCount) { for (var si = 0; si < sel.rangeCount; si++) savedRanges.push(sel.getRangeAt(si).cloneRange()); }
+            _qeShowColorPopup(e, "Highlight Color", "#ffff00", function(color) {
+              _qe.el.focus();
+              if (savedRanges.length) { var ns = window.getSelection(); ns.removeAllRanges(); savedRanges.forEach(function(r) { ns.addRange(r); }); }
+              _qeExec("hiliteColor", color);
+            });
+          }); }
+        }
+
+        // â”€â”€ Keyboard Shortcuts â”€â”€
+        function _qeHandleKeydown(e) {
+          if (!_qe.el || !_qe.el.contains(e.target)) return;
+          var ctrl = e.ctrlKey || e.metaKey;
+          // TEXT MODE: If cursor is inside a text editor, let browser handle text editing
+          if (_qeTextEditActive && _qeTextEditTarget && _qeTextEditTarget.contains(e.target)) {
+            if (e.key === "Escape") { e.preventDefault(); _qeExitTextEditMode(); return; }
+            return;
+          }
+          // Check if cursor is inside any contenteditable element (table cell, shape text, main editor)
+          var ae = document.activeElement;
+          var isInEditable = false;
+          if (ae && ae.getAttribute && ae.getAttribute("contenteditable") === "true") isInEditable = true;
+          if (ae && ae.closest && (ae.closest("td") || ae.closest("th") || ae.closest(".ss-qe-shape-text-editor") || ae.closest("#ssQEContent"))) isInEditable = true;
+          var sel = window.getSelection();
+          if (sel && sel.anchorNode) {
+            var an = sel.anchorNode.nodeType === 3 ? sel.anchorNode.parentNode : sel.anchorNode;
+            if (an && an.getAttribute && an.getAttribute("contenteditable") === "true") isInEditable = true;
+            if (an && an.closest && (an.closest("td") || an.closest("th") || an.closest(".ss-qe-shape-text-editor") || an.closest("#ssQEContent"))) isInEditable = true;
+          }
+          // If inside an editable text area, only handle Escape â€” let browser handle everything else
+          if (isInEditable) {
+            if (e.key === "Escape") { e.preventDefault(); _qeExitTextEditMode(); }
+            return;
+          }
+          // Escape: close panels, deselect
+          if (e.key === "Escape") {
+            _qeClosePanels(); _qeDeselectAll(); _qeHideContextMenu(); return;
+          }
+          // Delete/Backspace: delete selected object only when NOT editing text
+          if ((e.key === "Delete" || e.key === "Backspace") && _qe.selectedEl) {
+            e.preventDefault(); e.stopPropagation();
+            var obj = _qeGetObject(_qe.selectedEl);
+            if (obj) _qeDoc.objects.delete(obj.id);
+            _qe.selectedEl.remove();
+            _qeDeselectAll();
+            _qeUpdateStatus();
+            return;
+          }
+          if (ctrl && e.key === "z" && !e.shiftKey) { return; }
+          if (ctrl && (e.key === "y" || (e.key === "z" && e.shiftKey))) { return; }
+          if (ctrl && e.key === "c" && _qe.selectedEl) {
+            e.preventDefault();
+            _qeDoc.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType };
+          }
+          if (ctrl && e.key === "x" && _qe.selectedEl) {
+            e.preventDefault();
+            _qeDoc.clipboard = { html: _qe.selectedEl.outerHTML, type: _qe.selectedType };
+            var obj = _qeGetObject(_qe.selectedEl);
+            if (obj) _qeDoc.objects.delete(obj.id);
+            _qe.selectedEl.remove();
+            _qeDeselectAll();
+            _qeUpdateStatus();
+          }
+          if (ctrl && e.key === "v" && _qeDoc.clipboard) {
+            if (_qe.selectedEl || document.activeElement === _qe.el) {
+              e.preventDefault();
+              _qeInsertHTML(_qeDoc.clipboard.html);
+            }
+          }
+          if (ctrl && e.key === "d" && _qe.selectedEl) {
+            e.preventDefault();
+            _qeDuplicateObject(_qe.selectedEl);
+          }
+          if (ctrl && e.key === "a" && document.activeElement === _qe.el) {
+            e.preventDefault();
+            var range = document.createRange();
+            range.selectNodeContents(_qe.el);
+            var sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+          // Arrow keys: move selected object only when not in any editable
+          if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].indexOf(e.key) >= 0 && _qe.selectedEl) {
+            e.preventDefault();
+            var obj = _qeGetObject(_qe.selectedEl);
+            if (!obj) return;
+            var step = e.shiftKey ? 1 : 5;
+            if (e.key === "ArrowUp") obj.y -= step;
+            if (e.key === "ArrowDown") obj.y += step;
+            if (e.key === "ArrowLeft") obj.x -= step;
+            if (e.key === "ArrowRight") obj.x += step;
+            _qeSyncTransform(obj.id);
+            _qeShowPropsPanel();
+          }
+        }
+
+        // â”€â”€ Drag Selection (Marquee) â”€â”€
+        var _qeMarquee = null;
+        var _qeMarqueeStart = null;
+
+        function _qeSetupMarquee() {
+          _qe.el.addEventListener("mousedown", function(e) {
+            // Only start marquee on empty editor space (not on objects)
+            if (e.target.closest(".ss-qe-figure") || e.target.closest(".ss-qe-float-table") || e.target.closest("table") || e.target.closest(".ss-qe-resize-handle") || e.target.closest(".ss-qe-rotate-handle") || e.target.closest("button") || e.target.closest(".ss-qe-shape-text-editor")) return;
+            if (_qeTextEditActive) return;
+            var startX = e.clientX;
+            var startY = e.clientY;
+            var isDragging = false;
+            // Create marquee element
+            var marquee = document.createElement("div");
+            marquee.className = "ss-qe-selection-box";
+            marquee.style.cssText = "position:fixed;border:1px solid rgba(37,99,235,0.5);background:rgba(37,99,235,0.08);pointer-events:none;z-index:99999;display:none;";
+            function onMove(ev) {
+              var dx = ev.clientX - startX;
+              var dy = ev.clientY - startY;
+              if (Math.abs(dx) > 5 || Math.abs(dy) > 5) isDragging = true;
+              if (!isDragging) return;
+              if (!_qeMarquee) {
+                _qeMarquee = marquee;
+                document.body.appendChild(marquee);
+              }
+              marquee.style.display = "block";
+              var left = Math.min(startX, ev.clientX);
+              var top = Math.min(startY, ev.clientY);
+              var width = Math.abs(dx);
+              var height = Math.abs(dy);
+              marquee.style.left = left + "px";
+              marquee.style.top = top + "px";
+              marquee.style.width = width + "px";
+              marquee.style.height = height + "px";
+              // Highlight objects inside marquee
+              _qeHighlightMarqueeObjects(left, top, width, height, e.ctrlKey || e.metaKey);
+            }
+            function onUp() {
+              document.removeEventListener("mousemove", onMove);
+              document.removeEventListener("mouseup", onUp);
+              if (_qeMarquee) {
+                _qeMarquee.remove();
+                _qeMarquee = null;
+              }
+              if (isDragging) {
+                // Finalize selection
+                _qeFinalizeMarqueeSelection(e.ctrlKey || e.metaKey);
+              }
+            }
+            document.addEventListener("mousemove", onMove);
+            document.addEventListener("mouseup", onUp);
+          });
+        }
+
+        function _qeHighlightMarqueeObjects(left, top, width, height, additive) {
+          if (!additive) {
+            _qeDoc.objects.forEach(function(obj) {
+              if (obj.el) obj.el.classList.remove("ss-qe-marquee-highlight");
+            });
+          }
+          _qeDoc.objects.forEach(function(obj) {
+            if (!obj.el) return;
+            var rect = obj.el.getBoundingClientRect();
+            // Check if object intersects with marquee
+            if (rect.left < left + width && rect.right > left && rect.top < top + height && rect.bottom > top) {
+              obj.el.classList.add("ss-qe-marquee-highlight");
+            } else if (!additive) {
+              obj.el.classList.remove("ss-qe-marquee-highlight");
+            }
+          });
+        }
+
+        function _qeFinalizeMarqueeSelection(additive) {
+          if (!additive) _qeDeselectAll();
+          _qeDoc.objects.forEach(function(obj) {
+            if (obj.el && obj.el.classList.contains("ss-qe-marquee-highlight")) {
+              obj.el.classList.remove("ss-qe-marquee-highlight");
+              _qeSelect(obj.el, obj.type);
+            }
+          });
+        }
+
+        // â”€â”€ Wire Events â”€â”€
+        function _qeWireEvents() {
+          _qe.el.addEventListener("input", function() { _qeUpdateStatus(); });
+          _qe.el.addEventListener("keyup", function() { _qeUpdateStatus(); _qeUpdateToolbar(); });
+          _qe.el.addEventListener("mouseup", function() { _qeUpdateToolbar(); });
+          _qe.el.addEventListener("keydown", _qeHandleKeydown);
+          // Exit text edit mode when clicking in editor (not on object)
+          _qe.el.addEventListener("click", function(e) {
+            if (_qeTextEditActive && !e.target.closest(".ss-qe-shape-text-editor")) {
+              _qeExitTextEditMode();
+            }
+          });
+          // Setup marquee selection
+          _qeSetupMarquee();
+          _qe.el.addEventListener("paste", function(e) {
+            var html = (e.clipboardData || window.clipboardData).getData("text/html");
+            if (html && html.length > 10) {
+              e.preventDefault();
+              var cleaned = html.replace(/<meta[^>]*>/gi, "").replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "").replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "").replace(/class="[^"]*"/gi, "").replace(/<o:p[^>]*>[\s\S]*?<\/o:p>/gi, "").replace(/<w:[^>]*>[\s\S]*?<\/w:[^>]*>/gi, "").replace(/<m:[^>]*>[\s\S]*?<\/m:[^>]*>/gi, "");
+              _qeInsertHTML(cleaned);
+            }
+          });
+          _qe.el.addEventListener("dragover", function(e) { e.preventDefault(); e.dataTransfer.dropEffect = "copy"; });
+          _qe.el.addEventListener("drop", function(e) {
+            e.preventDefault();
+            var files = e.dataTransfer.files;
+            if (files.length) { _qeHandleImageUpload(files); return; }
+            var html = e.dataTransfer.getData("text/html");
+            if (html && html.indexOf("ss-qe-figure") < 0) _qeInsertHTML(html);
+          });
+          _qe.el.addEventListener("click", function(e) {
+            // Exit text edit mode when clicking outside the text editor
+            if (_qeTextEditActive && !e.target.closest(".ss-qe-shape-text-editor")) {
+              _qeExitTextEditMode();
+            }
+            // Deselect all when clicking on empty editor space
+            if (!e.target.closest(".ss-qe-figure") && !e.target.closest(".ss-qe-float-table") && !e.target.closest("table") && !e.target.closest(".ss-qe-resize-handle") && !e.target.closest(".ss-qe-rotate-handle")) {
+              _qeDeselectAll();
+              // Reset font size to default when clicking in empty space (prevents font size leaking from objects)
+              try {
+                document.execCommand("fontSize", false, "3");
+                _qe.el.querySelectorAll("font[size='3']").forEach(function(f) {
+                  var span = document.createElement("span");
+                  span.style.fontSize = "14px";
+                  while (f.firstChild) span.appendChild(f.firstChild);
+                  f.parentNode.replaceChild(span, f);
+                });
+              } catch(ex) {}
+            }
+          });
+          _qeWireAllObjects();
+          safeOn(document, "keydown", function(e) {
+            if (e.key === "Escape") { _qeClosePanels(); _qeHideContextMenu(); _qeHideTableContextMenu(); }
+          });
+        }
+
+        // Keep backward compat for old table context menu
+        var _qeTableContextMenu = null;
+        function _qeHideTableContextMenu() {}
+
+        function getEditorHtml() {
+          var html = _qeGetHTML();
+          var tmp = document.createElement("div");
+          tmp.innerHTML = html;
+          tmp.querySelectorAll(".ss-qe-resize-handle, .ss-qe-rotate-handle, .ss-qe-figure-controls, .ss-qe-image-controls, .ss-qe-table-move-handle, .ss-qe-table-resize-handle, .ss-qe-col-resize, .ss-qe-row-resize, .ss-qe-props-panel, .ss-qe-context-menu, .ss-qe-color-popup, .ss-qe-crop-overlay, .ss-qe-marquee-box").forEach(function(el) { el.remove(); });
+          tmp.querySelectorAll(".ss-qe-selected, .ss-qe-table-selected, .ss-qe-text-edit-mode").forEach(function(el) { el.classList.remove("ss-qe-selected", "ss-qe-table-selected", "ss-qe-text-edit-mode"); });
+          tmp.querySelectorAll("[data-obj-id]").forEach(function(el) { el.removeAttribute("data-obj-id"); });
+          tmp.querySelectorAll("[data-wired], [data-drag-wired]").forEach(function(el) { el.removeAttribute("data-wired"); el.removeAttribute("data-drag-wired"); });
+          tmp.querySelectorAll("[contenteditable]").forEach(function(el) { el.removeAttribute("contenteditable"); });
+          tmp.querySelectorAll("[draggable]").forEach(function(el) { el.removeAttribute("draggable"); });
+          tmp.querySelectorAll("[style]").forEach(function(el) {
+            var s = el.getAttribute("style");
+            if (s) { s = s.replace(/outline[^;]*;?/gi, "").replace(/box-shadow[^;]*;?/gi, "").replace(/cursor[^;]*;?/gi, ""); el.setAttribute("style", s); }
+          });
+          return tmp.innerHTML;
+        }
+        function clearEditor() { _qeClear(); }
+        function getEditorText() { return _qeGetText(); }
+        function insertAtCursor(html) { _qeInsertHTML(html); }
 
 
-        classSelect.addEventListener("change", renderSubjectSelect);
+        // â”€â”€ Question Editor initialization â”€â”€
+        (function initQuestionEditor() {
+          _qe.el = document.getElementById("ssQEContent");
+          _qe.toolbar = document.getElementById("ssQEToolbar");
+          _qe.status = document.getElementById("ssQEStatus");
+          if (!_qe.el || !_qe.toolbar) return;
+          _qeBuildToolbar();
+          _qeBuildShapesPanel();
+          _qeBuildTablePanel();
+          _qeBuildEquationPanel();
+          _qeBuildSpCharPanel();
+          _qeWireEvents();
+          _qeUpdateStatus();
+          var imgInput = document.getElementById("ssQEImgInput");
+          if (imgInput) safeOn(imgInput, "change", function() {
+            if (imgInput.files.length) _qeHandleImageUpload(imgInput.files);
+            imgInput.value = "";
+          });
+          if (!_qe.el.innerHTML.trim()) _qe.el.innerHTML = "<p><br></p>";
+        })();
+
+
+classSelect.addEventListener("change", renderSubjectSelect);
         subjectSelect.addEventListener("change", renderExistingChapterSelect);
         existingChapterSelect.addEventListener("change", function () {
           if (existingChapterSelect.value) {
@@ -16716,7 +20003,63 @@ ${allContent}
         renderTypeMode();
         renderMcqRows();
         renderChapterRows();
-        setupAdvancedToolbar();
+
+        // â”€â”€ Edit Mode: Load question from Question Bank â”€â”€
+        var editQId = sessionStorage.getItem("sagarsoft_edit_question_id");
+        if (editQId) {
+          var editRow = (settings.questionChapters || []).find(function(r) { return String(r.id) === String(editQId); });
+          if (editRow) {
+            _isEditing = true;
+            _editingQuestionId = editRow.id;
+            document.getElementById("qpSaveQuestion").textContent = "Update Question";
+            // Populate class and trigger subject load
+            classSelect.value = editRow.className || "";
+            renderSubjectSelect();
+            subjectSelect.value = editRow.subject || "";
+            renderExistingChapterSelect();
+            // Populate section, type, marks
+            sectionSelect.value = editRow.section || "Section A";
+            typeSelect.value = editRow.questionType || "short";
+            marksInput.value = editRow.marks || "";
+            // Populate chapter
+            existingChapterSelect.value = editRow.chapterName || "";
+            chapterNameInput.value = editRow.chapterName || "";
+            // Populate question title
+            questionTitleInput.value = editRow.questionTitle || "";
+            _lastAutoTitle = _qpAutoTitleDefaults[editRow.questionType] || "";
+            // Render type-specific fields
+            renderTypeMode();
+            // Populate MCQ options
+            if (editRow.questionType === "mcq" && Array.isArray(editRow.options)) {
+              mcqOptions = editRow.options.slice();
+              while (mcqOptions.length < 2) mcqOptions.push("");
+              renderMcqRows();
+              // Fill MCQ input values
+              var mcqInps = mcqRows.querySelectorAll(".mcq-opt-input");
+              mcqInps.forEach(function(inp) {
+                var idx = parseInt(inp.getAttribute("data-idx"));
+                if (mcqOptions[idx] !== undefined) inp.value = mcqOptions[idx];
+              });
+            }
+            // Populate fill/truefalse options
+            if ((editRow.questionType === "fill" || editRow.questionType === "truefalse") && Array.isArray(editRow.options) && editRow.options.length >= 2) {
+              fillOpt1.value = editRow.options[0] || "";
+              fillOpt2.value = editRow.options[1] || "";
+            }
+            // Populate answer lines
+            if (editRow.questionType === "short" || editRow.questionType === "long") {
+              answerLinesInput.value = editRow.answerLines || (editRow.questionType === "short" ? 3 : 6);
+            }
+            // Load rich editor content
+            if (editRow.questionHtml) {
+              _qe.el.innerHTML = editRow.questionHtml;
+              _qeUpdateStatus();
+              setTimeout(function() { _qeWireAllObjects(); }, 0);
+            }
+          }
+          sessionStorage.removeItem("sagarsoft_edit_question_id");
+        }
+
         return;
       }
 
@@ -16733,15 +20076,15 @@ ${allContent}
             <div style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Chapters (Multi Select)*</label>
               <select id="qpBankChapters" multiple size="6" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></select>
-              <div id="qpBankChapterActions" class="compact-list" style="margin-top:8px;"></div>
+              <div id="qpBankQuestionListing" style="margin-top:8px;"></div>
             </div>
             <div style="margin:4px 0;">
               <label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Question Type and Number</label>
               <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:300px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Use</th><th style="white-space:nowrap;">Question Type</th><th style="white-space:nowrap;">Number</th></tr></thead><tbody id="qpBankTypeRows"></tbody></table></div>
             </div>
-            <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow-x:hidden;">
+            <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow:visible;">
               <strong>Loaded Questions Preview</strong>
-              <div id="qpBankPreview" class="module-preview-card" style="max-width:100%;overflow-x:auto;"><p>Select filters then click Load Questions.</p></div>
+              <div id="qpBankPreview" class="module-preview-card" style="max-width:100%;overflow:visible;"><p>Select filters then click Load Questions.</p></div>
             </article>
             <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 4px 0;">
               <button class="table-action-btn" type="button" id="qpLoadQuestions" style="padding:6px 14px;font-size:0.8rem;">Load Questions</button>
@@ -16757,12 +20100,13 @@ ${allContent}
         const chapterSelect = document.getElementById("qpBankChapters");
         const typeRows = document.getElementById("qpBankTypeRows");
         const preview = document.getElementById("qpBankPreview");
-        const chapterActions = document.getElementById("qpBankChapterActions");
+        const questionListing = document.getElementById("qpBankQuestionListing");
         const message = document.getElementById("qpBankMessage");
         const titleInput = document.getElementById("qpBankTitle");
         const dateInput = document.getElementById("qpBankDate");
         let loadedRows = [];
         let filterPool = [];
+        let usedQuestionIds = new Set();
 
         function shuffleRows(rows) {
           return rows.slice().sort(function () { return Math.random() - 0.5; });
@@ -16778,7 +20122,7 @@ ${allContent}
         function renderSubjectSelect() {
           subjectSelect.innerHTML = classSelect.value ? qpSubjectOptionsByClass(classSelect.value, "") : `<option value="">Select class first</option>`;
           chapterSelect.innerHTML = "";
-          chapterActions.innerHTML = "";
+          questionListing.innerHTML = "";
           loadedRows = [];
           renderPreview();
         }
@@ -16794,15 +20138,59 @@ ${allContent}
           chapterSelect.innerHTML = chapterNames.map(function (name) {
             return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
           }).join("");
-          chapterActions.innerHTML = chapterNames.length ? chapterNames.map(function (name) {
-            return `<article style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-              <span>${escapeHtml(name)}</span>
-              <span class="table-actions">
-                <button class="table-action-btn" type="button" data-qp-edit-chapter="${escapeAttr(name)}">Edit</button>
-                <button class="table-action-btn danger" type="button" data-qp-delete-chapter="${escapeAttr(name)}">Delete</button>
-              </span>
-            </article>`;
-          }).join("") : `<p class="empty-state">No chapter created for this class and subject.</p>`;
+        }
+
+        function renderQuestionListing() {
+          const className = classSelect.value;
+          const subject = subjectSelect.value;
+          const chapters = selectedChapters();
+          if (!className || !subject || !chapters.length) {
+            questionListing.innerHTML = "";
+            return;
+          }
+          const pool = qpQuestionPool({ className: className, subject: subject, chapterNames: chapters });
+          if (!pool.length) {
+            questionListing.innerHTML = `<p class="empty-state">No questions found for selected chapters. Add questions in Subject Chapters first.</p>`;
+            return;
+          }
+          const typeGroups = {};
+          pool.forEach(function (row) {
+            const type = row.questionType || "other";
+            if (!typeGroups[type]) {
+              typeGroups[type] = [];
+            }
+            typeGroups[type].push(row);
+          });
+          const typeOrder = ["mcq", "fill", "truefalse", "short", "long"];
+          const sortedTypes = typeOrder.filter(function (t) { return typeGroups[t] && typeGroups[t].length; });
+          Object.keys(typeGroups).forEach(function (t) {
+            if (!sortedTypes.includes(t)) {
+              sortedTypes.push(t);
+            }
+          });
+          let html = sortedTypes.map(function (type) {
+            const rows = typeGroups[type];
+            const cards = rows.map(function (row) {
+              const qHtml = String(row.questionHtml || "").trim();
+              const qText = qpStripHtml(row.questionText || row.questionHtml || "");
+              let contentHtml;
+              if (qHtml) {
+                contentHtml = `<div class="qp-paper-content">${qHtml}</div>`;
+              } else {
+                contentHtml = `<p style="margin:0;color:#4b5f84;">${escapeHtml(qText || "No content")}</p>`;
+              }
+              return `<article class="module-preview-card" style="margin:6px 0;padding:8px 10px;">
+                <div style="font-size:0.8rem;color:#0f2748;margin-bottom:4px;"><strong>${escapeHtml(row.chapterName || "-")}</strong> | ${Number(row.marks || 0)} marks</div>
+                ${contentHtml}
+                <div class="form-actions" style="justify-content:flex-start;margin-top:6px;">
+                  <button class="table-action-btn" type="button" data-qp-listing-edit="${escapeAttr(row.id)}">Edit</button>
+                  <button class="table-action-btn danger" type="button" data-qp-listing-delete="${escapeAttr(row.id)}">Delete</button>
+                </div>
+              </article>`;
+            }).join("");
+            return `<div style="margin-bottom:10px;"><h4 class="qp-question-listing-type">${escapeHtml(qpTypeLabel(type))} (${rows.length})</h4>${cards}</div>`;
+          }).join("");
+          questionListing.innerHTML = html;
         }
 
         function selectedChapters() {
@@ -16817,65 +20205,6 @@ ${allContent}
           }
         });
 
-        function openBrandedInputDialog(options) {
-          const config = options || {};
-          const overlay = document.createElement("div");
-          overlay.className = "app-modal-overlay";
-          overlay.style.position = "fixed";
-          overlay.style.inset = "0";
-          overlay.style.background = "rgba(12, 25, 44, 0.48)";
-          overlay.style.display = "flex";
-          overlay.style.alignItems = "center";
-          overlay.style.justifyContent = "center";
-          overlay.style.zIndex = "99999";
-          const panel = document.createElement("section");
-          panel.className = "app-modal app-modal--compact";
-          panel.style.width = "min(92vw, 430px)";
-          panel.style.background = "#f7fbff";
-          panel.style.border = "1px solid #c8d5e2";
-          panel.style.borderRadius = "16px";
-          panel.style.boxShadow = "0 18px 45px rgba(12, 25, 44, 0.28)";
-          panel.style.padding = "18px";
-          panel.innerHTML = `
-            <h3 style="margin:0 0 6px;color:#0f2748;font-size:1.05rem;">${escapeHtml(config.title || "Edit")}</h3>
-            <p style="margin:0 0 14px;color:#5f7394;font-size:0.9rem;">${escapeHtml(config.detail || "Update value below.")}</p>
-            <div class="field-group">
-              <label for="brandedInputDialogField">${escapeHtml(config.label || "Value")}</label>
-              <input id="brandedInputDialogField" type="text" value="${escapeAttr(config.value || "")}">
-            </div>
-            <p class="form-message" id="brandedInputDialogMessage"></p>
-            <div class="form-actions" style="justify-content:flex-end;margin-top:14px;">
-              <button type="button" class="table-action-btn" id="brandedInputCancel">Cancel</button>
-              <button type="button" class="table-action-btn success" id="brandedInputSave">Save</button>
-            </div>
-          `;
-          overlay.appendChild(panel);
-          document.body.appendChild(overlay);
-          const input = panel.querySelector("#brandedInputDialogField");
-          const messageBox = panel.querySelector("#brandedInputDialogMessage");
-          function close() {
-            overlay.remove();
-          }
-          panel.querySelector("#brandedInputCancel").addEventListener("click", close);
-          overlay.addEventListener("click", function (event) {
-            if (event.target === overlay) close();
-          });
-          panel.querySelector("#brandedInputSave").addEventListener("click", function () {
-            const nextValue = String(input.value || "").trim();
-            if (!nextValue) {
-              messageBox.textContent = "Please enter a chapter name.";
-              messageBox.className = "form-message error";
-              return;
-            }
-            close();
-            if (typeof config.onSave === "function") {
-              config.onSave(nextValue);
-            }
-          });
-          input.focus();
-          input.select();
-        }
-
         function selectedTypeCounts() {
           return Array.from(typeRows.querySelectorAll("[data-qp-type]")).map(function (checkbox) {
             const type = checkbox.getAttribute("data-qp-type");
@@ -16887,46 +20216,44 @@ ${allContent}
           });
         }
 
-        chapterActions.addEventListener("click", function (event) {
-          const editButton = event.target.closest("[data-qp-edit-chapter]");
-          const deleteButton = event.target.closest("[data-qp-delete-chapter]");
-          const className = classSelect.value;
-          const subject = subjectSelect.value;
+        questionListing.addEventListener("click", function (event) {
+          const editButton = event.target.closest("[data-qp-listing-edit]");
           if (editButton) {
-            const oldName = editButton.getAttribute("data-qp-edit-chapter");
-            openBrandedInputDialog({
-              title: "Edit Chapter",
-              detail: "Rename this chapter for the selected class and subject.",
-              label: "Chapter Name",
-              value: oldName,
-              onSave: function (cleanName) {
-                (settings.questionChapters || []).forEach(function (row) {
-                  if (row.className === className && row.subject === subject && String(row.chapterName || "") === oldName) {
-                    row.chapterName = cleanName;
-                  }
-                });
-                saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-                renderChapterSelect();
-                loadedRows = [];
-                renderPreview();
-                openAppMessageBox("Success", "Chapter updated successfully.", "success");
-              }
+            const rowId = editButton.getAttribute("data-qp-listing-edit");
+            const row = (settings.questionChapters || []).find(function (item) {
+              return String(item.id) === String(rowId);
             });
+            if (!row) {
+              openAppMessageBox("Error", "Question not found.", "error");
+              return;
+            }
+            sessionStorage.setItem("sagarsoft_edit_question_id", row.id);
+            setRoute("subject-chapters");
             return;
           }
+          const deleteButton = event.target.closest("[data-qp-listing-delete]");
           if (deleteButton) {
-            const chapterName = deleteButton.getAttribute("data-qp-delete-chapter");
-            showStyledDeleteConfirmation(chapterName, function () {
-              trackDeletion(chapterName);
-              settings.questionChapters = (settings.questionChapters || []).filter(function (row) {
-                return !(row.className === className && row.subject === subject && String(row.chapterName || "") === chapterName);
+            const rowId = deleteButton.getAttribute("data-qp-listing-delete");
+            const row = (settings.questionChapters || []).find(function (item) {
+              return String(item.id) === String(rowId);
+            });
+            if (!row) {
+              openAppMessageBox("Error", "Question not found.", "error");
+              return;
+            }
+            showStyledDeleteConfirmation(String(row.questionTitle || row.chapterName || "Question"), function () {
+              trackDeletion(rowId);
+              settings.questionChapters = (settings.questionChapters || []).filter(function (item) {
+                return String(item.id) !== String(rowId);
               });
-              loadedRows = loadedRows.filter(function (row) { return String(row.chapterName || "") !== chapterName; });
-              filterPool = filterPool.filter(function (row) { return String(row.chapterName || "") !== chapterName; });
+              loadedRows = loadedRows.filter(function (item) { return String(item.id) !== String(rowId); });
+              filterPool = filterPool.filter(function (item) { return String(item.id) !== String(rowId); });
+              usedQuestionIds = new Set(loadedRows.map(function (r) { return String(r.id); }));
               saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
               renderChapterSelect();
+              renderQuestionListing();
               renderPreview();
-              openAppMessageBox("Success", "Chapter deleted successfully.", "success");
+              openAppMessageBox("Success", "Question deleted successfully.", "success");
             });
           }
         });
@@ -16937,26 +20264,44 @@ ${allContent}
             return;
           }
           let serial = 1;
-          preview.innerHTML = qpSections.map(function (sectionName) {
-            const rows = loadedRows.filter(function (row) {
-              return (row.section || "Section A") === sectionName;
-            });
-            if (!rows.length) {
-              return "";
+          preview.innerHTML = loadedRows.map(function (row) {
+            const qNo = serial++;
+            const type = row.questionType || "short";
+            const qHtml = String(row.questionHtml || "").trim();
+            const qText = qpStripHtml(row.questionText || row.questionHtml || "");
+            let questionContent;
+            if (qHtml) {
+              questionContent = `<div class="qp-paper-content">${qHtml}</div>`;
+            } else {
+              questionContent = `<p style="margin:0;">${escapeHtml(qText || "-")}</p>`;
             }
-            const cards = rows.map(function (row) {
-              const qNo = serial++;
-              return `<article class="module-preview-card" style="margin:8px 0;padding:10px;">
-                <div style="margin:0 0 6px;">${qpRenderQuestionForPaper(row, qNo)}</div>
-                <p style="margin:0 0 8px;color:#4b5f84;">${escapeHtml(qpTypeLabel(row.questionType))} | ${escapeHtml(row.chapterName || "-")} | ${Number(row.marks || 0)} marks</p>
-                <div class="form-actions" style="justify-content:flex-start;">
-                  <button class="table-action-btn" type="button" data-qp-change="${escapeAttr(row.id)}">Change</button>
-                  <button class="table-action-btn" type="button" data-qp-edit="${escapeAttr(row.id)}">Edit</button>
-                  <button class="table-action-btn danger" type="button" data-qp-delete="${escapeAttr(row.id)}">Delete</button>
-                </div>
-              </article>`;
-            }).join("");
-            return `<section><h4 style="text-align:center;margin:10px 0 6px;font-weight:800;">${escapeHtml(sectionName)}</h4>${cards}</section>`;
+            let typeExtra = "";
+            if (type === "mcq" && Array.isArray(row.options) && row.options.filter(Boolean).length) {
+              const labels = ["A", "B", "C", "D", "E", "F"];
+              const opts = row.options.filter(Boolean).map(function (opt, idx) {
+                return `<span style="display:inline-block;margin-right:14px;">${labels[idx] || "O" + (idx + 1)}) ${escapeHtml(opt)}</span>`;
+              }).join("");
+              typeExtra = `<div style="margin:6px 0 0 24px;">${opts}</div>`;
+            } else if (type === "fill" && Array.isArray(row.options) && row.options.length) {
+              typeExtra = `<div style="margin:6px 0 0 24px;">[${escapeHtml(row.options[0] || "true")}] &nbsp;&nbsp; [${escapeHtml(row.options[1] || "false")}]</div>`;
+            } else if (type === "truefalse") {
+              typeExtra = `<div style="margin:6px 0 0 24px;">[True] &nbsp;&nbsp; [False]</div>`;
+            } else if (type === "short" || type === "long") {
+              const lines = type === "long" ? Math.max(3, Number(row.answerLines || 6)) : Math.max(1, Number(row.answerLines || 3));
+              typeExtra = `<div style="margin:6px 0 0 24px;">${qpAnswerLines(lines)}</div>`;
+            }
+            const chapter = escapeHtml(row.chapterName || "-");
+            const marks = Number(row.marks || 0);
+            const typeLabel = escapeHtml(qpTypeLabel(type));
+            return `<div class="qp-paper-question" data-qp-loaded-id="${escapeAttr(row.id)}">
+              <div class="qp-paper-number">Q${qNo}.</div>
+              ${questionContent}
+              ${typeExtra}
+              <div class="qp-paper-meta">${typeLabel} | ${chapter} | ${marks} marks</div>
+              <div class="qp-paper-actions">
+                <button class="table-action-btn" type="button" data-qp-change="${escapeAttr(row.id)}">Change</button>
+              </div>
+            </div>`;
           }).join("");
         }
 
@@ -17009,6 +20354,7 @@ ${allContent}
             }
           });
           loadedRows = shuffleRows(selectedRows);
+          usedQuestionIds = new Set(loadedRows.map(function (r) { return String(r.id); }));
           if (!loadedRows.length) {
             message.textContent = "No question matched selected filters.";
             message.className = "form-message error";
@@ -17022,64 +20368,6 @@ ${allContent}
         }
 
         preview.addEventListener("click", function (event) {
-          const editButton = event.target.closest("[data-qp-edit]");
-          if (editButton) {
-            const rowId = editButton.getAttribute("data-qp-edit");
-            const row = (settings.questionChapters || []).find(function (item) {
-              return String(item.id) === String(rowId);
-            });
-            if (!row) {
-              openAppMessageBox("Error", "Question not found.", "error");
-              return;
-            }
-            openStyledPrompt("Edit Chapter Name", String(row.chapterName || ""), function (nextChapter) {
-              if (nextChapter === null || nextChapter === undefined) return;
-              openStyledPrompt("Edit Question Title", String(row.questionTitle || ""), function (nextTitle) {
-                if (nextTitle === null || nextTitle === undefined) return;
-                openStyledPrompt("Edit Marks", String(Number(row.marks || 0)), function (nextMarksRaw) {
-                  if (nextMarksRaw === null || nextMarksRaw === undefined) return;
-                  var nextMarks = Number(nextMarksRaw);
-                  if (!(nextMarks > 0)) {
-                    openAppMessageBox("Error", "Marks must be greater than 0.", "error");
-                    return;
-                  }
-                  row.chapterName = String(nextChapter || "").trim() || row.chapterName || "";
-                  row.questionTitle = String(nextTitle || "").trim() || row.questionTitle || "";
-                  row.marks = nextMarks;
-        saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-        renderChapterSelect();
-                  renderPreview();
-                  openAppMessageBox("Success", "Question updated successfully.", "success");
-                });
-              });
-            });
-          }
-
-          const deleteButton = event.target.closest("[data-qp-delete]");
-          if (deleteButton) {
-            const rowId = deleteButton.getAttribute("data-qp-delete");
-            const row = (settings.questionChapters || []).find(function (item) {
-              return String(item.id) === String(rowId);
-            });
-            if (!row) {
-              openAppMessageBox("Error", "Question not found.", "error");
-              return;
-            }
-            showStyledDeleteConfirmation(String(row.questionTitle || row.chapterName || "Question"), function () {
-              trackDeletion(rowId);
-              settings.questionChapters = (settings.questionChapters || []).filter(function (item) {
-                return String(item.id) !== String(rowId);
-              });
-              loadedRows = loadedRows.filter(function (item) { return String(item.id) !== String(rowId); });
-              filterPool = filterPool.filter(function (item) { return String(item.id) !== String(rowId); });
-              saveDatabase("", [{ table: "school_settings", record: { id: "questionChapters", source_id: "questionChapters", data: settings.questionChapters, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-              renderChapterSelect();
-              renderPreview();
-              openAppMessageBox("Success", "Question deleted successfully.", "success");
-            });
-            return;
-          }
-
           const button = event.target.closest("[data-qp-change]");
           if (!button) {
             return;
@@ -17092,21 +20380,40 @@ ${allContent}
             return;
           }
           const current = loadedRows[rowIndex];
-          const usedIds = loadedRows.map(function (row) { return String(row.id); });
-          const alternatives = shuffleRows(filterPool.filter(function (row) {
-            return row.questionType === current.questionType && !usedIds.includes(String(row.id));
-          }));
-          if (!alternatives.length) {
-            openAppMessageBox("Error", "no more questions from selected chapter", "error");
+          const currentType = current.questionType || "short";
+          const currentChapter = current.chapterName || "";
+          const usedIds = new Set(loadedRows.map(function (r) { return String(r.id); }));
+          const className = classSelect.value;
+          const subject = subjectSelect.value;
+          const chapters = selectedChapters();
+          const eligible = filterPool.filter(function (row) {
+            return row.questionType === currentType && !usedIds.has(String(row.id));
+          });
+          const chapterEligible = chapters.length ? eligible.filter(function (row) {
+            return chapters.indexOf(row.chapterName || "") !== -1;
+          }) : eligible;
+          const pool = chapterEligible.length ? chapterEligible : eligible;
+          if (!pool.length) {
+            const container = button.closest(".qp-paper-question");
+            if (container) {
+              let notAvail = container.querySelector(".qp-paper-not-available");
+              if (!notAvail) {
+                notAvail = document.createElement("div");
+                notAvail.className = "qp-paper-not-available";
+                notAvail.textContent = "Not Available";
+                button.parentElement.insertBefore(notAvail, button);
+              }
+            }
             return;
           }
-          loadedRows[rowIndex] = alternatives[0];
+          const shuffled = shuffleRows(pool);
+          loadedRows[rowIndex] = shuffled[0];
+          usedQuestionIds = new Set(loadedRows.map(function (r) { return String(r.id); }));
           renderPreview();
-          openAppMessageBox("Success", "Question changed successfully.", "success");
         });
 
-        document.getElementById("qpLoadQuestions").addEventListener("click", loadQuestions);
-        document.getElementById("qpSavePaper").addEventListener("click", function () {
+        safeOn(document.getElementById("qpLoadQuestions"), "click", loadQuestions);
+        safeOn(document.getElementById("qpSavePaper"), "click", function () {
           const className = classSelect.value;
           const subject = subjectSelect.value;
           const title = String(titleInput.value || "").trim();
@@ -17135,8 +20442,13 @@ ${allContent}
         classSelect.addEventListener("change", function () {
           renderSubjectSelect();
           renderChapterSelect();
+          renderQuestionListing();
         });
-        subjectSelect.addEventListener("change", renderChapterSelect);
+        subjectSelect.addEventListener("change", function () {
+          renderChapterSelect();
+          renderQuestionListing();
+        });
+        chapterSelect.addEventListener("change", renderQuestionListing);
         renderTypeRows();
         renderSubjectSelect();
         return;
@@ -17152,9 +20464,9 @@ ${allContent}
             <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Date*</label><input id="qpPrintDate" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
           </div>
           <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Instructions</label><textarea id="qpPrintInstructions" rows="3" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;">Attempt all questions. Write neat and clean answers.</textarea></div>
-          <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow-x:hidden;">
+          <article class="panel-card question-paper-preview-card" style="max-width:100%;overflow:visible;">
             <strong>Question Paper Preview</strong>
-            <div id="qpPrintPreview" class="module-preview-card" style="max-width:100%;overflow-x:auto;"><p>Select class, subject, paper title and click Load.</p></div>
+            <div id="qpPrintPreview" class="module-preview-card" style="max-width:100%;overflow:visible;"><p>Select class, subject, paper title and click Load.</p></div>
           </article>
           <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 4px 0;">
             <button class="table-action-btn" type="button" id="qpLoadSavedPaper" style="padding:6px 14px;font-size:0.8rem;">Load</button>
@@ -17252,7 +20564,7 @@ ${allContent}
         `;
       }
 
-      document.getElementById("qpLoadSavedPaper").addEventListener("click", function () {
+      safeOn(document.getElementById("qpLoadSavedPaper"), "click", function () {
         const className = classSelect.value;
         const subject = subjectSelect.value;
         const paperId = titleSelect.value;
@@ -17277,7 +20589,7 @@ ${allContent}
         renderPreview();
       });
 
-      document.getElementById("qpPrintPaper").addEventListener("click", function () {
+      safeOn(document.getElementById("qpPrintPaper"), "click", function () {
         if (!activePaper) {
           message.textContent = "Please load paper first.";
           message.className = "form-message error";
@@ -17465,7 +20777,7 @@ ${allContent}
           }
         }
 
-        document.getElementById("saveClassTestMarksBtn").addEventListener("click", function () {
+        safeOn(document.getElementById("saveClassTestMarksBtn"), "click", function () {
           const className = classSelect.value;
           const subjectName = subjectSelect.value;
           const testName = testNameInput.value.trim();
@@ -17652,7 +20964,7 @@ ${allContent}
         sendDirectWhatsappToStudent(student, student.name || "student", text);
       });
 
-      document.getElementById("sendTestResultSmsBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("sendTestResultSmsBtn"), "click", async function () {
         const rows = getTestResultRows();
         if (!rows.length) {
           alert("No test result records to send.");
@@ -17702,7 +21014,7 @@ ${allContent}
         alert(`Class test SMS processed. Success: ${success}, Failed: ${failed}.`);
       });
 
-      document.getElementById("printTestResultBtn").addEventListener("click", function (event) {
+      safeOn(document.getElementById("printTestResultBtn"), "click", function (event) {
         event.preventDefault();
         event.stopPropagation();
         if (event.stopImmediatePropagation) {
@@ -17717,7 +21029,7 @@ ${allContent}
         });
       });
 
-      document.getElementById("downloadTestResultPdfBtn").addEventListener("click", async function (event) {
+      safeOn(document.getElementById("downloadTestResultPdfBtn"), "click", async function (event) {
         event.preventDefault();
         event.stopPropagation();
         if (event.stopImmediatePropagation) {
@@ -17777,7 +21089,7 @@ ${allContent}
             return `<tr><td>${escapeHtml(item.name || "-")}</td><td>${escapeHtml(item.body || "-")}</td><td><button class="table-action-btn danger" type="button" data-delete-certificate-template="${escapeAttr(item.id)}">Delete</button></td></tr>`;
           }).join("");
         }
-        document.getElementById("saveCertificateTemplateBtn").addEventListener("click", function () {
+        safeOn(document.getElementById("saveCertificateTemplateBtn"), "click", function () {
           const name = document.getElementById("certificateTemplateName").value.trim();
           const bodyText = document.getElementById("certificateTemplateBody").value.trim();
           const message = document.getElementById("certificateTemplateMessage");
@@ -17916,7 +21228,7 @@ ${allContent}
         input.addEventListener("input", fillTemplatePreview);
         input.addEventListener("change", fillTemplatePreview);
       });
-      document.getElementById("printCertificateBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("printCertificateBtn"), "click", function () {
         const student = getSelectedStudentForCertificate();
         const text = bodyPreview.value.trim();
         if (!student || !text) {
@@ -18044,10 +21356,11 @@ ${allContent}
       }
       return;
     }
-
     if (route === "notice-board") {
       moduleSectionLabel.textContent = "Communication Module";
-      var notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
+      var cache = window.SagarSoftCache;
+      var notices = (cache && typeof cache.getNotices === "function") ? cache.getNotices() : [];
+      if (!notices.length) notices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
       database.generalSettings.notices = notices;
 
       var noticeHtml = '<article><strong class="module-center-title">Notice Board</strong>';
@@ -18059,6 +21372,38 @@ ${allContent}
       noticeHtml += '</div>';
       noticeHtml += '<div class="field-group" style="margin-bottom:1rem;"><label>Notice Content *</label><textarea id="noticeContent" rows="4" placeholder="Write notice content here..."></textarea></div>';
       noticeHtml += '<div class="form-actions" style="margin-bottom:2rem;"><button class="primary-button" id="saveNoticeBtn" type="button">Publish Notice</button></div>';
+
+      function renderNoticeGrid() {
+        var currentNotices = (cache && typeof cache.getNotices === "function") ? cache.getNotices() : [];
+        if (!currentNotices.length) currentNotices = Array.isArray(database.generalSettings.notices) ? database.generalSettings.notices : [];
+        var gridHtml = '';
+        if (currentNotices.length === 0) {
+          gridHtml = '<p class="empty-state">No notices published yet.</p>';
+        } else {
+          for (var ni = currentNotices.length - 1; ni >= 0; ni--) {
+            var n = currentNotices[ni];
+            var priorityClass = "notice-card--" + (n.priority || "normal");
+            var targetLabel = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
+            var pushedBadge = n.pushed !== false ? '<span class="notice-card__pushed-badge">Pushed to Dashboard</span>' : '';
+            gridHtml += '<div class="notice-card ' + priorityClass + '" data-notice-id="' + escapeAttr(n.id) + '">';
+            gridHtml += '<div class="notice-card__header"><h4 class="notice-card__title">' + escapeHtml(n.title) + '</h4>';
+            gridHtml += '<span class="notice-card__date">' + escapeHtml(n.createdAt || "") + '</span></div>';
+            gridHtml += '<span class="notice-card__target">' + escapeHtml(targetLabel) + '</span> ' + pushedBadge;
+            gridHtml += '<p class="notice-card__content">' + escapeHtml(n.content) + '</p>';
+            if (n.expiryDate) { gridHtml += '<p style="font-size:0.72rem;color:#999;margin:0;">Expires: ' + escapeHtml(n.expiryDate) + '</p>'; }
+            gridHtml += '<div class="notice-card__actions">';
+            gridHtml += '<button class="table-action-btn" type="button" data-delete-notice="' + escapeAttr(n.id) + '">Delete</button>';
+            gridHtml += '<button class="table-action-btn" type="button" data-push-notice="' + escapeAttr(n.id) + '">' + (n.pushed !== false ? 'Unpush' : 'Push to Dashboard') + '</button>';
+            gridHtml += '<button class="table-action-btn" type="button" data-sms-notice="' + escapeAttr(n.id) + '"><i class="fas fa-sms"></i> SMS All</button>';
+            gridHtml += '<button class="table-action-btn" type="button" data-pdf-notice="' + escapeAttr(n.id) + '"><i class="fas fa-file-pdf"></i> PDF</button>';
+            gridHtml += '<button class="table-action-btn" type="button" data-print-notice="' + escapeAttr(n.id) + '"><i class="fas fa-print"></i> Print</button>';
+            gridHtml += '</div></div>';
+          }
+        }
+        var grid = document.getElementById("noticeBoardGrid");
+        if (grid) grid.innerHTML = gridHtml;
+      }
+
       noticeHtml += '<div id="noticeBoardGrid" class="notice-board-grid">';
       if (notices.length === 0) {
         noticeHtml += '<p class="empty-state">No notices published yet.</p>';
@@ -18067,7 +21412,7 @@ ${allContent}
           var n = notices[ni];
           var priorityClass = "notice-card--" + (n.priority || "normal");
           var targetLabel = (n.target || "all").charAt(0).toUpperCase() + (n.target || "all").slice(1);
-          var pushedBadge = n.pushed ? '<span class="notice-card__pushed-badge">Pushed to Dashboard</span>' : '';
+          var pushedBadge = n.pushed !== false ? '<span class="notice-card__pushed-badge">Pushed to Dashboard</span>' : '';
           noticeHtml += '<div class="notice-card ' + priorityClass + '" data-notice-id="' + escapeAttr(n.id) + '">';
           noticeHtml += '<div class="notice-card__header"><h4 class="notice-card__title">' + escapeHtml(n.title) + '</h4>';
           noticeHtml += '<span class="notice-card__date">' + escapeHtml(n.createdAt || "") + '</span></div>';
@@ -18076,7 +21421,7 @@ ${allContent}
           if (n.expiryDate) { noticeHtml += '<p style="font-size:0.72rem;color:#999;margin:0;">Expires: ' + escapeHtml(n.expiryDate) + '</p>'; }
           noticeHtml += '<div class="notice-card__actions">';
           noticeHtml += '<button class="table-action-btn" type="button" data-delete-notice="' + escapeAttr(n.id) + '">Delete</button>';
-          noticeHtml += '<button class="table-action-btn" type="button" data-push-notice="' + escapeAttr(n.id) + '">' + (n.pushed ? 'Unpush' : 'Push to Dashboard') + '</button>';
+          noticeHtml += '<button class="table-action-btn" type="button" data-push-notice="' + escapeAttr(n.id) + '">' + (n.pushed !== false ? 'Unpush' : 'Push to Dashboard') + '</button>';
           noticeHtml += '<button class="table-action-btn" type="button" data-sms-notice="' + escapeAttr(n.id) + '"><i class="fas fa-sms"></i> SMS All</button>';
           noticeHtml += '<button class="table-action-btn" type="button" data-pdf-notice="' + escapeAttr(n.id) + '"><i class="fas fa-file-pdf"></i> PDF</button>';
           noticeHtml += '<button class="table-action-btn" type="button" data-print-notice="' + escapeAttr(n.id) + '"><i class="fas fa-print"></i> Print</button>';
@@ -18086,7 +21431,7 @@ ${allContent}
       noticeHtml += '</div></article>';
       moduleSummary.innerHTML = noticeHtml;
 
-      document.getElementById("saveNoticeBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("saveNoticeBtn"), "click", function () {
         var title = (document.getElementById("noticeTitle").value || "").trim();
         var content = (document.getElementById("noticeContent").value || "").trim();
         var priority = document.getElementById("noticePriority").value;
@@ -18094,19 +21439,40 @@ ${allContent}
         var expiry = document.getElementById("noticeExpiry").value;
         if (!title || !content) { openAppMessageBox("Error", "Title and content are required.", "error"); return; }
         var notice = { id: "notice-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, content: content, priority: priority, target: target, expiryDate: expiry, pushed: true, createdAt: new Date().toLocaleString() };
+        if (cache && typeof cache.addNoticeOptimistic === "function") {
+          cache.addNoticeOptimistic(notice);
+        }
         notices.push(notice);
+        database.generalSettings.notices = notices;
         addActivity("Notice published", "Notice: " + title);
         saveDatabase("Publishing notice...", [{ table: "notices", record: notice, operation: "create" }]);
+        document.getElementById("noticeTitle").value = "";
+        document.getElementById("noticeContent").value = "";
+        document.getElementById("noticePriority").value = "normal";
+        document.getElementById("noticeTarget").value = "all";
+        document.getElementById("noticeExpiry").value = "";
         openAppMessageBox("Success", "Notice published and pushed to dashboard.", "success");
-        setRoute("notice-board");
+        renderNoticeGrid();
+        renderDashboardNotices();
       });
 
-      document.getElementById("noticeBoardGrid").addEventListener("click", function (e) {
+      safeOn(document.getElementById("noticeBoardGrid"), "click", function (e) {
         var delBtn = e.target.closest("[data-delete-notice]");
         if (delBtn) {
           var nid = delBtn.getAttribute("data-delete-notice");
           var idx = notices.findIndex(function (x) { return x.id === nid; });
-          if (idx > -1) { trackDeletion(nid); var _removedNotice = notices.splice(idx, 1)[0]; saveDatabase("Deleting notice...", [{ table: "notices", record: _removedNotice, operation: "delete" }]); openAppMessageBox("Success", "Notice deleted.", "success"); setRoute("notice-board"); }
+          if (idx > -1) {
+            trackDeletion(nid);
+            var _removedNotice = notices.splice(idx, 1)[0];
+            database.generalSettings.notices = notices;
+            if (cache && typeof cache.removeNoticeOptimistic === "function") {
+              cache.removeNoticeOptimistic(nid);
+            }
+            saveDatabase("Deleting notice...", [{ table: "notices", record: _removedNotice, operation: "delete" }]);
+            openAppMessageBox("Success", "Notice deleted.", "success");
+            renderNoticeGrid();
+            renderDashboardNotices();
+          }
           return;
         }
         var pushBtn = e.target.closest("[data-push-notice]");
@@ -18115,9 +21481,14 @@ ${allContent}
           var noticeP = notices.find(function (x) { return x.id === nidP; });
           if (noticeP) {
             noticeP.pushed = !noticeP.pushed;
+            database.generalSettings.notices = notices;
+            if (cache && typeof cache.updateNoticeOptimistic === "function") {
+              cache.updateNoticeOptimistic(nidP, { pushed: noticeP.pushed });
+            }
             saveDatabase("", [{ table: "notices", record: noticeP, operation: "update" }]);
             openAppMessageBox("Success", noticeP.pushed ? "Notice pushed to dashboard." : "Notice removed from dashboard.", "success");
-            setRoute("notice-board");
+            renderNoticeGrid();
+            renderDashboardNotices();
           }
           return;
         }
@@ -18251,7 +21622,9 @@ ${allContent}
 
     if (route === "event-calendar") {
       moduleSectionLabel.textContent = "Communication Module";
-      var events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
+      var cache = window.SagarSoftCache;
+      var events = (cache && typeof cache.getEvents === "function") ? cache.getEvents() : [];
+      if (!events.length) events = Array.isArray(database.generalSettings.events) ? database.generalSettings.events : [];
       database.generalSettings.events = events;
 
       var pakHolidays = [
@@ -18379,8 +21752,8 @@ ${allContent}
         calHtml += '</div></article>';
         moduleSummary.innerHTML = calHtml;
 
-        document.getElementById("calPrev").addEventListener("click", function () { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
-        document.getElementById("calNext").addEventListener("click", function () { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
+        safeOn(document.getElementById("calPrev"), "click", function () { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
+        safeOn(document.getElementById("calNext"), "click", function () { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
 
         document.querySelectorAll("[data-date]").forEach(function (cell) {
           cell.addEventListener("click", function () { selectedCalendarDate = cell.getAttribute("data-date"); renderCalendar(); });
@@ -18391,7 +21764,18 @@ ${allContent}
             e.stopPropagation();
             var eid = btn.getAttribute("data-delete-event");
             var idx = events.findIndex(function (x) { return x.id === eid; });
-            if (idx > -1) { trackDeletion(eid); var _removedEvent = events.splice(idx, 1)[0]; saveDatabase("Deleting event...", [{ table: "events", record: _removedEvent, operation: "delete" }]); openAppMessageBox("Success", "Event deleted.", "success"); renderCalendar(); }
+            if (idx > -1) {
+              trackDeletion(eid);
+              var _removedEvent = events.splice(idx, 1)[0];
+              database.generalSettings.events = events;
+              if (cache && typeof cache.removeEventOptimistic === "function") {
+                cache.removeEventOptimistic(eid);
+              }
+              saveDatabase("Deleting event...", [{ table: "events", record: _removedEvent, operation: "delete" }]);
+              openAppMessageBox("Success", "Event deleted.", "success");
+              renderCalendar();
+              renderDashboardEvents();
+            }
           });
         });
 
@@ -18449,12 +21833,17 @@ ${allContent}
             var desc = (document.getElementById("eventDesc").value || "").trim();
             if (!title || !date) { openAppMessageBox("Error", "Title and date are required.", "error"); return; }
             var _newEvent = { id: "evt-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6), title: title, date: date, type: type, description: desc, createdAt: new Date().toLocaleString() };
+            if (cache && typeof cache.addEventOptimistic === "function") {
+              cache.addEventOptimistic(_newEvent);
+            }
             events.push(_newEvent);
+            database.generalSettings.events = events;
             addActivity("Event created", "Event: " + title + " on " + date);
             saveDatabase("Creating event...", [{ table: "events", record: _newEvent, operation: "create" }]);
             openAppMessageBox("Success", "Event added successfully.", "success");
             selectedCalendarDate = date;
             renderCalendar();
+            renderDashboardEvents();
           });
         }
       }
@@ -18823,7 +22212,7 @@ ${allContent}
         });
       }
 
-      document.getElementById("sendHomeworkBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("sendHomeworkBtn"), "click", function () {
         var subject = subjectSelect ? subjectSelect.value : "";
         var title = titleInput.value.trim();
         var dueDate = dueDateInput.value;
@@ -19565,7 +22954,7 @@ ${allContent}
         openNextPendingWhatsappChat();
       });
 
-      document.getElementById("sendWhatsappCustomBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("sendWhatsappCustomBtn"), "click", function () {
         const text = messageInput.value.trim();
         if (!text) {
           statusMessage.textContent = "Please write message.";
@@ -19783,10 +23172,10 @@ ${allContent}
           <div style="background:#fef9e7;border-left:4px solid #f39c12;padding:10px 12px;border-radius:6px;margin:8px 0;">
             <strong>SagarSoft SMS Agent (Recommended)</strong>
             <ol class="sms-guide-list" style="margin:6px 0 0;">
-              <li>Install <strong>SagarSoft SMS Agent</strong> app on phone → Login with school credentials.</li>
-              <li>In app, go to <strong>SIM Registration</strong> → enter SIM number → tap <strong>Register SIM</strong>.</li>
-              <li>Tap <strong>Start Service</strong> — it will auto-send queued SMS.</li>
-              <li>Works from <strong>any network</strong> — WiFi, mobile data, different locations, no setup needed.</li>
+              <li>Install <strong>SagarSoft SMS Agent</strong> app on phone ? Login with school credentials.</li>
+              <li>In app, go to <strong>SIM Registration</strong> ? enter SIM number ? tap <strong>Register SIM</strong>.</li>
+              <li>Tap <strong>Start Service</strong> ï¿½ it will auto-send queued SMS.</li>
+              <li>Works from <strong>any network</strong> ï¿½ WiFi, mobile data, different locations, no setup needed.</li>
             </ol>
           </div>
         </article>
@@ -19980,7 +23369,7 @@ ${allContent}
         recipientSuggestions.hidden = true;
       });
 
-      document.getElementById("sendSmsNowBtn").addEventListener("click", async function () {
+      safeOn(document.getElementById("sendSmsNowBtn"), "click", async function () {
         var cfg = getSupabaseConfig();
         if (!cfg.url || !cfg.anonKey) {
           setSendMessage("SagarSoft SMS Agent is not configured. Please contact administrator.", "error");
@@ -20239,6 +23628,31 @@ ${allContent}
               </article>
             </div>
           </article>`;
+          (function () {
+            var _clearBtn = document.getElementById("clearNotifHistoryBtn");
+            if (_clearBtn) {
+              _clearBtn.addEventListener("click", async function () {
+                if (!(await brandedConfirm("Clear Notification History?\nThis will hide all notifications from your history view. Schools will still see their notifications."))) return;
+                var _msgEl = document.getElementById("notifHistoryMessage");
+                var _clearApiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
+                fetch(_clearApiBase + "/api/admin/notifications", { method: "DELETE", cache: "no-store", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } }).then(function (resp) {
+                  return resp.json().catch(function () { return {}; });
+                }).then(function (data) {
+                  if (data.success) {
+                    if (_msgEl) { _msgEl.textContent = "History cleared."; _msgEl.className = "form-message success"; }
+                    var _cache = window.SagarSoftCache;
+                    if (_cache && _cache.clearHistoryOptimistic) { _cache.clearHistoryOptimistic(); }
+                    loadNotifHistory();
+                  } else {
+                    if (_msgEl) { _msgEl.textContent = data.message || "Failed."; _msgEl.className = "form-message error"; }
+                  }
+                }).catch(function () {
+                  if (_msgEl) { _msgEl.textContent = "Failed to clear history."; _msgEl.className = "form-message error"; }
+                });
+              });
+            }
+          })();
+          loadNotifHistory();
         } else {
           fullWidthEl.style.display = "none";
           fullWidthEl.innerHTML = "";
@@ -20384,11 +23798,22 @@ ${allContent}
           renderProfileDropdownMenu();
           applyRouteAccessVisibility();
           try {
-            var resp = await fetch(apiBase + "/api/admin/schools/" + encodeURIComponent(activeLicense.schoolId || ""), {
-              method: "PUT",
-              headers: { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") },
-              body: JSON.stringify({ school_name: schoolName, timezone: timezone, currency: currency, symbol: symbol })
-            });
+            var _cfg = window.SagarSoftDB && window.SagarSoftDB.getConfig ? window.SagarSoftDB.getConfig() : {};
+            var _isSchoolUser = !!(_cfg && _cfg.apiKey);
+            var _saveUrl, _saveHeaders, _saveBody;
+            if (_isSchoolUser) {
+              var _schoolId = _cfg.schoolId;
+              _saveUrl = apiBase + "/api/school/profile/" + encodeURIComponent(_schoolId);
+              _saveHeaders = { "Content-Type": "application/json" };
+              if (_cfg.authToken) _saveHeaders["Authorization"] = "Bearer " + _cfg.authToken;
+              if (_cfg.apiKey) _saveHeaders["x-sagarsoft-api-key"] = _cfg.apiKey;
+              _saveBody = JSON.stringify({ profile: { name: schoolName }, school: { timezone: timezone, currency: currency, symbol: symbol } });
+            } else {
+              _saveUrl = apiBase + "/api/admin/schools/" + encodeURIComponent(activeLicense.schoolId || "");
+              _saveHeaders = { "Content-Type": "application/json", "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") };
+              _saveBody = JSON.stringify({ school_name: schoolName, timezone: timezone, currency: currency, symbol: symbol });
+            }
+            var resp = await fetch(_saveUrl, { method: "PUT", headers: _saveHeaders, body: _saveBody });
             var data = await resp.json().catch(function () { return {}; });
             if (data.success && msgEl) {
               msgEl.textContent = "Account updated successfully.";
@@ -20637,7 +24062,7 @@ ${allContent}
               }
               var _refreshList = (typeof window._loadSchools === "function") ? window._loadSchools : null;
               if (_refreshList) _refreshList();
-              try { renderSuperAdminDashboard(); } catch (_e) {}
+              if (window.SagarSoftCache) window.SagarSoftCache.fetchSchools();
               try { renderDashboard(); } catch (_e) {}
             } else {
               var errMsg = data.message || "Save failed. Check console for details.";
@@ -20718,7 +24143,7 @@ ${allContent}
 
 
 
-      document.getElementById("deleteAccountBtn").addEventListener("click", function () {
+      safeOn(document.getElementById("deleteAccountBtn"), "click", function () {
         const currentUserRecord = database.users.find(function (user) {
           return user.id === currentUser.id;
         });
@@ -20854,7 +24279,7 @@ ${allContent}
                   msgEl.textContent = "School deleted.";
                   msgEl.className = "form-message success";
                   loadSchools();
-                  try { renderSuperAdminDashboard(); } catch (_e) {}
+                  if (window.SagarSoftCache) window.SagarSoftCache.fetchSchools();
                 } else {
                   msgEl.textContent = data.message || "Delete failed.";
                   msgEl.className = "form-message error";
@@ -20876,7 +24301,7 @@ ${allContent}
                   msgEl.textContent = "Status updated.";
                   msgEl.className = "form-message success";
                   loadSchools();
-                  try { renderSuperAdminDashboard(); } catch (_e) {}
+                  if (window.SagarSoftCache) window.SagarSoftCache.fetchSchools();
                 } else {
                   msgEl.textContent = data.message || "Update failed.";
                   msgEl.className = "form-message error";
@@ -21000,56 +24425,35 @@ ${allContent}
     renderModulePlaceholder(route, title);
   }
 
+  function _renderNotifHistory(notifications) {
+    var tbody = document.getElementById("notifHistoryBody");
+    if (!tbody) return;
+    if (!notifications || !notifications.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = notifications.map(function (n) {
+      var date = n.created_at ? new Date(n.created_at).toLocaleString() : "-";
+      var school = escapeHtml(String(n.school_name || n.school_id || "All Schools"));
+      var title = escapeHtml(String(n.title || "Notification"));
+      var msg = escapeHtml(String(n.message || ""));
+      return '<tr><td>' + date + '</td><td>' + school + '</td><td>' + title + '</td><td>' + msg + '</td></tr>';
+    }).join("") || '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
+  }
+
   async function loadNotifHistory() {
     var tbody = document.getElementById("notifHistoryBody");
     if (!tbody) return;
-    var _notifApiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
-    try {
-      var _notifToken = (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken) ? window.SagarSoftAuth.getServerToken() : "";
-      var resp = await fetch(_notifApiBase + "/api/admin/notifications", { cache: "no-store", headers: { "Authorization": "Bearer " + (_notifToken || "") } });
-      if (!resp.ok) {
-        var _errData = await resp.json().catch(function () { return {}; });
-        console.error("[Notification History] HTTP " + resp.status + ":", _errData);
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
-        return;
-      }
-      var data = await resp.json().catch(function () { return {}; });
-      if (!data.success || !Array.isArray(data.notifications)) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = data.notifications.map(function (n) {
-        var date = n.created_at ? new Date(n.created_at).toLocaleString() : "-";
-        var school = escapeHtml(String(n.school_name || n.school_id || "All Schools"));
-        var title = escapeHtml(String(n.title || "Notification"));
-        var msg = escapeHtml(String(n.message || ""));
-        return '<tr><td>' + date + '</td><td>' + school + '</td><td>' + title + '</td><td>' + msg + '</td></tr>';
-      }).join("") || '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
-    } catch (_e) {
-      console.error("[Notification History] Load error:", _e && _e.message ? _e.message : _e);
+    var cache = window.SagarSoftCache;
+    if (!cache) {
       tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:16px;">No notification history available.</td></tr>';
+      return;
     }
-  }
-
-  var clearNotifBtn = document.getElementById("clearNotifHistoryBtn");
-  if (clearNotifBtn) {
-    clearNotifBtn.addEventListener("click", async function () {
-      if (!(await brandedConfirm("Clear all notification history?"))) return;
-      var msgEl = document.getElementById("notifHistoryMessage");
-      var _clearApiBase = (window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl) ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
-      fetch(_clearApiBase + "/api/admin/notifications", { method: "DELETE", cache: "no-store", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } }).then(function (resp) {
-        return resp.json().catch(function () { return {}; });
-      }).then(function (data) {
-        if (data.success) {
-          if (msgEl) { msgEl.textContent = "History cleared."; msgEl.className = "form-message success"; }
-          loadNotifHistory();
-        } else {
-          if (msgEl) { msgEl.textContent = data.message || "Failed."; msgEl.className = "form-message error"; }
-        }
-      }).catch(function () {
-        if (msgEl) { msgEl.textContent = "Failed to clear history."; msgEl.className = "form-message error"; }
-      });
-    });
+    var cachedHistory = cache.getHistory();
+    if (cachedHistory.length) {
+      _renderNotifHistory(cachedHistory);
+    }
+    cache.fetchHistory();
   }
 
   function updateHero() {
@@ -21874,7 +25278,7 @@ ${allContent}
           <div class="admission-field"><strong>Admission Date</strong><span>${student.dateOfAdmission || "-"}</span></div>
           <div class="admission-field"><strong>Account Status</strong><span>${loginInfo.status}</span></div>
           <div class="admission-field"><strong>Username</strong><span>${loginInfo.username}</span></div>
-          <div class="admission-field"><strong>Password</strong><span>••••••••</span></div>
+          <div class="admission-field"><strong>Password</strong><span>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</span></div>
         </div>
       </article>
     `;
@@ -21913,43 +25317,73 @@ ${allContent}
 
   function renderStudentIdCards() {
     const students = getIdCardStudents();
-      const instituteLogo = (database.generalSettings && database.generalSettings.instituteProfile && database.generalSettings.instituteProfile.logo) || "";
+    const instituteLogo = (database.generalSettings && database.generalSettings.instituteProfile && database.generalSettings.instituteProfile.logo) || "";
+    const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+    const schoolName = profile.name || database.school.name || "School";
+    const schoolTagline = profile.slogan || "";
 
     studentIdCardsGrid.innerHTML = students.map(function (student) {
       const profileMedia = student.picture
         ? `<img src="${student.picture}" alt="${student.name}" class="student-avatar student-avatar--image">`
         : `<span class="student-avatar">${getInitials(student.name)}</span>`;
+      const barcodeValue = student.admissionNo || "-";
+      const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+      const qrValue = "ATTEND:STUDENT:" + barcodeValue;
+      const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
 
       return `
-        <article class="id-card-modern">
-          <div class="id-card-modern__inner">
-            <div class="id-card-modern__head">
-              <div class="id-card-modern__school">${database.school.name}</div>
-              ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
-            </div>
-            <div class="id-card-modern__profile">
-              ${profileMedia}
-              <div class="id-card-modern__meta">
-                <strong>${student.name}</strong>
-                <span>Roll No: ${student.admissionNo || "-"}</span>
+        <div class="id-card-modern-wrap">
+          <article class="id-card-modern">
+            <div class="id-card-modern__inner">
+              <div class="id-card-modern__header">
+                ${instituteLogo ? `<div class="id-card-modern__logo"><img src="${instituteLogo}" alt="Logo"></div>` : `<span class="id-card-modern__logo">SS</span>`}
+                <div class="id-card-modern__header-text">
+                  <div class="id-card-modern__school-name">${schoolName}</div>
+                  ${schoolTagline ? `<div class="id-card-modern__tagline">${schoolTagline}</div>` : ""}
+                </div>
+              </div>
+              <div class="id-card-modern__body">
+                <div class="id-card-modern__photo-area">
+                  ${profileMedia}
+                </div>
+                <div class="id-card-modern__info-area">
+                  <div class="id-card-modern__name">${student.name}</div>
+                  <div class="id-card-modern__type-label">STUDENT</div>
+                  <dl class="id-card-modern__info-grid">
+                    <div class="id-card-modern__info-row">
+                      <dt>ID</dt><dd>${student.admissionNo || "-"}</dd>
+                      <dt>Class</dt><dd>${student.className || "-"}</dd>
+                    </div>
+                    <div class="id-card-modern__info-row">
+                      <dt>Father</dt><dd>${student.fatherName || "-"}</dd>
+                      <dt>Mobile</dt><dd>${getStudentDisplayPhone(student)}</dd>
+                    </div>
+                    <div class="id-card-modern__info-row">
+                      <dt>DOA</dt><dd>${student.dateOfAdmission || "-"}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+              <div class="id-card-modern__footer">
+                <div class="id-card-modern__barcode-area">
+                  <img src="${barcodeUrl}" alt="Barcode" class="id-card-modern__barcode-img">
+                  <span class="id-card-modern__barcode-text">${barcodeValue}</span>
+                </div>
+                <div class="id-card-modern__qr-area">
+                  <img src="${qrUrl}" alt="QR" class="id-card-modern__qr-img">
+                </div>
               </div>
             </div>
-            <div class="id-card-modern__rows">
-              <article><strong>Father Name</strong><span>${student.fatherName || "-"}</span></article>
-              <article><strong>Class</strong><span>${student.className || "-"}</span></article>
-              <article><strong>Mobile</strong><span>${getStudentDisplayPhone(student)}</span></article>
-            </div>
-            <div class="form-actions">
-              <button class="table-action-btn" type="button" data-action="sms-student-id-card" data-id="${student.id}">SMS</button>
-              <button class="table-action-btn" type="button" data-action="whatsapp-student-id-card" data-id="${student.id}">WhatsApp</button>
-              <button class="table-action-btn" type="button" data-action="print-student-id-card" data-id="${student.id}">Print Card</button>
-            </div>
+          </article>
+          <div class="form-actions">
+            <button class="table-action-btn" type="button" data-action="sms-student-id-card" data-id="${student.id}">SMS</button>
+            <button class="table-action-btn" type="button" data-action="whatsapp-student-id-card" data-id="${student.id}">WhatsApp</button>
+            <button class="table-action-btn" type="button" data-action="print-student-id-card" data-id="${student.id}">Print Card</button>
           </div>
-        </article>
+        </div>
       `;
     }).join("");
 
-    // Ensure event listener is attached after HTML update
     if (!studentIdCardsGrid.__listenerAttached) {
       studentIdCardsGrid.addEventListener("click", handleTableActionClick);
       studentIdCardsGrid.__listenerAttached = true;
@@ -21965,32 +25399,37 @@ ${allContent}
         : (fallback || "-");
     };
     return Array.from(studentIdCardsGrid.querySelectorAll(".id-card-modern")).map(function (card) {
-      const name = safeText(card.querySelector(".id-card-modern__meta strong"), "-");
-      const rollText = safeText(card.querySelector(".id-card-modern__meta span"), "");
-      const rowItems = Array.from(card.querySelectorAll(".id-card-modern__rows article"));
-      const fatherName = rowItems[0] ? safeText(rowItems[0].querySelector("span"), "-") : "-";
-      const className = rowItems[1] ? safeText(rowItems[1].querySelector("span"), "-") : "-";
-      const phone = rowItems[2] ? safeText(rowItems[2].querySelector("span"), "-") : "-";
-      const photo = (card.querySelector(".id-card-modern__profile img") && card.querySelector(".id-card-modern__profile img").src) || "";
-      const roll = rollText.replace(/^Roll No:\s*/i, "").trim() || "-";
+      const name = safeText(card.querySelector(".id-card-modern__name"), "-");
+      const barcodeText = safeText(card.querySelector(".id-card-modern__barcode-text"), "-");
+      const infoItems = Array.from(card.querySelectorAll(".id-card-modern__info-grid dd"));
+      const className = infoItems[1] ? safeText(infoItems[1], "-") : "-";
+      const fatherName = infoItems[2] ? safeText(infoItems[2], "-") : "-";
+      const phone = infoItems[3] ? safeText(infoItems[3], "-") : "-";
+      const doa = infoItems[4] ? safeText(infoItems[4], "-") : "-";
+      const photo = (card.querySelector(".id-card-modern__photo-area img") && card.querySelector(".id-card-modern__photo-area img").src) || "";
       return {
         name: String(name || "-").trim(),
         picture: String(photo || ""),
-        admissionNo: String(roll || "-"),
+        admissionNo: String(barcodeText || "-"),
         className: String(className || "-"),
         fatherName: String(fatherName || "-"),
-        phone: String(phone || "-")
+        phone: String(phone || "-"),
+        dateOfAdmission: String(doa || "-")
       };
     });
   }
 
-  function buildStudentIdCardsPrintHtml(students) {
+
+  async function buildStudentIdCardsPrintHtml(students) {
     const sourceStudents = Array.isArray(students) ? students : [];
     if (!sourceStudents.length) {
       return "";
     }
     const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-    const logo = String(profile.logo || "");
+    const rawLogo = String(profile.logo || "");
+    const logo = rawLogo ? (await normalizeImageForPrintShared(rawLogo)) || rawLogo : "";
+    const schoolName = profile.name || database.school.name || "School";
+    const schoolTagline = profile.slogan || "";
     const safeAttr = function (value) {
       try { return escapePrintAttr(value); } catch (_error) { return ""; }
     };
@@ -22005,165 +25444,92 @@ ${allContent}
         admissionNo: normalized.admissionNo,
         className: normalized.className,
         fatherName: normalized.fatherName,
-        phone: normalized.phone
+        phone: normalized.phone,
+        dateOfAdmission: normalized.dateOfAdmission
       };
     });
     const cardsMarkup = safeStudents.map(function (student) {
       const photo = student.picture;
-      const qrData = encodeURIComponent("ATTEND:STUDENT:" + student.admissionNo);
-      const studentQrUrl = "https://quickchart.io/qr?text=" + qrData + "&size=80&margin=1&ecLevel=H&dark=102542";
-      return `
-        <article class="pvc-card pvc-card--student">
-          <div class="pvc-card__topband"></div>
-          <header class="pvc-card__header">
-            ${logo ? `<img src="${safeAttr(logo)}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
-            <div>
-              <strong class="pvc-card__school">${safeHtml(profile.name || database.school.name || "School", "School")}</strong>
-              <span class="pvc-card__type">STUDENT ID CARD</span>
-            </div>
-          </header>
-          <section class="pvc-card__body">
-            ${photo ? `<img src="${safeAttr(photo)}" alt="${safeAttr(student.name)}" class="pvc-card__photo">` : `<span class="pvc-card__photo pvc-card__photo--fallback">${getInitials(student.name || "S")}</span>`}
-            <div class="pvc-card__meta">
-              <strong class="pvc-card__name">${safeHtml(student.name || "-", "-")}</strong>
-              <span class="pvc-card__line">Roll: ${safeHtml(student.admissionNo || "-", "-")}</span>
-              <span class="pvc-card__line">Class: ${safeHtml(student.className || "-", "-")}</span>
-              <span class="pvc-card__line">Father: ${safeHtml(student.fatherName || "-", "-")}</span>
-            </div>
-          </section>
-          <footer class="pvc-card__footer">
-            <span>Mobile: ${safeHtml(student.phone || "-", "-")}</span>
-            <span>${safeHtml(profile.name || database.school.name || "School", "School")}</span>
-          </footer>
-          <img src="${studentQrUrl}" alt="QR" class="pvc-card__qr">
-        </article>
-      `;
+      const barcodeValue = student.admissionNo || "-";
+      const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+      const qrValue = "ATTEND:STUDENT:" + barcodeValue;
+      const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
+      return '<article class="pvc-card">' +
+        '<div class="pvc-card__header">' +
+          (logo ? '<img src="' + safeAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
+          '<div class="pvc-card__header-text">' +
+            '<strong class="pvc-card__school">' + safeHtml(schoolName) + '</strong>' +
+            (schoolTagline ? '<span class="pvc-card__tagline">' + safeHtml(schoolTagline) + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="pvc-card__body">' +
+          '<div class="pvc-card__photo-area">' +
+            (photo ? '<img src="' + safeAttr(photo) + '" alt="' + safeAttr(student.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(student.name || "S") + '</span>') +
+          '</div>' +
+            '<div class="pvc-card__info-area">' +
+              '<div class="pvc-card__name">' + safeHtml(student.name || "-") + '</div>' +
+              '<div class="pvc-card__type-label">STUDENT</div>' +
+              '<div class="pvc-card__info-grid">' +
+                '<div class="pvc-card__info-row">' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">ID:</span> <span class="pvc-card__value">' + safeHtml(student.admissionNo) + '</span></span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Class:</span> <span class="pvc-card__value">' + safeHtml(student.className) + '</span></span>' +
+                '</div>' +
+                '<div class="pvc-card__info-row">' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Father:</span> <span class="pvc-card__value">' + safeHtml(student.fatherName) + '</span></span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Mobile:</span> <span class="pvc-card__value">' + safeHtml(student.phone) + '</span></span>' +
+                '</div>' +
+                '<div class="pvc-card__info-row">' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">DOA:</span> <span class="pvc-card__value">' + safeHtml(student.dateOfAdmission) + '</span></span>' +
+                  '<span class="pvc-card__field"></span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="pvc-card__footer">' +
+          '<div class="pvc-card__barcode-area">' +
+            '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
+            '<span class="pvc-card__barcode-text">' + safeHtml(barcodeValue) + '</span>' +
+          '</div>' +
+          '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
+        '</div>' +
+      '</article>';
     }).join("");
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title></title>
-        <meta charset="utf-8">
-        <style>
-          * { box-sizing: border-box; }
-          body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #fff; color: #102542; padding: 10mm; }
-          .pvc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(85.6mm, 1fr)); gap: 8mm; justify-items: center; }
-          .pvc-card {
-            position: relative;
-            width: 85.6mm;
-            height: 54mm;
-            border-radius: 3mm;
-            border: 0.35mm solid #000;
-            overflow: hidden;
-            background: #fff;
-            color: #102542;
-            break-inside: avoid;
-          }
-          .pvc-card__topband {
-            height: 9mm;
-            background: linear-gradient(120deg, #0f2f58, #1e5eff 68%, #1d9c61);
-          }
-          .pvc-card__header {
-            position: absolute;
-            left: 3mm;
-            right: 3mm;
-            top: 1.5mm;
-            display: grid;
-            grid-template-columns: 10mm 1fr;
-            gap: 2.2mm;
-            align-items: center;
-            color: #fff;
-          }
-          .pvc-card__logo {
-            width: 9.5mm;
-            height: 9.5mm;
-            border-radius: 2mm;
-            border: 0.25mm solid rgba(255,255,255,.9);
-            object-fit: contain;
-            background: #fff;
-          }
-          .pvc-card__logo--fallback {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.7mm;
-            font-weight: 700;
-            background: rgba(255,255,255,.18);
-          }
-          .pvc-card__school { display: block; font-size: 2.8mm; line-height: 1.1; font-weight: 700; }
-          .pvc-card__type { display: block; font-size: 2.1mm; opacity: .96; letter-spacing: .08mm; }
-          .pvc-card__body {
-            position: absolute;
-            left: 4mm;
-            right: 4mm;
-            top: 13mm;
-            display: grid;
-            justify-items: center;
-            gap: 1.5mm;
-            text-align: center;
-          }
-          .pvc-card__photo {
-            width: 19mm;
-            height: 19mm;
-            border-radius: 50%;
-            border: 0.25mm solid #000;
-            object-fit: cover;
-            background: #fff;
-          }
-          .pvc-card__photo--fallback {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 4.6mm;
-            font-weight: 700;
-            color: #17335b;
-          }
-          .pvc-card__meta { display: grid; gap: .65mm; justify-items: center; }
-          .pvc-card__name { font-size: 3.2mm; line-height: 1.1; }
-          .pvc-card__line { font-size: 2.35mm; line-height: 1.05; color: #274669; }
-          .pvc-card__qr {
-            position: absolute;
-            right: 2.4mm;
-            bottom: 7.2mm;
-            width: 9mm;
-            height: 9mm;
-            border-radius: 0.5mm;
-          }
-          .pvc-card__footer {
-            position: absolute;
-            left: 3mm;
-            right: 3mm;
-            bottom: 2.4mm;
-            display: flex;
-            justify-content: space-between;
-            gap: 2mm;
-            font-size: 2.2mm;
-            color: #345676;
-          }
-          @media print {
-            * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            @page { margin: 8mm; size: auto; }
-          }
-        </style>
-      </head>
-      <body style="font-family:Arial,sans-serif;padding:16px;color:#102542;background:#fff;">
-        <div class="pvc-grid">${cardsMarkup}</div>
-        <script>
-          window.addEventListener("load", function () {
-            setTimeout(function () {
-              window.print();
-            }, 500);
-          });
-        </script>
-      </body>
-      </html>
-      `;
+    return '<!DOCTYPE html><html><head><title></title><meta charset="utf-8"><style>' +
+      '*{box-sizing:border-box;margin:0;padding:0}' +
+      'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;color:#102542;padding:8mm;-webkit-font-smoothing:antialiased}' +
+      '.pvc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(85.6mm,1fr));gap:6mm;justify-items:center}' +
+      '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:2.5mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;break-inside:avoid;display:flex;flex-direction:column}' +
+      '.pvc-card::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;background-image:radial-gradient(circle at 15% 20%,rgba(15,47,88,.5) .4mm,transparent .4mm),radial-gradient(circle at 85% 25%,rgba(15,47,88,.4) .4mm,transparent .4mm),radial-gradient(circle at 50% 80%,rgba(15,47,88,.3) .4mm,transparent .4mm),radial-gradient(circle at 25% 60%,rgba(27,95,122,.3) .4mm,transparent .4mm),radial-gradient(circle at 75% 70%,rgba(27,95,122,.3) .4mm,transparent .4mm);background-size:6mm 6mm}' +
+      '.pvc-card__header{display:flex;align-items:center;gap:2mm;padding:1.5mm 3mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 50%,#1b5f7a 100%);color:#fff;flex-shrink:0}' +
+      '.pvc-card__logo{width:7mm;height:7mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(255,255,255,.3);background:#fff}' +
+      '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2mm;font-weight:700;color:#0f2f58;width:7mm;height:7mm;border-radius:50%;background:#fff;border:.3mm solid rgba(255,255,255,.3)}' +
+      '.pvc-card__header-text{flex:1;min-width:0}' +
+      '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
+      '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
+      '.pvc-card__body{display:flex;flex-direction:column;align-items:center;gap:.5mm;padding:1.5mm 3mm;flex:1;min-height:0}' +
+      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0}' +
+      '.pvc-card__photo{width:13mm;height:13mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:13mm;height:13mm;border-radius:50%}' +
+      '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
+      '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
+      '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
+      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.3mm;width:100%}' +
+      '.pvc-card__info-row{display:grid;grid-template-columns:1fr 1fr;gap:.4mm 2mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
+      '.pvc-card__field{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:.3mm}' +
+      '.pvc-card__label{font-weight:700;color:#0f2f58;flex-shrink:0}' +
+      '.pvc-card__value{color:#3a5a7c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
+      '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
+      '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
+      '.pvc-card__barcode-img{width:100%;max-width:45mm;height:6mm;object-fit:contain;display:block}' +
+      '.pvc-card__barcode-text{font-size:1.5mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.15mm}' +
+      '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:6mm;size:auto}body{padding:3mm 0 0 0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
+      '</style></head><body><div class="pvc-grid">' + cardsMarkup + '</div></body></html>';
   }
 
-  function printStudentIdCardsByList(students, title) {
+  async function printStudentIdCardsByList(students, title) {
     try {
-      const printHtml = buildStudentIdCardsPrintHtml(students);
+      const printHtml = await buildStudentIdCardsPrintHtml(students);
       if (!printHtml) {
         return;
       }
@@ -22174,96 +25540,92 @@ ${allContent}
     }
   }
 
-  function printSingleStudentIdCard(student) {
+
+  async function printSingleStudentIdCard(student) {
     if (!student) {
       return;
     }
     const normalizedStudent = normalizeStudentForPrint(student);
     const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
-    const logo = String(profile.logo || "");
+    const rawLogo = String(profile.logo || "");
+    const logo = rawLogo ? (await normalizeImageForPrintShared(rawLogo)) || rawLogo : "";
     const photo = String(normalizedStudent.picture || "");
-    const singleQrData = encodeURIComponent("ATTEND:STUDENT:" + normalizedStudent.admissionNo);
-    const singleQrUrl = "https://quickchart.io/qr?text=" + singleQrData + "&size=80&margin=1&ecLevel=H&dark=102542";
-    const printHtml = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title></title>
-        <style>
-          * { box-sizing: border-box; }
-          body { margin: 0; font-family: "Segoe UI", Arial, sans-serif; background: #fff; padding: 14mm; display: flex; justify-content: center; }
-          .pvc-card {
-            position: relative;
-            width: 85.6mm;
-            height: 54mm;
-            border-radius: 3mm;
-            border: 0.35mm solid #000;
-            overflow: hidden;
-            background: #fff;
-            color: #102542;
-          }
-          .pvc-card__topband { height: 9mm; background: linear-gradient(120deg, #0f2f58, #1e5eff 68%, #1d9c61); }
-          .pvc-card__header {
-            position: absolute; left: 3mm; right: 3mm; top: 1.5mm;
-            display: grid; grid-template-columns: 10mm 1fr; gap: 2.2mm; align-items: center; color: #fff;
-          }
-          .pvc-card__logo { width: 9.5mm; height: 9.5mm; border-radius: 2mm; border: 0.25mm solid rgba(255,255,255,.9); object-fit: contain; background: #fff; }
-          .pvc-card__logo--fallback { display:inline-flex; align-items:center; justify-content:center; font-size:2.7mm; font-weight:700; background:rgba(255,255,255,.18); }
-          .pvc-card__school { display:block; font-size:2.8mm; line-height:1.1; font-weight:700; }
-          .pvc-card__type { display:block; font-size:2.1mm; opacity:.96; letter-spacing:.08mm; }
-          .pvc-card__body {
-            position:absolute; left:4mm; right:4mm; top:13mm;
-            display:grid; justify-items:center; gap:1.5mm; text-align:center;
-          }
-          .pvc-card__photo { width:19mm; height:19mm; border-radius:50%; border:0.25mm solid #000; object-fit:cover; background:#fff; }
-          .pvc-card__photo--fallback { display:inline-flex; align-items:center; justify-content:center; font-size:4.6mm; font-weight:700; color:#17335b; }
-          .pvc-card__meta { display:grid; gap:.65mm; justify-items:center; }
-          .pvc-card__name { font-size:3.2mm; line-height:1.1; }
-          .pvc-card__line { font-size:2.35mm; line-height:1.05; color:#274669; }
-          .pvc-card__footer {
-            position:absolute; left:3mm; right:3mm; bottom:2.4mm;
-            display:flex; justify-content:space-between; gap:2mm; font-size:2.2mm; color:#345676;
-          }
-          .pvc-card__qr { position: absolute; right: 1.8mm; bottom: 5mm; width: 8mm; height: 8mm; border-radius: 1mm; }
-          @media print { * { -webkit-print-color-adjust: exact; print-color-adjust: exact; } @page { margin: 8mm; size: auto; } }
-        </style>
-      </head>
-      <body>
-        <article class="pvc-card">
-          <div class="pvc-card__topband"></div>
-          <header class="pvc-card__header">
-            ${logo ? `<img src="${escapePrintAttr(logo)}" alt="Logo" class="pvc-card__logo">` : `<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>`}
-            <div>
-              <strong class="pvc-card__school">${escapePrintHtml(profile.name || database.school.name || "School")}</strong>
-              <span class="pvc-card__type">STUDENT ID CARD</span>
-            </div>
-          </header>
-          <section class="pvc-card__body">
-            ${photo ? `<img src="${escapePrintAttr(photo)}" alt="${escapePrintAttr(normalizedStudent.name)}" class="pvc-card__photo">` : `<span class="pvc-card__photo pvc-card__photo--fallback">${getInitials(normalizedStudent.name || "S")}</span>`}
-            <div class="pvc-card__meta">
-              <strong class="pvc-card__name">${escapePrintHtml(normalizedStudent.name || "-")}</strong>
-              <span class="pvc-card__line">Roll: ${escapePrintHtml(normalizedStudent.admissionNo || "-")}</span>
-              <span class="pvc-card__line">Class: ${escapePrintHtml(normalizedStudent.className || "-")}</span>
-              <span class="pvc-card__line">Father: ${escapePrintHtml(normalizedStudent.fatherName || "-")}</span>
-            </div>
-          </section>
-          <footer class="pvc-card__footer">
-            <span>Mobile: ${escapePrintHtml(normalizedStudent.phone || "-")}</span>
-            <span>${escapePrintHtml(profile.name || database.school.name || "School")}</span>
-          </footer>
-          <img src="${singleQrUrl}" alt="QR" class="pvc-card__qr">
-        </article>
-        <script>
-          window.addEventListener("load", function () {
-            setTimeout(function () {
-              window.print();
-            }, 500);
-          });
-        </script>
-      </body>
-      </html>
-    `;
+    const schoolName = profile.name || database.school.name || "School";
+    const schoolTagline = profile.slogan || "";
+    const barcodeValue = normalizedStudent.admissionNo || "-";
+    const barcodeUrl = "https://quickchart.io/barcode?text=" + encodeURIComponent(barcodeValue) + "&type=code128&width=200&height=40&margin=0&displayValue=true&fontSize=10&font=monospace";
+    const qrValue = "ATTEND:STUDENT:" + barcodeValue;
+    const qrUrl = "https://quickchart.io/qr?text=" + encodeURIComponent(qrValue) + "&size=80&margin=1&ecLevel=H&dark=102542";
+    var printHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title></title><style>' +
+      '*{box-sizing:border-box;margin:0;padding:0}' +
+      'body{font-family:"Segoe UI","SF Pro Display","Helvetica Neue",Arial,sans-serif;background:#fff;padding:14mm;display:flex;justify-content:center;-webkit-font-smoothing:antialiased}' +
+      '.pvc-card{position:relative;width:85.6mm;height:54mm;border-radius:2.5mm;border:.3mm solid rgba(16,37,66,.12);overflow:hidden;background:#f8f9fb;color:#102542;display:flex;flex-direction:column}' +
+      '.pvc-card::before{content:"";position:absolute;inset:0;opacity:.04;pointer-events:none;background-image:radial-gradient(circle at 15% 20%,rgba(15,47,88,.5) .4mm,transparent .4mm),radial-gradient(circle at 85% 25%,rgba(15,47,88,.4) .4mm,transparent .4mm),radial-gradient(circle at 50% 80%,rgba(15,47,88,.3) .4mm,transparent .4mm),radial-gradient(circle at 25% 60%,rgba(27,95,122,.3) .4mm,transparent .4mm),radial-gradient(circle at 75% 70%,rgba(27,95,122,.3) .4mm,transparent .4mm);background-size:6mm 6mm}' +
+      '.pvc-card__header{display:flex;align-items:center;gap:2mm;padding:1.5mm 3mm;background:linear-gradient(135deg,#0f2f58 0%,#14457a 50%,#1b5f7a 100%);color:#fff;flex-shrink:0}' +
+      '.pvc-card__logo{width:7mm;height:7mm;border-radius:50%;object-fit:contain;border:.3mm solid rgba(255,255,255,.3);background:#fff}' +
+      '.pvc-card__logo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:2mm;font-weight:700;color:#0f2f58;width:7mm;height:7mm;border-radius:50%;background:#fff;border:.3mm solid rgba(255,255,255,.3)}' +
+      '.pvc-card__header-text{flex:1;min-width:0}' +
+      '.pvc-card__school{display:block;font-size:2.5mm;font-weight:700;color:#fff;line-height:1.15}' +
+      '.pvc-card__tagline{display:block;font-size:1.6mm;color:rgba(255,255,255,.75);font-style:italic;line-height:1.15}' +
+      '.pvc-card__body{display:flex;flex-direction:column;align-items:center;gap:.5mm;padding:1.5mm 3mm;flex:1;min-height:0}' +
+      '.pvc-card__photo-area{flex-shrink:0;display:flex;align-items:center;justify-content:center;padding:0}' +
+      '.pvc-card__photo{width:13mm;height:13mm;border-radius:50%;border:.4mm solid #0f2f58;object-fit:cover;background:#e8eef4}' +
+      '.pvc-card__photo--fallback{display:inline-flex;align-items:center;justify-content:center;font-size:4mm;font-weight:700;color:#17335b;background:#e8eef4;border:.4mm solid #0f2f58;width:13mm;height:13mm;border-radius:50%}' +
+      '.pvc-card__info-area{width:100%;min-width:0;display:flex;flex-direction:column;align-items:center;gap:.2mm}' +
+      '.pvc-card__name{font-size:2.6mm;font-weight:700;color:#102542;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;width:100%}' +
+      '.pvc-card__type-label{font-size:1.4mm;font-weight:600;color:#5a7a96;text-transform:uppercase;letter-spacing:.3mm;text-align:center}' +
+      '.pvc-card__info-grid{display:flex;flex-direction:column;gap:.3mm;width:100%}' +
+      '.pvc-card__info-row{display:grid;grid-template-columns:1fr 1fr;gap:.4mm 2mm;font-size:1.8mm;color:#3a5a7c;width:100%}' +
+      '.pvc-card__field{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:.3mm}' +
+      '.pvc-card__label{font-weight:700;color:#0f2f58;flex-shrink:0}' +
+      '.pvc-card__value{color:#3a5a7c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.pvc-card__footer{display:flex;align-items:flex-end;gap:2mm;padding:1.5mm 3mm 2mm;border-top:.2mm solid rgba(16,37,66,.06);flex-shrink:0}' +
+      '.pvc-card__qr-img{width:9mm;height:9mm;border-radius:1mm;border:.2mm solid rgba(16,37,66,.1);background:#fff;flex-shrink:0}' +
+      '.pvc-card__barcode-area{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:0}' +
+      '.pvc-card__barcode-img{width:100%;max-width:45mm;height:6mm;object-fit:contain;display:block}' +
+      '.pvc-card__barcode-text{font-size:1.5mm;font-weight:600;color:#102542;font-family:"Courier New",monospace;letter-spacing:.15mm}' +
+      '@media print{*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}@page{margin:6mm;size:auto}body{padding:3mm 0 0 0}.pvc-card{box-shadow:none;border:.3mm solid rgba(16,37,66,.15)}}' +
+      '</style></head><body>' +
+      '<article class="pvc-card">' +
+        '<div class="pvc-card__header">' +
+          (logo ? '<img src="' + escapePrintAttr(logo) + '" alt="Logo" class="pvc-card__logo">' : '<span class="pvc-card__logo pvc-card__logo--fallback">SS</span>') +
+          '<div class="pvc-card__header-text">' +
+            '<strong class="pvc-card__school">' + escapePrintHtml(schoolName) + '</strong>' +
+            (schoolTagline ? '<span class="pvc-card__tagline">' + escapePrintHtml(schoolTagline) + '</span>' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="pvc-card__body">' +
+          '<div class="pvc-card__photo-area">' +
+            (photo ? '<img src="' + escapePrintAttr(photo) + '" alt="' + escapePrintAttr(normalizedStudent.name) + '" class="pvc-card__photo">' : '<span class="pvc-card__photo pvc-card__photo--fallback">' + getInitials(normalizedStudent.name || "S") + '</span>') +
+          '</div>' +
+            '<div class="pvc-card__info-area">' +
+              '<div class="pvc-card__name">' + escapePrintHtml(normalizedStudent.name || "-") + '</div>' +
+              '<div class="pvc-card__type-label">STUDENT</div>' +
+              '<div class="pvc-card__info-grid">' +
+                '<div class="pvc-card__info-row">' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">ID:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.admissionNo) + '</span></span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Class:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.className) + '</span></span>' +
+                '</div>' +
+                '<div class="pvc-card__info-row">' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Father:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.fatherName) + '</span></span>' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">Mobile:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.phone) + '</span></span>' +
+                '</div>' +
+                '<div class="pvc-card__info-row">' +
+                  '<span class="pvc-card__field"><span class="pvc-card__label">DOA:</span> <span class="pvc-card__value">' + escapePrintHtml(normalizedStudent.dateOfAdmission) + '</span></span>' +
+                  '<span class="pvc-card__field"></span>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="pvc-card__footer">' +
+          '<div class="pvc-card__barcode-area">' +
+            '<img src="' + barcodeUrl + '" alt="Barcode" class="pvc-card__barcode-img">' +
+            '<span class="pvc-card__barcode-text">' + escapePrintHtml(barcodeValue) + '</span>' +
+          '</div>' +
+          '<img src="' + qrUrl + '" alt="QR" class="pvc-card__qr-img">' +
+        '</div>' +
+      '</article>' +
+      '</body></html>';
     openPrintHtmlWindow(printHtml, "width=900,height=650", "Please allow popups to print ID card.");
   }
 
@@ -22387,9 +25749,26 @@ ${allContent}
     }).join("");
 
     promoteStudentsEmptyState.hidden = students.length !== 0;
+
+    var displayedCount = students.length;
+    var selectedCount = students.filter(function (s) { return promoteSelectionState[s.id]; }).length;
+
+    if (promoteStudentsCount) {
+      promoteStudentsCount.textContent = displayedCount;
+    }
+    if (promoteSelectedCount) {
+      promoteSelectedCount.textContent = selectedCount;
+    }
+    if (promoteListCount) {
+      promoteListCount.textContent = displayedCount + " student" + (displayedCount !== 1 ? "s" : "");
+    }
+    if (promoteSelectAllCheckbox) {
+      promoteSelectAllCheckbox.checked = displayedCount > 0 && selectedCount === displayedCount;
+      promoteSelectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < displayedCount;
+    }
   }
 
-  function printBasicList() {
+  async function printBasicList() {
     try {
       const students = getPrintBasicListStudents();
       if (students.length === 0) {
@@ -22400,6 +25779,7 @@ ${allContent}
       const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
       const schoolName = profile.name || database.school.name || "School Name";
       const logo = String(profile.logo || "");
+      const normalizedLogo = logo ? await normalizeImageForPrintShared(logo) : "";
       const rows = students.map(function (student, index) {
         const normalizedStudent = normalizeStudentForPrint(student);
         return `<tr>
@@ -22422,7 +25802,7 @@ ${allContent}
           body { margin:0; font-family:"Segoe UI",Arial,sans-serif; color:#102542; background:#fff; }
           .wrap { padding:22px; }
           .head { text-align:center; margin-bottom:10px; }
-          .head img { width:62px; height:62px; border-radius:12px; object-fit:cover; }
+          .head img { width:62px; height:62px; border-radius:12px; object-fit:cover; background-color:#fff; }
           .head h1 { margin:6px 0 2px; font-size:1.45rem; }
           .head p { margin:0; color:#4e678f; }
           .sub { text-align:center; margin:8px 0 12px; color:#5f7394; }
@@ -22435,7 +25815,7 @@ ${allContent}
       <body>
         <main class="wrap">
           <section class="head">
-            ${logo ? `<img src="${escapePrintAttr(logo)}" alt="School logo">` : ""}
+            ${normalizedLogo ? `<img src="${normalizedLogo}" alt="School logo">` : ""}
             <h1>${escapePrintHtml(schoolName)}</h1>
             <p>${escapePrintHtml(profile.slogan || "School Management System")}</p>
           </section>
@@ -22445,13 +25825,6 @@ ${allContent}
             <tbody>${rows}</tbody>
           </table>
         </main>
-        <script>
-          window.addEventListener("load", function () {
-            setTimeout(function () {
-              window.print();
-            }, 500);
-          });
-        </script>
       </body>
       </html>
       `;
@@ -22685,7 +26058,7 @@ ${allContent}
         openAppMessageBox("Success", "Admission confirmation SMS sent successfully to " + normalizedStudent.name + ".", "success");
         return;
       }
-      const pdfHtml = printAdmissionLetter(true);
+      const pdfHtml = await printAdmissionLetter(true);
       const pdfResult = await saveCommunicationPdf(pdfHtml, `Admission-Letter-${normalizedStudent.name || normalizedStudent.admissionNo || "Student"}.pdf`);
       const whatsappText = pdfResult && pdfResult.success ? `${messageText}\nPDF: ${pdfResult.filePath}` : messageText;
       const logged = logWhatsappCommunication({
@@ -22749,7 +26122,7 @@ ${allContent}
     }
   }
 
-  function printAdmissionLetter(returnHtml) {
+  async function printAdmissionLetter(returnHtml) {
     try {
       if (!selectedAdmissionStudentId) {
         return;
@@ -22813,6 +26186,7 @@ ${allContent}
       }
       const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
       const schoolName = profile.name || database.school.name || "School Name";
+      const normalizedLogo = profile.logo ? await normalizeImageForPrintShared(profile.logo) : "";
       const printHtml = `
       <!DOCTYPE html>
       <html>
@@ -22825,7 +26199,7 @@ ${allContent}
           body { font-family:"Segoe UI",Arial,sans-serif; background:#fff; color:#102542; font-size:10px; line-height:1.2; }
           .wrap { max-height: 282mm; overflow: hidden; padding: 1mm; box-sizing: border-box; }
           .head { text-align:center; margin-bottom:6px; }
-          .head img { width:52px; height:52px; border-radius:10px; object-fit:cover; }
+          .head img { width:52px; height:52px; border-radius:10px; object-fit:cover; background-color:#fff; }
           .head h1 { margin:4px 0 1px; font-size:18px; }
           .head p { margin:0; color:#4e678f; font-size:11px; }
           .title { text-align:center; margin:6px 0; font-size:13px; font-weight:700; color:#173a6b; }
@@ -22847,7 +26221,7 @@ ${allContent}
       <body>
         <main class="wrap" style="display: flex; flex-direction: column; height: 282mm;">
           <section class="head">
-            ${profile.logo ? `<img src="${escapePrintAttr(profile.logo)}" alt="School logo">` : ""}
+            ${normalizedLogo ? `<img src="${normalizedLogo}" alt="School logo">` : ""}
             <h1>${escapePrintHtml(schoolName)}</h1>
             <p>${escapePrintHtml(profile.slogan || "School Management System")}</p>
           </section>
@@ -22878,13 +26252,6 @@ ${allContent}
             </div>
           </div>
         </main>
-        <script>
-          window.addEventListener("load", function () {
-            setTimeout(function () {
-              window.print();
-            }, 500);
-          });
-        </script>
       </body>
       </html>
     `;
@@ -23032,7 +26399,10 @@ ${allContent}
       if (_psUtilityCard2) _psUtilityCard2.style.gridColumn = "1 / -1";
       studentsUtilityContent.innerHTML = `
         <div class="toolbar" style="margin-bottom:12px">
-          <input id="parentLoginSearchInput" type="search" placeholder="Search by father name or student name">
+          <div id="parentLoginSearchContainer" style="position:relative;flex:1;min-width:0;">
+            <input id="parentLoginSearchInput" type="search" placeholder="Search by father name or student name" style="width:100%;">
+            <div id="parentLoginSearchDropdown" class="search-dropdown"></div>
+          </div>
         </div>
         <div class="table-wrap">
           <table>
@@ -23052,9 +26422,35 @@ ${allContent}
         <p class="empty-state" id="parentLoginEmptyState" hidden>No parent records found.</p>
       `;
       renderParentLoginTable();
-      var searchInput = document.getElementById("parentLoginSearchInput");
-      if (searchInput) {
-        searchInput.addEventListener("input", renderParentLoginTable);
+      var parentLoginSearchInput = document.getElementById("parentLoginSearchInput");
+      var parentLoginSearchDropdown = document.getElementById("parentLoginSearchDropdown");
+      if (parentLoginSearchInput && parentLoginSearchDropdown) {
+        initializeSearchWithDropdown(
+          parentLoginSearchInput,
+          parentLoginSearchDropdown,
+          function(searchTerm) {
+            return (database.students || []).filter(function(s) {
+              var fn = String(s.fatherName || "").toLowerCase();
+              var sn = String(s.name || "").toLowerCase();
+              return fn.includes(searchTerm) || sn.includes(searchTerm);
+            }).slice(0, 10);
+          },
+          function(student) {
+            return '<div class="gsac-item" data-student-id="' + escapeAttr(student.id || "") + '">' +
+              '<div class="gsac-item-main">' +
+                '<div class="gsac-item-name">' + escapeHtml(student.fatherName || "-") + '</div>' +
+                '<div class="gsac-item-sub">' + escapeHtml(student.name || "-") + '</div>' +
+              '</div>' +
+              '<div class="gsac-item-id">' + escapeHtml(student.className || "-") + '</div>' +
+            '</div>';
+          },
+          function(student) {
+            parentLoginSearchInput.value = student.fatherName || student.name || "";
+            renderParentLoginTable();
+          },
+          "parentLoginSearchContainer"
+        );
+        parentLoginSearchInput.addEventListener("input", renderParentLoginTable);
       }
       studentsUtilityContent.addEventListener("change", function (ev) {
         var toggle = ev.target.closest(".parent-login-toggle");
@@ -23742,7 +27138,7 @@ ${allContent}
         btnWrap.style.cssText = "margin-top:0.6rem;text-align:center;";
         btnWrap.innerHTML = '<button id="dashboardSendAbsenteesBtnOld" type="button" style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.3rem 0.8rem;font-size:0.75rem;font-family:inherit;font-weight:600;color:#fff;background:#e74c3c;border:none;border-radius:8px;cursor:pointer;line-height:1.4;"><i class="fas fa-paper-plane"></i> Send Absentees Message</button>';
         absentContainer.appendChild(btnWrap);
-        document.getElementById("dashboardSendAbsenteesBtnOld").addEventListener("click", async function () {
+        safeOn(document.getElementById("dashboardSendAbsenteesBtnOld"), "click", async function () {
           try {
             var todayAttendance = database.attendance || [];
             var absentStudents = [];
@@ -23890,36 +27286,6 @@ ${allContent}
     });
   }
 
-  function renderSuperAdminDashboard() {
-    var section = document.getElementById("superAdminDashboardSection");
-    var listEl = document.getElementById("superAdminSchoolList");
-    if (!section || !listEl) return;
-    if (currentUser.role !== superAdminRole) { section.style.display = "none"; return; }
-    section.style.display = "";
-    listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#888;">Loading schools...</p>';
-    var apiBase = window.SagarSoftOnlineConfig && window.SagarSoftOnlineConfig.apiBaseUrl ? window.SagarSoftOnlineConfig.apiBaseUrl.replace(/\/+$/, "") : "https://sagarsoftonline.onrender.com";
-    fetch(apiBase + "/api/admin/schools", { cache: "no-store", headers: { "Authorization": "Bearer " + (window.SagarSoftAuth && window.SagarSoftAuth.getServerToken ? window.SagarSoftAuth.getServerToken() : "") } })
-      .then(function (resp) { return resp.json().catch(function () { return {}; }); })
-      .then(function (data) {
-        if (!data.success || !Array.isArray(data.schools) || !data.schools.length) {
-          listEl.innerHTML = '<p style="text-align:center;padding:16px;">No schools found. Use Account Settings to add a school.</p>';
-          return;
-        }
-        listEl.innerHTML = '<table class="data-table" style="width:100%;font-size:13px;"><thead><tr><th>School ID</th><th>Name</th><th>Plan</th><th>Expiry</th><th>Status</th><th>Last Seen</th></tr></thead><tbody>' +
-          data.schools.map(function (s) {
-            var statusClass = s.status === "active" && !s.modules_locked ? "active" : "inactive";
-            var statusLabel = s.status === "active" && !s.modules_locked ? "Active" : "Inactive";
-            var lastSeen = s.last_seen ? new Date(s.last_seen).toLocaleString() : "-";
-            var expiry = s.expiry_date ? s.expiry_date.slice(0, 10) : "-";
-            return '<tr><td style="font-family:monospace;font-size:12px;">' + escapeHtml(s.school_id || "-") + '</td><td>' + escapeHtml(s.school_name || "-") + '</td><td>' + escapeHtml(s.plan || "-") + '</td><td>' + escapeHtml(expiry) + '</td><td><span class="status-pill ' + statusClass + '">' + statusLabel + '</span></td><td style="font-size:12px;">' + escapeHtml(lastSeen) + '</td></tr>';
-          }).join("") +
-          '</tbody></table>';
-      })
-      .catch(function () {
-        listEl.innerHTML = '<p style="text-align:center;padding:16px;color:#d64b4b;">Could not load schools. Check your connection.</p>';
-      });
-  }
-
   function renderDashboard() {
     if (activeRoute && activeRoute !== "dashboard" && activeRoute !== "home") return;
     try { refreshDatabase(); } catch (_e) { console.error("[DASH] refreshDatabase:", _e.message); }
@@ -23936,7 +27302,6 @@ ${allContent}
     try { renderDashboardAnalytics(); } catch (_e) { console.error("[DASH] renderDashboardAnalytics:", _e.message); }
     try { refreshAttendanceOverview(); } catch (_e) {}
     try { renderDashboardTodayAttendance(); } catch (_e) {}
-    try { renderSuperAdminDashboard(); } catch (_e) {}
     try { startDashboardClock(); } catch (_e) {}
     try { updateHero(); } catch (_e) {}
     try { renderStudentsWorkspace(); } catch (_e) {}
@@ -24501,6 +27866,30 @@ ${allContent}
     _loadProfileFromSupabase();
   });
 
+  // -- Cache Manager init + live UI sync ------------------------
+  (function initCache() {
+    var cache = window.SagarSoftCache;
+    if (!cache) return;
+    cache.init();
+    cache.on("history-changed", function (history) {
+      _renderNotifHistory(history);
+    });
+    cache.on("notices-changed", function (notices) {
+      database.generalSettings.notices = notices;
+      renderDashboardNotices();
+    });
+    cache.on("events-changed", function (events) {
+      database.generalSettings.events = events;
+      renderDashboardEvents();
+    });
+    if (!superAdminBypass) {
+      setTimeout(function () {
+        cache.fetchNotices();
+        cache.fetchEvents();
+      }, 2000);
+    }
+  })();
+
   updateTopProfileIdentity();
   renderProfileDropdownMenu();
 
@@ -24593,6 +27982,7 @@ ${allContent}
           }
           database.generalSettings.licenseSettings.schoolId = schoolId;
           normalizeStudentsDatasetInMemory();
+          isolateSuperAdminData();
           applyRouteAccessVisibility();
           if (typeof renderDashboard === "function") renderDashboard();
         }
@@ -24680,12 +28070,16 @@ ${allContent}
         sessionStorage.removeItem("sagarsoft_edit_employee_id");
       }
 
+      if (route === "subject-chapters") {
+        sessionStorage.removeItem("sagarsoft_edit_question_id");
+      }
+
       setRoute(route);
     });
   });
 
   // Add admission number duplicate check listener
-  admissionNoInput.addEventListener("blur", function () {
+  safeOn(admissionNoInput, "blur", function () {
     const admissionValue = "STD" + this.value.trim();
     if (admissionValue === "STD") {
       const warning = document.getElementById("admissionNoWarning");
@@ -24706,7 +28100,7 @@ ${allContent}
     }
   });
 
-  studentForm.addEventListener("submit", handleStudentFormSubmit);
+  safeOn(studentForm, "submit", handleStudentFormSubmit);
 
   if (discountTypeSelectInput) {
     discountTypeSelectInput.addEventListener("change", function () {
@@ -24715,24 +28109,29 @@ ${allContent}
       discountInFeeInput.value = dt ? String(dt.percentage) : "";
     });
   }
-  newClassForm.addEventListener("submit", handleClassFormSubmit);
+  safeOn(newClassForm, "submit", handleClassFormSubmit);
 
 
-  assignSubjectsForm.addEventListener("submit", handleAssignSubjectsSubmit);
-  studentsTableBody.addEventListener("click", handleTableActionClick);
-  studentDirectoryGrid.addEventListener("click", handleTableActionClick);
-  studentDirectoryGrid.__listenerAttached = true;
-  studentStatusGrid.addEventListener("click", handleTableActionClick);
-  studentIdCardsGrid.addEventListener("click", handleTableActionClick);
-  allClassesContainer.addEventListener("click", handleAllClassesTableClick);
-  classesWithSubjectsGrid.addEventListener("click", handleClassesWithSubjectsClick);
-  studentsManageLoginTableBody.addEventListener("click", handleTableActionClick);
-  promoteStudentsTableBody.addEventListener("click", handleTableActionClick);
-  studentsUtilityContent.addEventListener("click", handleTableActionClick);
+  safeOn(assignSubjectsForm, "submit", handleAssignSubjectsSubmit);
+  safeOn(studentsTableBody, "click", handleTableActionClick);
+  safeOn(studentDirectoryGrid, "click", handleTableActionClick);
+  if (studentDirectoryGrid) studentDirectoryGrid.__listenerAttached = true;
+  safeOn(studentStatusGrid, "click", handleTableActionClick);
+  safeOn(studentIdCardsGrid, "click", handleTableActionClick);
+  safeOn(allClassesContainer, "click", handleAllClassesTableClick);
+  safeOn(classesWithSubjectsGrid, "click", handleClassesWithSubjectsClick);
+  safeOn(studentsManageLoginTableBody, "click", handleTableActionClick);
+  safeOn(promoteStudentsTableBody, "click", handleTableActionClick);
+  safeOn(studentsUtilityContent, "click", handleTableActionClick);
 
   [studentSearchInput, studentClassFilter, studentStatusFilter].forEach(function (element) {
-    element.addEventListener("input", renderStudentsWorkspace);
-    element.addEventListener("change", renderStudentsWorkspace);
+    safeOn(element, "input", renderStudentsWorkspace);
+    safeOn(element, "change", renderStudentsWorkspace);
+  });
+
+  initializeStudentProfessionalSearch("studentSearchInput", "mainStudentSearchDropdown", "mainStudentSearchContainer", function(student) {
+    studentSearchInput.value = student.name || "";
+    renderStudentsWorkspace();
   });
 
   // Initialize all-students search with dropdown
@@ -24794,14 +28193,14 @@ ${allContent}
     );
   }
 
-  allStudentsSearchInput.addEventListener("input", renderAllStudentsDirectory);
-  allStudentsClassFilter.addEventListener("change", renderAllStudentsDirectory);
-  allStudentsGenderFilter.addEventListener("change", renderAllStudentsDirectory);
-  assignSubjectsClassInput.addEventListener("change", function () {
+  safeOn(allStudentsSearchInput, "input", renderAllStudentsDirectory);
+  safeOn(allStudentsClassFilter, "change", renderAllStudentsDirectory);
+  safeOn(allStudentsGenderFilter, "change", renderAllStudentsDirectory);
+  safeOn(assignSubjectsClassInput, "change", function () {
     populateAssignSubjectsForm(assignSubjectsClassInput.value);
   });
-  studentStatusSearchInput.addEventListener("input", renderStudentStatusDirectory);
-  studentStatusClassFilter.addEventListener("change", renderStudentStatusDirectory);
+  safeOn(studentStatusSearchInput, "input", renderStudentStatusDirectory);
+  safeOn(studentStatusClassFilter, "change", renderStudentStatusDirectory);
   // Initialize admission autocomplete
   initializeSearchWithDropdown(
     admissionLetterSearchInput,
@@ -24865,8 +28264,8 @@ ${allContent}
     printAdmissionLetter();
   });
   if (downloadAdmissionPdfBtn) {
-    downloadAdmissionPdfBtn.addEventListener("click", function () {
-      var html = printAdmissionLetter(true);
+    downloadAdmissionPdfBtn.addEventListener("click", async function () {
+      var html = await printAdmissionLetter(true);
       if (html) {
         var blob = new Blob([html], { type: "text/html" });
         var url = URL.createObjectURL(blob);
@@ -24879,19 +28278,27 @@ ${allContent}
     });
   }
   
-  studentIdCardsSearchInput.addEventListener("input", renderStudentIdCards);
-  studentIdCardsClassFilter.addEventListener("change", renderStudentIdCards);
-  printAllStudentIdCardsBtn.addEventListener("click", function () {
+  safeOn(studentIdCardsSearchInput, "input", renderStudentIdCards);
+  safeOn(studentIdCardsClassFilter, "change", renderStudentIdCards);
+  initializeStudentProfessionalSearch("studentIdCardsSearchInput", "studentIdCardsSearchDropdown", "studentIdCardsSearchContainer", function(student) {
+    studentIdCardsSearchInput.value = student.name || "";
+    renderStudentIdCards();
+  });
+  safeOn(printAllStudentIdCardsBtn, "click", function () {
     printStudentIdCardsByList(getIdCardStudents(), "Student ID Cards");
   });
-  printClasswiseStudentIdCardsBtn.addEventListener("click", function () {
+  safeOn(printClasswiseStudentIdCardsBtn, "click", function () {
     const selectedClass = studentIdCardsClassFilter.value;
     const title = selectedClass === "all" ? "Student ID Cards" : `Student ID Cards - ${selectedClass}`;
     printStudentIdCardsByList(getIdCardStudents(), title);
   });
-  printBasicListSearchInput.addEventListener("input", renderPrintBasicListTable);
-  printBasicListClassFilter.addEventListener("change", renderPrintBasicListTable);
-  printBasicListBtn.addEventListener("click", printBasicList);
+  safeOn(printBasicListSearchInput, "input", renderPrintBasicListTable);
+  safeOn(printBasicListClassFilter, "change", renderPrintBasicListTable);
+  initializeStudentProfessionalSearch("printBasicListSearchInput", "printBasicListSearchDropdown", "printBasicListSearchContainer", function(student) {
+    printBasicListSearchInput.value = student.name || "";
+    renderPrintBasicListTable();
+  });
+  safeOn(printBasicListBtn, "click", printBasicList);
   const dashboardStatsGrid = document.getElementById("statsGrid");
   if (dashboardStatsGrid) {
     dashboardStatsGrid.addEventListener("click", handleDashboardCardNavigation);
@@ -24902,30 +28309,48 @@ ${allContent}
       }
     });
   }
-  studentsManageLoginSearchInput.addEventListener("input", renderManageLoginTable);
-  promoteStudentsSearchInput.addEventListener("input", function () {
+  safeOn(studentsManageLoginSearchInput, "input", renderManageLoginTable);
+  initializeStudentProfessionalSearch("studentsManageLoginSearchInput", "manageLoginSearchDropdown", "manageLoginSearchContainer", function(student) {
+    studentsManageLoginSearchInput.value = student.name || "";
+    renderManageLoginTable();
+  });
+  safeOn(promoteStudentsSearchInput, "input", function () {
     promoteSelectionState = {};
     renderPromoteStudentsTable();
   });
-  promoteStudentsClassFilter.addEventListener("change", function () {
+  initializeStudentProfessionalSearch("promoteStudentsSearchInput", "promoteStudentsSearchDropdown", "promoteStudentsSearchContainer", function(student) {
+    promoteStudentsSearchInput.value = student.name || "";
     promoteSelectionState = {};
     renderPromoteStudentsTable();
   });
-  promoteSelectedStudentsBtn.addEventListener("click", promoteSelectedStudents);
+  safeOn(promoteStudentsClassFilter, "change", function () {
+    promoteSelectionState = {};
+    renderPromoteStudentsTable();
+  });
+  safeOn(promoteSelectedStudentsBtn, "click", promoteSelectedStudents);
 
-  openStudentFormBtn.addEventListener("click", function () {
+  safeOn(promoteSelectAllCheckbox, "change", function () {
+    var isChecked = promoteSelectAllCheckbox.checked;
+    var students = getPromoteStudents();
+    students.forEach(function (student) {
+      promoteSelectionState[student.id] = isChecked;
+    });
+    renderPromoteStudentsTable();
+  });
+
+  safeOn(openStudentFormBtn, "click", function () {
     setRoute("students-add-new");
   });
 
-  clearClassFormBtn.addEventListener("click", function () {
+  safeOn(clearClassFormBtn, "click", function () {
     populateClassForm(null);
   });
 
-  addSubjectRowBtn.addEventListener("click", function () {
+  safeOn(addSubjectRowBtn, "click", function () {
     assignSubjectsRows.appendChild(createSubjectRow());
   });
 
-  removeSubjectRowBtn.addEventListener("click", function () {
+  safeOn(removeSubjectRowBtn, "click", function () {
     const rows = assignSubjectsRows.querySelectorAll(".subject-row");
     if (rows.length <= 1) {
       setAssignSubjectsMessage("At least one subject row is required.", "error");
@@ -24936,11 +28361,11 @@ ${allContent}
     setAssignSubjectsMessage("", "");
   });
 
-  cancelStudentEditBtn.addEventListener("click", function () {
+  safeOn(cancelStudentEditBtn, "click", function () {
     populateStudentForm(null);
   });
 
-  resetStudentFiltersBtn.addEventListener("click", function () {
+  safeOn(resetStudentFiltersBtn, "click", function () {
     studentSearchInput.value = "";
     allStudentsSearchInput.value = "";
     studentStatusSearchInput.value = "";
@@ -24969,8 +28394,8 @@ ${allContent}
     renderStudentsWorkspace();
   });
 
-  closeStudentModalBtn.addEventListener("click", closeStudentModal);
-  studentModal.addEventListener("click", function (event) {
+  safeOn(closeStudentModalBtn, "click", closeStudentModal);
+  safeOn(studentModal, "click", function (event) {
     if (event.target.dataset.modalClose === "true") {
       closeStudentModal();
     }
@@ -24989,13 +28414,13 @@ ${allContent}
     });
   }
 
-  sidebarCollapseBtn.addEventListener("click", function () {
+  safeOn(sidebarCollapseBtn, "click", function () {
     database.settings.sidebarCollapsed = !database.settings.sidebarCollapsed;
     saveDatabase("", [{ table: "school_settings", record: { id: "uiPreferences", source_id: "uiPreferences", data: { sidebarCollapsed: database.settings.sidebarCollapsed }, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
     applySidebarState();
   });
 
-  mobileMenuBtn.addEventListener("click", function () {
+  safeOn(mobileMenuBtn, "click", function () {
     appShell.classList.toggle("sidebar-open");
   });
 
@@ -25005,7 +28430,7 @@ ${allContent}
     });
   }
 
-  profileMenuBtn.addEventListener("click", function () {
+  safeOn(profileMenuBtn, "click", function () {
     const isExpanded = profileMenu.classList.toggle("open");
     profileMenuBtn.setAttribute("aria-expanded", String(isExpanded));
   });
@@ -25150,8 +28575,10 @@ ${allContent}
     }
   }, 30 * 60 * 1000);
 
+  initKeyboardScanner();
+
   /* ===================================================================
-     NUCLEAR MOBILE RESPONSIVE FIX — JS-based, runs after every render
+     NUCLEAR MOBILE RESPONSIVE FIX ï¿½ JS-based, runs after every render
      Bypasses ALL CSS specificity wars and inline style conflicts
      =================================================================== */
   function forceMobileLayout() {
