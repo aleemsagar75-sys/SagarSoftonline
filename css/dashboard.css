@@ -14437,14 +14437,35 @@ button.ss-btn-loading {
 }
 
 /* Time Periods table alignment + 3-button actions */
+.tt-periods-table {
+  table-layout: fixed;
+  width: 100%;
+}
 .tt-periods-table th,
 .tt-periods-table td {
   vertical-align: middle;
 }
-.tt-periods-table th:first-child,
-.tt-periods-table td:first-child {
+.tt-periods-table .tt-col-drag {
+  width: 40px;
   text-align: center;
-  width: 36px;
+}
+.tt-periods-table .tt-col-period {
+  width: 18%;
+}
+.tt-periods-table .tt-col-start {
+  width: 14%;
+}
+.tt-periods-table .tt-col-end {
+  width: 14%;
+}
+.tt-periods-table .tt-col-type {
+  width: 12%;
+}
+.tt-periods-table .tt-col-status {
+  width: 10%;
+}
+.tt-periods-table .tt-col-actions {
+  width: 32%;
 }
 .tt-actions-cell {
   margin-top: 0 !important;
@@ -14454,4 +14475,15 @@ button.ss-btn-loading {
 }
 .tt-period-toggle {
   white-space: nowrap;
+}
+
+/* Create Timetable: always show cell actions (edit/delete/drag) */
+.tt-cell__actions {
+  position: static !important;
+  opacity: 1 !important;
+  display: flex !important;
+  gap: 3px;
+  justify-content: center;
+  margin-top: 4px;
+  transition: none;
 }
