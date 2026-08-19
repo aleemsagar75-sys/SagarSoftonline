@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -11,8 +11,8 @@
   <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
   <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
   <title>SagarSoft Management System | Dashboard</title>
-  <link rel="stylesheet" href="./css/base.css?v=20260818a">
-  <link rel="stylesheet" href="./css/dashboard.css?v=20260818a">
+  <link rel="stylesheet" href="./css/base.css?v=20260819">
+  <link rel="stylesheet" href="./css/dashboard.css?v=20260819">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
@@ -1262,7 +1262,7 @@
   <script src="./js/enterprise.js?v=20260729" defer></script>
   <script src="./js/auth.js?v=20260729" defer></script>
   <script src="./js/cache-manager.js?v=20260805" defer></script>
-  <script src="./js/dashboard.js?v=20260818a" defer></script>
+  <script src="./js/dashboard.js?v=20260819" defer></script>
   <script>
     var _origFetch = window.fetch;
     window.fetch = function () {
@@ -1331,8 +1331,24 @@
       });
     };
     if ('serviceWorker' in navigator) {
+      var _swReg = null;
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js');
+        navigator.serviceWorker.register('./sw.js?v=v110').then(function (reg) {
+          _swReg = reg;
+          if (reg.installing) {
+            reg.installing.addEventListener('statechange', function (sw) {
+              if (sw.target.state === 'installed' && navigator.serviceWorker.controller) {
+                sw.target.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          }
+        });
+      });
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (sessionStorage.getItem('sw-reloaded') !== 'v109') {
+          sessionStorage.setItem('sw-reloaded', 'v109');
+          window.location.reload();
+        }
       });
     }
 
