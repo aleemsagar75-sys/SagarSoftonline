@@ -10598,7 +10598,7 @@ ${allContent}
               <button class="tt-sort-btn" id="sortPeriodsByTimeBtn" type="button">&#128260; Sort by Start Time</button>
             </div>
           </div>
-          <div class="gs-table-wrap"><table class="gs-table tt-periods-table"><thead><tr><th style="width:36px;text-align:center;"></th><th>Period</th><th>Start</th><th>End</th><th>Type</th><th>Status</th><th style="min-width:230px;">Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
+          <div class="gs-table-wrap"><table class="gs-table tt-periods-table"><thead><tr><th class="tt-col-drag"></th><th class="tt-col-period">Period</th><th class="tt-col-start">Start</th><th class="tt-col-end">End</th><th class="tt-col-type">Type</th><th class="tt-col-status">Status</th><th class="tt-col-actions">Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -10621,11 +10621,9 @@ ${allContent}
 
       function normalizePeriodOrders() {
         var periods = settings.timetablePeriods || [];
-        var sorted = periods.slice().sort(function (a, b) { return Number(a.order || 0) - Number(b.order || 0); });
-        for (var i = 0; i < sorted.length; i++) {
-          sorted[i].order = i + 1;
+        for (var i = 0; i < periods.length; i++) {
+          periods[i].order = i + 1;
         }
-        settings.timetablePeriods = sorted;
       }
 
       function detectTimeOverlap(newStart, newEnd, excludeId) {
@@ -10755,13 +10753,12 @@ ${allContent}
         }
         showSSModal({
           title: "Sort by Start Time?",
-          desc: "This will reorder all time periods based on their start times.",
           tone: "info",
+          html: '<p style="font-size:0.92rem;color:#486581;margin:0;">This will reorder all time periods based on their start times.</p>',
           buttons: [
-            { id: "sort-cancel", label: "Cancel", className: "ss-modal__btn ss-modal__btn--secondary" },
-            { id: "sort-ok", label: "Sort", className: "ss-modal__btn ss-modal__btn--primary" }
-          ],
-          resolveWith: "sort-cancel"
+            { id: "cancel", label: "Cancel", tone: "cancel" },
+            { id: "sort-ok", label: "Sort", tone: "primary" }
+          ]
         }).then(function (result) {
           if (result === "sort-ok") {
             periods.sort(function (a, b) {
