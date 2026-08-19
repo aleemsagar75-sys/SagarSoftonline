@@ -14444,19 +14444,20 @@ button.ss-btn-loading {
 .tt-periods-table th,
 .tt-periods-table td {
   vertical-align: middle;
+  padding: 0.6rem 0.75rem;
 }
 .tt-periods-table .tt-col-drag {
   width: 40px;
   text-align: center;
 }
 .tt-periods-table .tt-col-period {
-  width: 18%;
+  width: 20%;
 }
 .tt-periods-table .tt-col-start {
-  width: 14%;
+  width: 12%;
 }
 .tt-periods-table .tt-col-end {
-  width: 14%;
+  width: 12%;
 }
 .tt-periods-table .tt-col-type {
   width: 12%;
@@ -14465,7 +14466,7 @@ button.ss-btn-loading {
   width: 10%;
 }
 .tt-periods-table .tt-col-actions {
-  width: 32%;
+  width: 34%;
 }
 .tt-actions-cell {
   margin-top: 0 !important;
