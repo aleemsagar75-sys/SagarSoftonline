@@ -3119,11 +3119,11 @@ app.post("/api/backup", requireApiKey, requireSchoolAuth, async function (req, r
     return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
   }
   var schoolId = String(req.body.school_id || "").trim();
+  var database = req.body.database || {};
   if (!schoolId) return res.status(400).json({ success: false, message: "School ID required." });
   if (req.authRole !== "superadmin" && req.authSchoolId !== schoolId) {
     return res.status(403).json({ success: false, message: "Access denied: school_id mismatch." });
   }
-  var database = req.body.database || {};
   try {
     var _schoolCheck = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
     if (!_schoolCheck.rowCount) {
