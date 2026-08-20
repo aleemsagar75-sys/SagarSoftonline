@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -1262,7 +1262,7 @@
   <script src="./js/enterprise.js?v=20260729" defer></script>
   <script src="./js/auth.js?v=20260729" defer></script>
   <script src="./js/cache-manager.js?v=20260805" defer></script>
-  <script src="./js/dashboard.js?v=20260819f" defer></script>
+  <script src="./js/dashboard.js?v=20260820a" defer></script>
   <script>
     var _origFetch = window.fetch;
     window.fetch = function () {
@@ -1333,7 +1333,7 @@
     if ('serviceWorker' in navigator) {
       var _swReg = null;
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js?v=v115').then(function (reg) {
+        navigator.serviceWorker.register('./sw.js?v=v116').then(function (reg) {
           _swReg = reg;
           if (reg.installing) {
             reg.installing.addEventListener('statechange', function (sw) {
