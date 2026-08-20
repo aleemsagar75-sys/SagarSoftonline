@@ -11470,14 +11470,14 @@ ${allContent}
                 + '</td>';
             }
             var dragData = encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id,subject:entry.subjectName,teacher:entry.teacherId,room:entry.roomId}));
-            return '<td class="tt-cell tt-cell--regular" draggable="true" data-tt-drag="' + dragData + '" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '">'
+            return '<td class="tt-cell tt-cell--regular" data-tt-drag="' + dragData + '" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '">'
               + '<div class="tt-cell__subject">' + escapeHtml(entry.subjectName || "-") + '</div>'
               + '<div class="tt-cell__teacher">' + escapeHtml(entry.teacherName || "-") + '</div>'
               + '<div class="tt-cell__room">' + escapeHtml(entry.roomName || "-") + '</div>'
               + '<div class="tt-cell__actions">'
-              + '<span class="tt-drag-handle" title="Drag to rearrange">&#8942;&#8942;</span> '
-              + '<button class="tt-cell__menu-btn" draggable="false" data-tt-edit="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Edit">&#9998;</button>'
-              + '<button class="tt-cell__menu-btn tt-cell__menu-btn--danger" draggable="false" data-tt-delete="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Delete">&#10005;</button>'
+              + '<span class="tt-drag-handle" draggable="true" title="Drag to rearrange">&#8942;&#8942;</span> '
+              + '<button class="tt-cell__menu-btn" data-tt-edit="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Edit">&#9998;</button>'
+              + '<button class="tt-cell__menu-btn tt-cell__menu-btn--danger" data-tt-delete="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Delete">&#10005;</button>'
               + '</div>'
               + '</td>';
           }).join("");
@@ -11646,11 +11646,6 @@ ${allContent}
         ttDeleteModal.addEventListener("click", onOverlayClick);
       }
 
-      document.getElementById("ttPreviewBody").addEventListener("mousedown", function (event) {
-        if (event.target.closest(".tt-cell__menu-btn")) {
-          event.stopPropagation();
-        }
-      });
       document.getElementById("ttPreviewBody").addEventListener("click", function (event) {
         var editBtn = event.target.closest("[data-tt-edit]");
         if (editBtn) {
@@ -11697,10 +11692,11 @@ ${allContent}
         }
         var deleteBtn = event.target.closest("[data-tt-delete]");
         if (deleteBtn) {
+          var dData;
           try {
-            var dData = JSON.parse(decodeURIComponent(deleteBtn.getAttribute("data-tt-delete")));
-            showDeleteModal(dData);
-          } catch (err) { /* ignore */ }
+            dData = JSON.parse(decodeURIComponent(deleteBtn.getAttribute("data-tt-delete")));
+          } catch (_e) { return; }
+          showDeleteModal(dData);
         }
       });
 
@@ -11709,22 +11705,20 @@ ${allContent}
       var ttPreviewTable = document.getElementById("ttPreviewTable");
       if (ttPreviewTable) {
         ttPreviewTable.addEventListener("dragstart", function (e) {
-          if (e.target.closest(".tt-cell__menu-btn")) {
-            e.preventDefault();
-            return;
-          }
-          var cell = e.target.closest("[data-tt-drag]");
+          var handle = e.target.closest(".tt-drag-handle");
+          if (!handle) return;
+          var cell = handle.closest("[data-tt-drag]");
           if (!cell) return;
           try {
             ttDragData = JSON.parse(decodeURIComponent(cell.getAttribute("data-tt-drag")));
-            cell.classList.add("tt-dragging");
+            handle.classList.add("tt-dragging");
             e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData("text/plain", cell.getAttribute("data-tt-drag"));
           } catch (err) { ttDragData = null; }
         });
         ttPreviewTable.addEventListener("dragend", function (e) {
-          var cell = e.target.closest("[data-tt-drag]");
-          if (cell) cell.classList.remove("tt-dragging");
+          var handle = e.target.closest(".tt-drag-handle");
+          if (handle) handle.classList.remove("tt-dragging");
           ttPreviewTable.querySelectorAll(".tt-drag-over").forEach(function (el) { el.classList.remove("tt-drag-over"); });
           ttPreviewTable.querySelectorAll(".tt-cell--drop-valid, .tt-cell--drop-invalid").forEach(function (el) {
             el.classList.remove("tt-cell--drop-valid", "tt-cell--drop-invalid");
@@ -12054,31 +12048,89 @@ ${allContent}
         }
         ttConflictBanner.style.display = "none";
         if (ttScheduleType === "recurring") {
+          var existingRecurring = null;
+          var rawCheck2 = getRawTimetableEntries();
+          for (var rc = 0; rc < rawCheck2.length; rc++) {
+            var rce = rawCheck2[rc];
+            if (rce.className === className && rce.periodId === periodId && rce.scheduleType === "recurring" && Array.isArray(rce.recurringDays)) {
+              var overlapDays = targetDays.filter(function (d) { return rce.recurringDays.indexOf(d) >= 0; });
+              if (overlapDays.length > 0) { existingRecurring = rce; break; }
+            }
+          }
+          if (existingRecurring && !singleDayOverride && !allDaysOverride) {
+            var edDesc2 = "This period is part of a recurring schedule (" + (existingRecurring.recurringDays || []).length + " days). What would you like to do?";
+            showModal(edDesc2).then(function (choice2) {
+              if (choice2 === null) return;
+              doSave(choice2 === "single" ? targetDays[0] : null, choice2 === "all" ? existingRecurring.recurringGroupId : null);
+            });
+            return;
+          }
           var groupId = "RCG-" + generateId();
-          for (var d = 0; d < targetDays.length; d++) {
-            settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-              var iDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
-              return !(item.className === className && item.periodId === periodId && iDays.indexOf(targetDays[d]) >= 0);
+          if (allDaysOverride) {
+            settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== allDaysOverride; });
+          } else if (singleDayOverride) {
+            var existRG = existingRecurring || null;
+            if (existRG) {
+              var remDays2 = (existRG.recurringDays || []).filter(function (d) { return d !== singleDayOverride; });
+              if (remDays2.length === 0) {
+                settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== existRG.recurringGroupId; });
+              } else {
+                settings.timetableEntries = getRawTimetableEntries().map(function (item) {
+                  if ((item.recurringGroupId || item.id) === existRG.recurringGroupId && item.periodId === periodId) {
+                    return Object.assign({}, item, { recurringDays: remDays2 });
+                  }
+                  return item;
+                });
+              }
+            } else {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+                var iDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
+                return !(item.className === className && item.periodId === periodId && iDays.indexOf(singleDayOverride) >= 0);
+              });
+            }
+          } else {
+            for (var d = 0; d < targetDays.length; d++) {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+                var iDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
+                return !(item.className === className && item.periodId === periodId && iDays.indexOf(targetDays[d]) >= 0);
+              });
+            }
+            settings.timetableEntries = getRawTimetableEntries();
+          }
+          if (singleDayOverride) {
+            settings.timetableEntries.push({
+              id: "TT-" + className + "-" + singleDayOverride + "-" + periodId,
+              className: className,
+              weekdayId: singleDayOverride,
+              periodId: periodId,
+              periodLabel: period.label || "",
+              periodType: ttSelectedPeriodType,
+              subjectName: subjectName,
+              teacherId: teacher ? teacher.id : "",
+              teacherName: teacher ? teacher.name : "",
+              roomId: room ? room.id : "",
+              roomName: room ? room.name : "",
+              updatedAt: new Date().toISOString()
+            });
+          } else {
+            settings.timetableEntries.push({
+              id: "TT-" + className + "-" + groupId + "-" + periodId,
+              className: className,
+              weekdayId: targetDays[0],
+              periodId: periodId,
+              periodLabel: period.label || "",
+              periodType: ttSelectedPeriodType,
+              subjectName: subjectName,
+              teacherId: teacher ? teacher.id : "",
+              teacherName: teacher ? teacher.name : "",
+              roomId: room ? room.id : "",
+              roomName: room ? room.name : "",
+              scheduleType: "recurring",
+              recurringGroupId: groupId,
+              recurringDays: targetDays.slice(),
+              updatedAt: new Date().toISOString()
             });
           }
-          settings.timetableEntries = getRawTimetableEntries();
-          settings.timetableEntries.push({
-            id: "TT-" + className + "-" + groupId + "-" + periodId,
-            className: className,
-            weekdayId: targetDays[0],
-            periodId: periodId,
-            periodLabel: period.label || "",
-            periodType: ttSelectedPeriodType,
-            subjectName: subjectName,
-            teacherId: teacher ? teacher.id : "",
-            teacherName: teacher ? teacher.name : "",
-            roomId: room ? room.id : "",
-            roomName: room ? room.name : "",
-            scheduleType: "recurring",
-            recurringGroupId: groupId,
-            recurringDays: targetDays.slice(),
-            updatedAt: new Date().toISOString()
-          });
         } else {
           var raw = getRawTimetableEntries();
           var existingRaw = null;
