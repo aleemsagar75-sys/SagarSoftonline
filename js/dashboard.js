@@ -11647,11 +11647,7 @@ ${allContent}
       }
 
       (function setupTTCellActions() {
-        document.getElementById("ttPreviewBody").addEventListener("click", function (event) {
-          var btn = event.target.closest(".tt-cell__menu-btn");
-          if (!btn) return;
-          event.preventDefault();
-          event.stopPropagation();
+        function handleTTAction(btn) {
           if (btn.hasAttribute("data-tt-delete")) {
             var dData;
             try { dData = JSON.parse(decodeURIComponent(btn.getAttribute("data-tt-delete"))); } catch (_e) { return; }
@@ -11697,7 +11693,21 @@ ${allContent}
               }
             } catch (err) { /* ignore */ }
           }
-        });
+        }
+        document.addEventListener("click", function (event) {
+          var btn = event.target.closest("#ttPreviewBody .tt-cell__menu-btn");
+          if (!btn) return;
+          event.preventDefault();
+          event.stopPropagation();
+          handleTTAction(btn);
+        }, true);
+        document.addEventListener("touchend", function (event) {
+          var btn = event.target.closest("#ttPreviewBody .tt-cell__menu-btn");
+          if (!btn) return;
+          event.preventDefault();
+          event.stopPropagation();
+          handleTTAction(btn);
+        }, true);
       })();
 
       // Drag & Drop handlers
