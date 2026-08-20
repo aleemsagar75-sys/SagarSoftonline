@@ -11647,36 +11647,37 @@ ${allContent}
       }
 
       (function setupTTCellActions() {
-        var ttPendingBtn = null;
         var ttPendingAction = null;
+        var ttPendingAttr = null;
+        var ttPendingRaw = null;
         document.getElementById("ttPreviewBody").addEventListener("pointerdown", function (event) {
           var btn = event.target.closest(".tt-cell__menu-btn");
           if (!btn) return;
           event.preventDefault();
           event.stopPropagation();
-          ttPendingBtn = btn;
           ttPendingAction = btn.hasAttribute("data-tt-delete") ? "delete" : btn.hasAttribute("data-tt-edit") ? "edit" : null;
+          ttPendingAttr = ttPendingAction === "delete" ? "data-tt-delete" : "data-tt-edit";
+          ttPendingRaw = btn.getAttribute(ttPendingAttr);
         }, true);
-        document.getElementById("ttPreviewBody").addEventListener("pointerup", function (event) {
-          if (!ttPendingBtn) return;
-          var btn = event.target.closest(".tt-cell__menu-btn");
-          if (btn !== ttPendingBtn) { ttPendingBtn = null; ttPendingAction = null; return; }
+        document.getElementById("ttPreviewBody").addEventListener("pointerup", function () {
+          if (!ttPendingAction || !ttPendingRaw) return;
           var action = ttPendingAction;
-          var b = ttPendingBtn;
-          ttPendingBtn = null;
+          var raw = ttPendingRaw;
           ttPendingAction = null;
+          ttPendingAttr = null;
+          ttPendingRaw = null;
           if (action === "delete") {
             var dData;
             try {
-              dData = JSON.parse(decodeURIComponent(b.getAttribute("data-tt-delete")));
+              dData = JSON.parse(decodeURIComponent(raw));
             } catch (_e) { return; }
             showDeleteModal(dData);
           } else if (action === "edit") {
             try {
-              var data = JSON.parse(decodeURIComponent(b.getAttribute("data-tt-edit")));
-              var raw = getRawTimetableEntries();
-              for (var i = 0; i < raw.length; i++) {
-                var e = raw[i];
+              var data = JSON.parse(decodeURIComponent(raw));
+              var entries = getRawTimetableEntries();
+              for (var i = 0; i < entries.length; i++) {
+                var e = entries[i];
                 if (e.className === data.class && e.periodId === data.period) {
                   var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
                   if (eDays.indexOf(data.day) >= 0) {
@@ -11714,8 +11715,14 @@ ${allContent}
           }
         }, true);
         document.getElementById("ttPreviewBody").addEventListener("pointercancel", function () {
-          ttPendingBtn = null;
           ttPendingAction = null;
+          ttPendingAttr = null;
+          ttPendingRaw = null;
+        }, true);
+        document.addEventListener("pointerup", function () {
+          ttPendingAction = null;
+          ttPendingAttr = null;
+          ttPendingRaw = null;
         }, true);
       })();
 
@@ -11920,27 +11927,9 @@ ${allContent}
               }
             });
           } else if (sourceIsRecurring) {
-            showSSModal({
-              title: "Move Recurring Entry",
-              tone: "info",
-              html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">This entry appears on multiple days.</p><p style="font-size:0.88rem;color:#102A43;margin:0 0 8px;">Would you like to move just <strong>' + escapeHtml(sourceDayLabel) + '</strong> or the entire schedule?</p>',
-              buttons: [
-                { id: "recurring-cancel", label: "Cancel", className: "ss-modal__btn ss-modal__btn--secondary" },
-                { id: "recurring-day", label: "Move " + escapeHtml(sourceDayLabel) + " Only", className: "ss-modal__btn ss-modal__btn--secondary" },
-                { id: "recurring-all", label: "Move Entire Schedule", className: "ss-modal__btn ss-modal__btn--primary" }
-              ],
-              resolveWith: "recurring-cancel"
-            }).then(function (result) {
-              if (result === "recurring-day") {
-                ttDragData = capturedDragData;
-                executeDragMove(false);
-                ttDragData = null;
-              } else if (result === "recurring-all") {
-                ttDragData = capturedDragData;
-                executeDragMove(true);
-                ttDragData = null;
-              }
-            });
+            ttDragData = capturedDragData;
+            executeDragMove(false);
+            ttDragData = null;
           } else {
             ttDragData = capturedDragData;
             executeDragMove(false);
