@@ -11637,8 +11637,6 @@ ${allContent}
           }
           saveDatabase("Deleting timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           addActivity("Timetable entry deleted", subjectName + " removed from " + entryClass + " on " + dayLabel + ".");
-          ttFormMessage.textContent = "Timetable entry deleted successfully.";
-          ttFormMessage.className = "form-message success";
           showToast("Timetable entry deleted successfully.", "success");
           renderPreview();
         }
@@ -11800,7 +11798,11 @@ ${allContent}
                   var updated = Object.assign({}, item, { periodId: dropTarget.period, weekdayId: dropTarget.day, updatedAt: new Date().toISOString() });
                   if (updated.scheduleType === "recurring") {
                     if (moveAllDays) {
-                      updated.weekdayId = dropTarget.day;
+                      var newSrcDays = (item.recurringDays || []).map(function (d) {
+                        return d === ttDragData.day ? dropTarget.day : d;
+                      });
+                      updated.recurringDays = newSrcDays;
+                      updated.weekdayId = newSrcDays[0];
                     } else {
                       var remainingDays = (item.recurringDays || []).filter(function (d) { return d !== ttDragData.day; });
                       if (remainingDays.length === 0) {
@@ -11818,9 +11820,11 @@ ${allContent}
                 if (item === targetEntry) {
                   var relocated = Object.assign({}, item, { periodId: ttDragData.period, weekdayId: ttDragData.day, updatedAt: new Date().toISOString() });
                   if (relocated.scheduleType === "recurring") {
-                    delete relocated.scheduleType;
-                    delete relocated.recurringGroupId;
-                    delete relocated.recurringDays;
+                    var tgtNewDays = (item.recurringDays || []).map(function (d) {
+                      return d === dropTarget.day ? ttDragData.day : d;
+                    });
+                    relocated.recurringDays = tgtNewDays;
+                    relocated.weekdayId = tgtNewDays[0];
                   }
                   return relocated;
                 }
@@ -11986,7 +11990,19 @@ ${allContent}
         var period = ttPeriods.find(function (p) { return p.id === periodId; }) || {};
         var teacher = isNonTeaching ? null : getEmployeeById(teacherId);
         var room = isNonTeaching ? null : ttRooms.find(function (r) { return r.id === roomId; }) || null;
-        var conflicts = checkConflictsForDays(className, periodId, targetDays, allDaysOverride);
+        var excludeGroupId = allDaysOverride || null;
+        if (!excludeGroupId) {
+          var rawCheck = getRawTimetableEntries();
+          for (var ci = 0; ci < rawCheck.length; ci++) {
+            var ce = rawCheck[ci];
+            if (ce.className !== className || ce.periodId !== periodId) continue;
+            var ceDays = ce.scheduleType === "recurring" && Array.isArray(ce.recurringDays) ? ce.recurringDays : [ce.weekdayId];
+            var overlap = false;
+            for (var cd = 0; cd < targetDays.length; cd++) { if (ceDays.indexOf(targetDays[cd]) >= 0) { overlap = true; break; } }
+            if (overlap) { excludeGroupId = ce.recurringGroupId || ce.id; break; }
+          }
+        }
+        var conflicts = checkConflictsForDays(className, periodId, targetDays, excludeGroupId);
         if (conflicts.length > 0) {
           ttConflictBanner.innerHTML = '<strong>&#9888;&#65039; Timetable Conflicts Found:</strong><br>' + conflicts.slice(0, 8).map(function (c) { return '&#8226; ' + c.day + ' &mdash; ' + c.period + ': ' + c.detail; }).join("<br>") + (conflicts.length > 8 ? '<br>...and ' + (conflicts.length - 8) + ' more.' : "");
           ttConflictBanner.style.display = "block";
@@ -12082,8 +12098,6 @@ ${allContent}
         }
         saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         addActivity("Timetable updated", "Timetable updated for " + className + ".");
-        ttFormMessage.textContent = "Timetable saved successfully.";
-        ttFormMessage.className = "form-message success";
         showToast("Timetable saved successfully.", "success");
         renderPreview();
       }
@@ -12173,8 +12187,6 @@ ${allContent}
           });
           saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           addActivity("Timetable updated", "Timetable updated for " + className + ".");
-          ttFormMessage.textContent = "Timetable saved successfully.";
-          ttFormMessage.className = "form-message success";
           showToast("Timetable saved successfully.", "success");
           renderPreview();
           return;
