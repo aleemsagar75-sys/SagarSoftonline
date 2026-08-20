@@ -7,6 +7,10 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SagarSoft SMS">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="app-version" content="v124">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
   <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
@@ -1262,7 +1266,7 @@
   <script src="./js/enterprise.js?v=20260729" defer></script>
   <script src="./js/auth.js?v=20260729" defer></script>
   <script src="./js/cache-manager.js?v=20260805" defer></script>
-  <script src="./js/dashboard.js?v=20260820h" defer></script>
+  <script src="./js/dashboard.js?v=20260821a" defer></script>
   <script>
     var _origFetch = window.fetch;
     window.fetch = function () {
@@ -1333,7 +1337,7 @@
     if ('serviceWorker' in navigator) {
       var _swReg = null;
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js?v=v123').then(function (reg) {
+        navigator.serviceWorker.register('./sw.js?v=v124').then(function (reg) {
           _swReg = reg;
           if (reg.installing) {
             reg.installing.addEventListener('statechange', function (sw) {
@@ -1345,12 +1349,27 @@
         });
       });
       navigator.serviceWorker.addEventListener('controllerchange', function () {
-        if (sessionStorage.getItem('sw-reloaded') !== 'v123') {
-          sessionStorage.setItem('sw-reloaded', 'v123');
+        if (sessionStorage.getItem('sw-reloaded') !== 'v124') {
+          sessionStorage.setItem('sw-reloaded', 'v124');
           window.location.reload();
         }
       });
     }
+
+    window.__SS_VERSION = 'v124';
+    (function () {
+      var prev = sessionStorage.getItem('ss-version-check');
+      sessionStorage.setItem('ss-version-check', window.__SS_VERSION);
+      if (prev && prev !== window.__SS_VERSION) {
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { r.unregister(); });
+          });
+        }
+        caches.keys().then(function (names) { names.forEach(function (n) { caches.delete(n); }); });
+        window.location.reload(true);
+      }
+    })();
 
   </script>
 
