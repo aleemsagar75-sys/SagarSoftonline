@@ -1333,7 +1333,7 @@
     if ('serviceWorker' in navigator) {
       var _swReg = null;
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js?v=v118').then(function (reg) {
+        navigator.serviceWorker.register('./sw.js?v=v122').then(function (reg) {
           _swReg = reg;
           if (reg.installing) {
             reg.installing.addEventListener('statechange', function (sw) {
@@ -1345,8 +1345,8 @@
         });
       });
       navigator.serviceWorker.addEventListener('controllerchange', function () {
-        if (sessionStorage.getItem('sw-reloaded') !== 'v109') {
-          sessionStorage.setItem('sw-reloaded', 'v109');
+        if (sessionStorage.getItem('sw-reloaded') !== 'v122') {
+          sessionStorage.setItem('sw-reloaded', 'v122');
           window.location.reload();
         }
       });
