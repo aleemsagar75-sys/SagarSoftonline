@@ -11646,59 +11646,78 @@ ${allContent}
         ttDeleteModal.addEventListener("click", onOverlayClick);
       }
 
-      document.getElementById("ttPreviewBody").addEventListener("click", function (event) {
-        var editBtn = event.target.closest("[data-tt-edit]");
-        if (editBtn) {
-          try {
-            var data = JSON.parse(decodeURIComponent(editBtn.getAttribute("data-tt-edit")));
-            var raw = getRawTimetableEntries();
-            for (var i = 0; i < raw.length; i++) {
-              var e = raw[i];
-              if (e.className === data.class && e.periodId === data.period) {
-                var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
-                if (eDays.indexOf(data.day) >= 0) {
-                  ttFormClass.value = data.class;
-                  ttSelectedClass = data.class;
-                  ttFormPeriod.value = data.period;
-                  ttSelectedPeriod = data.period;
-                  populateSubjectDropdown();
-                  updatePeriodTypeUI();
-                  ttEntryFieldsRow.style.display = "block";
-                  ttFormSubject.value = e.subjectName || "";
-                  ttFormTeacher.value = e.teacherId || "";
-                  ttFormRoom.value = e.roomId || "";
-                  if (e.scheduleType === "recurring" && Array.isArray(e.recurringDays)) {
-                    ttScheduleType = "recurring";
-                    document.querySelectorAll(".tt-day-cb").forEach(function (cb) { cb.checked = e.recurringDays.indexOf(cb.value) >= 0; });
-                    setScheduleType("recurring");
-                  } else {
-                    setScheduleType("custom");
+      (function setupTTCellActions() {
+        var ttPendingBtn = null;
+        var ttPendingAction = null;
+        document.getElementById("ttPreviewBody").addEventListener("pointerdown", function (event) {
+          var btn = event.target.closest(".tt-cell__menu-btn");
+          if (!btn) return;
+          event.preventDefault();
+          event.stopPropagation();
+          ttPendingBtn = btn;
+          ttPendingAction = btn.hasAttribute("data-tt-delete") ? "delete" : btn.hasAttribute("data-tt-edit") ? "edit" : null;
+        }, true);
+        document.getElementById("ttPreviewBody").addEventListener("pointerup", function (event) {
+          if (!ttPendingBtn) return;
+          var btn = event.target.closest(".tt-cell__menu-btn");
+          if (btn !== ttPendingBtn) { ttPendingBtn = null; ttPendingAction = null; return; }
+          var action = ttPendingAction;
+          var b = ttPendingBtn;
+          ttPendingBtn = null;
+          ttPendingAction = null;
+          if (action === "delete") {
+            var dData;
+            try {
+              dData = JSON.parse(decodeURIComponent(b.getAttribute("data-tt-delete")));
+            } catch (_e) { return; }
+            showDeleteModal(dData);
+          } else if (action === "edit") {
+            try {
+              var data = JSON.parse(decodeURIComponent(b.getAttribute("data-tt-edit")));
+              var raw = getRawTimetableEntries();
+              for (var i = 0; i < raw.length; i++) {
+                var e = raw[i];
+                if (e.className === data.class && e.periodId === data.period) {
+                  var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
+                  if (eDays.indexOf(data.day) >= 0) {
+                    ttFormClass.value = data.class;
+                    ttSelectedClass = data.class;
+                    ttFormPeriod.value = data.period;
+                    ttSelectedPeriod = data.period;
+                    populateSubjectDropdown();
+                    updatePeriodTypeUI();
+                    ttEntryFieldsRow.style.display = "block";
+                    ttFormSubject.value = e.subjectName || "";
+                    ttFormTeacher.value = e.teacherId || "";
+                    ttFormRoom.value = e.roomId || "";
+                    if (e.scheduleType === "recurring" && Array.isArray(e.recurringDays)) {
+                      ttScheduleType = "recurring";
+                      document.querySelectorAll(".tt-day-cb").forEach(function (cb) { cb.checked = e.recurringDays.indexOf(cb.value) >= 0; });
+                      setScheduleType("recurring");
+                    } else {
+                      setScheduleType("custom");
+                    }
+                    var ttFormSection = document.getElementById("ttFormSection");
+                    if (ttFormSection) {
+                      ttFormSection.scrollIntoView({ behavior: "smooth", block: "center" });
+                      ttFormSection.style.transition = "box-shadow 0.3s ease";
+                      ttFormSection.style.boxShadow = "0 0 0 3px #6D4AFF";
+                      setTimeout(function () { ttFormSection.style.boxShadow = ""; }, 2000);
+                    }
+                    ttFormMessage.textContent = "";
+                    ttFormMessage.style.display = "none";
+                    break;
                   }
-                  var ttFormSection = document.getElementById("ttFormSection");
-                  if (ttFormSection) {
-                    ttFormSection.scrollIntoView({ behavior: "smooth", block: "center" });
-                    ttFormSection.style.transition = "box-shadow 0.3s ease";
-                    ttFormSection.style.boxShadow = "0 0 0 3px #6D4AFF";
-                    setTimeout(function () { ttFormSection.style.boxShadow = ""; }, 2000);
-                  }
-                  ttFormMessage.textContent = "";
-                  ttFormMessage.style.display = "none";
-                  break;
                 }
               }
-            }
-          } catch (err) { /* ignore */ }
-          return;
-        }
-        var deleteBtn = event.target.closest("[data-tt-delete]");
-        if (deleteBtn) {
-          var dData;
-          try {
-            dData = JSON.parse(decodeURIComponent(deleteBtn.getAttribute("data-tt-delete")));
-          } catch (_e) { return; }
-          showDeleteModal(dData);
-        }
-      });
+            } catch (err) { /* ignore */ }
+          }
+        }, true);
+        document.getElementById("ttPreviewBody").addEventListener("pointercancel", function () {
+          ttPendingBtn = null;
+          ttPendingAction = null;
+        }, true);
+      })();
 
       // Drag & Drop handlers
       var ttDragData = null;
@@ -11932,6 +11951,9 @@ ${allContent}
 
       function showModal(desc) {
         ttModalDesc.textContent = desc;
+        if (ttModal.parentNode !== document.body) {
+          document.body.appendChild(ttModal);
+        }
         ttModal.style.display = "flex";
         document.body.style.overflow = "hidden";
         return new Promise(function (resolve) {
