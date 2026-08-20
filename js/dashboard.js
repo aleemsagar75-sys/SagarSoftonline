@@ -11470,7 +11470,7 @@ ${allContent}
                 + '</td>';
             }
             var dragData = encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id,subject:entry.subjectName,teacher:entry.teacherId,room:entry.roomId}));
-            return '<td class="tt-cell tt-cell--regular" data-tt-drag="' + dragData + '" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '">'
+            return '<td class="tt-cell tt-cell--regular" draggable="false" data-tt-drag="' + dragData + '" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '">'
               + '<div class="tt-cell__subject">' + escapeHtml(entry.subjectName || "-") + '</div>'
               + '<div class="tt-cell__teacher">' + escapeHtml(entry.teacherName || "-") + '</div>'
               + '<div class="tt-cell__room">' + escapeHtml(entry.roomName || "-") + '</div>'
@@ -11647,34 +11647,18 @@ ${allContent}
       }
 
       (function setupTTCellActions() {
-        var ttPendingAction = null;
-        var ttPendingAttr = null;
-        var ttPendingRaw = null;
-        document.getElementById("ttPreviewBody").addEventListener("pointerdown", function (event) {
+        document.getElementById("ttPreviewBody").addEventListener("click", function (event) {
           var btn = event.target.closest(".tt-cell__menu-btn");
           if (!btn) return;
           event.preventDefault();
           event.stopPropagation();
-          ttPendingAction = btn.hasAttribute("data-tt-delete") ? "delete" : btn.hasAttribute("data-tt-edit") ? "edit" : null;
-          ttPendingAttr = ttPendingAction === "delete" ? "data-tt-delete" : "data-tt-edit";
-          ttPendingRaw = btn.getAttribute(ttPendingAttr);
-        }, true);
-        document.getElementById("ttPreviewBody").addEventListener("pointerup", function () {
-          if (!ttPendingAction || !ttPendingRaw) return;
-          var action = ttPendingAction;
-          var raw = ttPendingRaw;
-          ttPendingAction = null;
-          ttPendingAttr = null;
-          ttPendingRaw = null;
-          if (action === "delete") {
+          if (btn.hasAttribute("data-tt-delete")) {
             var dData;
-            try {
-              dData = JSON.parse(decodeURIComponent(raw));
-            } catch (_e) { return; }
+            try { dData = JSON.parse(decodeURIComponent(btn.getAttribute("data-tt-delete"))); } catch (_e) { return; }
             showDeleteModal(dData);
-          } else if (action === "edit") {
+          } else if (btn.hasAttribute("data-tt-edit")) {
             try {
-              var data = JSON.parse(decodeURIComponent(raw));
+              var data = JSON.parse(decodeURIComponent(btn.getAttribute("data-tt-edit")));
               var entries = getRawTimetableEntries();
               for (var i = 0; i < entries.length; i++) {
                 var e = entries[i];
@@ -11713,17 +11697,7 @@ ${allContent}
               }
             } catch (err) { /* ignore */ }
           }
-        }, true);
-        document.getElementById("ttPreviewBody").addEventListener("pointercancel", function () {
-          ttPendingAction = null;
-          ttPendingAttr = null;
-          ttPendingRaw = null;
-        }, true);
-        document.addEventListener("pointerup", function () {
-          ttPendingAction = null;
-          ttPendingAttr = null;
-          ttPendingRaw = null;
-        }, true);
+        });
       })();
 
       // Drag & Drop handlers
