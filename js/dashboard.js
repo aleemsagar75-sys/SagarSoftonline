@@ -11476,8 +11476,8 @@ ${allContent}
               + '<div class="tt-cell__room">' + escapeHtml(entry.roomName || "-") + '</div>'
               + '<div class="tt-cell__actions">'
               + '<span class="tt-drag-handle" title="Drag to rearrange">&#8942;&#8942;</span> '
-              + '<button class="tt-cell__menu-btn" data-tt-edit="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Edit">&#9998;</button>'
-              + '<button class="tt-cell__menu-btn tt-cell__menu-btn--danger" data-tt-delete="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Delete">&#10005;</button>'
+              + '<button class="tt-cell__menu-btn" draggable="false" data-tt-edit="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Edit">&#9998;</button>'
+              + '<button class="tt-cell__menu-btn tt-cell__menu-btn--danger" draggable="false" data-tt-delete="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Delete">&#10005;</button>'
               + '</div>'
               + '</td>';
           }).join("");
@@ -11646,6 +11646,11 @@ ${allContent}
         ttDeleteModal.addEventListener("click", onOverlayClick);
       }
 
+      document.getElementById("ttPreviewBody").addEventListener("mousedown", function (event) {
+        if (event.target.closest(".tt-cell__menu-btn")) {
+          event.stopPropagation();
+        }
+      });
       document.getElementById("ttPreviewBody").addEventListener("click", function (event) {
         var editBtn = event.target.closest("[data-tt-edit]");
         if (editBtn) {
@@ -11704,6 +11709,10 @@ ${allContent}
       var ttPreviewTable = document.getElementById("ttPreviewTable");
       if (ttPreviewTable) {
         ttPreviewTable.addEventListener("dragstart", function (e) {
+          if (e.target.closest(".tt-cell__menu-btn")) {
+            e.preventDefault();
+            return;
+          }
           var cell = e.target.closest("[data-tt-drag]");
           if (!cell) return;
           try {
@@ -11805,13 +11814,16 @@ ${allContent}
                       updated.weekdayId = newSrcDays[0];
                     } else {
                       var remainingDays = (item.recurringDays || []).filter(function (d) { return d !== ttDragData.day; });
+                      if (remainingDays.indexOf(dropTarget.day) < 0) {
+                        remainingDays.push(dropTarget.day);
+                      }
                       if (remainingDays.length === 0) {
                         delete updated.scheduleType;
                         delete updated.recurringGroupId;
                         delete updated.recurringDays;
                       } else {
                         updated.recurringDays = remainingDays;
-                        updated.weekdayId = remainingDays[0];
+                        updated.weekdayId = dropTarget.day;
                       }
                     }
                   }
@@ -11843,13 +11855,16 @@ ${allContent}
                       updated3.weekdayId = newDays[0];
                     } else {
                       var newDays = updated3.recurringDays.filter(function (d) { return d !== ttDragData.day; });
+                      if (newDays.indexOf(dropTarget.day) < 0) {
+                        newDays.push(dropTarget.day);
+                      }
                       if (newDays.length === 0) {
                         delete updated3.scheduleType;
                         delete updated3.recurringGroupId;
                         delete updated3.recurringDays;
                       } else {
                         updated3.recurringDays = newDays;
-                        updated3.weekdayId = newDays[0];
+                        updated3.weekdayId = dropTarget.day;
                       }
                     }
                   }
@@ -11858,10 +11873,16 @@ ${allContent}
                 return item;
               });
             }
-            saveDatabase("Moving timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-            addActivity("Timetable entry moved", "Entry moved from " + ttDragData.day + " " + ttDragData.period + " to " + dropTarget.day + " " + dropTarget.period + ".");
-            showToast("Timetable entry moved successfully.", "success");
-            renderPreview();
+            var _moveData = settings.timetableEntries;
+            var _moveFrom = ttDragData.day + " " + ttDragData.period;
+            var _moveTo = dropTarget.day + " " + dropTarget.period;
+            saveDatabase("Moving timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: _moveData, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]).then(function (ok) {
+              if (ok !== false) {
+                addActivity("Timetable entry moved", "Entry moved from " + _moveFrom + " to " + _moveTo + ".");
+                showToast("Timetable entry moved successfully.", "success");
+              }
+              renderPreview();
+            });
           }
           var capturedDragData = ttDragData;
           ttDragData = null;
@@ -11908,7 +11929,9 @@ ${allContent}
               }
             });
           } else {
+            ttDragData = capturedDragData;
             executeDragMove(false);
+            ttDragData = null;
           }
         });
       }
