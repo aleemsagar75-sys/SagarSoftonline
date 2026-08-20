@@ -1,4 +1,4 @@
-var CACHE = "sagarsoft-v117";
+var CACHE = "sagarsoft-v118";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
@@ -13,7 +13,7 @@ const PRECACHE_URLS = [
   "./js/auth.js?v=20260729",
   "./js/cache-manager.js?v=20260805",
   "./js/login.js?v=20260729",
-  "./js/dashboard.js?v=20260820b",
+  "./js/dashboard.js?v=20260820c",
   "./assets/SagarSoft.logo.png",
   "./assets/parents.png",
   "./manifest.json"

@@ -11303,7 +11303,7 @@ ${allContent}
         + '<button class="gs-btn-outline" id="ttCancelBtn" type="button">Cancel</button>'
         + '<button class="gs-btn-primary" id="ttSaveBtn" type="button">Save Timetable</button>'
         + '</div>'
-        + '<p class="form-message" id="ttFormMessage"></p>'
+        + '<p id="ttFormMessage" style="display:none;margin-top:8px;font-size:0.84rem;padding:6px 10px;border-radius:6px;"></p>'
         + '</article>'
 
         + '<article class="gs-form-section">'
@@ -11681,8 +11681,8 @@ ${allContent}
                     ttFormSection.style.boxShadow = "0 0 0 3px #6D4AFF";
                     setTimeout(function () { ttFormSection.style.boxShadow = ""; }, 2000);
                   }
-                  ttFormMessage.textContent = "Editing entry. Modify and click Save Timetable.";
-                  ttFormMessage.className = "form-message";
+                  ttFormMessage.textContent = "";
+                  ttFormMessage.style.display = "none";
                   break;
                 }
               }
@@ -11863,6 +11863,8 @@ ${allContent}
             showToast("Timetable entry moved successfully.", "success");
             renderPreview();
           }
+          var capturedDragData = ttDragData;
+          ttDragData = null;
           if (targetEntry) {
             var srcLabel = sourceEntry.subjectName || "(empty)";
             var tgtLabel = targetEntry.subjectName || "(empty)";
@@ -11878,7 +11880,9 @@ ${allContent}
               resolveWith: "swap-cancel"
             }).then(function (result) {
               if (result === "swap-ok") {
+                ttDragData = capturedDragData;
                 executeDragMove(false);
+                ttDragData = null;
               }
             });
           } else if (sourceIsRecurring) {
@@ -11894,15 +11898,18 @@ ${allContent}
               resolveWith: "recurring-cancel"
             }).then(function (result) {
               if (result === "recurring-day") {
+                ttDragData = capturedDragData;
                 executeDragMove(false);
+                ttDragData = null;
               } else if (result === "recurring-all") {
+                ttDragData = capturedDragData;
                 executeDragMove(true);
+                ttDragData = null;
               }
             });
           } else {
             executeDragMove(false);
           }
-          ttDragData = null;
         });
       }
 
@@ -11969,13 +11976,19 @@ ${allContent}
         var periodId = ttFormPeriod.value;
         if (!className || !periodId) {
           ttFormMessage.textContent = "Please select class and period.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var targetDays = getSelectedDays();
         if (targetDays.length === 0) {
           ttFormMessage.textContent = "Please select at least one day.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var isNonTeaching = isNonTeachingPeriodType(ttSelectedPeriodType);
@@ -11984,7 +11997,10 @@ ${allContent}
         var roomId = isNonTeaching ? "" : ttFormRoom.value;
         if (!isNonTeaching && !subjectName) {
           ttFormMessage.textContent = "Please select a subject.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var period = ttPeriods.find(function (p) { return p.id === periodId; }) || {};
@@ -12007,7 +12023,10 @@ ${allContent}
           ttConflictBanner.innerHTML = '<strong>&#9888;&#65039; Timetable Conflicts Found:</strong><br>' + conflicts.slice(0, 8).map(function (c) { return '&#8226; ' + c.day + ' &mdash; ' + c.period + ': ' + c.detail; }).join("<br>") + (conflicts.length > 8 ? '<br>...and ' + (conflicts.length - 8) + ' more.' : "");
           ttConflictBanner.style.display = "block";
           ttFormMessage.textContent = "Please resolve conflicts before saving.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         ttConflictBanner.style.display = "none";
@@ -12107,20 +12126,29 @@ ${allContent}
         var periodId = ttFormPeriod.value;
         if (!className || !periodId) {
           ttFormMessage.textContent = "Please select class and period.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var isNonTeaching = isNonTeachingPeriodType(ttSelectedPeriodType);
         var subjectName = isNonTeaching ? "" : ttFormSubject.value;
         if (!isNonTeaching && !subjectName) {
           ttFormMessage.textContent = "Please select a subject.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var targetDays = getSelectedDays();
         if (ttScheduleType === "recurring" && targetDays.length === 0) {
           ttFormMessage.textContent = "Please select at least one day.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         if (ttScheduleType === "custom") {
@@ -12139,7 +12167,10 @@ ${allContent}
             ttConflictBanner.innerHTML = '<strong>&#9888;&#65039; Timetable Conflicts Found:</strong><br>' + customConflicts.slice(0, 8).map(function (c) { return '&#8226; ' + c.day + ' &mdash; ' + c.period + ': ' + c.detail; }).join("<br>");
             ttConflictBanner.style.display = "block";
             ttFormMessage.textContent = "Please resolve conflicts before saving.";
-            ttFormMessage.className = "form-message error";
+            ttFormMessage.style.display = "block";
+            ttFormMessage.style.background = "#fff0f2";
+            ttFormMessage.style.color = "#842029";
+            ttFormMessage.style.border = "1px solid #f5c6cb";
             return;
           }
           ttConflictBanner.style.display = "none";
@@ -12206,7 +12237,7 @@ ${allContent}
         ttEntryFieldsRow.style.display = "none";
         ttConflictBanner.style.display = "none";
         ttFormMessage.textContent = "";
-        ttFormMessage.className = "form-message";
+        ttFormMessage.style.display = "none";
         setScheduleType("recurring");
         var customCard = document.querySelector('.tt-sched-card[data-sched="custom"]');
         if (customCard) customCard.style.display = "";
