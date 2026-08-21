@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -8949,7 +8949,7 @@ ${allContent}
           <div id="feesStatsCards" class="stats-grid"></div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px 0;">
             <div style="flex:1 1 160px;min-width:0;position:relative;">
-              <input id="feesReportSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <input id="feesReportSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;" aria-label="Search fees report">
               <div id="feesReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
             <div style="flex:1 1 130px;min-width:0;"><select id="feesReportClassFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
@@ -9161,7 +9161,7 @@ ${allContent}
           <strong>Delete Fees</strong>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
             <div style="flex:1 1 160px;min-width:0;position:relative;">
-              <input id="deleteFeeSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <input id="deleteFeeSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;" aria-label="Search fees">
               <div id="deleteFeeSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
             <div style="flex:1 1 130px;min-width:0;">
@@ -9773,7 +9773,7 @@ ${allContent}
           <strong>Salary Sheet</strong>
           <div class="toolbar toolbar--promote module-toolbar">
             <div id="salarySheetSearchContainer" style="position: relative; flex: 1;">
-              <input id="salarySheetSearchInput" type="search" placeholder="Search employee by name / phone" style="width: 100%;">
+              <input id="salarySheetSearchInput" type="search" placeholder="Search employee by name / phone" style="width: 100%;" aria-label="Search employees">
               <div id="salarySheetSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
             <select id="salarySheetMonthFilter">
@@ -9954,7 +9954,7 @@ ${allContent}
           <strong>Salary Report</strong>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
             <div style="flex:1 1 160px;min-width:0;position:relative;">
-              <input id="salaryReportSearchInput" type="search" placeholder="Search employee by name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <input id="salaryReportSearchInput" type="search" placeholder="Search employee by name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;" aria-label="Search employees">
               <div id="salaryReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
             <div style="flex:1 1 130px;min-width:0;">
@@ -14947,7 +14947,7 @@ ${allContent}
               </div>
               <div class="ar-toolbar__search" id="studentsAttendanceReportSearchContainer">
                 <span class="ar-toolbar__search-icon">&#128269;</span>
-                <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search by roll no / name">
+                <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search by roll no / name" aria-label="Search attendance">
                 <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown"></div>
               </div>
             </div>
@@ -15116,7 +15116,7 @@ ${allContent}
               </div>
               <div class="ar-toolbar__search" id="employeesAttendanceReportSearchContainer">
                 <span class="ar-toolbar__search-icon">&#128269;</span>
-                <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search by name / phone">
+                <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search by name / phone" aria-label="Search employees">
                 <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown"></div>
               </div>
             </div>
@@ -15263,7 +15263,7 @@ ${allContent}
           <strong>All Employees</strong>
           <div class="toolbar toolbar--simple module-toolbar">
             <div id="employeeSearchContainer" style="position: relative; flex: 1;">
-              <input id="employeeSearchInput" type="search" placeholder="Search employee by name, role, or mobile no." style="width: 100%;">
+              <input id="employeeSearchInput" type="search" placeholder="Search employee by name, role, or mobile no." style="width: 100%;" aria-label="Search employees">
               <div id="employeeSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
           </div>
@@ -15659,7 +15659,7 @@ ${allContent}
           <strong>Staff ID Cards</strong>
           <div class="toolbar toolbar--status module-toolbar">
             <div id="employeeIdCardSearchContainer" style="position: relative; flex: 1;">
-              <input id="employeeIdCardSearchInput" type="search" placeholder="Search employee by name or mobile no." style="width: 100%;">
+              <input id="employeeIdCardSearchInput" type="search" placeholder="Search employee by name or mobile no." style="width: 100%;" aria-label="Search employees">
               <div id="employeeIdCardSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
             <button class="primary-button" id="printAllEmployeeCardsBtn" type="button">Print All Cards</button>
@@ -15952,7 +15952,7 @@ ${allContent}
             <div class="admission-search-bar admission-search-bar--narrow" style="position:relative;">
               <div class="admission-search-field">
                 <span class="admission-search-icon">&#x1F50D;</span>
-                <input id="jobLetterSearchInput" type="search" placeholder="Search Employee by Name / ID." class="admission-search-input" autocomplete="off">
+                <input id="jobLetterSearchInput" type="search" placeholder="Search Employee by Name / ID." class="admission-search-input" autocomplete="off" aria-label="Search employees">
               </div>
               <button class="admission-search-btn" id="jobLetterSearchBtn" type="button">Search</button>
               <div id="jobLetterSearchDropdown" class="gsac-dropdown" style="display:none;"></div>
@@ -16201,7 +16201,7 @@ ${allContent}
         <article style="max-width:100%;overflow-x:hidden;">
           <strong>Manage Employee Login</strong>
           <div style="margin:10px 0;position:relative;">
-            <input id="employeeLoginSearchInput" type="search" placeholder="Search by employee name or mobile no." style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+            <input id="employeeLoginSearchInput" type="search" placeholder="Search by employee name or mobile no." style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;" aria-label="Search employees">
             <div id="employeeLoginSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
           </div>
           <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
@@ -18037,7 +18037,7 @@ ${allContent}
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
             <div style="flex:1 1 160px;min-width:0;position:relative;">
-              <input id="statementSearchInput" type="search" placeholder="Search by category / note" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <input id="statementSearchInput" type="search" placeholder="Search by category / note" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;" aria-label="Search transactions">
               <div id="statementSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
             <div style="flex:0 0 auto;"><button class="primary-button" id="printStatementBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Print Statement</button></div>
@@ -26839,7 +26839,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
       studentsUtilityContent.innerHTML = `
         <div class="toolbar" style="margin-bottom:12px">
           <div id="parentLoginSearchContainer" style="position:relative;flex:1;min-width:0;">
-            <input id="parentLoginSearchInput" type="search" placeholder="Search by father name or student name" style="width:100%;">
+            <input id="parentLoginSearchInput" type="search" placeholder="Search by father name or student name" style="width:100%;" aria-label="Search parents">
             <div id="parentLoginSearchDropdown" class="search-dropdown"></div>
           </div>
         </div>
