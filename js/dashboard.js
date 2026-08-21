@@ -3500,10 +3500,10 @@ document.addEventListener("DOMContentLoaded", function () {
       + '*{box-sizing:border-box}'
       + 'body{margin:0;font-family:"Segoe UI",Arial,sans-serif;color:#1a1a2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
       + '.tt-print-wrap{width:100%;max-width:1120px;margin:0 auto;padding:16px 20px}'
-      + '.tt-print-header{display:flex;align-items:center;gap:14px;padding:10px 0;border-bottom:3px solid #1a1a2e;margin-bottom:6px}'
+      + '.tt-print-header{display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 0;border-bottom:3px solid #1a1a2e;margin-bottom:6px}'
       + '.tt-print-logo{width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#fff}'
       + '.tt-print-logo-placeholder{width:56px;height:56px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem;background:linear-gradient(135deg,#1e5eff,#30b59c);flex-shrink:0}'
-      + '.tt-print-school{flex:1;min-width:0}'
+      + '.tt-print-school{text-align:center}'
       + '.tt-print-school h1{margin:0;font-size:1.2rem;line-height:1.2;color:#1a1a2e}'
       + '.tt-print-school p{margin:1px 0 0;font-size:0.75rem;color:#5a6a7e;line-height:1.3}'
       + '.tt-print-title{text-align:center;margin:8px 0 4px}'
@@ -12655,7 +12655,26 @@ ${allContent}
         var flatRows = rows.map(function (cells) {
           return "<tr>" + cells.join("") + "</tr>";
         });
+        var allRooms = getClassRooms();
+        var roomMap = {};
+        allRooms.forEach(function (r) { roomMap[r.id] = r; });
+        var seenRooms = {};
+        var roomLines = [];
+        matrix.entryMap.forEach(function (entry) {
+          if (entry.roomId && !seenRooms[entry.roomId]) {
+            seenRooms[entry.roomId] = true;
+            var roomObj = roomMap[entry.roomId];
+            var roomName = entry.roomName || (roomObj ? roomObj.name : "") || "";
+            var roomLoc = roomObj ? roomObj.location : "";
+            if (roomName || roomLoc) {
+              roomLines.push(escapeHtml(roomName) + (roomLoc ? " - " + escapeHtml(roomLoc) : ""));
+            }
+          }
+        });
         var ttSubtitle = '<strong>Class:</strong> ' + escapeHtml(matrix.selectedClass);
+        if (roomLines.length > 0) {
+          ttSubtitle += '<br><strong>' + (roomLines.length === 1 ? 'Room:' : 'Rooms:') + '</strong> ' + roomLines.join('<br>');
+        }
         openPrintTimetableReport({
           title: "Class Timetable",
           subtitle: ttSubtitle,
