@@ -3489,10 +3489,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }).join("");
 
     const metaParts = [];
-    if (schoolPhone) metaParts.push(escapeHtml(schoolPhone));
     if (schoolPsra) metaParts.push("PSRA " + escapeHtml(schoolPsra));
-    if (schoolAddress) metaParts.push(escapeHtml(schoolAddress));
-    if (schoolCountry) metaParts.push(escapeHtml(schoolCountry));
+    if (schoolAddress || schoolCountry) metaParts.push(escapeHtml([schoolAddress, schoolCountry].filter(Boolean).join(", ")));
     const metaLine = metaParts.join(" | ");
 
     const printHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + escapeHtml(config.title || "Timetable") + '</title><style>'
@@ -3541,8 +3539,8 @@ document.addEventListener("DOMContentLoaded", function () {
         : '<span class="tt-print-logo-placeholder">SS</span>')
       + '<div class="tt-print-school">'
       + '<h1>' + escapeHtml(schoolName) + '</h1>'
-      + (metaLine ? '<p>' + metaLine + '</p>' : '')
       + (schoolSlogan ? '<p>' + escapeHtml(schoolSlogan) + '</p>' : '')
+      + (metaLine ? '<p>' + metaLine + '</p>' : '')
       + '</div></div>'
       + '<div class="tt-print-title"><h2>' + escapeHtml(config.title || "Timetable") + '</h2></div>'
       + (config.subtitle ? '<div class="tt-print-subtitle">' + config.subtitle + '</div>' : '')
