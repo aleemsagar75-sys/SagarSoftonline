@@ -9035,21 +9035,48 @@ ${allContent}
       function _renderStats() {
         var rows = _frRows(_fl); var cs = _frCls(rows); var a = _frAll(cs);
         var pct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
-        if (a.ts === 0) {
-          _statsEl.innerHTML = '<div class="fr-stat fr-stat--empty"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-info-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">No Data</div><div class="fr-stat__value" style="font-size:0.82rem;font-weight:600;color:#94a3b8;">Add students and fee records to view stats.</div></div></div>';
+        var classCount = _classList.length;
+        var stuCount = (database.students || []).length;
+        if (a.ts === 0 && classCount === 0) {
+          _statsEl.innerHTML = '<div class="fr-stat fr-stat--empty"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-info-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">No Data</div><div class="fr-stat__value" style="font-size:0.82rem;font-weight:600;color:#94a3b8;">Add classes and students to get started with fee tracking.</div></div></div>';
           return;
         }
+        var dispTs = a.ts > 0 ? a.ts : stuCount;
         _statsEl.innerHTML =
-          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-users"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Students</div><div class="fr-stat__value">' + a.ts + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-school"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Classes</div><div class="fr-stat__value">' + classCount + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-users"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Students</div><div class="fr-stat__value">' + dispTs + '</div></div></div>' +
           '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-coins"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Payable</div><div class="fr-stat__value">' + _fc(a.tp) + '</div></div></div>' +
           '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--green"><i class="fas fa-check-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Collected</div><div class="fr-stat__value fr-stat__value--green">' + _fc(a.tc) + '</div></div></div>' +
-          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--red"><i class="fas fa-exclamation-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Outstanding</div><div class="fr-stat__value fr-stat__value--red">' + _fc(a.to) + '</div></div></div>' +
-          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--teal"><i class="fas fa-chart-line"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Collection Rate</div><div class="fr-stat__value">' + pct + '%</div><div class="fr-stat__bar"><div class="fr-stat__bar-fill" style="width:' + pct + '%"></div></div></div></div>';
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--red"><i class="fas fa-exclamation-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Outstanding</div><div class="fr-stat__value fr-stat__value--red">' + _fc(a.to) + '</div></div></div>';
       }
       function _renderClassCards() {
         var rows = _frRows(_fl); var cs = _frCls(rows);
         _titleEl.textContent = "Class-wise Fee Overview";
         _titleSubEl.textContent = "Select a class to view detailed student fee status.";
+        if (cs.length === 0 && _classList.length > 0) {
+          var emptyCards = _classList.map(function (clsName) {
+            var pp = String(clsName).split("|");
+            var baseName = pp[0].trim();
+            var secName = pp.length > 1 ? pp[1].trim() : "";
+            var stuCount = (database.students || []).filter(function (s) { return s.className === clsName; }).length;
+            return '<div class="fr-cc">' +
+              '<div class="fr-cc__head"><div><span class="fr-cc__name">' + escapeHtml(baseName) + '</span>' + (secName ? '<span class="fr-cc__sec">' + escapeHtml(secName) + '</span>' : '') + '</div><span class="fr-cc__students"><i class="fas fa-users"></i> ' + stuCount + ' Students</span></div>' +
+              '<div class="fr-cc__body">' +
+              '<div class="fr-cc__metrics">' +
+              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Payable</div><div class="fr-cc__metric-value">' + _fc(0) + '</div></div>' +
+              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Collected</div><div class="fr-cc__metric-value fr-cc__metric-value--green">' + _fc(0) + '</div></div>' +
+              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Outstanding</div><div class="fr-cc__metric-value fr-cc__metric-value--red">' + _fc(0) + '</div></div>' +
+              '</div>' +
+              '<div class="fr-cc__progress"><div class="fr-cc__progress-head"><span>Collection Progress</span><span>0% Collected</span></div><div class="fr-cc__progress-bar"><div class="fr-cc__progress-fill" style="width:0%;background:#e2e8f0"></div></div></div>' +
+              '<div class="fr-cc__badges"><span class="fr-cc__badge fr-cc__badge--green"><span class="fr-cc__badge-dot"></span> Paid: 0</span><span class="fr-cc__badge fr-cc__badge--amber"><span class="fr-cc__badge-dot"></span> Partial: 0</span><span class="fr-cc__badge fr-cc__badge--red"><span class="fr-cc__badge-dot"></span> Unpaid: 0</span></div>' +
+              '</div>' +
+              '<div class="fr-cc__foot" style="text-align:center;color:var(--text-muted);font-size:0.72rem;font-weight:600;padding:0.5rem">No fee records yet</div>' +
+              '</div>';
+          }).join("");
+          _cardsEl.innerHTML = emptyCards;
+          _emptyEl.style.display = "none";
+          return;
+        }
         if (cs.length === 0) { _cardsEl.innerHTML = ""; _emptyEl.style.display = ""; return; }
         _emptyEl.style.display = "none";
         _cardsEl.innerHTML = cs.map(function (c) {
