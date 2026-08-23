@@ -3467,6 +3467,91 @@ document.addEventListener("DOMContentLoaded", function () {
     try { popup.print(); } catch (e) {}
   }
 
+  async function openPrintTimetableReport(config) {
+    const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+    const printableLogo = await normalizeImageForPrintShared(profile.logo || "");
+    const schoolName = profile.name || database.school.name || "School Name";
+    const schoolSlogan = profile.slogan || "";
+    const schoolPhone = profile.phone || database.school.phone || "";
+    const schoolPsra = profile.psra || "";
+    const schoolAddress = profile.address || database.school.address || "";
+    const schoolCountry = profile.country || "";
+
+    const headerCells = (config.headers || []).map(function (h) {
+      return '<th>' + h + '</th>';
+    }).join("");
+    const bodyRows = config._flatHtml
+      ? (config.rows || []).join("")
+      : (config.rows || []).map(function (row) {
+        return '<tr>' + row.map(function (cell) {
+          return '<td>' + cell + '</td>';
+        }).join("") + '</tr>';
+      }).join("");
+
+    const metaParts = [];
+    if (schoolPsra) metaParts.push("PSRA " + escapeHtml(schoolPsra));
+    if (schoolAddress || schoolCountry) metaParts.push(escapeHtml([schoolAddress, schoolCountry].filter(Boolean).join(", ")));
+    const metaLine = metaParts.join(" | ");
+
+    const printHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>' + escapeHtml(config.title || "Timetable") + '</title><style>'
+      + ':root{color-scheme:light}'
+      + '*{box-sizing:border-box}'
+      + 'body{margin:0;font-family:"Segoe UI",Arial,sans-serif;color:#1a1a2e;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}'
+      + '.tt-print-wrap{width:100%;max-width:1120px;margin:0 auto;padding:16px 20px}'
+      + '.tt-print-header{display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 0;border-bottom:3px solid #1a1a2e;margin-bottom:6px}'
+      + '.tt-print-logo{width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;background:#fff}'
+      + '.tt-print-logo-placeholder{width:56px;height:56px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem;background:linear-gradient(135deg,#1e5eff,#30b59c);flex-shrink:0}'
+      + '.tt-print-school{text-align:center}'
+      + '.tt-print-school h1{margin:0;font-size:1.2rem;line-height:1.2;color:#1a1a2e}'
+      + '.tt-print-school p{margin:1px 0 0;font-size:0.75rem;color:#5a6a7e;line-height:1.3}'
+      + '.tt-print-title{text-align:center;margin:8px 0 4px}'
+      + '.tt-print-title h2{margin:0;font-size:1rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#1a1a2e}'
+      + '.tt-print-subtitle{text-align:center;margin:0 0 10px;font-size:0.85rem;color:#3d5070}'
+      + '.tt-print-subtitle strong{color:#1a1a2e}'
+      + 'table.tt-print-table{width:100%;border-collapse:collapse;table-layout:fixed}'
+      + 'table.tt-print-table th,table.tt-print-table td{border:1px solid #c0c8d4;padding:6px 8px;text-align:center;vertical-align:middle;font-size:0.78rem;line-height:1.35}'
+      + 'table.tt-print-table thead th{background:#1a1a2e;color:#fff;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;font-size:0.72rem;padding:7px 6px}'
+      + 'table.tt-print-table tbody td{background:#fff;color:#1a1a2e}'
+      + 'table.tt-print-table .tt-col-period{width:11%;font-weight:600;text-align:left}'
+      + 'table.tt-print-table .tt-col-time{width:13%;font-size:0.7rem;color:#3d5070;text-align:left}'
+      + 'table.tt-print-table .tt-col-day{width:auto}'
+      + 'table.tt-print-table .tt-cell-subject{font-weight:600;font-size:0.78rem;color:#1a1a2e;margin-bottom:1px}'
+      + 'table.tt-print-table .tt-cell-teacher{font-size:0.72rem;color:#4a5a6e}'
+      + 'table.tt-print-table .tt-cell-class{font-size:0.7rem;color:#6a7a8e;margin-top:1px}'
+      + 'table.tt-print-table .tt-cell-empty{color:#b0b8c4;font-size:0.85rem}'
+      + 'table.tt-print-table tr.tt-row-break td{background:#f4f6f8;font-style:italic;color:#5a6a7e;text-align:center;font-weight:500}'
+      + 'table.tt-print-table tr.tt-row-assembly td{background:#f0f4ff;text-align:center;font-weight:500}'
+      + '.tt-print-footer{text-align:center;margin-top:10px;padding-top:6px;border-top:1px solid #dde4ea;font-size:0.7rem;color:#8a96a6}'
+      + '@media print{'
+      + '@page{size:A4 landscape;margin:8mm}'
+      + '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}'
+      + 'html{height:100%}'
+      + 'img{filter:none!important}'
+      + '.tt-print-wrap{max-width:none;padding:0;width:100%}'
+      + 'body{font-size:9pt}'
+      + 'table.tt-print-table th,table.tt-print-table td{padding:5px 6px;font-size:7.5pt}'
+      + 'table.tt-print-table thead th{font-size:6.5pt;padding:6px 5px}'
+      + '}'
+      + '</style></head><body><div class="tt-print-wrap">'
+      + '<div class="tt-print-header">'
+      + (printableLogo
+        ? '<img class="tt-print-logo" src="' + printableLogo + '" alt="Logo">'
+        : '<span class="tt-print-logo-placeholder">SS</span>')
+      + '<div class="tt-print-school">'
+      + '<h1>' + escapeHtml(schoolName) + '</h1>'
+      + (schoolSlogan ? '<p>' + escapeHtml(schoolSlogan) + '</p>' : '')
+      + (metaLine ? '<p>' + metaLine + '</p>' : '')
+      + '</div></div>'
+      + '<div class="tt-print-title"><h2>' + escapeHtml(config.title || "Timetable") + '</h2></div>'
+      + (config.subtitle ? '<div class="tt-print-subtitle">' + config.subtitle + '</div>' : '')
+      + '<table class="tt-print-table"><thead><tr>' + headerCells + '</tr></thead><tbody>' + bodyRows + '</tbody></table>'
+      + (config.footerHtml || '')
+      + '</div></body></html>';
+
+    if (config.returnHtml) return printHtml;
+    await openPrintHtmlWindow(printHtml, "width=1200,height=900");
+  }
+
   function setupPrintCleanup(popup) {
     var cleaned = false;
     function restoreOpener() {
@@ -8826,244 +8911,227 @@ ${allContent}
     }
 
     if (route === "fees-report") {
-      // Auto-clean fee records whose student has been removed.
-      const studentIdSet = new Set((database.students || []).map(function (student) {
-        return String(student.id || "").trim();
-      }).filter(Boolean));
-      const feesBeforeCleanup = (database.fees || []).length;
-      const _orphanFees = (database.fees || []).filter(function (feeItem) {
-        return !studentIdSet.has(String(feeItem.studentId || "").trim());
-      });
-      database.fees = (database.fees || []).filter(function (feeItem) {
-        return studentIdSet.has(String(feeItem.studentId || "").trim());
-      });
-      if ((database.fees || []).length !== feesBeforeCleanup) {
-        saveDatabase("Cleaning up fee records...", _orphanFees.map(function(r) { return { table: "fees", record: r, operation: "delete" }; }));
-        refreshDatabase();
-      }
-
-      const classOptionsMarkup = classOptions.map(function (className) {
-        return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
-      }).join("");
-      const monthValues = Array.from(new Set(database.fees.map(function (feeItem) {
-        return feeItem.feeMonth || feeItem.month;
-      }).filter(Boolean)));
-      const monthOptionsMarkup = monthValues.map(function (monthValue) {
-        return `<option value="${escapeAttr(monthValue)}">${escapeHtml(monthValue)}</option>`;
-      }).join("");
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px;margin-bottom:8px;">
-            <strong style="font-size:0.95rem;">Fees Report</strong>
-            <button class="secondary-button" id="clearAllFeesDataBtn" style="background:#fff2f2;color:#d64b4b;border-color:#ffd6d6;padding:6px 12px;font-size:0.78rem;" type="button">Clear All Fees Data</button>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Filter by Month</label><select id="feesReportMonthFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all-time">All Time</option>${monthOptionsMarkup}</select></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Filter by Date</label><input type="date" id="feesReportDateFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-          </div>
-          <div id="feesStatsCards" class="stats-grid"></div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px 0;">
-            <div style="flex:1 1 160px;min-width:0;position:relative;">
-              <input id="feesReportSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
-              <div id="feesReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
-            </div>
-            <div style="flex:1 1 130px;min-width:0;"><select id="feesReportClassFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-            <div style="flex:1 1 120px;min-width:0;"><select id="feesReportStatusFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All</option><option value="paid">Fee Submitted</option><option value="unpaid">Fee Due</option></select></div>
-            <div style="flex:0 0 auto;"><button class="primary-button" id="printFeesReportBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Print Report</button></div>
-          </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
-            <table style="min-width:650px;width:100%;font-size:0.8rem;border-collapse:collapse;">
-              <thead>
-                <tr>
-                  <th style="white-space:nowrap;">Roll No</th>
-                  <th style="white-space:nowrap;">Name</th>
-                  <th style="white-space:nowrap;">Father Name</th>
-                  <th style="white-space:nowrap;">Class</th>
-                  <th style="white-space:nowrap;">Fee Month</th>
-                  <th style="white-space:nowrap;">Status</th>
-                  <th style="white-space:nowrap;">Total</th>
-                  <th style="white-space:nowrap;">Deposit</th>
-                  <th style="white-space:nowrap;">Remaining</th>
-                </tr>
-              </thead>
-              <tbody id="feesReportTableBody"></tbody>
-            </table>
-          </div>
-          <p class="empty-state" id="feesReportEmptyState" hidden>No fee record found for current filters.</p>
-        </article>
-      `;
-
-      moduleGuide.innerHTML = `<article><strong>Report Info</strong><p>Filter by class and status, then print report.</p></article>`;
-
-      const statsCards = document.getElementById("feesStatsCards");
-      const searchInput = document.getElementById("feesReportSearchInput");
-      const searchDropdown = document.getElementById("feesReportSearchDropdown");
-      const searchContainer = document.getElementById("feesReportSearchContainer");
-      const classFilter = document.getElementById("feesReportClassFilter");
-      const statusFilter = document.getElementById("feesReportStatusFilter");
-      const monthFilter = document.getElementById("feesReportMonthFilter");
-      const dateFilter = document.getElementById("feesReportDateFilter");
-      const tableBody = document.getElementById("feesReportTableBody");
-      const emptyState = document.getElementById("feesReportEmptyState");
-
-      initializeStudentProfessionalSearch(
-        "feesReportSearchInput",
-        "feesReportSearchDropdown",
-        "feesReportSearchContainer",
-        function(student) {
-          searchInput.value = student.name || "";
-          renderReportTable();
-        }
-      );
-
-      function getReportRows() {
-        const search = searchInput.value.trim().toLowerCase();
-        const selectedClass = classFilter.value;
-        const selectedStatus = statusFilter.value;
-        const selectedMonth = monthFilter.value;
-        const selectedDate = dateFilter.value;
-        return database.fees.map(function (feeItem) {
-          const student = database.students.find(function (item) { return item.id === feeItem.studentId; }) || {};
-          return {
-            ...feeItem,
-            studentId: feeItem.studentId || "",
-            rollNo: student.admissionNo || "-",
-            studentName: student.name || "-",
-            fatherName: student.fatherName || "-",
-            className: feeItem.className || student.className || "-",
-            hasLinkedStudent: Boolean(student.id)
-          };
-        }).filter(function (row) {
-          // Hide orphan fee rows (deleted student / invalid link).
-          if (!row.hasLinkedStudent) {
-            return false;
-          }
-          const classMatch = selectedClass === "all" || row.className === selectedClass;
-          const statusMatch = selectedStatus === "all" || row.status === selectedStatus;
-          const monthMatch = selectedMonth === "all-time" || (row.feeMonth || row.month || "") === selectedMonth;
-          const dateMatch = !selectedDate || (row.date === selectedDate || row.paymentDate === selectedDate);
-          const searchMatch = !search ||
-            String(row.studentName || "").toLowerCase().includes(search) ||
-            String(row.rollNo || "").toLowerCase().includes(search);
-          return classMatch && statusMatch && monthMatch && dateMatch && searchMatch;
+      var _frSids = new Set((database.students || []).map(function (s) { return String(s.id || "").trim(); }).filter(Boolean));
+      var _frOrph = (database.fees || []).filter(function (f) { return !_frSids.has(String(f.studentId || "").trim()); });
+      database.fees = (database.fees || []).filter(function (f) { return _frSids.has(String(f.studentId || "").trim()); });
+      if (_frOrph.length > 0) { saveDatabase("Cleaning up fee records...", _frOrph.map(function(r) { return { table: "fees", record: r, operation: "delete" }; })); refreshDatabase(); }
+      function _frSecs(cn) { var ss = new Set(); (database.students || []).forEach(function (s) { if (cn && s.className !== cn) return; var p = String(s.className || "").split("|"); if (p.length > 1) ss.add(p[1].trim()); }); return Array.from(ss).sort(); }
+      function _frTypes() { var t = new Set(); (database.fees || []).forEach(function (f) { if (Array.isArray(f.particulars)) f.particulars.forEach(function (p) { if (p.label) t.add(p.label); }); }); return Array.from(t).sort(); }
+      function _frRows(fl) {
+        var sr = (fl.search || "").toLowerCase();
+        return (database.fees || []).map(function (fi) {
+          var st = (database.students || []).find(function (s) { return s.id === fi.studentId; }) || {};
+          var rc = fi.className || st.className || "-"; var pp = String(rc).split("|");
+          return { id: fi.id, studentId: fi.studentId || "", rollNo: st.admissionNo || "-", studentName: st.name || "-", fatherName: st.fatherName || "-", className: rc, baseClass: pp[0].trim(), section: pp.length > 1 ? pp[1].trim() : "", feeMonth: fi.feeMonth || fi.month || "-", status: fi.status || "unpaid", totalAmount: Number(fi.totalAmount || fi.amount || 0), deposit: Number(fi.deposit || 0), remaining: Number(fi.remaining || 0), date: fi.date || "", paymentDate: fi.paymentDate || "", particulars: fi.particulars || [], studentStatus: st.status || "active", hasStudent: Boolean(st.id) };
+        }).filter(function (r) {
+          if (!r.hasStudent) return false;
+          if (fl.className !== "all" && r.baseClass !== fl.className) return false;
+          if (fl.section !== "all" && r.section !== fl.section) return false;
+          if (fl.status !== "all" && r.status !== fl.status) return false;
+          if (fl.studentStatus !== "all" && r.studentStatus !== fl.studentStatus) return false;
+          if (fl.month !== "all-time" && r.feeMonth !== fl.month) return false;
+          if (fl.fromDate && r.feeMonth < fl.fromDate) return false;
+          if (fl.toDate && r.feeMonth > fl.toDate) return false;
+          if (fl.feeType !== "all") { if (!r.particulars.some(function (p) { return p.label === fl.feeType && Number(p.amount || 0) > 0; })) return false; }
+          if (sr) { if (!String(r.studentName).toLowerCase().includes(sr) && !String(r.rollNo).toLowerCase().includes(sr) && !String(r.fatherName).toLowerCase().includes(sr)) return false; }
+          return true;
         });
       }
-
-      function renderStatsCards() {
-        const selectedMonth = monthFilter.value;
-        const selectedDate = dateFilter.value;
-        statsCards.innerHTML = classOptions.map(function (className) {
-          const classStudents = database.students.filter(function (student) { return student.className === className && student.status === "active"; });
-          const totalStudents = classStudents.length;
-          const paidCount = classStudents.filter(function (student) {
-            return database.fees.some(function (feeItem) {
-              const monthValue = feeItem.feeMonth || feeItem.month || "";
-              const monthMatch = selectedMonth === "all-time" || monthValue === selectedMonth;
-              const dateMatch = !selectedDate || (feeItem.date === selectedDate || feeItem.paymentDate === selectedDate);
-              return feeItem.studentId === student.id && feeItem.status === "paid" && Number(feeItem.remaining || 0) === 0 && monthMatch && dateMatch;
-            });
-          }).length;
-          const dueCount = Math.max(totalStudents - paidCount, 0);
-          const paidPercent = totalStudents ? Math.round((paidCount / totalStudents) * 100) : 0;
-          return `
-            <article class="stat-card stat-card--indigo">
-              <div class="stat-card__top">
-                <div>
-                  <p class="panel-label">${escapeHtml(className)}</p>
-                  <strong>${totalStudents}</strong>
-                </div>
-              </div>
-              <div style="display:grid;gap:6px;">
-                <p style="margin:0;"><strong>Submitted:</strong> ${paidCount}</p>
-                <p style="margin:0;"><strong>Due:</strong> ${dueCount}</p>
-                <div style="width:72px;height:72px;border-radius:50%;background:conic-gradient(#10b981 0deg ${paidPercent * 3.6}deg,#e2e8f0 ${paidPercent * 3.6}deg 360deg);box-shadow:0 2px 8px rgba(16,185,129,0.15);"></div>
-              </div>
-            </article>
-          `;
+      function _frCls(rows) {
+        var m = {}; rows.forEach(function (r) {
+          var k = r.className; if (!m[k]) m[k] = { className: k, baseClass: r.baseClass, section: r.section, students: new Set(), tp: 0, tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
+          m[k].students.add(r.studentId); m[k].tp += r.totalAmount; m[k].tc += r.deposit; m[k].to += r.remaining;
+          if (r.status === "paid" && r.remaining === 0) m[k].pc++; else if (r.deposit > 0 && r.remaining > 0) m[k].parc++; else m[k].uc++;
+        }); return Object.values(m).sort(function (a, b) { return a.className.localeCompare(b.className); });
+      }
+      function _frAll(cs) { var r = { ts: 0, tp: 0, tc: 0, to: 0, pc: 0, parc: 0, uc: 0 }; cs.forEach(function (c) { r.ts += c.students.size; r.tp += c.tp; r.tc += c.tc; r.to += c.to; r.pc += c.pc; r.parc += c.parc; r.uc += c.uc; }); return r; }
+      function _fc(v) { return "PKR " + Number(v || 0).toLocaleString(); }
+      var _fl = { search: "", className: "all", section: "all", status: "all", month: "all-time", feeType: "all", studentStatus: "all", fromDate: "", toDate: "" };
+      var _view = "cards", _viewCls = "";
+      var _mv = Array.from(new Set((database.fees || []).map(function (f) { return f.feeMonth || f.month; }).filter(Boolean))).sort();
+      var _co = classOptions.map(function (c) { return '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>'; }).join("");
+      var _mo = _mv.map(function (m) { return '<option value="' + escapeAttr(m) + '">' + escapeHtml(m) + '</option>'; }).join("");
+      var _ft = _frTypes().map(function (t) { return '<option value="' + escapeAttr(t) + '">' + escapeHtml(t) + '</option>'; }).join("");
+      moduleSummary.innerHTML = '<article class="fr-container">' +
+        '<div class="fr-topbar"><div class="fr-topbar__left"><p class="fr-topbar__eyebrow">FEES MANAGEMENT</p><h2 class="fr-topbar__title">Fees Report</h2><p class="fr-topbar__subtitle">Monitor student fee status, outstanding balances and payment progress across classes.</p></div><div class="fr-topbar__actions"><button class="fr-btn fr-btn--o" id="frExportBtn" type="button"><i class="fas fa-download"></i> Export</button><button class="fr-btn fr-btn--o" id="frPrintBtn" type="button"><i class="fas fa-print"></i> Print</button><button class="fr-btn fr-btn--p" id="frRefreshBtn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div></div>' +
+        '<div class="fr-stats" id="frStats"></div>' +
+        '<div class="fr-filters"><div class="fr-filters__head"><div class="fr-filters__title"><i class="fas fa-filter"></i> Filters</div><button class="fr-btn fr-btn--g fr-btn--s" id="frClearBtn" type="button"><i class="fas fa-times"></i> Reset Filters</button></div><div class="fr-filters__grid">' +
+        '<div class="fr-fg"><label>Class</label><select id="frClassF" class="fr-fs"><option value="all">All Classes</option>' + _co + '</select></div>' +
+        '<div class="fr-fg"><label>Section</label><select id="frSectionF" class="fr-fs"><option value="all">All Sections</option></select></div>' +
+        '<div class="fr-fg"><label>Student Status</label><select id="frStuStatF" class="fr-fs"><option value="all">All Students</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>' +
+        '<div class="fr-fg"><label>Payment Status</label><select id="frPayStatF" class="fr-fs"><option value="all">All Status</option><option value="paid">Paid</option><option value="unpaid">Unpaid / Due</option></select></div>' +
+        '<div class="fr-fg"><label>Fee Type</label><select id="frFeeTypeF" class="fr-fs"><option value="all">All Fee Types</option>' + _ft + '</select></div>' +
+        '<div class="fr-fg"><label>Fee Month</label><select id="frMonthF" class="fr-fs"><option value="all-time">All Time</option>' + _mo + '</select></div>' +
+        '<div class="fr-fg"><label>From Date</label><input type="date" id="frFromD" class="fr-fi"></div>' +
+        '<div class="fr-fg"><label>To Date</label><input type="date" id="frToD" class="fr-fi"></div>' +
+        '<div class="fr-fg fr-fg--w"><label>Search</label><div style="position:relative"><input type="search" id="frSearchI" class="fr-fi" placeholder="Student name, roll no, or father name" aria-label="Search fees report"><div id="frSearchDD" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>' +
+        '</div><div class="fr-filters__actions"><button class="fr-btn fr-btn--p" id="frApplyBtn" type="button"><i class="fas fa-check"></i> Apply Filters</button></div></div>' +
+        '<div class="fr-filtersummary" id="frFilterSummary"></div>' +
+        '<div id="frContent"><div class="fr-thead"><h3 id="frTblTitle" class="fr-thead__title">Class-wise Fee Overview</h3><button class="fr-btn fr-btn--o fr-btn--s" id="frBackBtn" type="button" style="display:none"><i class="fas fa-arrow-left"></i> Back to Overview</button></div>' +
+        '<div id="frClassCards" class="fr-cards"></div>' +
+        '<div id="frStudentTable" class="fr-student-table" style="display:none"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="fr-tbl" id="frTbl"><thead id="frTH"></thead><tbody id="frTB"></tbody></table></div></div>' +
+        '<div class="fr-empty" id="frEmpty" style="display:none"><div class="fr-empty__icon"><i class="fas fa-receipt"></i></div><h4 class="fr-empty__title">No Fee Records Found</h4><p class="fr-empty__desc">There are no fee records matching your current filters.</p><button class="fr-btn fr-btn--p" id="frEmptyClear" type="button"><i class="fas fa-times"></i> Clear Filters</button></div></div>' +
+        '<div class="fr-qactions"><h4 class="fr-qactions__title">Quick Actions</h4><div class="fr-qactions__grid">' +
+        '<button class="fr-qa" data-filter-status="unpaid" type="button"><i class="fas fa-exclamation-triangle"></i> Outstanding Fees</button>' +
+        '<button class="fr-qa" data-filter-status="paid" type="button"><i class="fas fa-check-circle"></i> Paid Fees</button>' +
+        '<button class="fr-qa" id="frPrintRcptBtn" type="button"><i class="fas fa-print"></i> Print Fee Receipts</button>' +
+        '<button class="fr-qa fr-qa--danger" id="clearAllFeesDataBtn" type="button"><i class="fas fa-trash"></i> Clear All Fees Data</button>' +
+        '</div></div></article>';
+      if (moduleGuideHeader) moduleGuideHeader.style.display = "none";
+      moduleGuide.innerHTML = "";
+      var _e = function (id) { return document.getElementById(id); };
+      var _statsEl = _e("frStats"), _classEl = _e("frClassF"), _sectEl = _e("frSectionF"), _stuStatEl = _e("frStuStatF"), _feeTypeEl = _e("frFeeTypeF"), _payStatEl = _e("frPayStatF"), _monthEl = _e("frMonthF"), _fromEl = _e("frFromD"), _toEl = _e("frToD"), _searchEl = _e("frSearchI"), _searchDD = _e("frSearchDD"), _thEl = _e("frTH"), _tbEl = _e("frTB"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _backEl = _e("frBackBtn"), _cardsEl = _e("frClassCards"), _stuTableEl = _e("frStudentTable"), _summaryEl = _e("frFilterSummary");
+      initializeStudentProfessionalSearch("frSearchI", "frSearchDD", null, function (st) { _searchEl.value = st.name || ""; _doApply(); });
+      _classEl.addEventListener("change", function () { var secs = _frSecs(_classEl.value === "all" ? "" : _classEl.value); _sectEl.innerHTML = '<option value="all">All Sections</option>' + secs.map(function (s) { return '<option value="' + escapeAttr(s) + '">' + escapeHtml(s) + '</option>'; }).join(""); });
+      function _readFl() { _fl.className = _classEl.value; _fl.section = _sectEl.value; _fl.studentStatus = _stuStatEl.value; _fl.feeType = _feeTypeEl.value; _fl.status = _payStatEl.value; _fl.month = _monthEl.value; _fl.fromDate = _fromEl.value; _fl.toDate = _toEl.value; _fl.search = _searchEl.value.trim(); }
+      function _doApply() { _readFl(); _view = "cards"; _renderAll(); }
+      function _hasActiveFilters() { return _fl.className !== "all" || _fl.section !== "all" || _fl.studentStatus !== "all" || _fl.feeType !== "all" || _fl.status !== "all" || _fl.month !== "all-time" || _fl.fromDate || _fl.toDate || _fl.search; }
+      function _renderFilterSummary() {
+        var chips = [];
+        if (_fl.className !== "all") chips.push({ label: "Class: " + _fl.className, clear: function () { _classEl.value = "all"; } });
+        if (_fl.section !== "all") chips.push({ label: "Section: " + _fl.section, clear: function () { _sectEl.value = "all"; } });
+        if (_fl.studentStatus !== "all") chips.push({ label: "Status: " + _fl.studentStatus, clear: function () { _stuStatEl.value = "all"; } });
+        if (_fl.feeType !== "all") chips.push({ label: "Fee Type: " + _fl.feeType, clear: function () { _feeTypeEl.value = "all"; } });
+        if (_fl.status !== "all") chips.push({ label: "Payment: " + _fl.status, clear: function () { _payStatEl.value = "all"; } });
+        if (_fl.month !== "all-time") chips.push({ label: "Month: " + _fl.month, clear: function () { _monthEl.value = "all-time"; } });
+        if (_fl.fromDate) chips.push({ label: "From: " + _fl.fromDate, clear: function () { _fromEl.value = ""; } });
+        if (_fl.toDate) chips.push({ label: "To: " + _fl.toDate, clear: function () { _toEl.value = ""; } });
+        if (_fl.search) chips.push({ label: "Search: \"" + _fl.search + "\"", clear: function () { _searchEl.value = ""; } });
+        if (chips.length === 0) { _summaryEl.innerHTML = ""; _summaryEl.style.display = "none"; return; }
+        var rows = _frRows(_fl); _summaryEl.style.display = "";
+        _summaryEl.innerHTML = '<span class="fr-fsum__text">Showing <strong>' + rows.length + '</strong> records</span>' + chips.map(function (c, i) { return '<span class="fr-chip" data-fr-chip="' + i + '">' + escapeHtml(c.label) + ' <i class="fas fa-times" data-fr-chip-x="' + i + '"></i></span>'; }).join("");
+        _summaryEl.querySelectorAll("[data-fr-chip-x]").forEach(function (x) {
+          x.addEventListener("click", function () {
+            var idx = Number(x.getAttribute("data-fr-chip-x")); if (chips[idx]) { chips[idx].clear(); _doApply(); }
+          });
+        });
+      }
+      function _renderStats() {
+        var rows = _frRows(_fl); var cs = _frCls(rows); var a = _frAll(cs);
+        var pct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
+        if (a.ts === 0) {
+          _statsEl.innerHTML = '<div class="fr-stat fr-stat--empty"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-info-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">No Data</div><div class="fr-stat__value" style="font-size:0.82rem;font-weight:600;color:#94a3b8;">Add students and fee records to view stats.</div></div></div>';
+          return;
+        }
+        _statsEl.innerHTML =
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-users"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Students</div><div class="fr-stat__value">' + a.ts + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-coins"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Payable</div><div class="fr-stat__value">' + _fc(a.tp) + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--green"><i class="fas fa-check-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Collected</div><div class="fr-stat__value fr-stat__value--green">' + _fc(a.tc) + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--red"><i class="fas fa-exclamation-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Outstanding</div><div class="fr-stat__value fr-stat__value--red">' + _fc(a.to) + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--teal"><i class="fas fa-chart-line"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Collection Rate</div><div class="fr-stat__value">' + pct + '%</div><div class="fr-stat__bar"><div class="fr-stat__bar-fill" style="width:' + pct + '%"></div></div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--emerald"><i class="fas fa-check-double"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Paid in Full</div><div class="fr-stat__value fr-stat__value--green">' + a.pc + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--amber"><i class="fas fa-half-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Partially Paid</div><div class="fr-stat__value fr-stat__value--amber">' + a.parc + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--rose"><i class="fas fa-times-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Not Paid</div><div class="fr-stat__value fr-stat__value--red">' + a.uc + '</div></div></div>';
+      }
+      function _renderClassCards() {
+        var rows = _frRows(_fl); var cs = _frCls(rows);
+        _titleEl.textContent = "Class-wise Fee Overview"; _backEl.style.display = "none";
+        _cardsEl.style.display = ""; _stuTableEl.style.display = "none";
+        if (cs.length === 0) { _cardsEl.innerHTML = ""; _emptyEl.style.display = ""; return; }
+        _emptyEl.style.display = "none";
+        _cardsEl.innerHTML = cs.map(function (c) {
+          var cp = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0;
+          var barColor = cp >= 75 ? "#16a34a" : cp >= 40 ? "#d97706" : "#dc2626";
+          var secLabel = c.section ? " | " + c.section : "";
+          return '<div class="fr-cc" data-fr-cc="' + escapeAttr(c.className) + '">' +
+            '<div class="fr-cc__head"><div class="fr-cc__head-left"><h4 class="fr-cc__name">' + escapeHtml(c.baseClass) + '</h4>' + (c.section ? '<span class="fr-cc__sec">' + escapeHtml(c.section) + '</span>' : '') + '</div><span class="fr-cc__students"><i class="fas fa-users"></i> ' + c.students.size + '</span></div>' +
+            '<div class="fr-cc__metrics"><div class="fr-cc__metric"><span class="fr-cc__metric-label">Payable</span><span class="fr-cc__metric-value">' + _fc(c.tp) + '</span></div><div class="fr-cc__metric"><span class="fr-cc__metric-label">Collected</span><span class="fr-cc__metric-value fr-cc__metric-value--green">' + _fc(c.tc) + '</span></div></div>' +
+            '<div class="fr-cc__metric fr-cc__metric--full"><span class="fr-cc__metric-label">Outstanding</span><span class="fr-cc__metric-value fr-cc__metric-value--red">' + _fc(c.to) + '</span></div>' +
+            '<div class="fr-cc__progress"><div class="fr-cc__progress-head"><span class="fr-cc__progress-label">Collection Rate</span><span class="fr-cc__progress-pct">' + cp + '%</span></div><div class="fr-cc__progress-bar"><div class="fr-cc__progress-fill" style="width:' + cp + '%;background:' + barColor + '"></div></div></div>' +
+            '<div class="fr-cc__badges"><span class="fr-badge fr-badge--green"><i class="fas fa-check"></i> ' + c.pc + ' Paid</span><span class="fr-badge fr-badge--amber"><i class="fas fa-minus-circle"></i> ' + c.parc + ' Partial</span><span class="fr-badge fr-badge--red"><i class="fas fa-times-circle"></i> ' + c.uc + ' Unpaid</span></div>' +
+            '<div class="fr-cc__foot"><button class="fr-btn fr-btn--link fr-view-btn" data-fr-cls="' + escapeAttr(c.className) + '" type="button">View Details <i class="fas fa-arrow-right"></i></button></div>' +
+            '</div>';
+        }).join("");
+        _cardsEl.querySelectorAll(".fr-view-btn").forEach(function (btn) {
+          btn.addEventListener("click", function () { _viewCls = btn.getAttribute("data-fr-cls"); _view = "students"; _renderStudentTable(); });
+        });
+      }
+      function _renderStudentTable() {
+        var rows = _frRows(_fl).filter(function (r) { return r.className === _viewCls; });
+        _titleEl.textContent = "Students \u2014 " + _viewCls; _backEl.style.display = "";
+        _cardsEl.style.display = "none"; _stuTableEl.style.display = "";
+        _thEl.innerHTML = '<tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Class</th><th>Fee Month</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Last Payment</th></tr>';
+        if (rows.length === 0) { _tbEl.innerHTML = ""; _emptyEl.style.display = ""; return; }
+        _emptyEl.style.display = "none";
+        _tbEl.innerHTML = rows.map(function (r) {
+          var sc = r.status === "paid" && r.remaining === 0 ? "fr-status--paid" : (r.deposit > 0 && r.remaining > 0 ? "fr-status--partial" : "fr-status--unpaid");
+          var st = r.status === "paid" && r.remaining === 0 ? "Paid" : (r.deposit > 0 && r.remaining > 0 ? "Partial" : "Unpaid");
+          return '<tr><td>' + escapeHtml(r.rollNo) + '</td><td>' + escapeHtml(r.studentName) + '</td><td>' + escapeHtml(r.fatherName) + '</td><td>' + escapeHtml(r.className) + '</td><td>' + escapeHtml(r.feeMonth) + '</td><td>' + _fc(r.totalAmount) + '</td><td>' + _fc(r.deposit) + '</td><td>' + _fc(r.remaining) + '</td><td><span class="fr-status ' + sc + '">' + st + '</span></td><td>' + escapeHtml(r.paymentDate || r.date || "-") + '</td></tr>';
         }).join("");
       }
-
-      function renderReportTable() {
-        const rows = getReportRows();
-        tableBody.innerHTML = rows.map(function (row) {
-          const statusDisplay = row.status === "paid" ? "Fee Submitted" : "Fee Due";
-          return `
-            <tr>
-              <td>${escapeHtml(row.rollNo)}</td>
-              <td>${escapeHtml(row.studentName)}</td>
-              <td>${escapeHtml(row.fatherName)}</td>
-              <td>${escapeHtml(row.className)}</td>
-              <td>${escapeHtml(row.feeMonth || row.month || "-")}</td>
-              <td><span class="status-pill ${row.status === "paid" ? "paid" : "unpaid"}">${escapeHtml(statusDisplay)}</span></td>
-              <td>${Number(row.totalAmount || row.amount || 0)}</td>
-              <td>${Number(row.deposit || 0)}</td>
-              <td>${Number(row.remaining || 0)}</td>
-            </tr>
-          `;
-        }).join("");
-        emptyState.hidden = rows.length !== 0;
-      }
-
-      safeOn(document.getElementById("clearAllFeesDataBtn"), "click", async function () {
-        const confirmed = await openAppConfirm(
-          "Delete All Fee Records",
-          "This will PERMANENTLY DELETE ALL fee records from the system. This action cannot be undone. Are you absolutely sure?",
-          "error"
-        );
+      function _renderAll() { _renderStats(); _renderFilterSummary(); if (_view === "cards") _renderClassCards(); else _renderStudentTable(); }
+      safeOn(_backEl, "click", function () { _view = "cards"; _renderAll(); });
+      safeOn(_e("frApplyBtn"), "click", _doApply);
+      safeOn(_e("frClearBtn"), "click", function () {
+        _classEl.value = "all"; _sectEl.innerHTML = '<option value="all">All Sections</option>'; _stuStatEl.value = "all"; _feeTypeEl.value = "all"; _payStatEl.value = "all"; _monthEl.value = "all-time"; _fromEl.value = ""; _toEl.value = ""; _searchEl.value = "";
+        _fl = { search: "", className: "all", section: "all", status: "all", month: "all-time", feeType: "all", studentStatus: "all", fromDate: "", toDate: "" };
+        _view = "cards"; _renderAll();
+      });
+      safeOn(_e("frEmptyClear"), "click", function () { _e("frClearBtn").click(); });
+      safeOn(_e("frRefreshBtn"), "click", function () { refreshDatabase(); router("fees-report"); });
+      safeOn(_e("clearAllFeesDataBtn"), "click", async function () {
+        var confirmed = await openAppConfirm("Delete All Fee Records", "This will PERMANENTLY DELETE ALL fee records from the system. This action cannot be undone. Are you absolutely sure?", "error");
         if (confirmed) {
           window.SagarSoftDB.LoadingManager.show("Clearing all fee records...");
           window.SagarSoftDB.LoadingManager.updateSubtext("This may take a moment");
-          const _clearedFees = database.fees || [];
+          var _cFees = database.fees || [];
           database.fees = [];
-          if (settings.feeCollections) {
-            settings.feeCollections = [];
-          }
-          saveDatabase(null, _clearedFees.map(function(r) { return { table: "fees", record: r, operation: "delete" }; }).concat([{ table: "school_settings", record: { id: "feeCollections", source_id: "feeCollections", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]));
+          if (settings.feeCollections) settings.feeCollections = [];
+          saveDatabase(null, _cFees.map(function(r) { return { table: "fees", record: r, operation: "delete" }; }).concat([{ table: "school_settings", record: { id: "feeCollections", source_id: "feeCollections", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]));
           addActivity("Database Cleanup", "All fee records were manually cleared.");
           refreshDatabase();
           window.SagarSoftDB.LoadingManager.update("All fee records cleared");
           setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
           openAppMessageBox("Success", "All fee records have been cleared.", "success");
-          router("fees-report"); // Reload module
+          router("fees-report");
         }
       });
-
-      safeOn(document.getElementById("printFeesReportBtn"), "click", function () {
-        const rows = getReportRows();
-        if (!rows.length) {
-          return;
-        }
+      safeOn(_e("frPrintBtn"), "click", function () {
+        var rows = _frRows(_fl);
+        if (!rows.length) { openAppMessageBox("No Data", "No fee records to print.", "warning"); return; }
+        var title = "Fees Report";
+        if (_fl.className !== "all") title += " \u2014 " + _fl.className;
+        if (_fl.section !== "all") title += " | " + _fl.section;
+        if (_fl.month !== "all-time") title += " \u2014 " + _fl.month;
+        var cs = _frCls(rows); var a = _frAll(cs);
+        var allPct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
+        var summaryHtml = '<div style="margin-bottom:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">' +
+          '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Total Students</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + a.ts + '</span></div>' +
+          '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Total Payable</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + _fc(a.tp) + '</span></div>' +
+          '<div style="padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;text-align:center;"><strong style="font-size:0.75rem;color:#16a34a;display:block;">Collected</strong><span style="font-size:1.1rem;font-weight:700;color:#16a34a;">' + _fc(a.tc) + '</span></div>' +
+          '<div style="padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;text-align:center;"><strong style="font-size:0.75rem;color:#dc2626;display:block;">Outstanding</strong><span style="font-size:1.1rem;font-weight:700;color:#dc2626;">' + _fc(a.to) + '</span></div>' +
+          '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Collection %</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + allPct + '%</span></div>' +
+          '</div>';
         openPrintReport({
-          subtitle: "Fees Report",
-          headers: ["Sr", "Roll", "Name", "Father", "Class", "Month", "Status", "Total", "Deposit", "Remaining"],
-          rows: rows.map(function (row, index) {
-            return [
-              index + 1,
-              escapeHtml(row.rollNo || "-"),
-              escapeHtml(row.studentName || "-"),
-              escapeHtml(row.fatherName || "-"),
-              escapeHtml(row.className || "-"),
-              escapeHtml(row.feeMonth || row.month || "-"),
-              escapeHtml(row.status || "-"),
-              Number(row.totalAmount || row.amount || 0),
-              Number(row.deposit || 0),
-              Number(row.remaining || 0)
-            ];
+          subtitle: title,
+          contentHtml: summaryHtml,
+          headers: ["Class", "Students", "Total Payable", "Collected", "Outstanding", "Collection %", "Paid", "Partial", "Unpaid"],
+          rows: cs.map(function (c) {
+            var cp = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0;
+            return [escapeHtml(c.className), c.students.size, _fc(c.tp), _fc(c.tc), _fc(c.to), cp + "%", c.pc, c.parc, c.uc];
           })
         });
       });
-
-      [searchInput, classFilter, statusFilter, monthFilter, dateFilter].forEach(function (input) {
-        input.addEventListener("input", renderReportTable);
-        input.addEventListener("change", renderReportTable);
+      safeOn(_e("frExportBtn"), "click", function () {
+        var rows = _frRows(_fl);
+        if (!rows.length) { openAppMessageBox("No Data", "No fee records to export.", "warning"); return; }
+        var csv = "Roll No,Name,Father Name,Class,Section,Fee Month,Total,Paid,Outstanding,Status,Last Payment\n";
+        rows.forEach(function (r) {
+          var st = r.status === "paid" && r.remaining === 0 ? "Paid" : (r.deposit > 0 && r.remaining > 0 ? "Partial" : "Unpaid");
+          csv += '"' + (r.rollNo || "") + '","' + (r.studentName || "") + '","' + (r.fatherName || "") + '","' + (r.baseClass || "") + '","' + (r.section || "") + '","' + (r.feeMonth || "") + '",' + r.totalAmount + "," + r.deposit + "," + r.remaining + ',"' + st + '","' + (r.paymentDate || r.date || "") + '"\n';
+        });
+        var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a"); a.href = url; a.download = "fees-report-" + new Date().toISOString().slice(0, 10) + ".csv";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
       });
-      [monthFilter, dateFilter].forEach(function (input) {
-        input.addEventListener("input", renderStatsCards);
-        input.addEventListener("change", renderStatsCards);
+      document.querySelectorAll(".fr-qa[data-filter-status]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          _payStatEl.value = btn.getAttribute("data-filter-status");
+          _doApply();
+        });
       });
-
-      renderStatsCards();
-      renderReportTable();
+      _renderAll();
       return;
     }
 
@@ -9076,7 +9144,7 @@ ${allContent}
           <strong>Delete Fees</strong>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
             <div style="flex:1 1 160px;min-width:0;position:relative;">
-              <input id="deleteFeeSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <input id="deleteFeeSearchInput" type="search" placeholder="Search by roll no. / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;" aria-label="Search fees">
               <div id="deleteFeeSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
             <div style="flex:1 1 130px;min-width:0;">
@@ -9688,7 +9756,7 @@ ${allContent}
           <strong>Salary Sheet</strong>
           <div class="toolbar toolbar--promote module-toolbar">
             <div id="salarySheetSearchContainer" style="position: relative; flex: 1;">
-              <input id="salarySheetSearchInput" type="search" placeholder="Search employee by name / phone" style="width: 100%;">
+              <input id="salarySheetSearchInput" type="search" placeholder="Search employee by name / phone" style="width: 100%;" aria-label="Search employees">
               <div id="salarySheetSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
             <select id="salarySheetMonthFilter">
@@ -9869,7 +9937,7 @@ ${allContent}
           <strong>Salary Report</strong>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
             <div style="flex:1 1 160px;min-width:0;position:relative;">
-              <input id="salaryReportSearchInput" type="search" placeholder="Search employee by name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <input id="salaryReportSearchInput" type="search" placeholder="Search employee by name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;" aria-label="Search employees">
               <div id="salaryReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
             <div style="flex:1 1 130px;min-width:0;">
@@ -10598,7 +10666,7 @@ ${allContent}
               <button class="tt-sort-btn" id="sortPeriodsByTimeBtn" type="button">&#128260; Sort by Start Time</button>
             </div>
           </div>
-          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th style="width:30px;"></th><th>Period</th><th>Start</th><th>End</th><th>Type</th><th>Status</th><th>Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
+          <div class="gs-table-wrap"><table class="gs-table tt-periods-table"><thead><tr><th class="tt-col-drag"></th><th class="tt-col-period">Period</th><th class="tt-col-start">Start</th><th class="tt-col-end">End</th><th class="tt-col-type">Type</th><th class="tt-col-status">Status</th><th class="tt-col-actions">Actions</th></tr></thead><tbody id="periodTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -10621,11 +10689,9 @@ ${allContent}
 
       function normalizePeriodOrders() {
         var periods = settings.timetablePeriods || [];
-        var sorted = periods.slice().sort(function (a, b) { return Number(a.order || 0) - Number(b.order || 0); });
-        for (var i = 0; i < sorted.length; i++) {
-          sorted[i].order = i + 1;
+        for (var i = 0; i < periods.length; i++) {
+          periods[i].order = i + 1;
         }
-        settings.timetablePeriods = sorted;
       }
 
       function detectTimeOverlap(newStart, newEnd, excludeId) {
@@ -10648,17 +10714,22 @@ ${allContent}
         tableBody.innerHTML = periods.map(function (period) {
           var pType = period.periodType || "Regular";
           var badgeClass = getPeriodTypeBadgeClass(pType);
+          var toggleBtn = period.active
+            ? '<button class="gs-btn-outline tt-period-toggle" type="button" data-period-action="deactivate" data-id="' + period.id + '" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;border-color:#F59E0B;color:#D97706;">Deactivate</button>'
+            : '<button class="gs-btn-primary tt-period-toggle" type="button" data-period-action="activate" data-id="' + period.id + '" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;background:#10B981;border-color:#10B981;">Activate</button>';
           return `
             <tr class="tt-reorder-row" draggable="true" data-period-id="${period.id}">
               <td><span class="tt-reorder-handle" title="Drag to reorder">&#9776;</span></td>
               <td><strong>${escapeHtml(period.label || "-")}</strong></td>
-              <td>${escapeHtml(formatTimeLabel(period.startTime))} - ${escapeHtml(formatTimeLabel(period.endTime))}</td>
+              <td>${escapeHtml(formatTimeLabel(period.startTime))}</td>
+              <td>${escapeHtml(formatTimeLabel(period.endTime))}</td>
               <td><span class="tt-badge ${badgeClass}">${escapeHtml(pType)}</span></td>
               <td><span class="gs-pill gs-pill--${period.active ? "active" : "inactive"}">${period.active ? "Active" : "Inactive"}</span></td>
               <td>
-                <div class="gs-actions">
+                <div class="gs-actions tt-actions-cell">
                   <button class="gs-btn-secondary" type="button" data-period-action="edit" data-id="${period.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Edit</button>
                   <button class="gs-btn-danger" type="button" data-period-action="delete" data-id="${period.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Delete</button>
+                  ${toggleBtn}
                 </div>
               </td>
             </tr>
@@ -10751,13 +10822,12 @@ ${allContent}
         }
         showSSModal({
           title: "Sort by Start Time?",
-          desc: "This will reorder all time periods based on their start times.",
           tone: "info",
+          html: '<p style="font-size:0.92rem;color:#486581;margin:0;">This will reorder all time periods based on their start times.</p>',
           buttons: [
-            { id: "sort-cancel", label: "Cancel", className: "ss-modal__btn ss-modal__btn--secondary" },
-            { id: "sort-ok", label: "Sort", className: "ss-modal__btn ss-modal__btn--primary" }
-          ],
-          resolveWith: "sort-cancel"
+            { id: "cancel", label: "Cancel", tone: "cancel" },
+            { id: "sort-ok", label: "Sort", tone: "primary" }
+          ]
         }).then(function (result) {
           if (result === "sort-ok") {
             periods.sort(function (a, b) {
@@ -10796,11 +10866,6 @@ ${allContent}
         });
         if (duplicateLabel) {
           setPeriodMessage("A period with this name already exists.", "error");
-          return;
-        }
-        var overlaps = detectTimeOverlap(start, end, editingId);
-        if (overlaps.length > 0) {
-          setPeriodMessage("This period overlaps with: " + overlaps.join(", "), "error");
           return;
         }
         const record = {
@@ -10883,6 +10948,33 @@ ${allContent}
           }
           labelInput.focus();
           labelInput.scrollIntoView({ behavior: "smooth", block: "center" });
+          return;
+        }
+        if (action === "deactivate" || action === "activate") {
+          var newActive = action === "activate";
+          var actionLabel = newActive ? "Activate" : "Deactivate";
+          showSSModal({
+            title: actionLabel + " Time Period?",
+            tone: newActive ? "info" : "warning",
+            html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">Are you sure you want to ' + actionLabel.toLowerCase() + ' <strong>"' + escapeHtml(period.label || "-") + '"</strong>?</p>'
+              + (newActive ? '' : '<p style="font-size:0.85rem;color:#64748b;margin:0;">This period will no longer appear in the active periods list.</p>'),
+            buttons: [
+              { id: "cancel", label: "Cancel", tone: "cancel" },
+              { id: "confirm", label: actionLabel, tone: newActive ? "primary" : "warning" }
+            ]
+          }).then(function (choice) {
+            if (choice === "confirm") {
+              var idx = (settings.timetablePeriods || []).findIndex(function (p) { return p.id === periodId; });
+              if (idx >= 0) {
+                settings.timetablePeriods[idx].active = newActive;
+                saveDatabase(actionLabel + "ing time period...", [{ table: "school_settings", record: { id: "timetablePeriods", source_id: "timetablePeriods", data: settings.timetablePeriods, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+                addActivity("Time period " + (newActive ? "activated" : "deactivated"), period.label + " " + (newActive ? "activated" : "deactivated") + ".");
+                setPeriodMessage("Time period " + (newActive ? "activated" : "deactivated") + ".", "success");
+                showToast("Time period " + (newActive ? "activated" : "deactivated") + ".", "success");
+                renderRows();
+              }
+            }
+          });
           return;
         }
         var usageCount = getRawTimetableEntries().filter(function (item) {
@@ -11010,7 +11102,7 @@ ${allContent}
       }
 
       moduleSummary.innerHTML = `
-        <article class="gs-form-section">
+        <article class="gs-form-section" id="roomFormSection">
           <div class="gs-form-section__header">
             <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;">??</div>
             <div><p class="gs-form-section__title">Manage Class Rooms</p><p class="gs-form-section__subtitle">Assign rooms to classes</p></div>
@@ -11027,7 +11119,7 @@ ${allContent}
           <div class="gs-form-section__header">
             <div><p class="gs-form-section__title">All Class Rooms</p></div>
           </div>
-          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>Room Name</th><th>Capacity</th><th>Location</th><th>Actions</th></tr></thead><tbody id="roomTableBody"></tbody></table></div>
+          <div class="gs-table-wrap"><table class="gs-table"><thead><tr><th>Room Name</th><th>Capacity</th><th>Location</th><th>Status</th><th>Actions</th></tr></thead><tbody id="roomTableBody"></tbody></table></div>
         </article>
       `;
       moduleGuide.innerHTML = "";
@@ -11048,16 +11140,24 @@ ${allContent}
       }
 
       function renderRows() {
-        tableBody.innerHTML = getClassRooms().map(function (room) {
+        var rooms = getClassRooms();
+        tableBody.innerHTML = rooms.map(function (room) {
+          var isActive = room.status !== "inactive";
+          var statusPill = '<span class="gs-pill gs-pill--' + (isActive ? "active" : "inactive") + '">' + (isActive ? "Active" : "Inactive") + '</span>';
+          var toggleBtn = isActive
+            ? '<button class="gs-btn-outline" type="button" data-room-action="deactivate" data-id="' + room.id + '" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;border-color:#F59E0B;color:#D97706;">Deactivate</button>'
+            : '<button class="gs-btn-primary" type="button" data-room-action="activate" data-id="' + room.id + '" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;background:#10B981;border-color:#10B981;">Activate</button>';
           return `
             <tr>
               <td>${escapeHtml(room.name || "-")}</td>
               <td>${Number(room.capacity || 0)}</td>
               <td>${escapeHtml(room.location || "-")}</td>
+              <td>${statusPill}</td>
               <td>
                 <div class="gs-actions">
                   <button class="gs-btn-secondary" type="button" data-room-action="edit" data-id="${room.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Edit</button>
                   <button class="gs-btn-danger" type="button" data-room-action="delete" data-id="${room.id}" style="min-height:34px;padding:0.3rem 0.7rem;font-size:0.8rem;">Delete</button>
+                  ${toggleBtn}
                 </div>
               </td>
             </tr>
@@ -11109,38 +11209,69 @@ ${allContent}
           nameInput.value = room.name || "";
           capacityInput.value = Number(room.capacity || 0);
           locationInput.value = room.location || "";
+          var formSection = document.getElementById("roomFormSection");
+          if (formSection) {
+            var header = formSection.querySelector(".gs-form-section__header");
+            if (header) {
+              header.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#D97706,#F59E0B);color:#fff;">&#9998;</div><div><p class="gs-form-section__title">Editing Room: ' + escapeHtml(room.name || "-") + '</p></div>';
+            }
+          }
+          document.getElementById("saveRoomBtn").textContent = "Update Room";
+          var cancelBtn = document.getElementById("cancelRoomEditBtn");
+          if (!cancelBtn) {
+            cancelBtn = document.createElement("button");
+            cancelBtn.id = "cancelRoomEditBtn";
+            cancelBtn.className = "gs-btn-outline";
+            cancelBtn.type = "button";
+            cancelBtn.textContent = "Cancel Edit";
+            cancelBtn.style.marginLeft = "8px";
+            document.getElementById("saveRoomBtn").parentNode.insertBefore(cancelBtn, document.getElementById("saveRoomBtn").nextSibling);
+            cancelBtn.addEventListener("click", function () {
+              editingId = "";
+              nameInput.value = "";
+              capacityInput.value = "";
+              locationInput.value = "";
+              document.getElementById("saveRoomBtn").textContent = "Save Room";
+              var hdr = document.getElementById("roomFormSection").querySelector(".gs-form-section__header");
+              if (hdr) hdr.innerHTML = '<div class="gs-form-section__icon" style="background:linear-gradient(135deg,#0284c7,#0ea5e9);color:#fff;">??</div><div><p class="gs-form-section__title">Manage Class Rooms</p><p class="gs-form-section__subtitle">Assign rooms to classes</p></div>';
+              cancelBtn.remove();
+            });
+          }
+          nameInput.focus();
+          nameInput.scrollIntoView({ behavior: "smooth", block: "center" });
           return;
         }
-        var roomUsageCount = getRawTimetableEntries().filter(function (item) {
-          return item.roomId === roomId;
-        }).length;
-        if (roomUsageCount > 0) {
+        if (action === "deactivate" || action === "activate") {
+          var newActive = action === "activate";
+          var actionLabel = newActive ? "Activate" : "Deactivate";
           showSSModal({
-            title: "Room In Use",
-            desc: "This room is used in " + roomUsageCount + " timetable entry" + (roomUsageCount > 1 ? "s" : "") + ". What would you like to do?",
-            tone: "warning",
-            html: '<div style="margin-bottom:12px;">It will be deactivated instead of deleted to protect existing data.</div>',
+            title: actionLabel + " Room?",
+            tone: newActive ? "info" : "warning",
+            html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">Are you sure you want to ' + actionLabel.toLowerCase() + ' <strong>"' + escapeHtml(room.name || "-") + '"</strong>?</p>'
+              + (newActive ? '' : '<p style="font-size:0.85rem;color:#64748b;margin:0;">This room will no longer appear in the active rooms list.</p>'),
             buttons: [
-              { id: "room-deactivate-ok", label: "Deactivate Room", className: "ss-modal__btn ss-modal__btn--danger" },
-              { id: "room-deactivate-cancel", label: "Cancel", className: "ss-modal__btn ss-modal__btn--secondary" }
-            ],
-            resolveWith: "room-deactivate-cancel"
-          }).then(function (result) {
-            if (result === "room-deactivate-ok") {
-              settings.classRooms = (settings.classRooms || []).map(function (item) {
-                if (item.id === roomId) { return Object.assign({}, item, { status: "inactive", updatedAt: new Date().toISOString() }); }
-                return item;
-              });
-              saveDatabase("Deactivating classroom...", [{ table: "school_settings", record: { id: "classRooms", source_id: "classRooms", data: settings.classRooms, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-              showToast("Room deactivated.", "success");
-              renderRows();
+              { id: "cancel", label: "Cancel", tone: "cancel" },
+              { id: "confirm", label: actionLabel, tone: newActive ? "primary" : "warning" }
+            ]
+          }).then(function (choice) {
+            if (choice === "confirm") {
+              var idx = (settings.classRooms || []).findIndex(function (r) { return r.id === roomId; });
+              if (idx >= 0) {
+                settings.classRooms[idx].status = newActive ? "active" : "inactive";
+                settings.classRooms[idx].updatedAt = new Date().toISOString();
+                saveDatabase(actionLabel + "ing room...", [{ table: "school_settings", record: { id: "classRooms", source_id: "classRooms", data: settings.classRooms, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+                addActivity("Room " + (newActive ? "activated" : "deactivated"), room.name + " " + (newActive ? "activated" : "deactivated") + ".");
+                setRoomMessage("Room " + (newActive ? "activated" : "deactivated") + ".", "success");
+                showToast("Room " + (newActive ? "activated" : "deactivated") + ".", "success");
+                renderRows();
+              }
             }
           });
           return;
         }
         showSSModal({
           title: "Delete Room?",
-          desc: "Are you sure you want to delete \"" + escapeHtml(room.name) + "\"? This cannot be undone.",
+          desc: "Are you sure you want to permanently delete \"" + escapeHtml(room.name) + "\"? This cannot be undone.",
           tone: "danger",
           buttons: [
             { id: "room-delete-ok", label: "Delete", className: "ss-modal__btn ss-modal__btn--danger" },
@@ -11152,7 +11283,7 @@ ${allContent}
             settings.classRooms = (settings.classRooms || []).filter(function (item) { return item.id !== roomId; });
             trackDeletion(roomId);
             saveDatabase("Deleting classroom...", [{ table: "school_settings", record: { id: "classRooms", source_id: "classRooms", data: settings.classRooms, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-            showToast("Room deleted.", "success");
+            showToast("Room deleted permanently.", "success");
             renderRows();
           }
         });
@@ -11163,17 +11294,18 @@ ${allContent}
     }
 
     if (route === "create-timetable") {
-      var ttClassOptions = classOptions;
+      var activeRoomClassNames = getClassRooms().filter(function (r) { return r.status !== "inactive"; }).map(function (r) { return r.name; });
+      var ttClassOptions = classOptions.filter(function (c) { return activeRoomClassNames.indexOf(c) >= 0; });
       var ttWeekdays = getTimetableWeekdays();
       var ttPeriods = getTimetablePeriods();
       var ttSubjects = [];
       var ttTeachers = getEmployees().filter(function (e) { return String(e.status || "").toLowerCase() === "active"; });
-      var ttRooms = getClassRooms();
+      var ttRooms = getClassRooms().filter(function (r) { return r.status !== "inactive"; });
       var ttSelectedClass = "";
       var ttSelectedPeriod = "";
       var ttSelectedPeriodType = "Regular";
       var ttScheduleType = "recurring";
-      var ttSelectedDays = ttWeekdays.map(function (d) { return d.id; });
+      var ttEditingDay = null;
 
       var weekdaysCheckboxesMarkup = ttWeekdays.map(function (w) {
         return '<label class="tt-day-cb-label" data-day-id="' + w.id + '"><input type="checkbox" class="tt-day-cb" value="' + w.id + '" checked> ' + escapeHtml(w.shortLabel || w.name) + '</label>';
@@ -11190,7 +11322,7 @@ ${allContent}
         + '</div>'
         + '</article>'
 
-        + '<article class="gs-form-section" style="margin-bottom:16px;">'
+        + '<article id="ttFormSection" class="gs-form-section" style="margin-bottom:16px;">'
         + '<div class="gs-form-section__header"><div><p class="gs-form-section__title">Timetable Entry</p></div></div>'
         + '<div class="gs-form-grid" style="grid-template-columns:1fr 1fr;">'
         + '<div class="gs-field"><label class="gs-field__label">Select Class*</label><select class="gs-field__input" id="ttFormClass"><option value="">Select Class</option>' + ttClassOptions.map(function (c) { return '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>'; }).join("") + '</select></div>'
@@ -11239,7 +11371,7 @@ ${allContent}
         + '<button class="gs-btn-outline" id="ttCancelBtn" type="button">Cancel</button>'
         + '<button class="gs-btn-primary" id="ttSaveBtn" type="button">Save Timetable</button>'
         + '</div>'
-        + '<p class="form-message" id="ttFormMessage"></p>'
+        + '<p id="ttFormMessage" style="display:none;margin-top:8px;font-size:0.84rem;padding:6px 10px;border-radius:6px;"></p>'
         + '</article>'
 
         + '<article class="gs-form-section">'
@@ -11247,32 +11379,6 @@ ${allContent}
         + '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table style="min-width:500px;width:100%;border-collapse:collapse;" id="ttPreviewTable"><thead><tr><th style="padding:8px 6px;font-size:0.78rem;text-align:left;border-bottom:2px solid #e6e8f0;">Period / Time</th>' + weekdaysHeaderMarkup + '</tr></thead><tbody id="ttPreviewBody"></tbody></table></div>'
         + '<p class="empty-state" id="ttPreviewEmpty" hidden>No timetable entries yet. Create your first timetable entry to see it here.</p>'
         + '</article>'
-
-        + '<div id="ttRecurringModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">'
-        + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
-        + '<p style="font-weight:700;font-size:1rem;margin:0 0 10px;">Recurring Entry Detected</p>'
-        + '<p id="ttModalDesc" style="font-size:0.85rem;color:#486581;margin:0 0 14px;"></p>'
-        + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;">'
-        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttModalChoice" value="single" checked> <span id="ttModalSingleLabel">Update this day only</span></label>'
-        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttModalChoice" value="all"> Update entire recurring schedule</label>'
-        + '</div>'
-        + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
-        + '<button class="gs-btn-primary" id="ttModalConfirm" type="button" style="padding:8px 20px;">Confirm</button>'
-        + '<button id="ttModalCancel" type="button" style="padding:8px 16px;border:1px solid #dde4ea;border-radius:8px;background:#fff;cursor:pointer;font-size:0.85rem;">Cancel</button>'
-        + '</div></div></div>'
-
-        + '<div id="ttDeleteModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:9999;align-items:center;justify-content:center;">'
-        + '<div style="background:#fff;border-radius:14px;padding:24px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.2);">'
-        + '<p style="font-weight:700;font-size:1rem;margin:0 0 10px;">Delete Timetable Entry?</p>'
-        + '<p id="ttDeleteDesc" style="font-size:0.85rem;color:#486581;margin:0 0 14px;"></p>'
-        + '<div id="ttDeleteOptions" style="display:none;flex-direction:column;gap:8px;margin-bottom:16px;">'
-        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttDeleteChoice" value="day" checked> <span id="ttDeleteDayLabel">Delete this day only</span></label>'
-        + '<label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;padding:8px 10px;border:1px solid #e6e8f0;border-radius:8px;"><input type="radio" name="ttDeleteChoice" value="all"> Delete all repeated entries</label>'
-        + '</div>'
-        + '<div style="display:flex;gap:8px;justify-content:flex-end;">'
-        + '<button class="gs-btn-danger" id="ttDeleteConfirm" type="button" style="padding:8px 20px;">Delete</button>'
-        + '<button id="ttDeleteCancel" type="button" style="padding:8px 16px;border:1px solid #dde4ea;border-radius:8px;background:#fff;cursor:pointer;font-size:0.85rem;">Cancel</button>'
-        + '</div></div></div>';
 
       moduleGuide.innerHTML = "";
 
@@ -11289,20 +11395,8 @@ ${allContent}
       var ttFormMessage = document.getElementById("ttFormMessage");
       var ttPreviewBody = document.getElementById("ttPreviewBody");
       var ttPreviewEmpty = document.getElementById("ttPreviewEmpty");
-      var ttModal = document.getElementById("ttRecurringModal");
-      var ttModalDesc = document.getElementById("ttModalDesc");
-      var ttModalConfirm = document.getElementById("ttModalConfirm");
-      var ttModalCancel = document.getElementById("ttModalCancel");
-      var ttModalSingleLabel = document.getElementById("ttModalSingleLabel");
       var ttNonTeachingInfo = document.getElementById("ttNonTeachingInfo");
       var ttTeachingFields = document.getElementById("ttTeachingFields");
-
-      var ttDeleteModal = document.getElementById("ttDeleteModal");
-      var ttDeleteDesc = document.getElementById("ttDeleteDesc");
-      var ttDeleteOptions = document.getElementById("ttDeleteOptions");
-      var ttDeleteConfirm = document.getElementById("ttDeleteConfirm");
-      var ttDeleteCancel = document.getElementById("ttDeleteCancel");
-      var ttDeleteDayLabel = document.getElementById("ttDeleteDayLabel");
 
       function updatePeriodTypeUI() {
         var period = ttPeriods.find(function (p) { return p.id === ttSelectedPeriod; }) || {};
@@ -11409,12 +11503,12 @@ ${allContent}
                 + '</td>';
             }
             var dragData = encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id,subject:entry.subjectName,teacher:entry.teacherId,room:entry.roomId}));
-            return '<td class="tt-cell tt-cell--regular" draggable="true" data-tt-drag="' + dragData + '" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '">'
+            return '<td class="tt-cell tt-cell--regular" draggable="false" data-tt-drag="' + dragData + '" data-tt-drop="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '">'
               + '<div class="tt-cell__subject">' + escapeHtml(entry.subjectName || "-") + '</div>'
               + '<div class="tt-cell__teacher">' + escapeHtml(entry.teacherName || "-") + '</div>'
               + '<div class="tt-cell__room">' + escapeHtml(entry.roomName || "-") + '</div>'
               + '<div class="tt-cell__actions">'
-              + '<span class="tt-drag-handle" title="Drag to rearrange">&#8942;&#8942;</span> '
+              + '<span class="tt-drag-handle" draggable="true" title="Drag to rearrange">&#8942;&#8942;</span> '
               + '<button class="tt-cell__menu-btn" data-tt-edit="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Edit">&#9998;</button>'
               + '<button class="tt-cell__menu-btn tt-cell__menu-btn--danger" data-tt-delete="' + encodeURIComponent(JSON.stringify({class:ttSelectedClass,period:period.id,day:day.id})) + '" title="Delete">&#10005;</button>'
               + '</div>'
@@ -11482,151 +11576,138 @@ ${allContent}
 
       ttFormSubject.addEventListener("change", function () { renderPreview(); });
 
-      document.getElementById("ttDayCheckboxes").addEventListener("change", function () {
-        ttSelectedDays = getSelectedDays();
-      });
-
       function showDeleteModal(entryData) {
         var raw = getRawTimetableEntries();
         var dayLabel = "";
         for (var w = 0; w < ttWeekdays.length; w++) { if (ttWeekdays[w].id === entryData.day) { dayLabel = ttWeekdays[w].name; break; } }
         var period = ttPeriods.find(function (p) { return p.id === entryData.period; }) || {};
-        var isRecurring = false;
-        var recurringGroupId = null;
-        var recurringDays = [];
         var matchingEntry = null;
+        var entryClass = (entryData.class || "").trim();
+        var entryPeriod = (entryData.period || "").trim();
+        var entryDay = (entryData.day || "").trim();
         for (var i = 0; i < raw.length; i++) {
           var e = raw[i];
-          if (e.className === entryData.class && e.periodId === entryData.period) {
+          var eClass = (e.className || "").trim();
+          var ePeriod = (e.periodId || "").trim();
+          if (eClass === entryClass && ePeriod === entryPeriod) {
             var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
-            if (eDays.indexOf(entryData.day) >= 0) {
+            if (eDays.indexOf(entryDay) >= 0) {
               matchingEntry = e;
-              if (e.scheduleType === "recurring" && Array.isArray(e.recurringDays) && e.recurringDays.length > 1) {
-                isRecurring = true;
-                recurringGroupId = e.recurringGroupId || e.id;
-                recurringDays = e.recurringDays;
-              }
               break;
             }
           }
         }
-        if (!matchingEntry) return;
-        var subjectName = matchingEntry.subjectName || "(no subject)";
-        ttDeleteDesc.innerHTML = 'Are you sure you want to remove <strong>' + escapeHtml(subjectName) + '</strong> from <strong>' + escapeHtml(dayLabel) + '</strong>, <strong>' + escapeHtml(period.label || "-") + '</strong> for <strong>' + escapeHtml(entryData.class) + '</strong>?';
-        if (isRecurring) {
-          ttDeleteOptions.style.display = "flex";
-          var dayNames = recurringDays.map(function (d) {
-            for (var w = 0; w < ttWeekdays.length; w++) { if (ttWeekdays[w].id === d) return ttWeekdays[w].shortLabel || ttWeekdays[w].name; }
-            return d;
-          });
-          ttDeleteDayLabel.textContent = "Delete " + escapeHtml(dayLabel) + " only";
-          ttDeleteOptions.querySelector("label:last-child input").nextElementSibling.textContent = "Delete all " + dayNames.length + " entries (" + dayNames.join(", ") + ")";
-        } else {
-          ttDeleteOptions.style.display = "none";
-        }
-        ttDeleteModal.style.display = "flex";
-        function cleanup() {
-          ttDeleteModal.style.display = "none";
-          ttDeleteConfirm.removeEventListener("click", onConfirm);
-          ttDeleteCancel.removeEventListener("click", onCancel);
-        }
-        function onConfirm() {
-          var choice = isRecurring ? (document.querySelector('input[name="ttDeleteChoice"]:checked') || {}).value : "day";
-          cleanup();
-          if (choice === "all") {
-            settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== recurringGroupId; });
-          } else {
-            if (isRecurring) {
-              settings.timetableEntries = getRawTimetableEntries().map(function (item) {
-                if ((item.recurringGroupId || item.id) === recurringGroupId) {
-                  var remDays = (item.recurringDays || []).filter(function (d) { return d !== entryData.day; });
-                  if (remDays.length === 0) return null;
-                  return Object.assign({}, item, { recurringDays: remDays });
-                }
-                return item;
-              }).filter(Boolean);
-            } else {
-              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-                return !(item.className === entryData.class && item.periodId === entryData.period && item.weekdayId === entryData.day);
-              });
-            }
-          }
-          saveDatabase("Deleting timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          addActivity("Timetable entry deleted", subjectName + " removed from " + entryData.class + " on " + dayLabel + ".");
-          ttFormMessage.textContent = "Timetable entry deleted successfully.";
-          ttFormMessage.className = "form-message success";
-          showToast("Timetable entry deleted successfully.", "success");
-          renderPreview();
-        }
-        function onCancel() { cleanup(); }
-        ttDeleteConfirm.addEventListener("click", onConfirm);
-        ttDeleteCancel.addEventListener("click", onCancel);
-      }
-
-      document.getElementById("ttPreviewBody").addEventListener("click", function (event) {
-        var editBtn = event.target.closest("[data-tt-edit]");
-        if (editBtn) {
-          try {
-            var data = JSON.parse(decodeURIComponent(editBtn.getAttribute("data-tt-edit")));
-            var raw = getRawTimetableEntries();
-            for (var i = 0; i < raw.length; i++) {
-              var e = raw[i];
-              if (e.className === data.class && e.periodId === data.period) {
-                var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
-                if (eDays.indexOf(data.day) >= 0) {
-                  ttFormClass.value = data.class;
-                  ttSelectedClass = data.class;
-                  ttFormPeriod.value = data.period;
-                  ttSelectedPeriod = data.period;
-                  populateSubjectDropdown();
-                  updatePeriodTypeUI();
-                  ttEntryFieldsRow.style.display = "block";
-                  ttFormSubject.value = e.subjectName || "";
-                  ttFormTeacher.value = e.teacherId || "";
-                  ttFormRoom.value = e.roomId || "";
-                  if (e.scheduleType === "recurring" && Array.isArray(e.recurringDays)) {
-                    ttScheduleType = "recurring";
-                    document.querySelectorAll(".tt-day-cb").forEach(function (cb) { cb.checked = e.recurringDays.indexOf(cb.value) >= 0; });
-                    setScheduleType("recurring");
-                  } else {
-                    setScheduleType("custom");
-                  }
-                  window.scrollTo({ top: 0, behavior: "smooth" });
-                  ttFormMessage.textContent = "Editing entry. Modify and click Save Timetable.";
-                  ttFormMessage.className = "form-message";
-                  break;
-                }
-              }
-            }
-          } catch (err) { /* ignore */ }
+        if (!matchingEntry) {
+          showToast("Could not find the timetable entry to delete. Please refresh and try again.", "error");
           return;
         }
-        var deleteBtn = event.target.closest("[data-tt-delete]");
-        if (deleteBtn) {
-          try {
-            var dData = JSON.parse(decodeURIComponent(deleteBtn.getAttribute("data-tt-delete")));
+        var subjectName = matchingEntry.subjectName || "(no subject)";
+        var isRecurring = matchingEntry.scheduleType === "recurring" && Array.isArray(matchingEntry.recurringDays) && matchingEntry.recurringDays.length > 1;
+        resolveOperationScope("delete", {
+          className: entryClass,
+          periodId: entryPeriod,
+          day: entryDay,
+          isRecurring: isRecurring,
+          recurringGroupId: matchingEntry.recurringGroupId || matchingEntry.id,
+          recurringDays: matchingEntry.recurringDays || []
+        }).then(function (scope) {
+          if (!scope) return;
+          if (scope === "entire-row") {
+            executeDeleteEntireRow(matchingEntry);
+          } else {
+            executeDeleteSelectedOnly(matchingEntry, entryDay);
+          }
+          saveDatabase("Deleting timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+          addActivity("Timetable entry deleted", subjectName + " removed from " + entryClass + " on " + dayLabel + ".");
+          showToast("Timetable entry deleted successfully.", "success");
+          renderPreview();
+        });
+      }
+
+      (function setupTTCellActions() {
+        function handleTTAction(btn) {
+          if (btn.hasAttribute("data-tt-delete")) {
+            var dData;
+            try { dData = JSON.parse(decodeURIComponent(btn.getAttribute("data-tt-delete"))); } catch (_e) { return; }
             showDeleteModal(dData);
-          } catch (err) { /* ignore */ }
+          } else if (btn.hasAttribute("data-tt-edit")) {
+            try {
+              var data = JSON.parse(decodeURIComponent(btn.getAttribute("data-tt-edit")));
+              var entries = getRawTimetableEntries();
+              for (var i = 0; i < entries.length; i++) {
+                var e = entries[i];
+                if (e.className === data.class && e.periodId === data.period) {
+                  var eDays = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
+                  if (eDays.indexOf(data.day) >= 0) {
+                    ttEditingDay = data.day;
+                    ttFormClass.value = data.class;
+                    ttSelectedClass = data.class;
+                    ttFormPeriod.value = data.period;
+                    ttSelectedPeriod = data.period;
+                    populateSubjectDropdown();
+                    updatePeriodTypeUI();
+                    ttEntryFieldsRow.style.display = "block";
+                    ttFormSubject.value = e.subjectName || "";
+                    ttFormTeacher.value = e.teacherId || "";
+                    ttFormRoom.value = e.roomId || "";
+                    if (e.scheduleType === "recurring" && Array.isArray(e.recurringDays)) {
+                      ttScheduleType = "recurring";
+                      document.querySelectorAll(".tt-day-cb").forEach(function (cb) { cb.checked = e.recurringDays.indexOf(cb.value) >= 0; });
+                      setScheduleType("recurring");
+                    } else {
+                      setScheduleType("custom");
+                    }
+                    var ttFormSection = document.getElementById("ttFormSection");
+                    if (ttFormSection) {
+                      ttFormSection.scrollIntoView({ behavior: "smooth", block: "center" });
+                      ttFormSection.style.transition = "box-shadow 0.3s ease";
+                      ttFormSection.style.boxShadow = "0 0 0 3px #6D4AFF";
+                      setTimeout(function () { ttFormSection.style.boxShadow = ""; }, 2000);
+                    }
+                    ttFormMessage.textContent = "";
+                    ttFormMessage.style.display = "none";
+                    break;
+                  }
+                }
+              }
+            } catch (err) { /* ignore */ }
+          }
         }
-      });
+        document.addEventListener("click", function (event) {
+          var btn = event.target.closest("#ttPreviewBody .tt-cell__menu-btn");
+          if (!btn) return;
+          event.preventDefault();
+          event.stopPropagation();
+          handleTTAction(btn);
+        }, true);
+        document.addEventListener("touchend", function (event) {
+          var btn = event.target.closest("#ttPreviewBody .tt-cell__menu-btn");
+          if (!btn) return;
+          event.preventDefault();
+          event.stopPropagation();
+          handleTTAction(btn);
+        }, true);
+      })();
 
       // Drag & Drop handlers
       var ttDragData = null;
       var ttPreviewTable = document.getElementById("ttPreviewTable");
       if (ttPreviewTable) {
         ttPreviewTable.addEventListener("dragstart", function (e) {
-          var cell = e.target.closest("[data-tt-drag]");
+          var handle = e.target.closest(".tt-drag-handle");
+          if (!handle) return;
+          var cell = handle.closest("[data-tt-drag]");
           if (!cell) return;
           try {
             ttDragData = JSON.parse(decodeURIComponent(cell.getAttribute("data-tt-drag")));
-            cell.classList.add("tt-dragging");
+            handle.classList.add("tt-dragging");
             e.dataTransfer.effectAllowed = "move";
             e.dataTransfer.setData("text/plain", cell.getAttribute("data-tt-drag"));
           } catch (err) { ttDragData = null; }
         });
         ttPreviewTable.addEventListener("dragend", function (e) {
-          var cell = e.target.closest("[data-tt-drag]");
-          if (cell) cell.classList.remove("tt-dragging");
+          var handle = e.target.closest(".tt-drag-handle");
+          if (handle) handle.classList.remove("tt-dragging");
           ttPreviewTable.querySelectorAll(".tt-drag-over").forEach(function (el) { el.classList.remove("tt-drag-over"); });
           ttPreviewTable.querySelectorAll(".tt-cell--drop-valid, .tt-cell--drop-invalid").forEach(function (el) {
             el.classList.remove("tt-cell--drop-valid", "tt-cell--drop-invalid");
@@ -11709,14 +11790,24 @@ ${allContent}
                   var updated = Object.assign({}, item, { periodId: dropTarget.period, weekdayId: dropTarget.day, updatedAt: new Date().toISOString() });
                   if (updated.scheduleType === "recurring") {
                     if (moveAllDays) {
-                      updated.weekdayId = dropTarget.day;
+                      var newSrcDays = (item.recurringDays || []).map(function (d) {
+                        return d === ttDragData.day ? dropTarget.day : d;
+                      });
+                      updated.recurringDays = newSrcDays;
+                      updated.weekdayId = newSrcDays[0];
                     } else {
-                      delete updated.scheduleType;
-                      delete updated.recurringGroupId;
-                      var remainingDays = (updated.recurringDays || []).filter(function (d) { return d !== ttDragData.day; });
-                      if (remainingDays.length === 0) return null;
-                      updated.recurringDays = remainingDays;
-                      delete updated.recurringDays;
+                      var remainingDays = (item.recurringDays || []).filter(function (d) { return d !== ttDragData.day; });
+                      if (remainingDays.indexOf(dropTarget.day) < 0) {
+                        remainingDays.push(dropTarget.day);
+                      }
+                      if (remainingDays.length === 0) {
+                        delete updated.scheduleType;
+                        delete updated.recurringGroupId;
+                        delete updated.recurringDays;
+                      } else {
+                        updated.recurringDays = remainingDays;
+                        updated.weekdayId = dropTarget.day;
+                      }
                     }
                   }
                   return updated;
@@ -11724,9 +11815,11 @@ ${allContent}
                 if (item === targetEntry) {
                   var relocated = Object.assign({}, item, { periodId: ttDragData.period, weekdayId: ttDragData.day, updatedAt: new Date().toISOString() });
                   if (relocated.scheduleType === "recurring") {
-                    delete relocated.scheduleType;
-                    delete relocated.recurringGroupId;
-                    delete relocated.recurringDays;
+                    var tgtNewDays = (item.recurringDays || []).map(function (d) {
+                      return d === dropTarget.day ? ttDragData.day : d;
+                    });
+                    relocated.recurringDays = tgtNewDays;
+                    relocated.weekdayId = tgtNewDays[0];
                   }
                   return relocated;
                 }
@@ -11744,9 +11837,18 @@ ${allContent}
                       updated3.recurringDays = newDays;
                       updated3.weekdayId = newDays[0];
                     } else {
-                      delete updated3.scheduleType;
-                      delete updated3.recurringGroupId;
-                      delete updated3.recurringDays;
+                      var newDays = updated3.recurringDays.filter(function (d) { return d !== ttDragData.day; });
+                      if (newDays.indexOf(dropTarget.day) < 0) {
+                        newDays.push(dropTarget.day);
+                      }
+                      if (newDays.length === 0) {
+                        delete updated3.scheduleType;
+                        delete updated3.recurringGroupId;
+                        delete updated3.recurringDays;
+                      } else {
+                        updated3.recurringDays = newDays;
+                        updated3.weekdayId = dropTarget.day;
+                      }
                     }
                   }
                   return updated3;
@@ -11754,11 +11856,19 @@ ${allContent}
                 return item;
               });
             }
-            saveDatabase("Moving timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-            addActivity("Timetable entry moved", "Entry moved from " + ttDragData.day + " " + ttDragData.period + " to " + dropTarget.day + " " + dropTarget.period + ".");
-            showToast("Timetable entry moved successfully.", "success");
-            renderPreview();
+            var _moveData = settings.timetableEntries;
+            var _moveFrom = ttDragData.day + " " + ttDragData.period;
+            var _moveTo = dropTarget.day + " " + dropTarget.period;
+            saveDatabase("Moving timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: _moveData, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]).then(function (ok) {
+              if (ok !== false) {
+                addActivity("Timetable entry moved", "Entry moved from " + _moveFrom + " to " + _moveTo + ".");
+                showToast("Timetable entry moved successfully.", "success");
+              }
+              renderPreview();
+            });
           }
+          var capturedDragData = ttDragData;
+          ttDragData = null;
           if (targetEntry) {
             var srcLabel = sourceEntry.subjectName || "(empty)";
             var tgtLabel = targetEntry.subjectName || "(empty)";
@@ -11774,44 +11884,207 @@ ${allContent}
               resolveWith: "swap-cancel"
             }).then(function (result) {
               if (result === "swap-ok") {
+                ttDragData = capturedDragData;
                 executeDragMove(false);
+                ttDragData = null;
               }
             });
           } else if (sourceIsRecurring) {
-            showSSModal({
-              title: "Move Recurring Entry",
-              tone: "info",
-              html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">This entry appears on multiple days.</p><p style="font-size:0.88rem;color:#102A43;margin:0 0 8px;">Would you like to move just <strong>' + escapeHtml(sourceDayLabel) + '</strong> or the entire schedule?</p>',
-              buttons: [
-                { id: "recurring-cancel", label: "Cancel", className: "ss-modal__btn ss-modal__btn--secondary" },
-                { id: "recurring-day", label: "Move " + escapeHtml(sourceDayLabel) + " Only", className: "ss-modal__btn ss-modal__btn--secondary" },
-                { id: "recurring-all", label: "Move Entire Schedule", className: "ss-modal__btn ss-modal__btn--primary" }
-              ],
-              resolveWith: "recurring-cancel"
-            }).then(function (result) {
-              if (result === "recurring-day") {
-                executeDragMove(false);
-              } else if (result === "recurring-all") {
-                executeDragMove(true);
+            resolveOperationScope("move", {
+              className: capturedDragData.class,
+              periodId: capturedDragData.period,
+              day: capturedDragData.day,
+              isRecurring: true,
+              recurringGroupId: sourceEntry.recurringGroupId || sourceEntry.id,
+              recurringDays: sourceEntry.recurringDays
+            }).then(function (scope) {
+              if (!scope) return;
+              if (scope === "entire-row") {
+                executeMoveEntireRow(sourceEntry, dropTarget.period);
+              } else {
+                executeMoveSelectedOnly(sourceEntry, capturedDragData.day, dropTarget.day, dropTarget.period);
               }
+              saveDatabase("Moving timetable entry...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]).then(function () {
+                renderPreview();
+                showToast("Timetable entry moved successfully.", "success");
+              });
             });
           } else {
+            ttDragData = capturedDragData;
             executeDragMove(false);
+            ttDragData = null;
           }
-          ttDragData = null;
-          renderPreview();
         });
       }
 
-      function showModal(desc, singleLabel, callback) {
-        ttModalDesc.textContent = desc;
-        ttModalSingleLabel.textContent = singleLabel || "Update this day only";
-        ttModal.style.display = "flex";
-        function cleanup() { ttModal.style.display = "none"; ttModalConfirm.removeEventListener("click", onConfirm); ttModalCancel.removeEventListener("click", onCancel); }
-        function onConfirm() { var c = document.querySelector('input[name="ttModalChoice"]:checked'); cleanup(); callback(c ? c.value : "single"); }
-        function onCancel() { cleanup(); callback(null); }
-        ttModalConfirm.addEventListener("click", onConfirm);
-        ttModalCancel.addEventListener("click", onCancel);
+      function resolveOperationScope(operation, entryInfo) {
+        if (!entryInfo.isRecurring) return Promise.resolve("selected-only");
+        var labels = {
+          move: { title: "Move Timetable Assignment", entireRow: "Move Entire Row", selectedOnly: "Move Selected Only" },
+          edit: { title: "Apply Changes", entireRow: "Apply to Entire Row", selectedOnly: "Apply Only to Selected" },
+          "delete": { title: "Delete Timetable Assignment", entireRow: "Delete Entire Row", selectedOnly: "Delete Selected Period" }
+        };
+        var L = labels[operation] || labels.move;
+        return showSSModal({
+          title: L.title,
+          tone: "warning",
+          html: '<p style="font-size:0.92rem;color:#486581;margin:0 0 8px;">What do you want to ' + operation + '?</p>',
+          buttons: [
+            { id: "scope-cancel", label: "Cancel", className: "ss-modal__btn ss-modal__btn--secondary" },
+            { id: "scope-selected", label: L.selectedOnly, className: "ss-modal__btn ss-modal__btn--secondary" },
+            { id: "scope-entire", label: L.entireRow, className: "ss-modal__btn ss-modal__btn--primary" }
+          ],
+          resolveWith: "scope-cancel"
+        }).then(function (result) {
+          if (result === "scope-entire") return "entire-row";
+          if (result === "scope-selected") return "selected-only";
+          return null;
+        });
+      }
+
+      function findRawEntryForCell(className, periodId, dayId) {
+        var raw = getRawTimetableEntries();
+        for (var i = 0; i < raw.length; i++) {
+          var e = raw[i];
+          if (e.className !== className || e.periodId !== periodId) continue;
+          var days = e.scheduleType === "recurring" && Array.isArray(e.recurringDays) ? e.recurringDays : [e.weekdayId];
+          if (days.indexOf(dayId) >= 0) return e;
+        }
+        return null;
+      }
+
+      function executeMoveEntireRow(sourceEntry, targetPeriod) {
+        var raw = getRawTimetableEntries();
+        settings.timetableEntries = raw.map(function (item) {
+          if (item === sourceEntry) {
+            return Object.assign({}, item, { periodId: targetPeriod, updatedAt: new Date().toISOString() });
+          }
+          return item;
+        });
+      }
+
+      function executeMoveSelectedOnly(sourceEntry, sourceDay, targetDay, targetPeriod) {
+        var raw = getRawTimetableEntries();
+        var isRecurring = sourceEntry.scheduleType === "recurring" && Array.isArray(sourceEntry.recurringDays) && sourceEntry.recurringDays.length > 1;
+        if (isRecurring) {
+          var remainingDays = sourceEntry.recurringDays.filter(function (d) { return d !== sourceDay; });
+          if (remainingDays.length === 0) {
+            settings.timetableEntries = raw.filter(function (item) { return item !== sourceEntry; });
+          } else {
+            settings.timetableEntries = raw.map(function (item) {
+              if (item === sourceEntry) {
+                return Object.assign({}, item, { recurringDays: remainingDays, weekdayId: remainingDays[0], updatedAt: new Date().toISOString() });
+              }
+              return item;
+            });
+          }
+        } else {
+          settings.timetableEntries = raw.filter(function (item) { return item !== sourceEntry; });
+        }
+        var newEntry = {
+          id: "TT-" + sourceEntry.className + "-" + targetDay + "-" + targetPeriod,
+          className: sourceEntry.className,
+          weekdayId: targetDay,
+          periodId: targetPeriod,
+          periodLabel: sourceEntry.periodLabel || "",
+          periodType: sourceEntry.periodType || "Regular",
+          subjectName: sourceEntry.subjectName,
+          teacherId: sourceEntry.teacherId || "",
+          teacherName: sourceEntry.teacherName || "",
+          roomId: sourceEntry.roomId || "",
+          roomName: sourceEntry.roomName || "",
+          updatedAt: new Date().toISOString()
+        };
+        settings.timetableEntries.push(newEntry);
+      }
+
+      function executeEditEntireRow(sourceEntry, newData) {
+        var raw = getRawTimetableEntries();
+        var groupId = sourceEntry.recurringGroupId || sourceEntry.id;
+        settings.timetableEntries = raw.map(function (item) {
+          var itemGroup = item.recurringGroupId || item.id;
+          if (itemGroup === groupId && item.className === newData.className && item.periodId === newData.periodId) {
+            return Object.assign({}, item, {
+              subjectName: newData.subjectName,
+              teacherId: newData.teacherId,
+              teacherName: newData.teacherName,
+              roomId: newData.roomId,
+              roomName: newData.roomName,
+              updatedAt: new Date().toISOString()
+            });
+          }
+          return item;
+        });
+      }
+
+      function executeEditSelectedOnly(sourceEntry, editDay, newData) {
+        var raw = getRawTimetableEntries();
+        var isRecurring = sourceEntry.scheduleType === "recurring" && Array.isArray(sourceEntry.recurringDays) && sourceEntry.recurringDays.length > 1;
+        if (isRecurring) {
+          var remainingDays = sourceEntry.recurringDays.filter(function (d) { return d !== editDay; });
+          settings.timetableEntries = raw.map(function (item) {
+            if (item === sourceEntry) {
+              if (remainingDays.length === 0) {
+                return Object.assign({}, item, {
+                  subjectName: newData.subjectName, teacherId: newData.teacherId, teacherName: newData.teacherName,
+                  roomId: newData.roomId, roomName: newData.roomName, updatedAt: new Date().toISOString()
+                });
+              }
+              return Object.assign({}, item, { recurringDays: remainingDays, weekdayId: remainingDays[0], updatedAt: new Date().toISOString() });
+            }
+            return item;
+          });
+        }
+        settings.timetableEntries.push({
+          id: "TT-" + newData.className + "-" + editDay + "-" + newData.periodId,
+          className: newData.className,
+          weekdayId: editDay,
+          periodId: newData.periodId,
+          periodLabel: newData.periodLabel || "",
+          periodType: newData.periodType || "Regular",
+          subjectName: newData.subjectName,
+          teacherId: newData.teacherId || "",
+          teacherName: newData.teacherName || "",
+          roomId: newData.roomId || "",
+          roomName: newData.roomName || "",
+          updatedAt: new Date().toISOString()
+        });
+      }
+
+      function executeDeleteEntireRow(sourceEntry) {
+        var raw = getRawTimetableEntries();
+        var groupId = sourceEntry.recurringGroupId || sourceEntry.id;
+        settings.timetableEntries = raw.filter(function (item) {
+          var itemGroup = item.recurringGroupId || item.id;
+          return itemGroup !== groupId;
+        });
+      }
+
+      function executeDeleteSelectedOnly(sourceEntry, deleteDay) {
+        var raw = getRawTimetableEntries();
+        var isRecurring = sourceEntry.scheduleType === "recurring" && Array.isArray(sourceEntry.recurringDays) && sourceEntry.recurringDays.length > 1;
+        if (isRecurring) {
+          var remainingDays = sourceEntry.recurringDays.filter(function (d) { return d !== deleteDay; });
+          if (remainingDays.length === 0) {
+            settings.timetableEntries = raw.filter(function (item) { return item !== sourceEntry; });
+          } else {
+            settings.timetableEntries = raw.map(function (item) {
+              if (item === sourceEntry) {
+                var updated = Object.assign({}, item, { recurringDays: remainingDays, weekdayId: remainingDays[0], updatedAt: new Date().toISOString() });
+                if (remainingDays.length === 1) {
+                  delete updated.scheduleType;
+                  delete updated.recurringGroupId;
+                  delete updated.recurringDays;
+                  updated.weekdayId = remainingDays[0];
+                }
+                return updated;
+              }
+              return item;
+            });
+          }
+        } else {
+          settings.timetableEntries = raw.filter(function (item) { return item !== sourceEntry; });
+        }
       }
 
       function checkConflictsForDays(className, periodId, targetDays, excludeGroupId) {
@@ -11856,13 +12129,19 @@ ${allContent}
         var periodId = ttFormPeriod.value;
         if (!className || !periodId) {
           ttFormMessage.textContent = "Please select class and period.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var targetDays = getSelectedDays();
         if (targetDays.length === 0) {
           ttFormMessage.textContent = "Please select at least one day.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var isNonTeaching = isNonTeachingPeriodType(ttSelectedPeriodType);
@@ -11871,62 +12150,197 @@ ${allContent}
         var roomId = isNonTeaching ? "" : ttFormRoom.value;
         if (!isNonTeaching && !subjectName) {
           ttFormMessage.textContent = "Please select a subject.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var period = ttPeriods.find(function (p) { return p.id === periodId; }) || {};
         var teacher = isNonTeaching ? null : getEmployeeById(teacherId);
         var room = isNonTeaching ? null : ttRooms.find(function (r) { return r.id === roomId; }) || null;
-        var conflicts = checkConflictsForDays(className, periodId, targetDays, allDaysOverride);
+        var excludeGroupId = allDaysOverride || null;
+        if (!excludeGroupId) {
+          var rawCheck = getRawTimetableEntries();
+          for (var ci = 0; ci < rawCheck.length; ci++) {
+            var ce = rawCheck[ci];
+            if (ce.className !== className || ce.periodId !== periodId) continue;
+            var ceDays = ce.scheduleType === "recurring" && Array.isArray(ce.recurringDays) ? ce.recurringDays : [ce.weekdayId];
+            var overlap = false;
+            for (var cd = 0; cd < targetDays.length; cd++) { if (ceDays.indexOf(targetDays[cd]) >= 0) { overlap = true; break; } }
+            if (overlap) { excludeGroupId = ce.recurringGroupId || ce.id; break; }
+          }
+        }
+        var conflicts = checkConflictsForDays(className, periodId, targetDays, excludeGroupId);
         if (conflicts.length > 0) {
           ttConflictBanner.innerHTML = '<strong>&#9888;&#65039; Timetable Conflicts Found:</strong><br>' + conflicts.slice(0, 8).map(function (c) { return '&#8226; ' + c.day + ' &mdash; ' + c.period + ': ' + c.detail; }).join("<br>") + (conflicts.length > 8 ? '<br>...and ' + (conflicts.length - 8) + ' more.' : "");
           ttConflictBanner.style.display = "block";
           ttFormMessage.textContent = "Please resolve conflicts before saving.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         ttConflictBanner.style.display = "none";
         if (ttScheduleType === "recurring") {
+          var existingRecurring = null;
+          var rawCheck2 = getRawTimetableEntries();
+          for (var rc = 0; rc < rawCheck2.length; rc++) {
+            var rce = rawCheck2[rc];
+            if (rce.className === className && rce.periodId === periodId && rce.scheduleType === "recurring" && Array.isArray(rce.recurringDays)) {
+              var overlapDays = targetDays.filter(function (d) { return rce.recurringDays.indexOf(d) >= 0; });
+              if (overlapDays.length > 0) { existingRecurring = rce; break; }
+            }
+          }
+          if (existingRecurring && !singleDayOverride && !allDaysOverride) {
+            resolveOperationScope("edit", {
+              className: className,
+              periodId: periodId,
+              day: ttEditingDay || targetDays[0],
+              isRecurring: true,
+              recurringGroupId: existingRecurring.recurringGroupId || existingRecurring.id,
+              recurringDays: existingRecurring.recurringDays
+            }).then(function (scope) {
+              if (!scope) return;
+              if (scope === "entire-row") {
+                executeEditEntireRow(existingRecurring, {
+                  className: className,
+                  periodId: periodId,
+                  subjectName: subjectName,
+                  teacherId: teacherId,
+                  teacherName: teacher ? teacher.name : "",
+                  roomId: roomId,
+                  roomName: room ? room.name : ""
+                });
+              } else {
+                executeEditSelectedOnly(existingRecurring, ttEditingDay || targetDays[0], {
+                  className: className,
+                  periodId: periodId,
+                  subjectName: subjectName,
+                  teacherId: teacherId,
+                  teacherName: teacher ? teacher.name : "",
+                  roomId: roomId,
+                  roomName: room ? room.name : ""
+                });
+              }
+              saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+              addActivity("Timetable updated", "Timetable updated for " + className + ".");
+              showToast("Timetable saved successfully.", "success");
+              renderPreview();
+            });
+            return;
+          }
           var groupId = "RCG-" + generateId();
-          for (var d = 0; d < targetDays.length; d++) {
-            settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
-              var iDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
-              return !(item.className === className && item.periodId === periodId && iDays.indexOf(targetDays[d]) >= 0);
+          if (allDaysOverride) {
+            settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== allDaysOverride; });
+          } else if (singleDayOverride) {
+            var existRG = existingRecurring || null;
+            if (existRG) {
+              var remDays2 = (existRG.recurringDays || []).filter(function (d) { return d !== singleDayOverride; });
+              if (remDays2.length === 0) {
+                settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== existRG.recurringGroupId; });
+              } else {
+                settings.timetableEntries = getRawTimetableEntries().map(function (item) {
+                  if ((item.recurringGroupId || item.id) === existRG.recurringGroupId && item.periodId === periodId) {
+                    return Object.assign({}, item, { recurringDays: remDays2 });
+                  }
+                  return item;
+                });
+              }
+            } else {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+                var iDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
+                return !(item.className === className && item.periodId === periodId && iDays.indexOf(singleDayOverride) >= 0);
+              });
+            }
+          } else {
+            for (var d = 0; d < targetDays.length; d++) {
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+                var iDays = item.scheduleType === "recurring" && Array.isArray(item.recurringDays) ? item.recurringDays : [item.weekdayId];
+                return !(item.className === className && item.periodId === periodId && iDays.indexOf(targetDays[d]) >= 0);
+              });
+            }
+            settings.timetableEntries = getRawTimetableEntries();
+          }
+          if (singleDayOverride) {
+            settings.timetableEntries.push({
+              id: "TT-" + className + "-" + singleDayOverride + "-" + periodId,
+              className: className,
+              weekdayId: singleDayOverride,
+              periodId: periodId,
+              periodLabel: period.label || "",
+              periodType: ttSelectedPeriodType,
+              subjectName: subjectName,
+              teacherId: teacher ? teacher.id : "",
+              teacherName: teacher ? teacher.name : "",
+              roomId: room ? room.id : "",
+              roomName: room ? room.name : "",
+              updatedAt: new Date().toISOString()
+            });
+          } else {
+            settings.timetableEntries.push({
+              id: "TT-" + className + "-" + groupId + "-" + periodId,
+              className: className,
+              weekdayId: targetDays[0],
+              periodId: periodId,
+              periodLabel: period.label || "",
+              periodType: ttSelectedPeriodType,
+              subjectName: subjectName,
+              teacherId: teacher ? teacher.id : "",
+              teacherName: teacher ? teacher.name : "",
+              roomId: room ? room.id : "",
+              roomName: room ? room.name : "",
+              scheduleType: "recurring",
+              recurringGroupId: groupId,
+              recurringDays: targetDays.slice(),
+              updatedAt: new Date().toISOString()
             });
           }
-          settings.timetableEntries = getRawTimetableEntries();
-          settings.timetableEntries.push({
-            id: "TT-" + className + "-" + groupId + "-" + periodId,
-            className: className,
-            weekdayId: targetDays[0],
-            periodId: periodId,
-            periodLabel: period.label || "",
-            periodType: ttSelectedPeriodType,
-            subjectName: subjectName,
-            teacherId: teacher ? teacher.id : "",
-            teacherName: teacher ? teacher.name : "",
-            roomId: room ? room.id : "",
-            roomName: room ? room.name : "",
-            scheduleType: "recurring",
-            recurringGroupId: groupId,
-            recurringDays: targetDays.slice(),
-            updatedAt: new Date().toISOString()
-          });
         } else {
           var raw = getRawTimetableEntries();
           var existingRaw = null;
           for (var ei = 0; ei < raw.length; ei++) {
             var re = raw[ei];
-            if (re.scheduleType === "recurring" && re.periodId === periodId && re.className === className) {
-              var reDays = re.recurringDays || [];
-              if (reDays.indexOf(targetDays[0]) >= 0) { existingRaw = re; break; }
-            }
+            if (re.periodId !== periodId || re.className !== className) continue;
+            var reDays = re.scheduleType === "recurring" && Array.isArray(re.recurringDays) ? re.recurringDays : [re.weekdayId];
+            if (reDays.indexOf(targetDays[0]) >= 0) { existingRaw = re; break; }
           }
-          if (existingRaw && !singleDayOverride && !allDaysOverride) {
-            var edDesc = "This period is part of a recurring schedule (" + (existingRaw.recurringDays || []).length + " days). What would you like to do?";
-            showModal(edDesc, "Update this day only", function (choice) {
-              if (choice === null) return;
-              doSave(choice === "single" ? targetDays[0] : null, choice === "all" ? existingRaw.recurringGroupId : null);
+          if (existingRaw && existingRaw.scheduleType === "recurring" && !singleDayOverride && !allDaysOverride) {
+            resolveOperationScope("edit", {
+              className: className,
+              periodId: periodId,
+              day: ttEditingDay || targetDays[0],
+              isRecurring: true,
+              recurringGroupId: existingRaw.recurringGroupId || existingRaw.id,
+              recurringDays: existingRaw.recurringDays
+            }).then(function (scope) {
+              if (!scope) return;
+              if (scope === "entire-row") {
+                executeEditEntireRow(existingRaw, {
+                  className: className,
+                  periodId: periodId,
+                  subjectName: subjectName,
+                  teacherId: teacherId,
+                  teacherName: teacher ? teacher.name : "",
+                  roomId: roomId,
+                  roomName: room ? room.name : ""
+                });
+              } else {
+                executeEditSelectedOnly(existingRaw, ttEditingDay || targetDays[0], {
+                  className: className,
+                  periodId: periodId,
+                  subjectName: subjectName,
+                  teacherId: teacherId,
+                  teacherName: teacher ? teacher.name : "",
+                  roomId: roomId,
+                  roomName: room ? room.name : ""
+                });
+              }
+              saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+              addActivity("Timetable updated", "Timetable updated for " + className + ".");
+              showToast("Timetable saved successfully.", "success");
+              renderPreview();
             });
             return;
           }
@@ -11946,10 +12360,17 @@ ${allContent}
                 });
               }
             } else {
-              settings.timetableEntries = getRawTimetableEntries().filter(function (item) { return (item.recurringGroupId || item.id) !== existingRaw.recurringGroupId; });
+              settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+                if ((item.recurringGroupId || item.id) === existingRaw.recurringGroupId) return false;
+                if (item.className === className && item.periodId === periodId && item.weekdayId === targetDays[0]) return false;
+                return true;
+              });
             }
+          } else {
+            settings.timetableEntries = getRawTimetableEntries().filter(function (item) {
+              return !(item.className === className && item.periodId === periodId && item.weekdayId === targetDays[0]);
+            });
           }
-          settings.timetableEntries = getRawTimetableEntries();
           settings.timetableEntries.push({
             id: "TT-" + className + "-" + targetDays[0] + "-" + periodId,
             className: className,
@@ -11967,8 +12388,6 @@ ${allContent}
         }
         saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         addActivity("Timetable updated", "Timetable updated for " + className + ".");
-        ttFormMessage.textContent = "Timetable saved successfully.";
-        ttFormMessage.className = "form-message success";
         showToast("Timetable saved successfully.", "success");
         renderPreview();
       }
@@ -11978,20 +12397,29 @@ ${allContent}
         var periodId = ttFormPeriod.value;
         if (!className || !periodId) {
           ttFormMessage.textContent = "Please select class and period.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var isNonTeaching = isNonTeachingPeriodType(ttSelectedPeriodType);
         var subjectName = isNonTeaching ? "" : ttFormSubject.value;
         if (!isNonTeaching && !subjectName) {
           ttFormMessage.textContent = "Please select a subject.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         var targetDays = getSelectedDays();
         if (ttScheduleType === "recurring" && targetDays.length === 0) {
           ttFormMessage.textContent = "Please select at least one day.";
-          ttFormMessage.className = "form-message error";
+          ttFormMessage.style.display = "block";
+          ttFormMessage.style.background = "#fff0f2";
+          ttFormMessage.style.color = "#842029";
+          ttFormMessage.style.border = "1px solid #f5c6cb";
           return;
         }
         if (ttScheduleType === "custom") {
@@ -12010,7 +12438,10 @@ ${allContent}
             ttConflictBanner.innerHTML = '<strong>&#9888;&#65039; Timetable Conflicts Found:</strong><br>' + customConflicts.slice(0, 8).map(function (c) { return '&#8226; ' + c.day + ' &mdash; ' + c.period + ': ' + c.detail; }).join("<br>");
             ttConflictBanner.style.display = "block";
             ttFormMessage.textContent = "Please resolve conflicts before saving.";
-            ttFormMessage.className = "form-message error";
+            ttFormMessage.style.display = "block";
+            ttFormMessage.style.background = "#fff0f2";
+            ttFormMessage.style.color = "#842029";
+            ttFormMessage.style.border = "1px solid #f5c6cb";
             return;
           }
           ttConflictBanner.style.display = "none";
@@ -12058,8 +12489,6 @@ ${allContent}
           });
           saveDatabase("Saving timetable...", [{ table: "school_settings", record: { id: "timetableEntries", source_id: "timetableEntries", data: settings.timetableEntries, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           addActivity("Timetable updated", "Timetable updated for " + className + ".");
-          ttFormMessage.textContent = "Timetable saved successfully.";
-          ttFormMessage.className = "form-message success";
           showToast("Timetable saved successfully.", "success");
           renderPreview();
           return;
@@ -12079,7 +12508,7 @@ ${allContent}
         ttEntryFieldsRow.style.display = "none";
         ttConflictBanner.style.display = "none";
         ttFormMessage.textContent = "";
-        ttFormMessage.className = "form-message";
+        ttFormMessage.style.display = "none";
         setScheduleType("recurring");
         var customCard = document.querySelector('.tt-sched-card[data-sched="custom"]');
         if (customCard) customCard.style.display = "";
@@ -12183,27 +12612,57 @@ ${allContent}
         const rows = matrix.periods.map(function (period) {
           const pType = period.periodType || "Regular";
           const isNonTeach = isNonTeachingPeriodType(pType);
+          const timeStr = formatTimeLabel(period.startTime) + " - " + formatTimeLabel(period.endTime);
           const dayCells = matrix.weekdays.map(function (day) {
-            const entry = matrix.entryMap.get(`${period.id}-${day.id}`);
-            if (!entry) return escapeHtml("-");
-            if (isNonTeach) return escapeHtml(pType.toUpperCase());
-            return escapeHtml(`${entry.subjectName || "-"} / ${entry.teacherName || "-"} / ${entry.roomName || "-"}`);
-          }).join("");
+            const entry = matrix.entryMap.get(period.id + "-" + day.id);
+            if (!entry) return '<div class="tt-cell-empty">&mdash;</div>';
+            if (isNonTeach) {
+              var icon = pType.toLowerCase() === "assembly" ? "&#127891; " : "&#9749; ";
+              return '<div class="tt-cell-subject">' + icon + escapeHtml(pType.toUpperCase()) + '</div>';
+            }
+            var html = '<div class="tt-cell-subject">' + escapeHtml(entry.subjectName || "-") + '</div>';
+            html += '<div class="tt-cell-teacher">' + escapeHtml(entry.teacherName || "-") + '</div>';
+            return html;
+          });
+          var rowClass = isNonTeach ? (pType.toLowerCase() === "assembly" ? "tt-row-assembly" : "tt-row-break") : "";
           return [
             escapeHtml(period.label || "-"),
-            `${formatTimeLabel(period.startTime)} - ${formatTimeLabel(period.endTime)}`
-          ].concat(matrix.weekdays.map(function (day) {
-            const entry = matrix.entryMap.get(`${period.id}-${day.id}`);
-            if (!entry) return escapeHtml("-");
-            if (isNonTeach) return escapeHtml(pType.toUpperCase());
-            return escapeHtml(`${entry.subjectName || "-"} / ${entry.teacherName || "-"} / ${entry.roomName || "-"}`);
-          }));
+            timeStr
+          ].concat(dayCells).map(function (c, i) {
+            var cls = i === 0 ? "tt-col-period" : (i === 1 ? "tt-col-time" : "tt-col-day");
+            return '<td class="' + cls + (rowClass ? " " + rowClass : "") + '">' + c + '</td>';
+          });
         });
-        openPrintReport({
+        var flatRows = rows.map(function (cells) {
+          return "<tr>" + cells.join("") + "</tr>";
+        });
+        var allRooms = getClassRooms();
+        var roomMap = {};
+        allRooms.forEach(function (r) { roomMap[r.id] = r; });
+        var seenRooms = {};
+        var roomLines = [];
+        matrix.entryMap.forEach(function (entry) {
+          if (entry.roomId && !seenRooms[entry.roomId]) {
+            seenRooms[entry.roomId] = true;
+            var roomObj = roomMap[entry.roomId];
+            var roomName = entry.roomName || (roomObj ? roomObj.name : "") || "";
+            var roomLoc = roomObj ? roomObj.location : "";
+            if (roomName || roomLoc) {
+              roomLines.push(escapeHtml(roomName) + (roomLoc ? " - " + escapeHtml(roomLoc) : ""));
+            }
+          }
+        });
+        var ttSubtitle = '<strong>Class:</strong> ' + escapeHtml(matrix.selectedClass);
+        if (roomLines.length > 0) {
+          ttSubtitle += '<br><strong>' + (roomLines.length === 1 ? 'Room:' : 'Rooms:') + '</strong> ' + roomLines.join('<br>');
+        }
+        openPrintTimetableReport({
           title: "Class Timetable",
-          subtitle: `Class: ${matrix.selectedClass}`,
+          subtitle: ttSubtitle,
           headers: headers,
-          rows: rows
+          rows: flatRows,
+          _flatHtml: true,
+          footerHtml: '<div class="tt-print-footer">Generated by SagarSoft Management System</div>'
         });
       });
 
@@ -12285,24 +12744,74 @@ ${allContent}
 
       safeOn(document.getElementById("printTeacherTimetableBtn"), "click", function () {
         const teacher = getEmployeeById(teacherSelect.value);
-        const rows = getRows();
-        if (!teacher || !rows.length) {
-          return;
-        }
-        openPrintReport({
+        if (!teacher) return;
+        const allWeekdays = getTimetableWeekdays();
+        const allPeriods = getTimetablePeriods();
+        const entries = getTimetableEntries().filter(function (item) {
+          return item.teacherId === teacher.id;
+        });
+        if (!entries.length) return;
+        const weekdayMap = {};
+        allWeekdays.forEach(function (d) { weekdayMap[d.id] = d; });
+        const periodMap = {};
+        allPeriods.forEach(function (p) { periodMap[p.id] = p; });
+        const entryMap = {};
+        entries.forEach(function (e) { entryMap[e.periodId + "-" + e.weekdayId] = e; });
+        var allRooms = getClassRooms();
+        var roomLookup = {};
+        allRooms.forEach(function (r) { roomLookup[r.id] = r; });
+        var teachingCount = 0;
+        var workingDaySet = {};
+        entries.forEach(function (e) {
+          var pt = (periodMap[e.periodId] || {}).periodType || "Regular";
+          if (!isNonTeachingPeriodType(pt)) teachingCount++;
+          workingDaySet[e.weekdayId] = true;
+        });
+        var workingDays = Object.keys(workingDaySet).length;
+        var headers = ["Period / Time"].concat(allWeekdays.map(function (d) {
+          return d.shortLabel || d.name;
+        }));
+        var flatRows = allPeriods.map(function (period) {
+          var pType = period.periodType || "Regular";
+          var isNonTeach = isNonTeachingPeriodType(pType);
+          var timeStr = formatTimeLabel(period.startTime) + " - " + formatTimeLabel(period.endTime);
+          var cells = allWeekdays.map(function (day) {
+            var entry = entryMap[period.id + "-" + day.id];
+            if (!entry) return { html: '<div class="tt-cell-empty">&mdash;</div>', cls: "" };
+            if (isNonTeach) {
+              var icon = pType.toLowerCase() === "assembly" ? "&#127891; " : "&#9749; ";
+              return { html: '<div class="tt-cell-subject">' + icon + escapeHtml(pType.toUpperCase()) + "</div>", cls: "tt-row-" + (pType.toLowerCase() === "assembly" ? "assembly" : "break") };
+            }
+            var roomObj = roomLookup[entry.roomId] || null;
+            var roomLoc = roomObj ? (roomObj.location || "") : "";
+            var html = '<div class="tt-cell-subject">' + escapeHtml(entry.subjectName || "-") + "</div>";
+            html += '<div class="tt-cell-class">' + escapeHtml(entry.className || "-") + "</div>";
+            if (roomLoc) html += '<div class="tt-cell-teacher">' + escapeHtml(roomLoc) + "</div>";
+            return { html: html, cls: "" };
+          });
+          var rowCls = isNonTeach ? (pType.toLowerCase() === "assembly" ? "tt-row-assembly" : "tt-row-break") : "";
+          var tds = [
+            '<td class="tt-col-period"><div>' + escapeHtml(period.label || "-") + '</div><div class="tt-cell-teacher">' + timeStr + "</div></td>"
+          ].concat(cells.map(function (c) {
+            var cls = c.cls || rowCls ? " " + (c.cls || rowCls) : "";
+            return '<td class="tt-col-day' + cls + '">' + c.html + "</td>";
+          }));
+          return "<tr>" + tds.join("") + "</tr>";
+        });
+        var summaryHtml = '<div style="display:flex;gap:24px;justify-content:center;flex-wrap:wrap;margin:6px 0 10px;font-size:0.82rem;color:#3d5070;">'
+          + '<span><strong>Teacher:</strong> ' + escapeHtml(teacher.name || "-") + "</span>"
+          + (teacher.role ? '<span><strong>Designation:</strong> ' + escapeHtml(teacher.role) + "</span>" : "")
+          + "<span><strong>Total Teaching Periods:</strong> " + teachingCount + "</span>"
+          + "<span><strong>Working Days:</strong> " + workingDays + "</span>"
+          + "</div>";
+        var footerHtml = '<div class="tt-print-footer">Generated by SagarSoft Management System</div>';
+        openPrintTimetableReport({
           title: "Teacher Timetable",
-          subtitle: `Teacher: ${teacher.name || "-"}`,
-          headers: ["Weekday", "Period", "Time", "Class", "Subject", "Room"],
-          rows: rows.map(function (row) {
-            return [
-              escapeHtml(row.weekdayName),
-              escapeHtml(row.periodLabel || "-"),
-              escapeHtml(row.timeLabel || "-"),
-              escapeHtml(row.className || "-"),
-              escapeHtml(row.subjectName || "-"),
-              escapeHtml(row.roomName || "-")
-            ];
-          })
+          subtitle: summaryHtml,
+          headers: headers,
+          rows: flatRows,
+          _flatHtml: true,
+          footerHtml: footerHtml
         });
       });
 
@@ -14421,7 +14930,7 @@ ${allContent}
               </div>
               <div class="ar-toolbar__search" id="studentsAttendanceReportSearchContainer">
                 <span class="ar-toolbar__search-icon">&#128269;</span>
-                <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search by roll no / name">
+                <input id="studentsAttendanceReportSearchInput" type="search" placeholder="Search by roll no / name" aria-label="Search attendance">
                 <div id="studentsAttendanceReportSearchDropdown" class="search-dropdown"></div>
               </div>
             </div>
@@ -14590,7 +15099,7 @@ ${allContent}
               </div>
               <div class="ar-toolbar__search" id="employeesAttendanceReportSearchContainer">
                 <span class="ar-toolbar__search-icon">&#128269;</span>
-                <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search by name / phone">
+                <input id="employeesAttendanceReportSearchInput" type="search" placeholder="Search by name / phone" aria-label="Search employees">
                 <div id="employeesAttendanceReportSearchDropdown" class="search-dropdown"></div>
               </div>
             </div>
@@ -14737,7 +15246,7 @@ ${allContent}
           <strong>All Employees</strong>
           <div class="toolbar toolbar--simple module-toolbar">
             <div id="employeeSearchContainer" style="position: relative; flex: 1;">
-              <input id="employeeSearchInput" type="search" placeholder="Search employee by name, role, or mobile no." style="width: 100%;">
+              <input id="employeeSearchInput" type="search" placeholder="Search employee by name, role, or mobile no." style="width: 100%;" aria-label="Search employees">
               <div id="employeeSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
           </div>
@@ -15133,7 +15642,7 @@ ${allContent}
           <strong>Staff ID Cards</strong>
           <div class="toolbar toolbar--status module-toolbar">
             <div id="employeeIdCardSearchContainer" style="position: relative; flex: 1;">
-              <input id="employeeIdCardSearchInput" type="search" placeholder="Search employee by name or mobile no." style="width: 100%;">
+              <input id="employeeIdCardSearchInput" type="search" placeholder="Search employee by name or mobile no." style="width: 100%;" aria-label="Search employees">
               <div id="employeeIdCardSearchDropdown" class="search-dropdown" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: #fff; border: 1px solid rgba(27,95,122,0.2); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; max-height: 280px; overflow-y: auto; margin-top: 5px;"></div>
             </div>
             <button class="primary-button" id="printAllEmployeeCardsBtn" type="button">Print All Cards</button>
@@ -15426,7 +15935,7 @@ ${allContent}
             <div class="admission-search-bar admission-search-bar--narrow" style="position:relative;">
               <div class="admission-search-field">
                 <span class="admission-search-icon">&#x1F50D;</span>
-                <input id="jobLetterSearchInput" type="search" placeholder="Search Employee by Name / ID." class="admission-search-input" autocomplete="off">
+                <input id="jobLetterSearchInput" type="search" placeholder="Search Employee by Name / ID." class="admission-search-input" autocomplete="off" aria-label="Search employees">
               </div>
               <button class="admission-search-btn" id="jobLetterSearchBtn" type="button">Search</button>
               <div id="jobLetterSearchDropdown" class="gsac-dropdown" style="display:none;"></div>
@@ -15675,7 +16184,7 @@ ${allContent}
         <article style="max-width:100%;overflow-x:hidden;">
           <strong>Manage Employee Login</strong>
           <div style="margin:10px 0;position:relative;">
-            <input id="employeeLoginSearchInput" type="search" placeholder="Search by employee name or mobile no." style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+            <input id="employeeLoginSearchInput" type="search" placeholder="Search by employee name or mobile no." style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;" aria-label="Search employees">
             <div id="employeeLoginSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
           </div>
           <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;">
@@ -17511,7 +18020,7 @@ ${allContent}
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
             <div style="flex:1 1 160px;min-width:0;position:relative;">
-              <input id="statementSearchInput" type="search" placeholder="Search by category / note" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">
+              <input id="statementSearchInput" type="search" placeholder="Search by category / note" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;" aria-label="Search transactions">
               <div id="statementSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
             </div>
             <div style="flex:0 0 auto;"><button class="primary-button" id="printStatementBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Print Statement</button></div>
@@ -26313,7 +26822,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
       studentsUtilityContent.innerHTML = `
         <div class="toolbar" style="margin-bottom:12px">
           <div id="parentLoginSearchContainer" style="position:relative;flex:1;min-width:0;">
-            <input id="parentLoginSearchInput" type="search" placeholder="Search by father name or student name" style="width:100%;">
+            <input id="parentLoginSearchInput" type="search" placeholder="Search by father name or student name" style="width:100%;" aria-label="Search parents">
             <div id="parentLoginSearchDropdown" class="search-dropdown"></div>
           </div>
         </div>
