@@ -2,17 +2,21 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#08172f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="SagarSoft SMS">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="app-version" content="v128">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
   <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
   <title>SagarSoft Management System | Dashboard</title>
-  <link rel="stylesheet" href="./css/base.css?v=20260818c">
-  <link rel="stylesheet" href="./css/dashboard.css?v=20260818c">
+  <link rel="stylesheet" href="./css/base.css?v=20260819c">
+  <link rel="stylesheet" href="./css/dashboard.css?v=20260823b">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
@@ -381,7 +385,7 @@
             <h1 id="pageTitle">Dashboard Overview</h1>
           </div>
           <div class="topbar-search" id="topbarSearch">
-            <input id="dashboardSearchInput" type="search" placeholder="Search student by name or roll number...">
+            <input id="dashboardSearchInput" type="search" placeholder="Search student by name or roll number..." aria-label="Search students">
             <div id="dashboardSearchDropdown"></div>
           </div>
         </div>
@@ -581,7 +585,7 @@
 
             <div class="toolbar toolbar--simple">
               <div class="search-wrap">
-                <input id="allStudentsSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap">
+                <input id="allStudentsSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap" aria-label="Search students">
                 <div id="allStudentsSearchDropdown" class="search-dropdown"></div>
               </div>
               <select id="allStudentsClassFilter">
@@ -608,7 +612,7 @@
 
             <div class="toolbar toolbar--status">
               <div class="search-wrap">
-                <input id="studentStatusSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap">
+                <input id="studentStatusSearchInput" type="search" placeholder="Search by student name or roll number" class="search-input-wrap" aria-label="Search students">
                 <div id="studentStatusSearchDropdown" class="search-dropdown"></div>
               </div>
               <select id="studentStatusClassFilter">
@@ -632,7 +636,7 @@
               <div id="admissionLetterSearchContainer" class="admission-search-bar admission-search-bar--narrow" style="position:relative;">
                 <div class="admission-search-field">
                   <span class="admission-search-icon">&#x1F50D;</span>
-                  <input id="admissionLetterSearchInput" type="search" placeholder="Search Student by Name / Roll No." class="admission-search-input" autocomplete="off">
+                  <input id="admissionLetterSearchInput" type="search" placeholder="Search Student by Name / Roll No." class="admission-search-input" autocomplete="off" aria-label="Search students">
                 </div>
                 <button class="admission-search-btn" id="admissionLetterSearchBtn" type="button">Search</button>
                 <div id="admissionLetterSearchDropdown" class="gsac-dropdown" style="display:none;"></div>
@@ -675,7 +679,7 @@
 
             <div class="toolbar toolbar--status">
               <div id="studentIdCardsSearchContainer" style="position:relative;flex:1;min-width:0;">
-                <input id="studentIdCardsSearchInput" type="search" placeholder="Search by student name, ID, or roll number">
+                <input id="studentIdCardsSearchInput" type="search" placeholder="Search by student name, ID, or roll number" aria-label="Search students">
                 <div id="studentIdCardsSearchDropdown" class="search-dropdown"></div>
               </div>
               <select id="studentIdCardsClassFilter">
@@ -703,7 +707,7 @@
 
             <div class="toolbar toolbar--status">
               <div id="printBasicListSearchContainer" style="position:relative;flex:1;min-width:0;">
-                <input id="printBasicListSearchInput" type="search" placeholder="Search by student name, ID, or roll number">
+                <input id="printBasicListSearchInput" type="search" placeholder="Search by student name, ID, or roll number" aria-label="Search students">
                 <div id="printBasicListSearchDropdown" class="search-dropdown"></div>
               </div>
               <select id="printBasicListClassFilter">
@@ -837,7 +841,7 @@
 
             <div class="toolbar toolbar--simple">
               <div id="manageLoginSearchContainer" style="position:relative;flex:1;min-width:0;max-width:420px;">
-                <input id="studentsManageLoginSearchInput" type="search" placeholder="Search by student name, ID, or roll number" style="width:100%;">
+                <input id="studentsManageLoginSearchInput" type="search" placeholder="Search by student name, ID, or roll number" style="width:100%;" aria-label="Search students">
                 <div id="manageLoginSearchDropdown" class="search-dropdown"></div>
               </div>
             </div>
@@ -882,7 +886,7 @@
 
             <div class="toolbar toolbar--promote">
               <div id="promoteStudentsSearchContainer" style="position:relative;flex:1;min-width:0;">
-                <input id="promoteStudentsSearchInput" type="search" placeholder="Search by student name, ID, or roll number">
+                <input id="promoteStudentsSearchInput" type="search" placeholder="Search by student name, ID, or roll number" aria-label="Search students">
                 <div id="promoteStudentsSearchDropdown" class="search-dropdown"></div>
               </div>
               <select id="promoteStudentsClassFilter">
@@ -954,7 +958,7 @@
 
               <div class="toolbar toolbar--students">
                 <div id="mainStudentSearchContainer" style="position:relative;flex:1;min-width:0;">
-                  <input id="studentSearchInput" type="search" placeholder="Search by name, admission no, or class">
+                  <input id="studentSearchInput" type="search" placeholder="Search by name, admission no, or class" aria-label="Search students">
                   <div id="mainStudentSearchDropdown" class="search-dropdown"></div>
                 </div>
                 <select id="studentClassFilter">
@@ -1262,7 +1266,7 @@
   <script src="./js/enterprise.js?v=20260729" defer></script>
   <script src="./js/auth.js?v=20260729" defer></script>
   <script src="./js/cache-manager.js?v=20260805" defer></script>
-  <script src="./js/dashboard.js?v=20260818c" defer></script>
+  <script src="./js/dashboard.js?v=20260823b" defer></script>
   <script>
     var _origFetch = window.fetch;
     window.fetch = function () {
@@ -1333,7 +1337,7 @@
     if ('serviceWorker' in navigator) {
       var _swReg = null;
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js?v=v109').then(function (reg) {
+        navigator.serviceWorker.register('./sw.js?v=v128').then(function (reg) {
           _swReg = reg;
           if (reg.installing) {
             reg.installing.addEventListener('statechange', function (sw) {
@@ -1345,12 +1349,27 @@
         });
       });
       navigator.serviceWorker.addEventListener('controllerchange', function () {
-        if (sessionStorage.getItem('sw-reloaded') !== 'v109') {
-          sessionStorage.setItem('sw-reloaded', 'v109');
+        if (sessionStorage.getItem('sw-reloaded') !== 'v128') {
+          sessionStorage.setItem('sw-reloaded', 'v128');
           window.location.reload();
         }
       });
     }
+
+    window.__SS_VERSION = 'v128';
+    (function () {
+      var prev = sessionStorage.getItem('ss-version-check');
+      sessionStorage.setItem('ss-version-check', window.__SS_VERSION);
+      if (prev && prev !== window.__SS_VERSION) {
+        if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+          navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (r) { r.unregister(); });
+          });
+        }
+        caches.keys().then(function (names) { names.forEach(function (n) { caches.delete(n); }); });
+        window.location.reload(true);
+      }
+    })();
 
   </script>
 
