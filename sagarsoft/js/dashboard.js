@@ -1,4 +1,4 @@
-/* Major section: Dashboard shell, routing, and student management module */
+﻿/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -8948,15 +8948,15 @@ ${allContent}
       function _fc(v) { return "PKR " + Number(v || 0).toLocaleString(); }
       function _pctColor(p) { return p >= 75 ? "#16a34a" : p >= 40 ? "#d97706" : "#dc2626"; }
       var _fl = { search: "", className: "all", section: "all", status: "all", month: "all-time", feeType: "all", studentStatus: "all", fromDate: "", toDate: "" };
-      var _view = "table", _viewCls = "";
+      var _view = "cards", _viewCls = "";
       var _mv = Array.from(new Set((database.fees || []).map(function (f) { return f.feeMonth || f.month; }).filter(Boolean))).sort();
       var _co = classOptions.map(function (c) { return '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>'; }).join("");
       var _mo = _mv.map(function (m) { return '<option value="' + escapeAttr(m) + '">' + escapeHtml(m) + '</option>'; }).join("");
       var _ft = _frTypes().map(function (t) { return '<option value="' + escapeAttr(t) + '">' + escapeHtml(t) + '</option>'; }).join("");
       moduleSummary.innerHTML = '<article class="fr-container">' +
-        '<div class="fr-topbar"><div class="fr-topbar__left"><p class="fr-topbar__eyebrow">FEES MANAGEMENT</p><h2 class="fr-topbar__title">Fees Report</h2><p class="fr-topbar__subtitle">Monitor student fee status, payments and outstanding balances.</p></div><div class="fr-topbar__actions"><button class="fr-btn fr-btn--o" id="frExportBtn" type="button"><i class="fas fa-download"></i> Export</button><button class="fr-btn fr-btn--o" id="frPrintBtn" type="button"><i class="fas fa-print"></i> Print</button><button class="fr-btn fr-btn--p" id="frRefreshBtn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div></div>' +
+        '<div class="fr-topbar"><div class="fr-topbar__left"><p class="fr-topbar__eyebrow">FEES MANAGEMENT</p><h2 class="fr-topbar__title">Fees Report</h2><p class="fr-topbar__subtitle">Monitor student fee status, payments and outstanding balances class-wise.</p></div><div class="fr-topbar__actions"><button class="fr-btn fr-btn--o" id="frExportBtn" type="button"><i class="fas fa-download"></i> Export</button><button class="fr-btn fr-btn--o" id="frPrintBtn" type="button"><i class="fas fa-print"></i> Print</button><button class="fr-btn fr-btn--p" id="frRefreshBtn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div></div>' +
         '<div class="fr-stats" id="frStats"></div>' +
-        '<div class="fr-filters"><div class="fr-filters__head"><div class="fr-filters__title"><i class="fas fa-filter"></i> Report Filters</div><button class="fr-btn fr-btn--g fr-btn--s" id="frClearBtn" type="button"><i class="fas fa-times"></i> Reset</button></div><div class="fr-filters__grid">' +
+        '<div class="fr-filters"><div class="fr-filters__head"><div class="fr-filters__title" id="frFilterToggle"><i class="fas fa-filter"></i> Filters <i class="fas fa-chevron-down fr-chevron" id="frChevron"></i></div><button class="fr-btn fr-btn--g fr-btn--s" id="frClearBtn" type="button"><i class="fas fa-times"></i> Reset</button></div><div class="fr-filters__grid" id="frFiltersGrid">' +
         '<div class="fr-fg"><label>Class</label><select id="frClassF" class="fr-fs"><option value="all">All Classes</option>' + _co + '</select></div>' +
         '<div class="fr-fg"><label>Section</label><select id="frSectionF" class="fr-fs"><option value="all">All Sections</option></select></div>' +
         '<div class="fr-fg"><label>Student Status</label><select id="frStuStatF" class="fr-fs"><option value="all">All Students</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>' +
@@ -8968,9 +8968,9 @@ ${allContent}
         '<div class="fr-fg fr-fg--search"><label>Search</label><div style="position:relative"><input type="search" id="frSearchI" class="fr-fi" placeholder="Student name, roll no, or father name" aria-label="Search fees report"><div id="frSearchDD" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>' +
         '</div><div class="fr-filters__actions"><button class="fr-btn fr-btn--p" id="frApplyBtn" type="button"><i class="fas fa-check"></i> Apply Filters</button></div></div>' +
         '<div class="fr-filtersummary" id="frFilterSummary"></div>' +
-        '<div id="frContent"><div class="fr-thead"><div class="fr-thead__left"><h3 id="frTblTitle" class="fr-thead__title">Class-wise Fee Overview</h3><p id="frTblSub" class="fr-thead__sub">View fee performance and student payment status by class.</p></div><button class="fr-btn fr-btn--o fr-btn--s" id="frBackBtn" type="button" style="display:none"><i class="fas fa-arrow-left"></i> Back to Overview</button></div>' +
-        '<div class="fr-table-wrap" id="frClassTable"><table class="fr-rt" id="frRT"><thead id="frRTH"></thead><tbody id="frRTB"></tbody></table></div>' +
-        '<div id="frStudentTable" style="display:none"><div class="fr-table-wrap"><table class="fr-stbl" id="frTbl"><thead id="frTH"></thead><tbody id="frTB"></tbody></table></div></div>' +
+        '<div id="frContent">' +
+        '<div class="fr-thead"><div class="fr-thead__left"><h3 id="frTblTitle" class="fr-thead__title">Class-wise Fee Overview</h3><p id="frTblSub" class="fr-thead__sub">Select a class to view detailed student fee status.</p></div></div>' +
+        '<div class="fr-cards" id="frClassCards"></div>' +
         '<div class="fr-empty" id="frEmpty" style="display:none"><div class="fr-empty__icon"><i class="fas fa-receipt"></i></div><h4 class="fr-empty__title">No Fee Records Found</h4><p class="fr-empty__desc">No fee records match your current filters. Try adjusting your filters or date range.</p><button class="fr-btn fr-btn--p" id="frEmptyClear" type="button"><i class="fas fa-times"></i> Clear Filters</button></div></div>' +
         '<div id="frSummary" class="fr-summary" style="display:none"></div>' +
         '<div class="fr-qactions"><h4 class="fr-qactions__title">Quick Actions</h4><div class="fr-qa-grid">' +
@@ -8979,16 +8979,21 @@ ${allContent}
         '<button class="fr-qa" data-filter-status="paid" type="button"><i class="fas fa-check-circle"></i> Paid Fees</button>' +
         '<button class="fr-qa" id="frPrintRcptBtn" type="button"><i class="fas fa-print"></i> Print Fee Receipts</button>' +
         '<button class="fr-qa fr-qa--danger" id="clearAllFeesDataBtn" type="button"><i class="fas fa-trash"></i> Clear All Fees Data</button>' +
-        '</div></div></article>';
+        '</div></div>' +
+        '<div class="fr-drill-overlay" id="frDrillOverlay"></div>' +
+        '<div class="fr-drill" id="frDrill"><div class="fr-drill__header"><button class="fr-drill__back" id="frDrillBack" type="button"><i class="fas fa-arrow-left"></i></button><div style="flex:1;min-width:0"><h3 class="fr-drill__title" id="frDrillTitle">Students</h3><p class="fr-drill__subtitle" id="frDrillSub">Student-level fee details</p></div><button class="fr-drill__close" id="frDrillClose" type="button"><i class="fas fa-times"></i></button></div><div class="fr-drill__body" id="frDrillBody"></div></div>' +
+        '</article>';
       if (moduleGuideHeader) moduleGuideHeader.style.display = "none";
       moduleGuide.innerHTML = "";
       var _e = function (id) { return document.getElementById(id); };
-      var _statsEl = _e("frStats"), _classEl = _e("frClassF"), _sectEl = _e("frSectionF"), _stuStatEl = _e("frStuStatF"), _feeTypeEl = _e("frFeeTypeF"), _payStatEl = _e("frPayStatF"), _monthEl = _e("frMonthF"), _fromEl = _e("frFromD"), _toEl = _e("frToD"), _searchEl = _e("frSearchI"), _searchDD = _e("frSearchDD"), _thEl = _e("frTH"), _tbEl = _e("frTB"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _backEl = _e("frBackBtn"), _classTblEl = _e("frClassTable"), _rthEl = _e("frRTH"), _rtbEl = _e("frRTB"), _stuTableEl = _e("frStudentTable"), _summaryEl = _e("frSummary");
+      var _statsEl = _e("frStats"), _classEl = _e("frClassF"), _sectEl = _e("frSectionF"), _stuStatEl = _e("frStuStatF"), _feeTypeEl = _e("frFeeTypeF"), _payStatEl = _e("frPayStatF"), _monthEl = _e("frMonthF"), _fromEl = _e("frFromD"), _toEl = _e("frToD"), _searchEl = _e("frSearchI"), _searchDD = _e("frSearchDD"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _summaryEl = _e("frSummary"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _filtersGrid = _e("frFiltersGrid"), _filterChevron = _e("frChevron");
       initializeStudentProfessionalSearch("frSearchI", "frSearchDD", null, function (st) { _searchEl.value = st.name || ""; _doApply(); });
       _classEl.addEventListener("change", function () { var secs = _frSecs(_classEl.value === "all" ? "" : _classEl.value); _sectEl.innerHTML = '<option value="all">All Sections</option>' + secs.map(function (s) { return '<option value="' + escapeAttr(s) + '">' + escapeHtml(s) + '</option>'; }).join(""); });
       function _readFl() { _fl.className = _classEl.value; _fl.section = _sectEl.value; _fl.studentStatus = _stuStatEl.value; _fl.feeType = _feeTypeEl.value; _fl.status = _payStatEl.value; _fl.month = _monthEl.value; _fl.fromDate = _fromEl.value; _fl.toDate = _toEl.value; _fl.search = _searchEl.value.trim(); }
-      function _doApply() { _readFl(); _view = "table"; _renderAll(); }
+      function _doApply() { _readFl(); _view = "cards"; _closeDrill(); _renderAll(); }
       function _hasActiveFilters() { return _fl.className !== "all" || _fl.section !== "all" || _fl.studentStatus !== "all" || _fl.feeType !== "all" || _fl.status !== "all" || _fl.month !== "all-time" || _fl.fromDate || _fl.toDate || _fl.search; }
+      function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; }
+      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; }
       function _renderFilterSummary() {
         var chips = [];
         if (_fl.className !== "all") chips.push({ label: "Class: " + _fl.className, clear: function () { _classEl.value = "all"; } });
@@ -9021,52 +9026,48 @@ ${allContent}
           '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-coins"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Payable</div><div class="fr-stat__value">' + _fc(a.tp) + '</div></div></div>' +
           '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--green"><i class="fas fa-check-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Collected</div><div class="fr-stat__value fr-stat__value--green">' + _fc(a.tc) + '</div></div></div>' +
           '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--red"><i class="fas fa-exclamation-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Outstanding</div><div class="fr-stat__value fr-stat__value--red">' + _fc(a.to) + '</div></div></div>' +
-          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--teal"><i class="fas fa-chart-line"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Collection Rate</div><div class="fr-stat__value">' + pct + '%</div><div class="fr-stat__bar"><div class="fr-stat__bar-fill" style="width:' + pct + '%"></div></div></div></div>' +
-          '<div class="fr-stat fr-stat--wide"><div class="fr-stat__icon fr-stat__icon--emerald"><i class="fas fa-check-double"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Payment Status</div><div class="fr-stat__subs"><span class="fr-stat__sub fr-stat__sub--green"><i class="fas fa-check"></i> ' + a.pc + ' Paid</span><span class="fr-stat__sub fr-stat__sub--amber"><i class="fas fa-minus-circle"></i> ' + a.parc + ' Partial</span><span class="fr-stat__sub fr-stat__sub--red"><i class="fas fa-times-circle"></i> ' + a.uc + ' Unpaid</span></div></div></div>';
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--teal"><i class="fas fa-chart-line"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Collection Rate</div><div class="fr-stat__value">' + pct + '%</div><div class="fr-stat__bar"><div class="fr-stat__bar-fill" style="width:' + pct + '%"></div></div></div></div>';
       }
-      function _renderClassTable() {
+      function _renderClassCards() {
         var rows = _frRows(_fl); var cs = _frCls(rows);
         _titleEl.textContent = "Class-wise Fee Overview";
-        _titleSubEl.textContent = "View fee performance and student payment status by class.";
-        _backEl.style.display = "none";
-        _classTblEl.style.display = ""; _stuTableEl.style.display = "none";
-        if (cs.length === 0) { _rthEl.innerHTML = ""; _rtbEl.innerHTML = ""; _emptyEl.style.display = ""; return; }
+        _titleSubEl.textContent = "Select a class to view detailed student fee status.";
+        if (cs.length === 0) { _cardsEl.innerHTML = ""; _emptyEl.style.display = ""; return; }
         _emptyEl.style.display = "none";
-        _rthEl.innerHTML = '<tr><th>Class</th><th>Students</th><th>Total Payable</th><th>Collected</th><th>Outstanding</th><th>Collection %</th><th>Paid</th><th>Partial</th><th>Unpaid</th><th>Action</th></tr>';
-        _rtbEl.innerHTML = cs.map(function (c) {
+        _cardsEl.innerHTML = cs.map(function (c) {
           var cp = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0;
           var barColor = _pctColor(cp);
-          return '<tr>' +
-            '<td><span class="fr-rt__class">' + escapeHtml(c.baseClass) + '</span>' + (c.section ? '<span class="fr-rt__sec">' + escapeHtml(c.section) + '</span>' : '') + '</td>' +
-            '<td>' + c.students.size + '</td>' +
-            '<td>' + _fc(c.tp) + '</td>' +
-            '<td style="color:#16a34a;font-weight:600">' + _fc(c.tc) + '</td>' +
-            '<td style="color:#dc2626;font-weight:600">' + _fc(c.to) + '</td>' +
-            '<td><span class="fr-rt__pct"><span class="fr-rt__pct-bar"><span class="fr-rt__pct-fill" style="width:' + cp + '%;background:' + barColor + '"></span></span><span class="fr-rt__pct-val">' + cp + '%</span></span></td>' +
-            '<td><span class="fr-status fr-status--paid">' + c.pc + '</span></td>' +
-            '<td><span class="fr-status fr-status--partial">' + c.parc + '</span></td>' +
-            '<td><span class="fr-status fr-status--unpaid">' + c.uc + '</span></td>' +
-            '<td><button class="fr-rt__view" data-fr-cls="' + escapeAttr(c.className) + '" type="button"><i class="fas fa-eye"></i> View</button></td>' +
-            '</tr>';
+          return '<div class="fr-cc">' +
+            '<div class="fr-cc__head"><div><span class="fr-cc__name">' + escapeHtml(c.baseClass) + '</span>' + (c.section ? '<span class="fr-cc__sec">' + escapeHtml(c.section) + '</span>' : '') + '</div><span class="fr-cc__students"><i class="fas fa-users"></i> ' + c.students.size + ' Students</span></div>' +
+            '<div class="fr-cc__body">' +
+            '<div class="fr-cc__metrics">' +
+            '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Payable</div><div class="fr-cc__metric-value">' + _fc(c.tp) + '</div></div>' +
+            '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Collected</div><div class="fr-cc__metric-value fr-cc__metric-value--green">' + _fc(c.tc) + '</div></div>' +
+            '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Outstanding</div><div class="fr-cc__metric-value fr-cc__metric-value--red">' + _fc(c.to) + '</div></div>' +
+            '</div>' +
+            '<div class="fr-cc__progress"><div class="fr-cc__progress-head"><span>Collection Progress</span><span>' + cp + '% Collected</span></div><div class="fr-cc__progress-bar"><div class="fr-cc__progress-fill" style="width:' + cp + '%;background:' + barColor + '"></div></div></div>' +
+            '<div class="fr-cc__badges"><span class="fr-cc__badge fr-cc__badge--green"><span class="fr-cc__badge-dot"></span> Paid: ' + c.pc + '</span><span class="fr-cc__badge fr-cc__badge--amber"><span class="fr-cc__badge-dot"></span> Partial: ' + c.parc + '</span><span class="fr-cc__badge fr-cc__badge--red"><span class="fr-cc__badge-dot"></span> Unpaid: ' + c.uc + '</span></div>' +
+            '</div>' +
+            '<div class="fr-cc__foot"><button class="fr-cc__view" data-fr-cls="' + escapeAttr(c.className) + '" type="button"><i class="fas fa-eye"></i> View Details <i class="fas fa-arrow-right" style="font-size:0.65rem"></i></button></div>' +
+            '</div>';
         }).join("");
-        _rtbEl.querySelectorAll(".fr-rt__view").forEach(function (btn) {
-          btn.addEventListener("click", function () { _viewCls = btn.getAttribute("data-fr-cls"); _view = "students"; _renderStudentTable(); });
+        _cardsEl.querySelectorAll(".fr-cc__view").forEach(function (btn) {
+          btn.addEventListener("click", function () { _viewCls = btn.getAttribute("data-fr-cls"); _renderDrilldown(); _openDrill(); });
         });
       }
-      function _renderStudentTable() {
+      function _renderDrilldown() {
         var rows = _frRows(_fl).filter(function (r) { return r.className === _viewCls; });
-        _titleEl.textContent = "Students \u2014 " + _viewCls;
-        _titleSubEl.textContent = "Student-level fee details for the selected class.";
-        _backEl.style.display = "";
-        _classTblEl.style.display = "none"; _stuTableEl.style.display = "";
-        _thEl.innerHTML = '<tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Class</th><th>Fee Month</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Last Payment</th></tr>';
-        if (rows.length === 0) { _tbEl.innerHTML = ""; _emptyEl.style.display = ""; return; }
-        _emptyEl.style.display = "none";
-        _tbEl.innerHTML = rows.map(function (r) {
+        _drillTitle.textContent = _viewCls;
+        _drillSub.textContent = rows.length + " student record" + (rows.length !== 1 ? "s" : "") + " found";
+        if (rows.length === 0) { _drillBody.innerHTML = '<div class="fr-drill__empty"><i class="fas fa-inbox"></i><p>No fee records found for this class.</p></div>'; return; }
+        var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="fr-stbl"><thead><tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Class</th><th>Fee Month</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Last Payment</th></tr></thead><tbody>';
+        rows.forEach(function (r) {
           var sc = r.status === "paid" && r.remaining === 0 ? "fr-status--paid" : (r.deposit > 0 && r.remaining > 0 ? "fr-status--partial" : "fr-status--unpaid");
           var st = r.status === "paid" && r.remaining === 0 ? "Paid" : (r.deposit > 0 && r.remaining > 0 ? "Partial" : "Unpaid");
-          return '<tr><td>' + escapeHtml(r.rollNo) + '</td><td>' + escapeHtml(r.studentName) + '</td><td>' + escapeHtml(r.fatherName) + '</td><td>' + escapeHtml(r.className) + '</td><td>' + escapeHtml(r.feeMonth) + '</td><td>' + _fc(r.totalAmount) + '</td><td>' + _fc(r.deposit) + '</td><td>' + _fc(r.remaining) + '</td><td><span class="fr-status ' + sc + '">' + st + '</span></td><td>' + escapeHtml(r.paymentDate || r.date || "-") + '</td></tr>';
-        }).join("");
+          html += '<tr><td>' + escapeHtml(r.rollNo) + '</td><td>' + escapeHtml(r.studentName) + '</td><td>' + escapeHtml(r.fatherName) + '</td><td>' + escapeHtml(r.className) + '</td><td>' + escapeHtml(r.feeMonth) + '</td><td>' + _fc(r.totalAmount) + '</td><td>' + _fc(r.deposit) + '</td><td>' + _fc(r.remaining) + '</td><td><span class="fr-status ' + sc + '">' + st + '</span></td><td>' + escapeHtml(r.paymentDate || r.date || "-") + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+        _drillBody.innerHTML = html;
       }
       function _renderSummary() {
         var rows = _frRows(_fl); var cs = _frCls(rows); var a = _frAll(cs);
@@ -9082,13 +9083,16 @@ ${allContent}
           '<div class="fr-summary__item"><span class="fr-summary__label">Partially Paid</span><span class="fr-summary__value fr-summary__value--amber">' + a.parc + '</span></div>' +
           '<div class="fr-summary__item"><span class="fr-summary__label">Not Paid</span><span class="fr-summary__value fr-summary__value--red">' + a.uc + '</span></div>';
       }
-      function _renderAll() { _renderStats(); _renderFilterSummary(); if (_view === "table") { _renderClassTable(); _renderSummary(); } else { _summaryEl.style.display = "none"; _renderStudentTable(); } }
-      safeOn(_backEl, "click", function () { _view = "table"; _renderAll(); });
+      function _renderAll() { _renderStats(); _renderFilterSummary(); _renderClassCards(); _renderSummary(); }
+      safeOn(_e("frDrillOverlay"), "click", _closeDrill);
+      safeOn(_e("frDrillBack"), "click", _closeDrill);
+      safeOn(_e("frDrillClose"), "click", _closeDrill);
+      safeOn(_e("frFilterToggle"), "click", function () { _filtersGrid.classList.toggle("fr-filters__grid--collapsed"); _filterChevron.classList.toggle("fr-chevron--open"); });
       safeOn(_e("frApplyBtn"), "click", _doApply);
       safeOn(_e("frClearBtn"), "click", function () {
         _classEl.value = "all"; _sectEl.innerHTML = '<option value="all">All Sections</option>'; _stuStatEl.value = "all"; _feeTypeEl.value = "all"; _payStatEl.value = "all"; _monthEl.value = "all-time"; _fromEl.value = ""; _toEl.value = ""; _searchEl.value = "";
         _fl = { search: "", className: "all", section: "all", status: "all", month: "all-time", feeType: "all", studentStatus: "all", fromDate: "", toDate: "" };
-        _view = "table"; _renderAll();
+        _view = "cards"; _closeDrill(); _renderAll();
       });
       safeOn(_e("frEmptyClear"), "click", function () { _e("frClearBtn").click(); });
       safeOn(_e("frRefreshBtn"), "click", function () { refreshDatabase(); router("fees-report"); });
