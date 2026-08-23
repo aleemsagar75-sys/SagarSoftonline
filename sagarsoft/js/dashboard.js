@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -8968,9 +8968,9 @@ ${allContent}
         '</div><div class="fr-filters__actions"><button class="fr-btn fr-btn--p" id="frApplyBtn" type="button"><i class="fas fa-check"></i> Apply Filters</button></div></div>' +
         '<div class="fr-filtersummary" id="frFilterSummary"></div>' +
         '<div id="frContent"><div class="fr-thead"><h3 id="frTblTitle" class="fr-thead__title">Class-wise Fee Overview</h3><button class="fr-btn fr-btn--o fr-btn--s" id="frBackBtn" type="button" style="display:none"><i class="fas fa-arrow-left"></i> Back to Overview</button></div>' +
-        '<div id="frClassCards" class="fr-cards"></div>' +
+        '<div id="frLoading" class="fr-loading"><div class="fr-loading__spinner"></div><div class="fr-loading__text">Loading fees data...</div></div>' + '<div id="frClassCards" class="fr-cards"></div>' +
         '<div id="frStudentTable" class="fr-student-table" style="display:none"><div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><table class="fr-tbl" id="frTbl"><thead id="frTH"></thead><tbody id="frTB"></tbody></table></div></div>' +
-        '<div class="fr-empty" id="frEmpty" style="display:none"><div class="fr-empty__icon"><i class="fas fa-receipt"></i></div><h4 class="fr-empty__title">No Fee Records Found</h4><p class="fr-empty__desc">There are no fee records matching your current filters.</p><button class="fr-btn fr-btn--p" id="frEmptyClear" type="button"><i class="fas fa-times"></i> Clear Filters</button></div></div>' +
+        '<div id="frSummary" class="fr-summary" style="display:none"></div>' + '<div class="fr-empty" id="frEmpty" style="display:none"><div class="fr-empty__icon"><i class="fas fa-receipt"></i></div><h4 class="fr-empty__title">No Fee Records Found</h4><p class="fr-empty__desc">There are no fee records matching your current filters.</p><button class="fr-btn fr-btn--p" id="frEmptyClear" type="button"><i class="fas fa-times"></i> Clear Filters</button></div></div>' +
         '<div class="fr-qactions"><h4 class="fr-qactions__title">Quick Actions</h4><div class="fr-qactions__grid">' +
         '<button class="fr-qa" data-filter-status="unpaid" type="button"><i class="fas fa-exclamation-triangle"></i> Outstanding Fees</button>' +
         '<button class="fr-qa" data-filter-status="paid" type="button"><i class="fas fa-check-circle"></i> Paid Fees</button>' +
@@ -8980,7 +8980,7 @@ ${allContent}
       if (moduleGuideHeader) moduleGuideHeader.style.display = "none";
       moduleGuide.innerHTML = "";
       var _e = function (id) { return document.getElementById(id); };
-      var _statsEl = _e("frStats"), _classEl = _e("frClassF"), _sectEl = _e("frSectionF"), _stuStatEl = _e("frStuStatF"), _feeTypeEl = _e("frFeeTypeF"), _payStatEl = _e("frPayStatF"), _monthEl = _e("frMonthF"), _fromEl = _e("frFromD"), _toEl = _e("frToD"), _searchEl = _e("frSearchI"), _searchDD = _e("frSearchDD"), _thEl = _e("frTH"), _tbEl = _e("frTB"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _backEl = _e("frBackBtn"), _cardsEl = _e("frClassCards"), _stuTableEl = _e("frStudentTable"), _summaryEl = _e("frFilterSummary");
+      var _loadingEl = _e("frLoading"), _summaryEl = _e("frSummary"), _statsEl = _e("frStats"), _classEl = _e("frClassF"), _sectEl = _e("frSectionF"), _stuStatEl = _e("frStuStatF"), _feeTypeEl = _e("frFeeTypeF"), _payStatEl = _e("frPayStatF"), _monthEl = _e("frMonthF"), _fromEl = _e("frFromD"), _toEl = _e("frToD"), _searchEl = _e("frSearchI"), _searchDD = _e("frSearchDD"), _thEl = _e("frTH"), _tbEl = _e("frTB"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _backEl = _e("frBackBtn"), _cardsEl = _e("frClassCards"), _stuTableEl = _e("frStudentTable"), _summaryEl = _e("frFilterSummary");
       initializeStudentProfessionalSearch("frSearchI", "frSearchDD", null, function (st) { _searchEl.value = st.name || ""; _doApply(); });
       _classEl.addEventListener("change", function () { var secs = _frSecs(_classEl.value === "all" ? "" : _classEl.value); _sectEl.innerHTML = '<option value="all">All Sections</option>' + secs.map(function (s) { return '<option value="' + escapeAttr(s) + '">' + escapeHtml(s) + '</option>'; }).join(""); });
       function _readFl() { _fl.className = _classEl.value; _fl.section = _sectEl.value; _fl.studentStatus = _stuStatEl.value; _fl.feeType = _feeTypeEl.value; _fl.status = _payStatEl.value; _fl.month = _monthEl.value; _fl.fromDate = _fromEl.value; _fl.toDate = _toEl.value; _fl.search = _searchEl.value.trim(); }
@@ -9059,13 +9059,13 @@ ${allContent}
           return '<tr><td>' + escapeHtml(r.rollNo) + '</td><td>' + escapeHtml(r.studentName) + '</td><td>' + escapeHtml(r.fatherName) + '</td><td>' + escapeHtml(r.className) + '</td><td>' + escapeHtml(r.feeMonth) + '</td><td>' + _fc(r.totalAmount) + '</td><td>' + _fc(r.deposit) + '</td><td>' + _fc(r.remaining) + '</td><td><span class="fr-status ' + sc + '">' + st + '</span></td><td>' + escapeHtml(r.paymentDate || r.date || "-") + '</td></tr>';
         }).join("");
       }
-      function _renderAll() { _renderStats(); _renderFilterSummary(); if (_view === "cards") _renderClassCards(); else _renderStudentTable(); }
+      function _renderSummary() { var rows = _frRows(_fl); var cs = _frCls(rows); var a = _frAll(cs); if (a.ts === 0) { _summaryEl.style.display = "none"; return; } var pct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0; _summaryEl.style.display = ""; _summaryEl.innerHTML = '<div class="fr-summary__item"><span class="fr-summary__label">Total Students</span><span class="fr-summary__value">' + a.ts + '</span></div>' + '<div class="fr-summary__item"><span class="fr-summary__label">Total Payable</span><span class="fr-summary__value">' + _fc(a.tp) + '</span></div>' + '<div class="fr-summary__item"><span class="fr-summary__label">Total Collected</span><span class="fr-summary__value fr-summary__value--green">' + _fc(a.tc) + '</span></div>' + '<div class="fr-summary__item"><span class="fr-summary__label">Outstanding</span><span class="fr-summary__value fr-summary__value--red">' + _fc(a.to) + '</span></div>' + '<div class="fr-summary__item"><span class="fr-summary__label">Collection Rate</span><span class="fr-summary__value">' + pct + '%</span></div>' + '<div class="fr-summary__item"><span class="fr-summary__label">Paid in Full</span><span class="fr-summary__value fr-summary__value--green">' + a.pc + '</span></div>' + '<div class="fr-summary__item"><span class="fr-summary__label">Partially Paid</span><span class="fr-summary__value fr-summary__value--amber">' + a.parc + '</span></div>' + '<div class="fr-summary__item"><span class="fr-summary__label">Not Paid</span><span class="fr-summary__value fr-summary__value--red">' + a.uc + '</span></div>'; }function _renderAll() { _loadingEl.style.display = "none"; _renderStats(); _renderFilterSummary(); if (_view === "cards") { _renderClassCards(); _renderSummary(); } else { _summaryEl.style.display = "none"; _renderStudentTable(); } }
       safeOn(_backEl, "click", function () { _view = "cards"; _renderAll(); });
       safeOn(_e("frApplyBtn"), "click", _doApply);
       safeOn(_e("frClearBtn"), "click", function () {
         _classEl.value = "all"; _sectEl.innerHTML = '<option value="all">All Sections</option>'; _stuStatEl.value = "all"; _feeTypeEl.value = "all"; _payStatEl.value = "all"; _monthEl.value = "all-time"; _fromEl.value = ""; _toEl.value = ""; _searchEl.value = "";
         _fl = { search: "", className: "all", section: "all", status: "all", month: "all-time", feeType: "all", studentStatus: "all", fromDate: "", toDate: "" };
-        _view = "cards"; _renderAll();
+        _loadingEl.style.display = ""; _view = "cards"; _renderAll();
       });
       safeOn(_e("frEmptyClear"), "click", function () { _e("frClearBtn").click(); });
       safeOn(_e("frRefreshBtn"), "click", function () { refreshDatabase(); router("fees-report"); });
