@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -8910,473 +8910,182 @@ ${allContent}
       return;
     }
 
-    if (route === "fees-report") {
-      // Auto-clean orphan fee records
-      var _frStudentIdSet = new Set((database.students || []).map(function (s) { return String(s.id || "").trim(); }).filter(Boolean));
-      var _frOrphanFees = (database.fees || []).filter(function (f) { return !_frStudentIdSet.has(String(f.studentId || "").trim()); });
-      database.fees = (database.fees || []).filter(function (f) { return _frStudentIdSet.has(String(f.studentId || "").trim()); });
-      if (_frOrphanFees.length > 0) {
-        saveDatabase("Cleaning up fee records...", _frOrphanFees.map(function(r) { return { table: "fees", record: r, operation: "delete" }; }));
-        refreshDatabase();
+        if (route === "fees-report") {
+      try {
+      function _frBuildClassList() {
+        var classSet = new Set();
+        (database.classes || []).forEach(function (c) { if (c.name) classSet.add(c.name); });
+        (database.students || []).forEach(function (s) { if (s.className) classSet.add(s.className); });
+        (database.fees || []).forEach(function (f) { if (f.className) classSet.add(f.className); });
+        return Array.from(classSet).sort();
       }
-
-      // Extract unique sections from class names (format: "ClassName | Section")
-      function _frGetSections(className) {
-        var sectionSet = new Set();
-        (database.students || []).forEach(function (s) {
-          if (className && s.className !== className) return;
-          var parts = String(s.className || "").split("|");
-          if (parts.length > 1) { sectionSet.add(parts[1].trim()); }
-        });
-        return Array.from(sectionSet).sort();
-      }
-
-      // Get unique fee types from particulars across all fee records
-      function _frGetFeeTypes() {
-        var types = new Set();
-        (database.fees || []).forEach(function (f) {
-          if (Array.isArray(f.particulars)) {
-            f.particulars.forEach(function (p) { if (p.label) types.add(p.label); });
-          }
-        });
-        return Array.from(types).sort();
-      }
-
-      // Build fee rows with student data
-      function _frBuildRows(filters) {
-        var search = (filters.search || "").toLowerCase();
-        var selectedClass = filters.className || "all";
-        var selectedSection = filters.section || "all";
-        var selectedStatus = filters.status || "all";
-        var selectedMonth = filters.month || "all-time";
-        var selectedDate = filters.date || "";
-        var selectedFeeType = filters.feeType || "all";
-        var studentStatusFilter = filters.studentStatus || "all";
-        var fromDate = filters.fromDate || "";
-      var toDate = filters.toDate || "";
-
-        return (database.fees || []).map(function (feeItem) {
-          var student = (database.students || []).find(function (s) { return s.id === feeItem.studentId; }) || {};
-          var rawClass = feeItem.className || student.className || "-";
-          var parts = String(rawClass).split("|");
-          var baseClass = parts[0].trim();
-          var section = parts.length > 1 ? parts[1].trim() : "";
-          return {
-            id: feeItem.id,
-            studentId: feeItem.studentId || "",
-            rollNo: student.admissionNo || "-",
-            studentName: student.name || "-",
-            fatherName: student.fatherName || "-",
-            className: rawClass,
-            baseClass: baseClass,
-            section: section,
-            feeMonth: feeItem.feeMonth || feeItem.month || "-",
-            status: feeItem.status || "unpaid",
-            totalAmount: Number(feeItem.totalAmount || feeItem.amount || 0),
-            deposit: Number(feeItem.deposit || 0),
-            remaining: Number(feeItem.remaining || 0),
-            date: feeItem.date || "",
-            paymentDate: feeItem.paymentDate || "",
-            particulars: feeItem.particulars || [],
-            studentStatus: student.status || "active",
-            hasLinkedStudent: Boolean(student.id)
-          };
-        }).filter(function (row) {
-          if (!row.hasLinkedStudent) return false;
-          if (selectedClass !== "all" && row.baseClass !== selectedClass) return false;
-          if (selectedSection !== "all" && row.section !== selectedSection) return false;
-          if (selectedStatus !== "all" && row.status !== selectedStatus) return false;
-          if (studentStatusFilter !== "all" && row.studentStatus !== studentStatusFilter) return false;
-          if (selectedMonth !== "all-time" && row.feeMonth !== selectedMonth) return false;
-          if (selectedDate && row.date !== selectedDate && row.paymentDate !== selectedDate) return false;
-          if (fromDate && row.feeMonth < fromDate) return false;
-          if (toDate && row.feeMonth > toDate) return false;
-          if (selectedFeeType !== "all") {
-            var hasType = row.particulars.some(function (p) { return p.label === selectedFeeType && Number(p.amount || 0) > 0; });
-            if (!hasType) return false;
-          }
-          if (search) {
-            var matchName = String(row.studentName || "").toLowerCase().includes(search);
-            var matchRoll = String(row.rollNo || "").toLowerCase().includes(search);
-            var matchFather = String(row.fatherName || "").toLowerCase().includes(search);
-            if (!matchName && !matchRoll && !matchFather) return false;
-          }
+      function _frRows(searchTerm) {
+        var sr = (searchTerm || "").toLowerCase();
+        return (database.fees || []).map(function (fi) {
+          var st = (database.students || []).find(function (s) { return s.id === fi.studentId; }) || {};
+          var rc = fi.className || st.className || "-"; var pp = String(rc).split("|");
+          var stName = st.name || "-"; var fName = st.fatherName || "-"; var rollNo = st.admissionNo || "-"; var stStatus = st.status || "active";
+          if (!st.id && fi.studentId) { stName = fi.studentName || "-"; rollNo = fi.studentRollNo || "-"; }
+          return { id: fi.id, studentId: fi.studentId || "", rollNo: rollNo, studentName: stName, fatherName: fName, className: rc, baseClass: pp[0].trim(), section: pp.length > 1 ? pp[1].trim() : "", feeMonth: fi.feeMonth || fi.month || "-", status: fi.status || "unpaid", totalAmount: Number(fi.totalAmount || fi.amount || 0), deposit: Number(fi.deposit || 0), remaining: Number(fi.remaining || 0), date: fi.date || "", paymentDate: fi.paymentDate || "", particulars: fi.particulars || [], studentStatus: stStatus, hasStudent: Boolean(st.id) };
+        }).filter(function (r) {
+          if (sr) { if (!String(r.studentName).toLowerCase().includes(sr) && !String(r.rollNo).toLowerCase().includes(sr) && !String(r.baseClass).toLowerCase().includes(sr) && !String(r.section).toLowerCase().includes(sr)) return false; }
           return true;
         });
       }
-
-      // Aggregate rows by class for class-wise summary
-      function _frClassSummary(rows) {
-        var map = {};
-        rows.forEach(function (row) {
-          var key = row.className;
-          if (!map[key]) {
-            map[key] = { className: key, baseClass: row.baseClass, section: row.section, students: new Set(), totalPayable: 0, totalCollected: 0, totalOutstanding: 0, paidCount: 0, partialCount: 0, unpaidCount: 0 };
-          }
-          map[key].students.add(row.studentId);
-          map[key].totalPayable += row.totalAmount;
-          map[key].totalCollected += row.deposit;
-          map[key].totalOutstanding += row.remaining;
-          if (row.status === "paid" && row.remaining === 0) { map[key].paidCount++; }
-          else if (row.deposit > 0 && row.remaining > 0) { map[key].partialCount++; }
-          else { map[key].unpaidCount++; }
-        });
-        return Object.values(map).sort(function (a, b) { return a.className.localeCompare(b.className); });
+      function _frCls(rows) {
+        var m = {}; rows.forEach(function (r) {
+          var k = r.className; if (!m[k]) m[k] = { className: k, baseClass: r.baseClass, section: r.section, students: new Set(), tp: 0, tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
+          m[k].students.add(r.studentId || r.id); m[k].tp += r.totalAmount; m[k].tc += r.deposit; m[k].to += r.remaining;
+          var _cs = (r.status === "paid" && r.remaining === 0) ? "paid" : (r.deposit > 0 && r.remaining > 0 ? "partial" : "unpaid");
+          if (_cs === "paid") m[k].pc++; else if (_cs === "partial") m[k].parc++; else m[k].uc++;
+        }); return Object.values(m).sort(function (a, b) { return a.className.localeCompare(b.className); });
       }
-
-      // Aggregate ALL classes summary
-      function _frAllSummary(classSummaries) {
-        var result = { totalStudents: 0, totalPayable: 0, totalCollected: 0, totalOutstanding: 0, paidCount: 0, partialCount: 0, unpaidCount: 0 };
-        classSummaries.forEach(function (cs) {
-          result.totalStudents += cs.students.size;
-          result.totalPayable += cs.totalPayable;
-          result.totalCollected += cs.totalCollected;
-          result.totalOutstanding += cs.totalOutstanding;
-          result.paidCount += cs.paidCount;
-          result.partialCount += cs.partialCount;
-          result.unpaidCount += cs.unpaidCount;
-        });
-        return result;
-      }
-
-      // Current filter state
-      var _frFilters = { search: "", className: "all", section: "all", status: "all", month: "all-time", date: "", feeType: "all", studentStatus: "all", fromDate: "", toDate: "" };
-      var _frActiveView = "summary"; // "summary" or "students"
-      var _frViewStudentsClass = "";
-
-      // Build markup
-      var _frMonthValues = Array.from(new Set((database.fees || []).map(function (f) { return f.feeMonth || f.month; }).filter(Boolean))).sort();
-      var _frClassOpts = classOptions.map(function (cn) { return '<option value="' + escapeAttr(cn) + '">' + escapeHtml(cn) + '</option>'; }).join("");
-      var _frMonthOpts = _frMonthValues.map(function (m) { return '<option value="' + escapeAttr(m) + '">' + escapeHtml(m) + '</option>'; }).join("");
-      var _frFeeTypeOpts = _frGetFeeTypes().map(function (t) { return '<option value="' + escapeAttr(t) + '">' + escapeHtml(t) + '</option>'; }).join("");
-
-      moduleSummary.innerHTML = `
-        <article class="fr-container">
-          <div class="fr-header">
-            <div class="fr-header__left">
-              <h2 class="fr-header__title">Fees Report</h2>
-              <p class="fr-header__subtitle">View and analyze fee status of students by class</p>
-            </div>
-            <div class="fr-header__actions">
-              <button class="fr-btn fr-btn--outline" id="frExportBtn" type="button"><i class="fas fa-download" style="margin-right:4px;"></i> Export</button>
-              <button class="fr-btn fr-btn--outline" id="frPrintBtn" type="button"><i class="fas fa-print" style="margin-right:4px;"></i> Print</button>
-              <button class="fr-btn fr-btn--primary" id="frRefreshBtn" type="button"><i class="fas fa-sync-alt" style="margin-right:4px;"></i> Refresh</button>
-            </div>
-          </div>
-
-          <div class="fr-summary-cards" id="frSummaryCards"></div>
-
-          <div class="fr-filters">
-            <div class="fr-filters__title"><i class="fas fa-filter"></i> Report Filters</div>
-            <div class="fr-filters__grid">
-              <div class="fr-filter-group">
-                <label class="fr-filter-label">Class</label>
-                <select id="frClassFilter" class="fr-filter-select"><option value="all">All Classes</option>${_frClassOpts}</select>
-              </div>
-              <div class="fr-filter-group">
-                <label class="fr-filter-label">Section</label>
-                <select id="frSectionFilter" class="fr-filter-select"><option value="all">All Sections</option></select>
-              </div>
-              <div class="fr-filter-group">
-                <label class="fr-filter-label">Student Status</label>
-                <select id="frStudentStatusFilter" class="fr-filter-select"><option value="all">All Students</option><option value="active">Active Students</option><option value="inactive">Inactive Students</option></select>
-              </div>
-              <div class="fr-filter-group">
-                <label class="fr-filter-label">Fee Type</label>
-                <select id="frFeeTypeFilter" class="fr-filter-select"><option value="all">All Fee Types</option>${_frFeeTypeOpts}</select>
-              </div>
-              <div class="fr-filter-group">
-                <label class="fr-filter-label">Payment Status</label>
-                <select id="frStatusFilter" class="fr-filter-select"><option value="all">All Status</option><option value="paid">Paid</option><option value="unpaid">Unpaid / Due</option></select>
-              </div>
-              <div class="fr-filter-group">
-                <label class="fr-filter-label">Fee Month</label>
-                <select id="frMonthFilter" class="fr-filter-select"><option value="all-time">All Time</option>${_frMonthOpts}</select>
-              </div>
-              <div class="fr-filter-group">
-                <label class="fr-filter-label">From Date</label>
-                <input type="date" id="frFromDate" class="fr-filter-input">
-              </div>
-              <div class="fr-filter-group">
-                <label class="fr-filter-label">To Date</label>
-                <input type="date" id="frToDate" class="fr-filter-input">
-              </div>
-              <div class="fr-filter-group fr-filter-group--wide">
-                <label class="fr-filter-label">Search</label>
-                <div style="position:relative;">
-                  <input type="search" id="frSearchInput" class="fr-filter-input" placeholder="Student Name, Roll No., or Father Name" aria-label="Search fees report">
-                  <div id="frSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div>
-                </div>
-              </div>
-            </div>
-            <div class="fr-filters__actions">
-              <button class="fr-btn fr-btn--primary" id="frApplyFilters" type="button"><i class="fas fa-check" style="margin-right:4px;"></i> Apply Filters</button>
-              <button class="fr-btn fr-btn--ghost" id="frClearFilters" type="button"><i class="fas fa-times" style="margin-right:4px;"></i> Clear Filters</button>
-            </div>
-          </div>
-
-          <div id="frReportContent">
-            <div class="fr-table-header">
-              <h3 class="fr-table-title" id="frTableTitle">Class-wise Fee Report Details</h3>
-              <button class="fr-btn fr-btn--outline fr-btn--sm" id="frBackToSummary" type="button" style="display:none;"><i class="fas fa-arrow-left" style="margin-right:4px;"></i> Back to Summary</button>
-            </div>
-            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-              <table class="fr-table" id="frReportTable">
-                <thead id="frTableHead"></thead>
-                <tbody id="frTableBody"></tbody>
-              </table>
-            </div>
-            <p class="empty-state" id="frEmptyState" hidden><i class="fas fa-receipt" style="font-size:2rem;color:#c5cdd8;margin-bottom:0.5rem;"></i><br>No fee records found.<br><small>Try changing your filters or date range.</small></p>
-          </div>
-
-          <div class="fr-quick-actions">
-            <h4 class="fr-quick-actions__title">Quick Actions</h4>
-            <div class="fr-quick-actions__grid">
-              <button class="fr-quick-action" data-route="fees-report" type="button"><i class="fas fa-file-invoice-dollar"></i> Fee Collection Report</button>
-              <button class="fr-quick-action" data-route="fees-report" type="button"><i class="fas fa-exclamation-triangle"></i> Outstanding Fee Report</button>
-              <button class="fr-quick-action" data-route="fees-report" type="button"><i class="fas fa-check-circle"></i> Paid Fee Report</button>
-              <button class="fr-quick-action" data-route="fees-report" type="button"><i class="fas fa-bell"></i> Due Fee Reminder</button>
-              <button class="fr-quick-action" data-route="fees-report" type="button"><i class="fas fa-percentage"></i> Concession Report</button>
-              <button class="fr-quick-action" id="frPrintReceiptsBtn" type="button"><i class="fas fa-print"></i> Print Fee Receipts</button>
-            </div>
-          </div>
-
-          <div class="fr-footer-actions">
-            <button class="secondary-button" id="clearAllFeesDataBtn" style="background:#fff2f2;color:#d64b4b;border-color:#ffd6d6;padding:6px 12px;font-size:0.78rem;" type="button">Clear All Fees Data</button>
-          </div>
-        </article>
-      `;
-
-      moduleGuide.innerHTML = '<article><strong>Report Info</strong><p>Class-wise fee analysis with summary cards, filters, drill-down, and export.</p></article>';
-      if (moduleGuideHeader) { moduleGuideHeader.style.display = "none"; }
-
-      // Element references
-      var _frSummaryCardsEl = document.getElementById("frSummaryCards");
-      var _frClassFilterEl = document.getElementById("frClassFilter");
-      var _frSectionFilterEl = document.getElementById("frSectionFilter");
-      var _frStudentStatusFilterEl = document.getElementById("frStudentStatusFilter");
-      var _frFeeTypeFilterEl = document.getElementById("frFeeTypeFilter");
-      var _frStatusFilterEl = document.getElementById("frStatusFilter");
-      var _frMonthFilterEl = document.getElementById("frMonthFilter");
-      var _frFromDateEl = document.getElementById("frFromDate");
-      var _frToDateEl = document.getElementById("frToDate");
-      var _frSearchInputEl = document.getElementById("frSearchInput");
-      var _frSearchDropdownEl = document.getElementById("frSearchDropdown");
-      var _frTableHeadEl = document.getElementById("frTableHead");
-      var _frTableBodyEl = document.getElementById("frTableBody");
-      var _frEmptyStateEl = document.getElementById("frEmptyState");
-      var _frTableTitleEl = document.getElementById("frTableTitle");
-      var _frBackToSummaryEl = document.getElementById("frBackToSummary");
-
-      // Professional search
-      initializeStudentProfessionalSearch("frSearchInput", "frSearchDropdown", null, function (student) {
-        _frSearchInputEl.value = student.name || "";
-        _frApplyFilters();
-      });
-
-      // Update sections when class changes
-      _frClassFilterEl.addEventListener("change", function () {
-        var cls = _frClassFilterEl.value;
-        var sections = _frGetSections(cls === "all" ? "" : cls);
-        _frSectionFilterEl.innerHTML = '<option value="all">All Sections</option>' + sections.map(function (s) { return '<option value="' + escapeAttr(s) + '">' + escapeHtml(s) + '</option>'; }).join("");
-      });
-
-      function _frReadFilters() {
-        _frFilters.className = _frClassFilterEl.value;
-        _frFilters.section = _frSectionFilterEl.value;
-        _frFilters.studentStatus = _frStudentStatusFilterEl.value;
-        _frFilters.feeType = _frFeeTypeFilterEl.value;
-        _frFilters.status = _frStatusFilterEl.value;
-        _frFilters.month = _frMonthFilterEl.value;
-        _frFilters.fromDate = _frFromDateEl.value;
-        _frFilters.toDate = _frToDateEl.value;
-        _frFilters.search = _frSearchInputEl.value.trim();
-      }
-
-      function _frApplyFilters() {
-        _frReadFilters();
-        _frActiveView = "summary";
-        _frRenderSummary();
-        _frRenderTable();
-      }
-
-      function _frRenderSummary() {
-        var rows = _frBuildRows(_frFilters);
-        var classSummaries = _frClassSummary(rows);
-        var allSum = _frAllSummary(classSummaries);
-        var pct = allSum.totalPayable > 0 ? Math.round((allSum.totalCollected / allSum.totalPayable) * 100) : 0;
-
-        // All Classes card
-        var html = '<div class="fr-card fr-card--all">' +
-          '<div class="fr-card__header"><span class="fr-card__icon"><i class="fas fa-layer-group"></i></span><h4 class="fr-card__name">All Classes</h4></div>' +
-          '<div class="fr-card__stats">' +
-          '<div class="fr-card__stat"><span class="fr-card__stat-label">Students</span><span class="fr-card__stat-value">' + allSum.totalStudents + '</span></div>' +
-          '<div class="fr-card__stat"><span class="fr-card__stat-label">Total Payable</span><span class="fr-card__stat-value fr-card__stat-value--currency">' + _frFormatCurrency(allSum.totalPayable) + '</span></div>' +
-          '<div class="fr-card__stat"><span class="fr-card__stat-label">Collected</span><span class="fr-card__stat-value fr-card__stat-value--green">' + _frFormatCurrency(allSum.totalCollected) + '</span></div>' +
-          '<div class="fr-card__stat"><span class="fr-card__stat-label">Outstanding</span><span class="fr-card__stat-value fr-card__stat-value--red">' + _frFormatCurrency(allSum.totalOutstanding) + '</span></div>' +
-          '</div>' +
-          '<div class="fr-card__footer">' +
-          '<div class="fr-card__progress"><div class="fr-card__progress-bar"><div class="fr-card__progress-fill" style="width:' + pct + '%;"></div></div><span class="fr-card__progress-text">' + pct + '%</span></div>' +
-          '<div class="fr-card__badges"><span class="fr-badge fr-badge--green">' + allSum.paidCount + ' Paid</span> <span class="fr-badge fr-badge--orange">' + allSum.partialCount + ' Partial</span> <span class="fr-badge fr-badge--red">' + allSum.unpaidCount + ' Unpaid</span></div>' +
-          '</div></div>';
-
-        // Per-class cards
-        classSummaries.forEach(function (cs) {
-          var csPct = cs.totalPayable > 0 ? Math.round((cs.totalCollected / cs.totalPayable) * 100) : 0;
-          html += '<div class="fr-card" data-fr-class="' + escapeAttr(cs.className) + '">' +
-            '<div class="fr-card__header"><span class="fr-card__icon"><i class="fas fa-graduation-cap"></i></span><h4 class="fr-card__name">' + escapeHtml(cs.className) + '</h4></div>' +
-            '<div class="fr-card__stats">' +
-            '<div class="fr-card__stat"><span class="fr-card__stat-label">Students</span><span class="fr-card__stat-value">' + cs.students.size + '</span></div>' +
-            '<div class="fr-card__stat"><span class="fr-card__stat-label">Total Payable</span><span class="fr-card__stat-value fr-card__stat-value--currency">' + _frFormatCurrency(cs.totalPayable) + '</span></div>' +
-            '<div class="fr-card__stat"><span class="fr-card__stat-label">Collected</span><span class="fr-card__stat-value fr-card__stat-value--green">' + _frFormatCurrency(cs.totalCollected) + '</span></div>' +
-            '<div class="fr-card__stat"><span class="fr-card__stat-label">Outstanding</span><span class="fr-card__stat-value fr-card__stat-value--red">' + _frFormatCurrency(cs.totalOutstanding) + '</span></div>' +
-            '</div>' +
-            '<div class="fr-card__footer">' +
-            '<div class="fr-card__progress"><div class="fr-card__progress-bar"><div class="fr-card__progress-fill" style="width:' + csPct + '%;"></div></div><span class="fr-card__progress-text">' + csPct + '%</span></div>' +
-            '<div class="fr-card__badges"><span class="fr-badge fr-badge--green">' + cs.paidCount + ' Paid</span> <span class="fr-badge fr-badge--orange">' + cs.partialCount + ' Partial</span> <span class="fr-badge fr-badge--red">' + cs.unpaidCount + ' Unpaid</span></div>' +
-            '</div></div>';
-        });
-
-        _frSummaryCardsEl.innerHTML = html;
-
-        // Click on class card to drill down
-        _frSummaryCardsEl.querySelectorAll(".fr-card[data-fr-class]").forEach(function (card) {
-          card.addEventListener("click", function () {
-            _frViewStudentsClass = card.getAttribute("data-fr-class");
-            _frActiveView = "students";
-            _frRenderTable();
-          });
-        });
-      }
-
-      function _frRenderTable() {
-        var rows = _frBuildRows(_frFilters);
-
-        if (_frActiveView === "students") {
-          // Student-level view for a specific class
-          var classRows = rows.filter(function (r) { return r.className === _frViewStudentsClass; });
-          _frTableTitleEl.textContent = "Students — " + _frViewStudentsClass;
-          _frBackToSummaryEl.style.display = "";
-          _frTableHeadEl.innerHTML = '<tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Class</th><th>Fee Month</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Last Payment</th></tr>';
-          if (classRows.length === 0) {
-            _frTableBodyEl.innerHTML = "";
-            _frEmptyStateEl.hidden = false;
-          } else {
-            _frEmptyStateEl.hidden = true;
-            _frTableBodyEl.innerHTML = classRows.map(function (row) {
-              var statusCls = row.status === "paid" && row.remaining === 0 ? "fr-status--paid" : (row.deposit > 0 && row.remaining > 0 ? "fr-status--partial" : "fr-status--unpaid");
-              var statusText = row.status === "paid" && row.remaining === 0 ? "Paid" : (row.deposit > 0 && row.remaining > 0 ? "Partial" : "Unpaid");
-              var lastPay = row.paymentDate || row.date || "-";
-              return '<tr>' +
-                '<td>' + escapeHtml(row.rollNo) + '</td>' +
-                '<td>' + escapeHtml(row.studentName) + '</td>' +
-                '<td>' + escapeHtml(row.fatherName) + '</td>' +
-                '<td>' + escapeHtml(row.className) + '</td>' +
-                '<td>' + escapeHtml(row.feeMonth) + '</td>' +
-                '<td>' + _frFormatCurrency(row.totalAmount) + '</td>' +
-                '<td>' + _frFormatCurrency(row.deposit) + '</td>' +
-                '<td>' + _frFormatCurrency(row.remaining) + '</td>' +
-                '<td><span class="fr-status-badge ' + statusCls + '">' + statusText + '</span></td>' +
-                '<td>' + escapeHtml(lastPay) + '</td>' +
-                '</tr>';
-            }).join("");
-          }
-        } else {
-          // Class-wise summary table
-          var classSummaries = _frClassSummary(rows);
-          var allSum = _frAllSummary(classSummaries);
-          _frTableTitleEl.textContent = "Class-wise Fee Report Details";
-          _frBackToSummaryEl.style.display = "none";
-          _frTableHeadEl.innerHTML = '<tr><th>Class</th><th>Students</th><th>Total Payable</th><th>Total Collected</th><th>Outstanding</th><th>Collection %</th><th>Paid in Full</th><th>Partial Paid</th><th>Not Paid</th><th>Action</th></tr>';
-          if (classSummaries.length === 0) {
-            _frTableBodyEl.innerHTML = "";
-            _frEmptyStateEl.hidden = false;
-          } else {
-            _frEmptyStateEl.hidden = true;
-            var allPct = allSum.totalPayable > 0 ? Math.round((allSum.totalCollected / allSum.totalPayable) * 100) : 0;
-            // Totals row
-            var totalsHtml = '<tr class="fr-row--totals">' +
-              '<td><strong>All Classes</strong></td>' +
-              '<td><strong>' + allSum.totalStudents + '</strong></td>' +
-              '<td><strong>' + _frFormatCurrency(allSum.totalPayable) + '</strong></td>' +
-              '<td><strong>' + _frFormatCurrency(allSum.totalCollected) + '</strong></td>' +
-              '<td><strong>' + _frFormatCurrency(allSum.totalOutstanding) + '</strong></td>' +
-              '<td><span class="fr-pct-badge">' + allPct + '%</span></td>' +
-              '<td><span class="fr-badge fr-badge--green">' + allSum.paidCount + '</span></td>' +
-              '<td><span class="fr-badge fr-badge--orange">' + allSum.partialCount + '</span></td>' +
-              '<td><span class="fr-badge fr-badge--red">' + allSum.unpaidCount + '</span></td>' +
-              '<td></td></tr>';
-            var classHtml = classSummaries.map(function (cs) {
-              var csPct = cs.totalPayable > 0 ? Math.round((cs.totalCollected / cs.totalPayable) * 100) : 0;
-              return '<tr>' +
-                '<td>' + escapeHtml(cs.className) + '</td>' +
-                '<td>' + cs.students.size + '</td>' +
-                '<td>' + _frFormatCurrency(cs.totalPayable) + '</td>' +
-                '<td>' + _frFormatCurrency(cs.totalCollected) + '</td>' +
-                '<td>' + _frFormatCurrency(cs.totalOutstanding) + '</td>' +
-                '<td><span class="fr-pct-badge">' + csPct + '%</span></td>' +
-                '<td><span class="fr-badge fr-badge--green">' + cs.paidCount + '</span></td>' +
-                '<td><span class="fr-badge fr-badge--orange">' + cs.partialCount + '</span></td>' +
-                '<td><span class="fr-badge fr-badge--red">' + cs.unpaidCount + '</span></td>' +
-                '<td><button class="fr-btn fr-btn--link fr-view-students-btn" data-fr-view-class="' + escapeAttr(cs.className) + '" type="button">View Students</button></td>' +
-                '</tr>';
-            }).join("");
-            _frTableBodyEl.innerHTML = totalsHtml + classHtml;
-            _frTableBodyEl.querySelectorAll(".fr-view-students-btn").forEach(function (btn) {
-              btn.addEventListener("click", function () {
-                _frViewStudentsClass = btn.getAttribute("data-fr-view-class");
-                _frActiveView = "students";
-                _frRenderTable();
-              });
-            });
-          }
+      function _frAll(cs) { var r = { ts: 0, tp: 0, tc: 0, to: 0, pc: 0, parc: 0, uc: 0 }; cs.forEach(function (c) { r.ts += c.students.size; r.tp += c.tp; r.tc += c.tc; r.to += c.to; r.pc += c.pc; r.parc += c.parc; r.uc += c.uc; }); return r; }
+      function _fc(v) { return "PKR " + Number(v || 0).toLocaleString(); }
+      function _pctColor(p) { return p >= 75 ? "#16a34a" : p >= 40 ? "#d97706" : "#dc2626"; }
+      var _searchTerm = "";
+      var _viewCls = "";
+      var _classList = _frBuildClassList();
+      moduleSummary.innerHTML = '<article class="fr-container">' +
+        '<div class="fr-topbar"><div class="fr-topbar__left"><p class="fr-topbar__eyebrow">FEES MANAGEMENT</p><h2 class="fr-topbar__title">Fees Report</h2><p class="fr-topbar__subtitle">Class-wise overview of student fee status and collection.</p></div><div class="fr-topbar__actions"><button class="fr-btn fr-btn--o" id="frExportBtn" type="button"><i class="fas fa-download"></i> Export</button><button class="fr-btn fr-btn--o" id="frPrintBtn" type="button"><i class="fas fa-print"></i> Print</button><button class="fr-btn fr-btn--p" id="frRefreshBtn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div></div>' +
+        '<div class="fr-stats" id="frStats"></div>' +
+        '<div class="fr-thead"><div class="fr-thead__left"><h3 id="frTblTitle" class="fr-thead__title">Class-wise Fee Overview</h3><p id="frTblSub" class="fr-thead__sub">All classes with student count and fee collection status.</p></div><div class="fr-thead__right"><div class="fr-search-box"><i class="fas fa-search"></i><input type="search" id="frClassSearch" class="fr-search-input" placeholder="Search class..." aria-label="Search classes"></div></div></div>' +
+        '<div class="fr-cards" id="frClassCards"></div>' +
+        '<div class="fr-empty" id="frEmpty" style="display:none"><div class="fr-empty__icon"><i class="fas fa-school"></i></div><h4 class="fr-empty__title">No Classes Found</h4><p class="fr-empty__desc">Add classes and students to start tracking fees.</p></div>' +
+        '<div class="fr-insights" id="frInsights"></div>' +
+        '<div class="fr-qactions"><h4 class="fr-qactions__title">Quick Actions</h4><div class="fr-qa-grid">' +
+        '<a class="fr-qa" href="#fee-collection-report" onclick="event.preventDefault();router(\'fee-collection-report\')"><i class="fas fa-chart-bar"></i> Fee Collection Report</a>' +
+        '<a class="fr-qa" href="#collect-fees" onclick="event.preventDefault();router(\'collect-fees\')"><i class="fas fa-money-bill"></i> Collect Fees</a>' +
+        '<a class="fr-qa" href="#generate-fees-invoice" onclick="event.preventDefault();router(\'generate-fees-invoice\')"><i class="fas fa-file-invoice"></i> Generate Invoice</a>' +
+        '<a class="fr-qa" href="#fees-defaulters" onclick="event.preventDefault();router(\'fees-defaulters\')"><i class="fas fa-exclamation-triangle"></i> View Defaulters</a>' +
+        '<button class="fr-qa fr-qa--danger" id="clearAllFeesDataBtn" type="button"><i class="fas fa-trash"></i> Clear All Fees Data</button>' +
+        '</div></div>' +
+        '<div class="fr-drill-overlay" id="frDrillOverlay"></div>' +
+        '<div class="fr-drill" id="frDrill"><div class="fr-drill__header"><button class="fr-drill__back" id="frDrillBack" type="button"><i class="fas fa-arrow-left"></i></button><div style="flex:1;min-width:0"><h3 class="fr-drill__title" id="frDrillTitle">Students</h3><p class="fr-drill__subtitle" id="frDrillSub">Student-level fee details</p></div><button class="fr-drill__close" id="frDrillClose" type="button"><i class="fas fa-times"></i></button></div><div class="fr-drill__body" id="frDrillBody"></div></div>' +
+        '</article>';
+      if (moduleGuideHeader) moduleGuideHeader.style.display = "none";
+      moduleGuide.innerHTML = "";
+      var _e = function (id) { return document.getElementById(id); };
+      var _statsEl = _e("frStats"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _insightsEl = _e("frInsights"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _searchEl = _e("frClassSearch");
+      function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; }
+      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; }
+      function _renderStats() {
+        var rows = _frRows(""); var cs = _frCls(rows); var a = _frAll(cs);
+        var pct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
+        var classCount = _classList.length;
+        var stuCount = (database.students || []).length;
+        if (a.ts === 0 && classCount === 0) {
+          _statsEl.innerHTML = '<div class="fr-stat fr-stat--empty"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-info-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">No Data</div><div class="fr-stat__value" style="font-size:0.82rem;font-weight:600;color:#94a3b8;">Add classes and students to get started with fee tracking.</div></div></div>';
+          return;
         }
+        var dispTs = a.ts > 0 ? a.ts : stuCount;
+        _statsEl.innerHTML =
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-school"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Classes</div><div class="fr-stat__value">' + classCount + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-users"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Students</div><div class="fr-stat__value">' + dispTs + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-coins"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Payable</div><div class="fr-stat__value">' + _fc(a.tp) + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--green"><i class="fas fa-check-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Collected</div><div class="fr-stat__value fr-stat__value--green">' + _fc(a.tc) + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--red"><i class="fas fa-exclamation-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Outstanding</div><div class="fr-stat__value fr-stat__value--red">' + _fc(a.to) + '</div></div></div>';
       }
-
-      function _frFormatCurrency(val) {
-        return "PKR " + Number(val || 0).toLocaleString();
+      function _renderClassCards() {
+        var rows = _frRows(_searchTerm); var cs = _frCls(rows);
+        _titleEl.textContent = "Class-wise Fee Overview";
+        _titleSubEl.textContent = cs.length + " class" + (cs.length !== 1 ? "es" : "") + " with " + _frAll(cs).ts + " students";
+        if (cs.length === 0 && _classList.length === 0) { _cardsEl.innerHTML = ""; _emptyEl.style.display = ""; return; }
+        if (cs.length === 0 && _classList.length > 0) {
+          var emptyCards = _classList.map(function (clsName) {
+            var pp = String(clsName).split("|");
+            var baseName = pp[0].trim();
+            var secName = pp.length > 1 ? pp[1].trim() : "";
+            var stuCount = (database.students || []).filter(function (s) { return s.className === clsName; }).length;
+            return '<div class="fr-cc">' +
+              '<div class="fr-cc__head"><div><span class="fr-cc__name">' + escapeHtml(baseName) + '</span>' + (secName ? '<span class="fr-cc__sec">' + escapeHtml(secName) + '</span>' : '') + '</div><span class="fr-cc__students"><i class="fas fa-users"></i> ' + stuCount + ' Students</span></div>' +
+              '<div class="fr-cc__body">' +
+              '<div class="fr-cc__metrics">' +
+              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Payable</div><div class="fr-cc__metric-value">' + _fc(0) + '</div></div>' +
+              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Collected</div><div class="fr-cc__metric-value fr-cc__metric-value--green">' + _fc(0) + '</div></div>' +
+              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Outstanding</div><div class="fr-cc__metric-value fr-cc__metric-value--red">' + _fc(0) + '</div></div>' +
+              '</div>' +
+              '<div class="fr-cc__progress"><div class="fr-cc__progress-head"><span>Collection Progress</span><span>0% Collected</span></div><div class="fr-cc__progress-bar"><div class="fr-cc__progress-fill" style="width:0%;background:#e2e8f0"></div></div></div>' +
+              '<div class="fr-cc__badges"><span class="fr-cc__badge fr-cc__badge--green"><span class="fr-cc__badge-dot"></span> Paid: 0</span><span class="fr-cc__badge fr-cc__badge--amber"><span class="fr-cc__badge-dot"></span> Partial: 0</span><span class="fr-cc__badge fr-cc__badge--red"><span class="fr-cc__badge-dot"></span> Unpaid: 0</span></div>' +
+              '</div>' +
+              '<div class="fr-cc__foot" style="text-align:center;color:var(--text-muted);font-size:0.72rem;font-weight:600;padding:0.5rem">No fee records yet</div>' +
+              '</div>';
+          }).join("");
+          _cardsEl.innerHTML = emptyCards;
+          _emptyEl.style.display = "none";
+          return;
+        }
+        if (cs.length === 0) { _cardsEl.innerHTML = ""; _emptyEl.style.display = ""; return; }
+        _emptyEl.style.display = "none";
+        _cardsEl.innerHTML = cs.map(function (c) {
+          var cp = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0;
+          var barColor = _pctColor(cp);
+          return '<div class="fr-cc">' +
+            '<div class="fr-cc__head"><div><span class="fr-cc__name">' + escapeHtml(c.baseClass) + '</span>' + (c.section ? '<span class="fr-cc__sec">' + escapeHtml(c.section) + '</span>' : '') + '</div><span class="fr-cc__students"><i class="fas fa-users"></i> ' + c.students.size + ' Students</span></div>' +
+            '<div class="fr-cc__body">' +
+            '<div class="fr-cc__metrics">' +
+            '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Payable</div><div class="fr-cc__metric-value">' + _fc(c.tp) + '</div></div>' +
+            '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Collected</div><div class="fr-cc__metric-value fr-cc__metric-value--green">' + _fc(c.tc) + '</div></div>' +
+            '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Outstanding</div><div class="fr-cc__metric-value fr-cc__metric-value--red">' + _fc(c.to) + '</div></div>' +
+            '</div>' +
+            '<div class="fr-cc__progress"><div class="fr-cc__progress-head"><span>Collection Progress</span><span>' + cp + '% Collected</span></div><div class="fr-cc__progress-bar"><div class="fr-cc__progress-fill" style="width:' + cp + '%;background:' + barColor + '"></div></div></div>' +
+            '<div class="fr-cc__badges"><span class="fr-cc__badge fr-cc__badge--green"><span class="fr-cc__badge-dot"></span> Paid: ' + c.pc + '</span><span class="fr-cc__badge fr-cc__badge--amber"><span class="fr-cc__badge-dot"></span> Partial: ' + c.parc + '</span><span class="fr-cc__badge fr-cc__badge--red"><span class="fr-cc__badge-dot"></span> Unpaid: ' + c.uc + '</span></div>' +
+            '</div>' +
+            '<div class="fr-cc__foot"><button class="fr-cc__view" data-fr-cls="' + escapeAttr(c.className) + '" type="button"><i class="fas fa-eye"></i> View Details <i class="fas fa-arrow-right" style="font-size:0.65rem"></i></button></div>' +
+            '</div>';
+        }).join("");
+        _cardsEl.querySelectorAll(".fr-cc__view").forEach(function (btn) {
+          btn.addEventListener("click", function () { _viewCls = btn.getAttribute("data-fr-cls"); _renderDrilldown(); _openDrill(); });
+        });
       }
-
-      // Back to summary
-      safeOn(_frBackToSummaryEl, "click", function () {
-        _frActiveView = "summary";
-        _frRenderTable();
-      });
-
-      // Apply / Clear filters
-      safeOn(document.getElementById("frApplyFilters"), "click", _frApplyFilters);
-      safeOn(document.getElementById("frClearFilters"), "click", function () {
-        _frClassFilterEl.value = "all";
-        _frSectionFilterEl.innerHTML = '<option value="all">All Sections</option>';
-        _frStudentStatusFilterEl.value = "all";
-        _frFeeTypeFilterEl.value = "all";
-        _frStatusFilterEl.value = "all";
-        _frMonthFilterEl.value = "all-time";
-        _frFromDateEl.value = "";
-        _frToDateEl.value = "";
-        _frSearchInputEl.value = "";
-        _frFilters = { search: "", className: "all", section: "all", status: "all", month: "all-time", date: "", feeType: "all", studentStatus: "all", fromDate: "", toDate: "" };
-        _frActiveView = "summary";
-        _frRenderSummary();
-        _frRenderTable();
-      });
-
-      // Refresh
-      safeOn(document.getElementById("frRefreshBtn"), "click", function () {
-        refreshDatabase();
-        router("fees-report");
-      });
-
-      // Clear All Fees Data
-      safeOn(document.getElementById("clearAllFeesDataBtn"), "click", async function () {
+      function _renderInsights() {
+        var rows = _frRows(""); var cs = _frCls(rows); var a = _frAll(cs);
+        if (cs.length === 0 || a.ts === 0) { _insightsEl.innerHTML = ""; _insightsEl.style.display = "none"; return; }
+        var pct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
+        var bestClass = cs.reduce(function (best, c) { var p = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0; return p > (best.pct || 0) ? { cls: c.className, pct: p } : best; }, {});
+        var worstClass = cs.reduce(function (worst, c) { var p = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 100; return p < (worst.pct === undefined ? 101 : worst.pct) ? { cls: c.className, pct: p } : worst; }, {});
+        var classesWithDue = cs.filter(function (c) { return c.uc > 0; }).length;
+        var studentsWithDue = a.uc;
+        var insights = [];
+        if (bestClass.cls) insights.push({ icon: "fas fa-trophy", color: "#16a34a", label: "Best Collection", value: escapeHtml(bestClass.cls) + " (" + bestClass.pct + "%)" });
+        if (worstClass.cls && worstClass.pct < 100) insights.push({ icon: "fas fa-exclamation-triangle", color: "#d97706", label: "Needs Attention", value: escapeHtml(worstClass.cls) + " (" + worstClass.pct + "%)" });
+        if (studentsWithDue > 0) insights.push({ icon: "fas fa-user-clock", color: "#dc2626", label: "Students with Dues", value: studentsWithDue + " of " + a.ts });
+        if (classesWithDue > 0) insights.push({ icon: "fas fa-school", color: "#d97706", label: "Classes with Pending", value: classesWithDue + " class" + (classesWithDue !== 1 ? "es" : "") });
+        if (insights.length === 0) { _insightsEl.innerHTML = ""; _insightsEl.style.display = "none"; return; }
+        _insightsEl.style.display = "";
+        _insightsEl.innerHTML = '<h4 class="fr-insights__title">Fee Insights</h4><div class="fr-insights__grid">' + insights.map(function (ins) {
+          return '<div class="fr-insight"><div class="fr-insight__icon" style="color:' + ins.color + '"><i class="' + ins.icon + '"></i></div><div class="fr-insight__body"><div class="fr-insight__label">' + ins.label + '</div><div class="fr-insight__value">' + ins.value + '</div></div></div>';
+        }).join("") + '</div>';
+      }
+      function _renderDrilldown() {
+        var rows = _frRows("").filter(function (r) { return r.className === _viewCls; });
+        _drillTitle.textContent = _viewCls;
+        _drillSub.textContent = rows.length + " fee record" + (rows.length !== 1 ? "s" : "") + " found";
+        if (rows.length === 0) { _drillBody.innerHTML = '<div class="fr-drill__empty"><i class="fas fa-inbox"></i><p>No fee records found for this class.</p></div>'; return; }
+        var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="fr-stbl"><thead><tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Fee Month</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Last Payment</th></tr></thead><tbody>';
+        rows.forEach(function (r) {
+          var _cs = (r.status === "paid" && r.remaining === 0) ? "fr-status--paid" : (r.deposit > 0 && r.remaining > 0 ? "fr-status--partial" : "fr-status--unpaid");
+          var _st = (r.status === "paid" && r.remaining === 0) ? "Paid" : (r.deposit > 0 && r.remaining > 0 ? "Partial" : "Unpaid");
+          html += '<tr><td>' + escapeHtml(r.rollNo) + '</td><td>' + escapeHtml(r.studentName) + '</td><td>' + escapeHtml(r.fatherName) + '</td><td>' + escapeHtml(r.feeMonth) + '</td><td>' + _fc(r.totalAmount) + '</td><td>' + _fc(r.deposit) + '</td><td>' + _fc(r.remaining) + '</td><td><span class="fr-status ' + _cs + '">' + _st + '</span></td><td>' + escapeHtml(r.paymentDate || r.date || "-") + '</td></tr>';
+        });
+        html += '</tbody></table></div>';
+        _drillBody.innerHTML = html;
+      }
+      function _renderAll() { _renderStats(); _renderClassCards(); _renderInsights(); }
+      safeOn(_e("frDrillOverlay"), "click", _closeDrill);
+      safeOn(_e("frDrillBack"), "click", _closeDrill);
+      safeOn(_e("frDrillClose"), "click", _closeDrill);
+      safeOn(_searchEl, "input", function () { _searchTerm = _searchEl.value.trim(); _renderClassCards(); _renderInsights(); });
+      safeOn(_e("frRefreshBtn"), "click", function () { refreshDatabase(); router("fees-report"); });
+      safeOn(_e("clearAllFeesDataBtn"), "click", async function () {
         var confirmed = await openAppConfirm("Delete All Fee Records", "This will PERMANENTLY DELETE ALL fee records from the system. This action cannot be undone. Are you absolutely sure?", "error");
         if (confirmed) {
           window.SagarSoftDB.LoadingManager.show("Clearing all fee records...");
           window.SagarSoftDB.LoadingManager.updateSubtext("This may take a moment");
-          var _clearedFees = database.fees || [];
+          var _cFees = database.fees || [];
           database.fees = [];
-          if (settings.feeCollections) { settings.feeCollections = []; }
-          saveDatabase(null, _clearedFees.map(function(r) { return { table: "fees", record: r, operation: "delete" }; }).concat([{ table: "school_settings", record: { id: "feeCollections", source_id: "feeCollections", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]));
+          if (settings.feeCollections) settings.feeCollections = [];
+          saveDatabase(null, _cFees.map(function(r) { return { table: "fees", record: r, operation: "delete" }; }).concat([{ table: "school_settings", record: { id: "feeCollections", source_id: "feeCollections", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]));
           addActivity("Database Cleanup", "All fee records were manually cleared.");
           refreshDatabase();
           window.SagarSoftDB.LoadingManager.update("All fee records cleared");
@@ -9385,72 +9094,37 @@ ${allContent}
           router("fees-report");
         }
       });
-
-      // Print
-      safeOn(document.getElementById("frPrintBtn"), "click", function () {
-        var rows = _frBuildRows(_frFilters);
+      safeOn(_e("frPrintBtn"), "click", function () {
+        var rows = _frRows("");
         if (!rows.length) { openAppMessageBox("No Data", "No fee records to print.", "warning"); return; }
-        var title = "Fees Report";
-        if (_frFilters.className !== "all") title += " — " + _frFilters.className;
-        if (_frFilters.section !== "all") title += " | " + _frFilters.section;
-        if (_frFilters.month !== "all-time") title += " — " + _frFilters.month;
-        var summaryRows = _frClassSummary(rows);
-        var allSum = _frAllSummary(summaryRows);
-        var allPct = allSum.totalPayable > 0 ? Math.round((allSum.totalCollected / allSum.totalPayable) * 100) : 0;
+        var cs = _frCls(rows); var a = _frAll(cs);
+        var allPct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
         var summaryHtml = '<div style="margin-bottom:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">' +
-          '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Total Students</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + allSum.totalStudents + '</span></div>' +
-          '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Total Payable</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + _frFormatCurrency(allSum.totalPayable) + '</span></div>' +
-          '<div style="padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;text-align:center;"><strong style="font-size:0.75rem;color:#16a34a;display:block;">Collected</strong><span style="font-size:1.1rem;font-weight:700;color:#16a34a;">' + _frFormatCurrency(allSum.totalCollected) + '</span></div>' +
-          '<div style="padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;text-align:center;"><strong style="font-size:0.75rem;color:#dc2626;display:block;">Outstanding</strong><span style="font-size:1.1rem;font-weight:700;color:#dc2626;">' + _frFormatCurrency(allSum.totalOutstanding) + '</span></div>' +
+          '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Total Students</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + a.ts + '</span></div>' +
+          '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Total Payable</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + _fc(a.tp) + '</span></div>' +
+          '<div style="padding:8px 12px;background:#f0fdf4;border-radius:8px;border:1px solid #bbf7d0;text-align:center;"><strong style="font-size:0.75rem;color:#16a34a;display:block;">Collected</strong><span style="font-size:1.1rem;font-weight:700;color:#16a34a;">' + _fc(a.tc) + '</span></div>' +
+          '<div style="padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;text-align:center;"><strong style="font-size:0.75rem;color:#dc2626;display:block;">Outstanding</strong><span style="font-size:1.1rem;font-weight:700;color:#dc2626;">' + _fc(a.to) + '</span></div>' +
           '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Collection %</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + allPct + '%</span></div>' +
           '</div>';
-        openPrintReport({
-          subtitle: title,
-          contentHtml: summaryHtml,
-          headers: ["Class", "Students", "Total Payable", "Collected", "Outstanding", "Collection %", "Paid", "Partial", "Unpaid"],
-          rows: summaryRows.map(function (cs) {
-            var csPct = cs.totalPayable > 0 ? Math.round((cs.totalCollected / cs.totalPayable) * 100) : 0;
-            return [escapeHtml(cs.className), cs.students.size, _frFormatCurrency(cs.totalPayable), _frFormatCurrency(cs.totalCollected), _frFormatCurrency(cs.totalOutstanding), csPct + "%", cs.paidCount, cs.partialCount, cs.unpaidCount];
-          })
-        });
+        openPrintReport({ subtitle: "Fees Report", contentHtml: summaryHtml, headers: ["Class", "Students", "Total Payable", "Collected", "Outstanding", "Collection %", "Paid", "Partial", "Unpaid"], rows: cs.map(function (c) { var cp = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0; return [escapeHtml(c.className), c.students.size, _fc(c.tp), _fc(c.tc), _fc(c.to), cp + "%", c.pc, c.parc, c.uc]; }) });
       });
-
-      // Export (CSV)
-      safeOn(document.getElementById("frExportBtn"), "click", function () {
-        var rows = _frBuildRows(_frFilters);
+      safeOn(_e("frExportBtn"), "click", function () {
+        var rows = _frRows("");
         if (!rows.length) { openAppMessageBox("No Data", "No fee records to export.", "warning"); return; }
         var csv = "Roll No,Name,Father Name,Class,Section,Fee Month,Total,Paid,Outstanding,Status,Last Payment\n";
-        rows.forEach(function (row) {
-          var statusText = row.status === "paid" && row.remaining === 0 ? "Paid" : (row.deposit > 0 && row.remaining > 0 ? "Partial" : "Unpaid");
-          csv += '"' + (row.rollNo || "") + '","' + (row.studentName || "") + '","' + (row.fatherName || "") + '","' + (row.baseClass || "") + '","' + (row.section || "") + '","' + (row.feeMonth || "") + '",' + row.totalAmount + "," + row.deposit + "," + row.remaining + ',"' + statusText + '","' + (row.paymentDate || row.date || "") + '"\n';
+        rows.forEach(function (r) {
+          var _cs = (r.status === "paid" && r.remaining === 0) ? "Paid" : (r.deposit > 0 && r.remaining > 0 ? "Partial" : "Unpaid");
+          csv += '"' + (r.rollNo || "") + '","' + (r.studentName || "") + '","' + (r.fatherName || "") + '","' + (r.baseClass || "") + '","' + (r.section || "") + '","' + (r.feeMonth || "") + '",' + r.totalAmount + "," + r.deposit + "," + r.remaining + ',"' + _cs + '","' + (r.paymentDate || r.date || "") + '"\n';
         });
         var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
         var url = URL.createObjectURL(blob);
-        var a = document.createElement("a");
-        a.href = url;
-        a.download = "fees-report-" + new Date().toISOString().slice(0, 10) + ".csv";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        var a = document.createElement("a"); a.href = url; a.download = "fees-report-" + new Date().toISOString().slice(0, 10) + ".csv";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
       });
-
-      // Quick action buttons — set filter and scroll
-      document.querySelectorAll(".fr-quick-action[data-route]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          var text = btn.textContent.trim().toLowerCase();
-          if (text.includes("outstanding")) { _frStatusFilterEl.value = "unpaid"; _frApplyFilters(); }
-          else if (text.includes("paid fee")) { _frStatusFilterEl.value = "paid"; _frApplyFilters(); }
-          else { _frApplyFilters(); }
-        });
-      });
-
-      // Initial render
-      _frRenderSummary();
-      _frRenderTable();
+      _renderAll();
+      } catch (_frErr) { console.error("Fees Report Error:", _frErr); moduleSummary.innerHTML = '<div class="fr-empty"><div class="fr-empty__icon"><i class="fas fa-exclamation-triangle"></i></div><h4 class="fr-empty__title">Unable to Load Fees Report</h4><p class="fr-empty__desc">An error occurred while loading the fees report. Please try again.</p><button class="fr-btn fr-btn--p" onclick="router(\'fees-report\')" type="button"><i class="fas fa-sync-alt"></i> Retry</button></div>'; }
       return;
     }
-
     if (route === "delete-fees") {
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
