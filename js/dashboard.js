@@ -8911,7 +8911,7 @@ ${allContent}
     }
 
                                                 if (route === "fees-report") {
-      console.log("[FEES-REPORT] v144 loaded - quick actions + drill scroll fixed");
+      console.log("[FEES-REPORT] v145 loaded - quick actions + drill scroll fixed");
       try {
       function _frBuildClassList() {
         var classSet = new Set();
@@ -9017,9 +9017,10 @@ ${allContent}
       moduleGuide.innerHTML = "";
       var _e = function (id) { return document.getElementById(id); };
       var _statsEl = _e("frStats"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _insightsEl = _e("frInsights"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _searchEl = _e("frClassSearch"), _dateFromEl = _e("frDateFrom"), _dateToEl = _e("frDateTo"), _clearDatesBtn = _e("frClearDates");
+      var _contentArea = document.querySelector(".content-area");
       var _savedScrollY = 0;
-      function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; document.body.style.position = ""; document.body.style.top = ""; document.body.style.width = ""; window.scrollTo(0, _savedScrollY); }
-      function _openDrill() { _savedScrollY = window.scrollY || 0; document.body.style.position = "fixed"; document.body.style.top = "-" + _savedScrollY + "px"; document.body.style.width = "100%"; _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); }
+      function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); if (_contentArea) { _contentArea.style.overflowY = ""; } document.body.style.overflow = ""; }
+      function _openDrill() { _savedScrollY = _contentArea ? _contentArea.scrollTop : 0; if (_contentArea) { _contentArea.style.overflowY = "hidden"; } _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); }
       function _renderAll() {
         var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
         var cs = _frBuildAllClassCards(rows, _searchTerm);
@@ -9127,11 +9128,11 @@ ${allContent}
       safeOn(_dateFromEl, "change", function () { _dateFrom = _dateFromEl.value; _renderAll(); });
       safeOn(_dateToEl, "change", function () { _dateTo = _dateToEl.value; _renderAll(); });
       safeOn(_clearDatesBtn, "click", function () { _dateFrom = ""; _dateTo = ""; _dateFromEl.value = ""; _dateToEl.value = ""; _renderAll(); });
-      safeOn(_e("frRefreshBtn"), "click", function () { refreshDatabase(); router("fees-report"); });
-      safeOn(_e("frQaReport"), "click", function () { router("fee-collection-report"); });
-      safeOn(_e("frQaCollect"), "click", function () { router("collect-fees"); });
-      safeOn(_e("frQaInvoice"), "click", function () { router("generate-fees-invoice"); });
-      safeOn(_e("frQaDefaulters"), "click", function () { router("fees-defaulters"); });
+      safeOn(_e("frRefreshBtn"), "click", function () { refreshDatabase(); setRoute("fees-report"); });
+      safeOn(_e("frQaReport"), "click", function () { setRoute("fee-collection-report"); });
+      safeOn(_e("frQaCollect"), "click", function () { setRoute("collect-fees"); });
+      safeOn(_e("frQaInvoice"), "click", function () { setRoute("generate-fees-invoice"); });
+      safeOn(_e("frQaDefaulters"), "click", function () { setRoute("fees-defaulters"); });
       safeOn(_e("clearAllFeesDataBtn"), "click", async function () {
         var confirmed = await openAppConfirm("Delete All Fee Records", "This will PERMANENTLY DELETE ALL fee records from the system. This action cannot be undone. Are you absolutely sure?", "error");
         if (confirmed) {
@@ -9146,7 +9147,7 @@ ${allContent}
           window.SagarSoftDB.LoadingManager.update("All fee records cleared");
           setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
           openAppMessageBox("Success", "All fee records have been cleared.", "success");
-          router("fees-report");
+          setRoute("fees-report");
         }
       });
       safeOn(_e("frPrintBtn"), "click", function () {
@@ -9178,7 +9179,7 @@ ${allContent}
         document.body.appendChild(a2); a2.click(); document.body.removeChild(a2); URL.revokeObjectURL(url);
       });
       _renderAll();
-      } catch (_frErr) { console.error("Fees Report Error:", _frErr); moduleSummary.innerHTML = '<div class="fr-empty"><div class="fr-empty__icon"><i class="fas fa-exclamation-triangle"></i></div><h4 class="fr-empty__title">Unable to Load Fees Report</h4><p class="fr-empty__desc">An error occurred while loading the fees report. Please try again.</p><button class="fr-btn fr-btn--p" onclick="router(\'fees-report\')" type="button"><i class="fas fa-sync-alt"></i> Retry</button></div>'; }
+      } catch (_frErr) { console.error("Fees Report Error:", _frErr); moduleSummary.innerHTML = '<div class="fr-empty"><div class="fr-empty__icon"><i class="fas fa-exclamation-triangle"></i></div><h4 class="fr-empty__title">Unable to Load Fees Report</h4><p class="fr-empty__desc">An error occurred while loading the fees report. Please try again.</p><button class="fr-btn fr-btn--p" id="frRetryBtn" type="button"><i class="fas fa-sync-alt"></i> Retry</button></div>'; safeOn(_e("frRetryBtn"), "click", function() { setRoute("fees-report"); }); }
       return;
     }
 
