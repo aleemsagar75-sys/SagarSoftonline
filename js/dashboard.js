@@ -9017,7 +9017,7 @@ ${allContent}
       var _e = function (id) { return document.getElementById(id); };
       var _statsEl = _e("frStats"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _insightsEl = _e("frInsights"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _searchEl = _e("frClassSearch"), _dateFromEl = _e("frDateFrom"), _dateToEl = _e("frDateTo"), _clearDatesBtn = _e("frClearDates");
       function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; }
-      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; setTimeout(function() { var target = _drillEl; var rect = target.getBoundingClientRect(); var scrollTarget = window.scrollY + rect.top - 10; window.scrollTo({ top: scrollTarget, behavior: "smooth" }); }, 150); }
+      function _openDrill() { window.scrollTo({ top: 0, behavior: "instant" }); _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; }
       function _renderAll() {
         var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
         var cs = _frBuildAllClassCards(rows, _searchTerm);
@@ -9086,7 +9086,7 @@ ${allContent}
                 _searchEl.value = ins.searchVal;
                 _searchTerm = ins.searchVal;
                 _renderAll();
-                _cardsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+                requestAnimationFrame(function() { requestAnimationFrame(function() { _cardsEl.scrollIntoView({ behavior: "smooth", block: "start" }); }); });
               });
             }
           });
@@ -14604,7 +14604,7 @@ ${allContent}
               <td>${index + 1}</td>
               <td class="att-info">
                 <span class="att-info__name">${escapeHtml(employee.name || "-")}</span>
-                <span class="att-info__meta">${escapeHtml(employee.fatherOrHusbandName || "-")} • ${escapeHtml(employee.role || employee.designation || "-")}</span>
+                <span class="att-info__meta">${escapeHtml(employee.fatherOrHusbandName || "-")} ï¿½ ${escapeHtml(employee.role || employee.designation || "-")}</span>
               </td>
               <td>${statusButtonsMarkup(employee.id, employee.currentStatus)}</td>
               <td><button class="table-action-btn" type="button" data-attendance-wa-employee="${employee.id}">WhatsApp</button></td>
