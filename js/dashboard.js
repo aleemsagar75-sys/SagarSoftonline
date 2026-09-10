@@ -8911,6 +8911,7 @@ ${allContent}
     }
 
                                                 if (route === "fees-report") {
+      console.log("[FEES-REPORT] v144 loaded - quick actions + drill scroll fixed");
       try {
       function _frBuildClassList() {
         var classSet = new Set();
