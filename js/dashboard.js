@@ -8910,7 +8910,7 @@ ${allContent}
       return;
     }
 
-                                if (route === "fees-report") {
+                                                if (route === "fees-report") {
       try {
       function _frBuildClassList() {
         var classSet = new Set();
@@ -8941,31 +8941,36 @@ ${allContent}
       }
       function _frBuildAllClassCards(rows, searchTerm) {
         var sr = (searchTerm || "").toLowerCase();
-        var feeMap = {};
+        var feeByStudent = {};
         rows.forEach(function (r) {
-          var k = r.className;
-          if (!feeMap[k]) feeMap[k] = { className: k, baseClass: r.baseClass, section: r.section, students: new Set(), tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
-          feeMap[k].students.add(r.studentId || r.id);
-          feeMap[k].tc += r.deposit; feeMap[k].to += r.remaining;
-          var _cs = (r.status === "paid" && r.remaining === 0) ? "paid" : (r.deposit > 0 && r.remaining > 0 ? "partial" : "unpaid");
-          if (_cs === "paid") feeMap[k].pc++; else if (_cs === "partial") feeMap[k].parc++; else feeMap[k].uc++;
+          var key = r.studentId || r.id;
+          if (key) feeByStudent[key] = r;
         });
         var result = _classList.map(function (clsName) {
           var pp = String(clsName).split("|");
           var baseName = pp[0].trim();
           var secName = pp.length > 1 ? pp[1].trim() : "";
-          var stuList = _frGetStudentsForClass(clsName);
-          var stuCount = stuList.length;
+          var classStudents = _frGetStudentsForClass(clsName);
           var classFee = _frGetClassFee(clsName);
-          var tp = stuCount * classFee;
-          var fm = feeMap[clsName] || { className: clsName, baseClass: baseName, section: secName, students: new Set(), tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
-          fm.className = clsName; fm.baseClass = baseName; fm.section = secName; fm.tp = tp;
-          fm.students = new Set(stuList.map(function (s) { return s.id; }));
-          fm.to = Math.max(0, tp - fm.tc);
+          var tp = classStudents.length * classFee;
+          var tc = 0, pc = 0, parc = 0, uc = 0;
+          var studentIds = new Set(classStudents.map(function (s) { return s.id; }));
+          classStudents.forEach(function (stu) {
+            var feeRec = feeByStudent[stu.id];
+            if (feeRec) {
+              tc += feeRec.deposit;
+              var isPaid = feeRec.status === "paid" && feeRec.remaining === 0;
+              var isPartial = feeRec.deposit > 0 && feeRec.remaining > 0;
+              if (isPaid) pc++; else if (isPartial) parc++; else uc++;
+            } else {
+              uc++;
+            }
+          });
+          var to = Math.max(0, tp - tc);
           if (sr) {
             if (!baseName.toLowerCase().includes(sr) && !secName.toLowerCase().includes(sr) && !clsName.toLowerCase().includes(sr)) return null;
           }
-          return fm;
+          return { className: clsName, baseClass: baseName, section: secName, students: studentIds, tp: tp, tc: tc, to: to, pc: pc, parc: parc, uc: uc };
         }).filter(Boolean).sort(function (a, b) { return a.className.localeCompare(b.className); });
         return result;
       }
@@ -8977,10 +8982,10 @@ ${allContent}
           var stuCount = allStudents.filter(function (s) { return s.className === cls.name; }).length;
           totalPayable += stuCount * Number(cls.monthlyTuitionFees || 0);
         });
-        var totalCollected = 0;
-        cs.forEach(function (c) { totalCollected += c.tc; });
+        var totalCollected = 0, totalPc = 0, totalParc = 0, totalUc = 0;
+        cs.forEach(function (c) { totalCollected += c.tc; totalPc += c.pc; totalParc += c.parc; totalUc += c.uc; });
         var outstanding = Math.max(0, totalPayable - totalCollected);
-        return { ts: totalStudentCount, tp: totalPayable, tc: totalCollected, to: outstanding, pc: 0, parc: 0, uc: 0 };
+        return { ts: totalStudentCount, tp: totalPayable, tc: totalCollected, to: outstanding, pc: totalPc, parc: totalParc, uc: totalUc };
       }
       function _fc(v) { return "PKR " + Number(v || 0).toLocaleString(); }
       function _pctColor(p) { return p >= 75 ? "#16a34a" : p >= 40 ? "#d97706" : "#dc2626"; }
@@ -8997,11 +9002,11 @@ ${allContent}
         '<div class="fr-cards" id="frClassCards"></div>' +
         '<div class="fr-empty" id="frEmpty" style="display:none"><div class="fr-empty__icon"><i class="fas fa-school"></i></div><h4 class="fr-empty__title">No Classes Found</h4><p class="fr-empty__desc">No classes match your search.</p></div>' +
         '<div class="fr-insights" id="frInsights"></div>' +
-        '<div class="fr-qactions"><h4 class="fr-qactions__title">Quick Actions</h4><div class="fr-qa-grid">' +
-        '<a class="fr-qa" href="#fee-collection-report" onclick="event.preventDefault();router(\'fee-collection-report\')"><i class="fas fa-chart-bar"></i> Fee Collection Report</a>' +
-        '<a class="fr-qa" href="#collect-fees" onclick="event.preventDefault();router(\'collect-fees\')"><i class="fas fa-money-bill"></i> Collect Fees</a>' +
-        '<a class="fr-qa" href="#generate-fees-invoice" onclick="event.preventDefault();router(\'generate-fees-invoice\')"><i class="fas fa-file-invoice"></i> Generate Invoice</a>' +
-        '<a class="fr-qa" href="#fees-defaulters" onclick="event.preventDefault();router(\'fees-defaulters\')"><i class="fas fa-exclamation-triangle"></i> View Defaulters</a>' +
+        '<div class="fr-qactions" id="frQuickActions"><h4 class="fr-qactions__title">Quick Actions</h4><div class="fr-qa-grid">' +
+        '<a class="fr-qa" href="#" onclick="event.preventDefault();router(\'fee-collection-report\')"><i class="fas fa-chart-bar"></i> Fee Collection Report</a>' +
+        '<a class="fr-qa" href="#" onclick="event.preventDefault();router(\'collect-fees\')"><i class="fas fa-money-bill"></i> Collect Fees</a>' +
+        '<a class="fr-qa" href="#" onclick="event.preventDefault();router(\'generate-fees-invoice\')"><i class="fas fa-file-invoice"></i> Generate Invoice</a>' +
+        '<a class="fr-qa" href="#" onclick="event.preventDefault();router(\'fees-defaulters\')"><i class="fas fa-exclamation-triangle"></i> View Defaulters</a>' +
         '<button class="fr-qa fr-qa--danger" id="clearAllFeesDataBtn" type="button"><i class="fas fa-trash"></i> Clear All Fees Data</button>' +
         '</div></div>' +
         '<div class="fr-drill-overlay" id="frDrillOverlay"></div>' +
@@ -9012,7 +9017,7 @@ ${allContent}
       var _e = function (id) { return document.getElementById(id); };
       var _statsEl = _e("frStats"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _insightsEl = _e("frInsights"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _searchEl = _e("frClassSearch"), _dateFromEl = _e("frDateFrom"), _dateToEl = _e("frDateTo"), _clearDatesBtn = _e("frClearDates");
       function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; }
-      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; setTimeout(function() { _drillEl.scrollIntoView({ behavior: "smooth", block: "start" }); }, 100); }
+      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; setTimeout(function() { var target = _drillEl; var rect = target.getBoundingClientRect(); var scrollTarget = window.scrollY + rect.top - 10; window.scrollTo({ top: scrollTarget, behavior: "smooth" }); }, 150); }
       function _renderAll() {
         var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
         var cs = _frBuildAllClassCards(rows, _searchTerm);
@@ -9088,28 +9093,27 @@ ${allContent}
         }
       }
       function _renderDrilldown() {
-        var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo }).filter(function (r) { return r.className === _viewCls; });
+        var allRows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
+        var feeByStudent = {};
+        allRows.forEach(function (r) { if (r.studentId || r.id) feeByStudent[r.studentId || r.id] = r; });
         var classStudents = _frGetStudentsForClass(_viewCls);
+        var classFee = _frGetClassFee(_viewCls);
         _drillTitle.textContent = _viewCls;
-        _drillSub.textContent = rows.length + " fee record" + (rows.length !== 1 ? "s" : "") + " found";
-        if (rows.length === 0) {
-          if (classStudents.length > 0) {
-            var html2 = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="fr-stbl"><thead><tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Class</th><th>Status</th></tr></thead><tbody>';
-            classStudents.forEach(function (s) {
-              html2 += '<tr><td>' + escapeHtml(s.admissionNo || "-") + '</td><td>' + escapeHtml(s.name || "-") + '</td><td>' + escapeHtml(s.fatherName || "-") + '</td><td>' + escapeHtml(s.className || "-") + '</td><td><span class="fr-status fr-status--unpaid">No Fee Record</span></td></tr>';
-            });
-            html2 += '</tbody></table></div>';
-            _drillBody.innerHTML = html2;
-          } else {
-            _drillBody.innerHTML = '<div class="fr-drill__empty"><i class="fas fa-inbox"></i><p>No fee records found for this class.</p></div>';
-          }
+        _drillSub.textContent = classStudents.length + " student" + (classStudents.length !== 1 ? "s" : "") + " in class";
+        if (classStudents.length === 0) {
+          _drillBody.innerHTML = '<div class="fr-drill__empty"><i class="fas fa-inbox"></i><p>No students found in this class.</p></div>';
           return;
         }
         var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="fr-stbl"><thead><tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Fee Month</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Last Payment</th></tr></thead><tbody>';
-        rows.forEach(function (r) {
-          var _cs = (r.status === "paid" && r.remaining === 0) ? "fr-status--paid" : (r.deposit > 0 && r.remaining > 0 ? "fr-status--partial" : "fr-status--unpaid");
-          var _st = (r.status === "paid" && r.remaining === 0) ? "Paid" : (r.deposit > 0 && r.remaining > 0 ? "Partial" : "Unpaid");
-          html += '<tr><td>' + escapeHtml(r.rollNo) + '</td><td>' + escapeHtml(r.studentName) + '</td><td>' + escapeHtml(r.fatherName) + '</td><td>' + escapeHtml(r.feeMonth) + '</td><td>' + _fc(r.totalAmount) + '</td><td>' + _fc(r.deposit) + '</td><td>' + _fc(r.remaining) + '</td><td><span class="fr-status ' + _cs + '">' + _st + '</span></td><td>' + escapeHtml(r.paymentDate || r.date || "-") + '</td></tr>';
+        classStudents.forEach(function (stu) {
+          var feeRec = feeByStudent[stu.id];
+          if (feeRec) {
+            var _cs = (feeRec.status === "paid" && feeRec.remaining === 0) ? "fr-status--paid" : (feeRec.deposit > 0 && feeRec.remaining > 0 ? "fr-status--partial" : "fr-status--unpaid");
+            var _st = (feeRec.status === "paid" && feeRec.remaining === 0) ? "Paid" : (feeRec.deposit > 0 && feeRec.remaining > 0 ? "Partial" : "Unpaid");
+            html += '<tr><td>' + escapeHtml(feeRec.rollNo) + '</td><td>' + escapeHtml(feeRec.studentName) + '</td><td>' + escapeHtml(feeRec.fatherName) + '</td><td>' + escapeHtml(feeRec.feeMonth) + '</td><td>' + _fc(feeRec.totalAmount) + '</td><td>' + _fc(feeRec.deposit) + '</td><td>' + _fc(feeRec.remaining) + '</td><td><span class="fr-status ' + _cs + '">' + _st + '</span></td><td>' + escapeHtml(feeRec.paymentDate || feeRec.date || "-") + '</td></tr>';
+          } else {
+            html += '<tr><td>' + escapeHtml(stu.admissionNo || "-") + '</td><td>' + escapeHtml(stu.name || "-") + '</td><td>' + escapeHtml(stu.fatherName || "-") + '</td><td>-</td><td>' + _fc(classFee) + '</td><td>' + _fc(0) + '</td><td>' + _fc(classFee) + '</td><td><span class="fr-status fr-status--unpaid">Unpaid</span></td><td>-</td></tr>';
+          }
         });
         html += '</tbody></table></div>';
         _drillBody.innerHTML = html;
@@ -9141,8 +9145,8 @@ ${allContent}
       });
       safeOn(_e("frPrintBtn"), "click", function () {
         var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
-        if (!rows.length) { openAppMessageBox("No Data", "No fee records to print.", "warning"); return; }
         var cs = _frBuildAllClassCards(rows, ""); var a = _frAllStats(cs);
+        if (a.ts === 0) { openAppMessageBox("No Data", "No data to print.", "warning"); return; }
         var allPct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
         var summaryHtml = '<div style="margin-bottom:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">' +
           '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Total Students</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + a.ts + '</span></div>' +
@@ -9155,7 +9159,8 @@ ${allContent}
       });
       safeOn(_e("frExportBtn"), "click", function () {
         var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
-        if (!rows.length) { openAppMessageBox("No Data", "No fee records to export.", "warning"); return; }
+        var cs = _frBuildAllClassCards(rows, ""); var a = _frAllStats(cs);
+        if (a.ts === 0) { openAppMessageBox("No Data", "No data to export.", "warning"); return; }
         var csv = "Roll No,Name,Father Name,Class,Section,Fee Month,Total,Paid,Outstanding,Status,Last Payment\n";
         rows.forEach(function (r) {
           var _cs = (r.status === "paid" && r.remaining === 0) ? "Paid" : (r.deposit > 0 && r.remaining > 0 ? "Partial" : "Unpaid");
@@ -9163,8 +9168,8 @@ ${allContent}
         });
         var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
         var url = URL.createObjectURL(blob);
-        var a = document.createElement("a"); a.href = url; a.download = "fees-report-" + new Date().toISOString().slice(0, 10) + ".csv";
-        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        var a2 = document.createElement("a"); a2.href = url; a2.download = "fees-report-" + new Date().toISOString().slice(0, 10) + ".csv";
+        document.body.appendChild(a2); a2.click(); document.body.removeChild(a2); URL.revokeObjectURL(url);
       });
       _renderAll();
       } catch (_frErr) { console.error("Fees Report Error:", _frErr); moduleSummary.innerHTML = '<div class="fr-empty"><div class="fr-empty__icon"><i class="fas fa-exclamation-triangle"></i></div><h4 class="fr-empty__title">Unable to Load Fees Report</h4><p class="fr-empty__desc">An error occurred while loading the fees report. Please try again.</p><button class="fr-btn fr-btn--p" onclick="router(\'fees-report\')" type="button"><i class="fas fa-sync-alt"></i> Retry</button></div>'; }
