@@ -3638,6 +3638,8 @@ body {
 .fr-insight__body { min-width: 0; }
 .fr-insight__label { font-size: 0.62rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fr-insight__value { font-size: 0.82rem; font-weight: 700; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.05rem; }
+.fr-insight[style*="cursor:pointer"] { transition: transform 0.15s, box-shadow 0.15s; }
+.fr-insight[style*="cursor:pointer"]:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
 
 /* Date Range Filter */
 .fr-datefilter { margin-bottom: 0.75rem; }
