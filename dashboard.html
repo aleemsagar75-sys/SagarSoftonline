@@ -1349,10 +1349,10 @@
         });
       });
       navigator.serviceWorker.addEventListener('controllerchange', function () {
-        if (sessionStorage.getItem('sw-reloaded') !== 'v129') {
-          sessionStorage.setItem('sw-reloaded', 'v129');
-          window.location.reload();
-        }
+        window.location.reload();
+      });
+      navigator.serviceWorker.addEventListener('message', function (e) {
+        if (e.data && e.data.type === 'SW_UPDATED') { window.location.reload(); }
       });
     }
 
