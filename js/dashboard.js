@@ -9003,10 +9003,10 @@ ${allContent}
         '<div class="fr-empty" id="frEmpty" style="display:none"><div class="fr-empty__icon"><i class="fas fa-school"></i></div><h4 class="fr-empty__title">No Classes Found</h4><p class="fr-empty__desc">No classes match your search.</p></div>' +
         '<div class="fr-insights" id="frInsights"></div>' +
         '<div class="fr-qactions" id="frQuickActions"><h4 class="fr-qactions__title">Quick Actions</h4><div class="fr-qa-grid">' +
-        '<a class="fr-qa" href="#" onclick="event.preventDefault();router(\'fee-collection-report\')"><i class="fas fa-chart-bar"></i> Fee Collection Report</a>' +
-        '<a class="fr-qa" href="#" onclick="event.preventDefault();router(\'collect-fees\')"><i class="fas fa-money-bill"></i> Collect Fees</a>' +
-        '<a class="fr-qa" href="#" onclick="event.preventDefault();router(\'generate-fees-invoice\')"><i class="fas fa-file-invoice"></i> Generate Invoice</a>' +
-        '<a class="fr-qa" href="#" onclick="event.preventDefault();router(\'fees-defaulters\')"><i class="fas fa-exclamation-triangle"></i> View Defaulters</a>' +
+        '<button class="fr-qa" id="frQaReport" type="button"><i class="fas fa-chart-bar"></i> Fee Collection Report</button>' +
+        '<button class="fr-qa" id="frQaCollect" type="button"><i class="fas fa-money-bill"></i> Collect Fees</button>' +
+        '<button class="fr-qa" id="frQaInvoice" type="button"><i class="fas fa-file-invoice"></i> Generate Invoice</button>' +
+        '<button class="fr-qa" id="frQaDefaulters" type="button"><i class="fas fa-exclamation-triangle"></i> View Defaulters</button>' +
         '<button class="fr-qa fr-qa--danger" id="clearAllFeesDataBtn" type="button"><i class="fas fa-trash"></i> Clear All Fees Data</button>' +
         '</div></div>' +
         '<div class="fr-drill-overlay" id="frDrillOverlay"></div>' +
@@ -9016,8 +9016,9 @@ ${allContent}
       moduleGuide.innerHTML = "";
       var _e = function (id) { return document.getElementById(id); };
       var _statsEl = _e("frStats"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _insightsEl = _e("frInsights"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _searchEl = _e("frClassSearch"), _dateFromEl = _e("frDateFrom"), _dateToEl = _e("frDateTo"), _clearDatesBtn = _e("frClearDates");
-      function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; }
-      function _openDrill() { window.scrollTo({ top: 0, behavior: "instant" }); _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; }
+      var _savedScrollY = 0;
+      function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; document.body.style.position = ""; document.body.style.top = ""; document.body.style.width = ""; window.scrollTo(0, _savedScrollY); }
+      function _openDrill() { _savedScrollY = window.scrollY || 0; document.body.style.position = "fixed"; document.body.style.top = "-" + _savedScrollY + "px"; document.body.style.width = "100%"; _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); }
       function _renderAll() {
         var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
         var cs = _frBuildAllClassCards(rows, _searchTerm);
@@ -9126,6 +9127,10 @@ ${allContent}
       safeOn(_dateToEl, "change", function () { _dateTo = _dateToEl.value; _renderAll(); });
       safeOn(_clearDatesBtn, "click", function () { _dateFrom = ""; _dateTo = ""; _dateFromEl.value = ""; _dateToEl.value = ""; _renderAll(); });
       safeOn(_e("frRefreshBtn"), "click", function () { refreshDatabase(); router("fees-report"); });
+      safeOn(_e("frQaReport"), "click", function () { router("fee-collection-report"); });
+      safeOn(_e("frQaCollect"), "click", function () { router("collect-fees"); });
+      safeOn(_e("frQaInvoice"), "click", function () { router("generate-fees-invoice"); });
+      safeOn(_e("frQaDefaulters"), "click", function () { router("fees-defaulters"); });
       safeOn(_e("clearAllFeesDataBtn"), "click", async function () {
         var confirmed = await openAppConfirm("Delete All Fee Records", "This will PERMANENTLY DELETE ALL fee records from the system. This action cannot be undone. Are you absolutely sure?", "error");
         if (confirmed) {
