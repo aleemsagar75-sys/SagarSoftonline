@@ -3639,6 +3639,16 @@ body {
 .fr-insight__label { font-size: 0.62rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fr-insight__value { font-size: 0.82rem; font-weight: 700; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 0.05rem; }
 
+/* Date Range Filter */
+.fr-datefilter { margin-bottom: 0.75rem; }
+.fr-datefilter__inner { display: flex; align-items: flex-end; gap: 0.5rem; padding: 0.55rem 0.75rem; background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 10px; flex-wrap: wrap; }
+.fr-datefilter__field { display: flex; flex-direction: column; gap: 0.15rem; }
+.fr-datefilter__field label { font-size: 0.62rem; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+.fr-datefilter__field label i { font-size: 0.7rem; color: var(--primary-color); }
+.fr-datefilter__input { padding: 0.35rem 0.5rem; border: 1px solid var(--border-color); border-radius: 7px; font-size: 0.75rem; color: var(--text-color); background: var(--surface-color); height: 32px; box-sizing: border-box; transition: border-color 0.15s; }
+.fr-datefilter__input:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(109,74,255,0.1); }
+.fr-datefilter__sep { display: flex; align-items: center; padding-bottom: 0.15rem; color: #94a3b8; font-size: 0.75rem; }
+
 /* ===== CLASS CARDS ===== */
 .fr-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-bottom: 1rem; }
 .fr-cc { background: var(--surface-color); border: 1px solid var(--border-color); border-radius: 14px; overflow: hidden; transition: box-shadow 0.2s, transform 0.2s; display: flex; flex-direction: column; }
