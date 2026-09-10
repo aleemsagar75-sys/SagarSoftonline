@@ -46,7 +46,10 @@ self.addEventListener("activate", function (event) {
         keys.filter(function (key) { return key !== CACHE; }).map(function (key) { return caches.delete(key); })
       );
     }).then(function () {
-      return self.clients.claim();
+      return self.clients.matchAll().then(function (clients) {
+        clients.forEach(function (client) { client.postMessage({ type: "SW_UPDATED", version: CACHE }); });
+        return self.clients.claim();
+      });
     })
   );
 });
