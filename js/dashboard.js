@@ -8910,7 +8910,7 @@ ${allContent}
       return;
     }
 
-                if (route === "fees-report") {
+                                if (route === "fees-report") {
       try {
       function _frBuildClassList() {
         var classSet = new Set();
@@ -8921,6 +8921,10 @@ ${allContent}
       }
       function _frGetStudentsForClass(clsName) {
         return (database.students || []).filter(function (s) { return s.className === clsName; });
+      }
+      function _frGetClassFee(clsName) {
+        var cls = (database.classes || []).find(function (c) { return c.name === clsName; });
+        return cls ? Number(cls.monthlyTuitionFees || 0) : 0;
       }
       function _frRows(filters) {
         return (database.fees || []).map(function (fi) {
@@ -8940,9 +8944,9 @@ ${allContent}
         var feeMap = {};
         rows.forEach(function (r) {
           var k = r.className;
-          if (!feeMap[k]) feeMap[k] = { className: k, baseClass: r.baseClass, section: r.section, students: new Set(), tp: 0, tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
+          if (!feeMap[k]) feeMap[k] = { className: k, baseClass: r.baseClass, section: r.section, students: new Set(), tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
           feeMap[k].students.add(r.studentId || r.id);
-          feeMap[k].tp += r.totalAmount; feeMap[k].tc += r.deposit; feeMap[k].to += r.remaining;
+          feeMap[k].tc += r.deposit; feeMap[k].to += r.remaining;
           var _cs = (r.status === "paid" && r.remaining === 0) ? "paid" : (r.deposit > 0 && r.remaining > 0 ? "partial" : "unpaid");
           if (_cs === "paid") feeMap[k].pc++; else if (_cs === "partial") feeMap[k].parc++; else feeMap[k].uc++;
         });
@@ -8951,13 +8955,13 @@ ${allContent}
           var baseName = pp[0].trim();
           var secName = pp.length > 1 ? pp[1].trim() : "";
           var stuList = _frGetStudentsForClass(clsName);
-          var stuIds = new Set(stuList.map(function (s) { return s.id; }));
-          if (feeMap[clsName]) {
-            stuIds.forEach(function (id) { feeMap[clsName].students.add(id); });
-          }
-          var fm = feeMap[clsName] || { className: clsName, baseClass: baseName, section: secName, students: stuIds, tp: 0, tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
-          fm.baseClass = baseName;
-          fm.section = secName;
+          var stuCount = stuList.length;
+          var classFee = _frGetClassFee(clsName);
+          var tp = stuCount * classFee;
+          var fm = feeMap[clsName] || { className: clsName, baseClass: baseName, section: secName, students: new Set(), tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
+          fm.className = clsName; fm.baseClass = baseName; fm.section = secName; fm.tp = tp;
+          fm.students = new Set(stuList.map(function (s) { return s.id; }));
+          fm.to = Math.max(0, tp - fm.tc);
           if (sr) {
             if (!baseName.toLowerCase().includes(sr) && !secName.toLowerCase().includes(sr) && !clsName.toLowerCase().includes(sr)) return null;
           }
@@ -8968,9 +8972,15 @@ ${allContent}
       function _frAllStats(cs) {
         var allStudents = database.students || [];
         var totalStudentCount = allStudents.length;
-        var r = { ts: totalStudentCount, tp: 0, tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
-        cs.forEach(function (c) { r.tp += c.tp; r.tc += c.tc; r.to += c.to; r.pc += c.pc; r.parc += c.parc; r.uc += c.uc; });
-        return r;
+        var totalPayable = 0;
+        (database.classes || []).forEach(function (cls) {
+          var stuCount = allStudents.filter(function (s) { return s.className === cls.name; }).length;
+          totalPayable += stuCount * Number(cls.monthlyTuitionFees || 0);
+        });
+        var totalCollected = 0;
+        cs.forEach(function (c) { totalCollected += c.tc; });
+        var outstanding = Math.max(0, totalPayable - totalCollected);
+        return { ts: totalStudentCount, tp: totalPayable, tc: totalCollected, to: outstanding, pc: 0, parc: 0, uc: 0 };
       }
       function _fc(v) { return "PKR " + Number(v || 0).toLocaleString(); }
       function _pctColor(p) { return p >= 75 ? "#16a34a" : p >= 40 ? "#d97706" : "#dc2626"; }
@@ -9002,7 +9012,7 @@ ${allContent}
       var _e = function (id) { return document.getElementById(id); };
       var _statsEl = _e("frStats"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _insightsEl = _e("frInsights"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _searchEl = _e("frClassSearch"), _dateFromEl = _e("frDateFrom"), _dateToEl = _e("frDateTo"), _clearDatesBtn = _e("frClearDates");
       function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; }
-      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; }
+      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; setTimeout(function() { _drillEl.scrollIntoView({ behavior: "smooth", block: "start" }); }, 100); }
       function _renderAll() {
         var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
         var cs = _frBuildAllClassCards(rows, _searchTerm);
@@ -9048,20 +9058,33 @@ ${allContent}
         var classesWithFees = cs.filter(function (c) { return c.tp > 0; });
         var classesWithDue = cs.filter(function (c) { return c.uc > 0; });
         if (classesWithFees.length > 0) {
-          var bestClass = classesWithFees.reduce(function (best, c) { var p = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0; return p > (best.pct !== undefined ? best.pct : -1) ? { cls: c.baseClass || c.className, pct: p } : best; }, { pct: -1 });
-          if (bestClass.pct >= 0) insights.push({ icon: "fas fa-trophy", color: "#16a34a", label: "Best Collection", value: escapeHtml(bestClass.cls) + " (" + bestClass.pct + "%)" });
-          var worstClass = classesWithFees.reduce(function (worst, c) { var p = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0; return p < worst.pct ? { cls: c.baseClass || c.className, pct: p } : worst; }, { pct: 101 });
-          if (worstClass.pct <= 100 && worstClass.cls) insights.push({ icon: "fas fa-exclamation-triangle", color: "#d97706", label: "Needs Attention", value: escapeHtml(worstClass.cls) + " (" + worstClass.pct + "%)" });
+          var bestClass = classesWithFees.reduce(function (best, c) { var p = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0; return p > (best.pct !== undefined ? best.pct : -1) ? { cls: c.baseClass || c.className, pct: p, fullCls: c.className } : best; }, { pct: -1 });
+          if (bestClass.pct >= 0) insights.push({ icon: "fas fa-trophy", color: "#16a34a", label: "Best Collection", value: escapeHtml(bestClass.cls) + " (" + bestClass.pct + "%)", action: "search", searchVal: bestClass.cls });
+          var worstClass = classesWithFees.reduce(function (worst, c) { var p = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0; return p < worst.pct ? { cls: c.baseClass || c.className, pct: p, fullCls: c.className } : worst; }, { pct: 101 });
+          if (worstClass.pct <= 100 && worstClass.cls) insights.push({ icon: "fas fa-exclamation-triangle", color: "#d97706", label: "Needs Attention", value: escapeHtml(worstClass.cls) + " (" + worstClass.pct + "%)", action: "search", searchVal: worstClass.cls });
         }
-        if (a.ts > 0) insights.push({ icon: "fas fa-users", color: "#6366f1", label: "Total Students", value: a.ts + " in " + classCount + " classes" });
-        if (a.uc > 0) insights.push({ icon: "fas fa-user-clock", color: "#dc2626", label: "Students with Dues", value: a.uc + " of " + a.ts });
-        if (classesWithDue.length > 0) insights.push({ icon: "fas fa-school", color: "#d97706", label: "Classes with Pending", value: classesWithDue.length + " class" + (classesWithDue.length !== 1 ? "es" : "") });
-        if (a.tp > 0) { var overallPct = Math.round((a.tc / a.tp) * 100); insights.push({ icon: "fas fa-chart-pie", color: "#16a34a", label: "Overall Collection", value: overallPct + "%" }); }
+        if (a.ts > 0) insights.push({ icon: "fas fa-users", color: "#6366f1", label: "Total Students", value: a.ts + " in " + classCount + " classes", action: null });
+        if (a.uc > 0) insights.push({ icon: "fas fa-user-clock", color: "#dc2626", label: "Students with Dues", value: a.uc + " of " + a.ts, action: null });
+        if (classesWithDue.length > 0) insights.push({ icon: "fas fa-school", color: "#d97706", label: "Classes with Pending", value: classesWithDue.length + " class" + (classesWithDue.length !== 1 ? "es" : ""), action: null });
+        if (a.tp > 0) { var overallPct = Math.round((a.tc / a.tp) * 100); insights.push({ icon: "fas fa-chart-pie", color: "#16a34a", label: "Overall Collection", value: overallPct + "%", action: null }); }
         if (insights.length === 0) { _insightsEl.innerHTML = ""; _insightsEl.style.display = "none"; } else {
           _insightsEl.style.display = "";
-          _insightsEl.innerHTML = '<h4 class="fr-insights__title">Fee Insights</h4><div class="fr-insights__grid">' + insights.map(function (ins) {
-            return '<div class="fr-insight"><div class="fr-insight__icon" style="color:' + ins.color + '"><i class="' + ins.icon + '"></i></div><div class="fr-insight__body"><div class="fr-insight__label">' + ins.label + '</div><div class="fr-insight__value">' + ins.value + '</div></div></div>';
+          _insightsEl.innerHTML = '<h4 class="fr-insights__title">Fee Insights</h4><div class="fr-insights__grid">' + insights.map(function (ins, idx) {
+            var clickable = ins.action ? ' style="cursor:pointer"' : '';
+            return '<div class="fr-insight" data-fr-insight-idx="' + idx + '"' + clickable + '><div class="fr-insight__icon" style="color:' + ins.color + '"><i class="' + ins.icon + '"></i></div><div class="fr-insight__body"><div class="fr-insight__label">' + ins.label + '</div><div class="fr-insight__value">' + ins.value + '</div></div></div>';
           }).join("") + '</div>';
+          _insightsEl.querySelectorAll(".fr-insight[data-fr-insight-idx]").forEach(function (el) {
+            var idx = parseInt(el.getAttribute("data-fr-insight-idx"));
+            var ins = insights[idx];
+            if (ins && ins.action === "search") {
+              el.addEventListener("click", function () {
+                _searchEl.value = ins.searchVal;
+                _searchTerm = ins.searchVal;
+                _renderAll();
+                _cardsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+              });
+            }
+          });
         }
       }
       function _renderDrilldown() {
@@ -9147,6 +9170,7 @@ ${allContent}
       } catch (_frErr) { console.error("Fees Report Error:", _frErr); moduleSummary.innerHTML = '<div class="fr-empty"><div class="fr-empty__icon"><i class="fas fa-exclamation-triangle"></i></div><h4 class="fr-empty__title">Unable to Load Fees Report</h4><p class="fr-empty__desc">An error occurred while loading the fees report. Please try again.</p><button class="fr-btn fr-btn--p" onclick="router(\'fees-report\')" type="button"><i class="fas fa-sync-alt"></i> Retry</button></div>'; }
       return;
     }
+
     if (route === "delete-fees") {
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
