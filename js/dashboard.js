@@ -9010,17 +9010,21 @@ ${allContent}
         '<button class="fr-qa" id="frQaDefaulters" type="button"><i class="fas fa-exclamation-triangle"></i> View Defaulters</button>' +
         '<button class="fr-qa fr-qa--danger" id="clearAllFeesDataBtn" type="button"><i class="fas fa-trash"></i> Clear All Fees Data</button>' +
         '</div></div>' +
-        '<div class="fr-drill-overlay" id="frDrillOverlay"></div>' +
-        '<div class="fr-drill" id="frDrill"><div class="fr-drill__header"><button class="fr-drill__back" id="frDrillBack" type="button"><i class="fas fa-arrow-left"></i></button><div style="flex:1;min-width:0"><h3 class="fr-drill__title" id="frDrillTitle">Students</h3><p class="fr-drill__subtitle" id="frDrillSub">Student-level fee details</p></div><button class="fr-drill__close" id="frDrillClose" type="button"><i class="fas fa-times"></i></button></div><div class="fr-drill__body" id="frDrillBody"></div></div>' +
         '</article>';
       if (moduleGuideHeader) moduleGuideHeader.style.display = "none";
       moduleGuide.innerHTML = "";
+      var _existingDrill = document.getElementById("frDrill");
+      if (_existingDrill) _existingDrill.remove();
+      var _existingOverlay = document.getElementById("frDrillOverlay");
+      if (_existingOverlay) _existingOverlay.remove();
+      var _drillHtml = '<div class="fr-drill-overlay" id="frDrillOverlay"></div><div class="fr-drill" id="frDrill"><div class="fr-drill__header"><button class="fr-drill__back" id="frDrillBack" type="button"><i class="fas fa-arrow-left"></i></button><div style="flex:1;min-width:0"><h3 class="fr-drill__title" id="frDrillTitle">Students</h3><p class="fr-drill__subtitle" id="frDrillSub">Student-level fee details</p></div><button class="fr-drill__close" id="frDrillClose" type="button"><i class="fas fa-times"></i></button></div><div class="fr-drill__body" id="frDrillBody"></div></div>';
+      document.body.insertAdjacentHTML("beforeend", _drillHtml);
       var _e = function (id) { return document.getElementById(id); };
       var _statsEl = _e("frStats"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _insightsEl = _e("frInsights"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _searchEl = _e("frClassSearch"), _dateFromEl = _e("frDateFrom"), _dateToEl = _e("frDateTo"), _clearDatesBtn = _e("frClearDates");
       var _contentArea = document.querySelector(".content-area");
       var _savedScrollY = 0;
-      function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); if (_contentArea) { _contentArea.style.overflowY = ""; } document.body.style.overflow = ""; }
-      function _openDrill() { _savedScrollY = _contentArea ? _contentArea.scrollTop : 0; if (_contentArea) { _contentArea.style.overflowY = "hidden"; } _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); }
+      function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; }
+      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); }
       function _renderAll() {
         var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
         var cs = _frBuildAllClassCards(rows, _searchTerm);
