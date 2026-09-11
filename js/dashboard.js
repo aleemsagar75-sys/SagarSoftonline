@@ -17384,89 +17384,617 @@ ${allContent}
 
     if (route === "fee-collection-report" || route === "accounts-report") {
       if (route === "fee-collection-report") {
-        const classOptionsMarkup = classOptions.map(function (name) {
-          return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
-        }).join("");
-        moduleSummary.innerHTML = `
-          <article style="max-width:100%;overflow-x:hidden;">
-            <strong class="module-center-title">Fee Collection Report</strong>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Month</label><input id="feeReportMonthInput" type="month" value="${getCurrentMonthInputValue()}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="feeReportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-              <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Status</label><select id="feeReportStatusSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Status</option><option value="paid">Paid</option><option value="due">Due</option></select></div>
-              <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="feeReportSearchInput" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="feeReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            </div>
-            <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printFeeReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
-            <div class="report-cards" id="feeReportStats"></div>
-            <div class="split-grid report-grid"><article class="panel-card"><strong>Paid vs Due</strong><div id="feeReportChart" class="report-chart-box"></div></article><article class="panel-card"><strong>Class Collection</strong><div id="feeReportBars" class="report-bar-list"></div></article></div>
-            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:550px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Student</th><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Month</th><th style="white-space:nowrap;">Total</th><th style="white-space:nowrap;">Deposit</th><th style="white-space:nowrap;">Remaining</th><th style="white-space:nowrap;">Status</th></tr></thead><tbody id="feeReportTableBody"></tbody></table></div>
-          </article>
-        `;
+        var _fcrE = function(id){ return document.getElementById(id); };
+        var _fcrEsc = function(v){ return escapeHtml(String(v == null ? "-" : v)); };
+        var _fcrFc = function(v){ return "PKR " + Number(v || 0).toLocaleString(); };
+        var _fcrToday = new Date();
+        var _fcrTodayStr = _fcrToday.getFullYear() + "-" + String(_fcrToday.getMonth()+1).padStart(2,"0") + "-" + String(_fcrToday.getDate()).padStart(2,"0");
+        var _fcrCurMonth = _fcrToday.getFullYear() + "-" + String(_fcrToday.getMonth()+1).padStart(2,"0");
+
+        var _fcrClassOpts = classOptions.map(function(n){ return '<option value="'+escapeAttr(n)+'">'+_fcrEsc(n)+'</option>'; }).join("");
+        var _fcrAllFees = database.fees || [];
+        var _fcrAllCollections = settings.feeCollections || [];
+        var _fcrAllStudents = database.students || [];
+        var _fcrAllClasses = database.classes || [];
+        var _fcrBanks = database.banks || [];
+
+        var _fcrState = { preset:"month", dateFrom:"", dateTo:"", classVal:"all", section:"all", feeType:"all", payMethod:"all", status:"all", collectedBy:"all", search:"", sortCol:"date", sortDir:"desc", page:1, perPage:25 };
+
+        function _fcrBuildTransactions(){
+          var txns = [];
+          var seenFeeIds = {};
+          _fcrAllFees.forEach(function(fee){
+            var stu = _fcrAllStudents.find(function(s){ return s.id === fee.studentId; }) || {};
+            var cls = fee.className || stu.className || "-";
+            var pp = cls.split("|");
+            var baseClass = pp[0] ? pp[0].trim() : cls;
+            var section = pp[1] ? pp[1].trim() : "-";
+            var totalAmt = Number(fee.totalAmount || fee.amount || 0);
+            var deposit = Number(fee.deposit || 0);
+            var remaining = Number(fee.remaining || Math.max(totalAmt - deposit, 0));
+            var discount = Math.max(0, totalAmt - deposit - remaining);
+            var payDate = fee.paymentDate || fee.date || "";
+            var feeMonth = fee.feeMonth || fee.month || "-";
+            var feeType = "Tuition Fee";
+            if(fee.particulars && fee.particulars.length > 0){
+              var nonZero = fee.particulars.filter(function(p){ return Number(p.amount||0) !== 0; });
+              if(nonZero.length === 1) feeType = nonZero[0].label || "Tuition Fee";
+              else if(nonZero.length > 1) feeType = "Multiple";
+            }
+            var status = "unpaid";
+            if(deposit > 0 && remaining <= 0) status = "paid";
+            else if(deposit > 0 && remaining > 0) status = "partial";
+            var col = _fcrAllCollections.find(function(c){ return c.feeId === fee.id; }) || null;
+            var collectedAt = col ? (col.collectedAt || "") : "";
+            var bankName = "Cash";
+            if(fee.bankId){
+              var bank = _fcrBanks.find(function(b){ return b.id === fee.bankId; });
+              if(bank) bankName = bank.name || "Bank";
+            }
+            txns.push({
+              id: fee.id, receiptNo: "RC-" + String(fee.id).slice(-6).toUpperCase(),
+              date: payDate, studentId: fee.studentId || "",
+              studentName: stu.name || col ? (col.studentName || "-") : "-",
+              rollNo: stu.admissionNo || (col ? col.studentRollNo : "-") || "-",
+              className: cls, baseClass: baseClass, section: section,
+              feeMonth: feeMonth, feeType: feeType,
+              invoiceNo: "INV-" + String(fee.id).slice(-6).toUpperCase(),
+              amount: totalAmt, discount: discount, netPaid: deposit,
+              paymentMethod: bankName, collectedBy: "Admin",
+              status: status, remaining: remaining
+            });
+            seenFeeIds[fee.id] = true;
+          });
+          _fcrAllCollections.forEach(function(col){
+            if(seenFeeIds[col.feeId]) return;
+            var stu = _fcrAllStudents.find(function(s){ return s.id === col.studentId; }) || {};
+            var cls = stu.className || "-";
+            var pp = cls.split("|");
+            var totalAmt = Number(col.totalAmount || 0);
+            var deposit = Number(col.deposit || 0);
+            var remaining = Number(col.remaining || Math.max(totalAmt - deposit, 0));
+            var discount = Math.max(0, totalAmt - deposit - remaining);
+            var payDate = col.collectedAt ? col.collectedAt.slice(0,10) : "";
+            var status = "unpaid";
+            if(deposit > 0 && remaining <= 0) status = "paid";
+            else if(deposit > 0 && remaining > 0) status = "partial";
+            txns.push({
+              id: col.id, receiptNo: "RC-" + String(col.id).slice(-6).toUpperCase(),
+              date: payDate, studentId: col.studentId || "",
+              studentName: col.studentName || stu.name || "-",
+              rollNo: col.studentRollNo || stu.admissionNo || "-",
+              className: cls, baseClass: pp[0] ? pp[0].trim() : cls, section: pp[1] ? pp[1].trim() : "-",
+              feeMonth: col.feeMonth || "-", feeType: "Tuition Fee",
+              invoiceNo: "INV-" + String(col.feeId || "").slice(-6).toUpperCase(),
+              amount: totalAmt, discount: discount, netPaid: deposit,
+              paymentMethod: "Cash", collectedBy: "Admin",
+              status: status, remaining: remaining
+            });
+          });
+          return txns;
+        }
+
+        function _fcrFilterDate(txn){
+          var d = txn.date || "";
+          if(!d) return false;
+          if(_fcrState.dateFrom && d < _fcrState.dateFrom) return false;
+          if(_fcrState.dateTo && d > _fcrState.dateTo) return false;
+          return true;
+        }
+
+        function _fcrFilterAll(txns){
+          var q = _fcrState.search.toLowerCase();
+          return txns.filter(function(t){
+            if(!_fcrFilterDate(t)) return false;
+            if(_fcrState.classVal !== "all" && t.baseClass !== _fcrState.classVal) return false;
+            if(_fcrState.section !== "all" && t.section !== _fcrState.section) return false;
+            if(_fcrState.feeType !== "all" && t.feeType !== _fcrState.feeType) return false;
+            if(_fcrState.payMethod !== "all" && t.paymentMethod !== _fcrState.payMethod) return false;
+            if(_fcrState.status !== "all" && t.status !== _fcrState.status) return false;
+            if(q){
+              return String(t.studentName).toLowerCase().includes(q) ||
+                     String(t.rollNo).toLowerCase().includes(q) ||
+                     String(t.receiptNo).toLowerCase().includes(q) ||
+                     String(t.invoiceNo).toLowerCase().includes(q) ||
+                     String(t.id).toLowerCase().includes(q);
+            }
+            return true;
+          });
+        }
+
+        function _fcrSort(txns){
+          var col = _fcrState.sortCol, dir = _fcrState.sortDir === "asc" ? 1 : -1;
+          return txns.slice().sort(function(a,b){
+            var va = a[col] || "", vb = b[col] || "";
+            if(col === "amount" || col === "netPaid" || col === "discount" || col === "remaining"){
+              va = Number(va); vb = Number(vb);
+              return (va - vb) * dir;
+            }
+            return String(va).localeCompare(String(vb)) * dir;
+          });
+        }
+
+        function _fcrPresetDates(preset){
+          var now = new Date(), from = "", to = _fcrTodayStr;
+          var y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+          if(preset === "today"){ from = _fcrTodayStr; to = _fcrTodayStr; }
+          else if(preset === "week"){
+            var day = now.getDay() || 7;
+            var mon = new Date(y, m, d - day + 1);
+            from = mon.getFullYear()+"-"+String(mon.getMonth()+1).padStart(2,"0")+"-"+String(mon.getDate()).padStart(2,"0");
+          }
+          else if(preset === "month"){ from = _fcrCurMonth+"-01"; to = _fcrCurMonth+"-31"; }
+          else if(preset === "lastMonth"){
+            var lm = new Date(y, m-1, 1);
+            var lmEnd = new Date(y, m, 0);
+            from = lm.getFullYear()+"-"+String(lm.getMonth()+1).padStart(2,"0")+"-01";
+            to = lmEnd.getFullYear()+"-"+String(lmEnd.getMonth()+1).padStart(2,"0")+"-"+String(lmEnd.getDate()).padStart(2,"0");
+          }
+          else if(preset === "all"){ from = ""; to = ""; }
+          _fcrState.dateFrom = from; _fcrState.dateTo = to;
+        }
+
+        var _fcrSections = ["all"];
+        var _fcrFeeTypes = ["all"];
+        var _fcrPayMethods = ["all"];
+        var _fcrCollectedByList = ["all"];
+        var _fcrUniqFeeTypes = {};
+        var _fcrUniqMethods = {};
+
+        function _fcrBuildMeta(){
+          var secs = {}; var cls = {};
+          _fcrAllStudents.forEach(function(s){ if(s.className){ var pp = s.className.split("|"); if(pp[1]) secs[pp[1].trim()] = true; cls[pp[0].trim()] = true; }});
+          _fcrSections = ["all"].concat(Object.keys(secs).sort());
+          var allTxns = _fcrBuildTransactions();
+          _fcrUniqFeeTypes = {}; _fcrUniqMethods = {};
+          allTxns.forEach(function(t){ _fcrUniqFeeTypes[t.feeType] = true; _fcrUniqMethods[t.paymentMethod] = true; });
+          _fcrFeeTypes = ["all"].concat(Object.keys(_fcrUniqFeeTypes).sort());
+          _fcrPayMethods = ["all"].concat(Object.keys(_fcrUniqMethods).sort());
+        }
+        _fcrBuildMeta();
+
+        var _fcrClassSections = {};
+        _fcrAllStudents.forEach(function(s){
+          if(!s.className) return;
+          var pp = s.className.split("|");
+          var base = pp[0] ? pp[0].trim() : s.className;
+          if(!_fcrClassSections[base]) _fcrClassSections[base] = {};
+          if(pp[1]) _fcrClassSections[base][pp[1].trim()] = true;
+        });
+
+        moduleSummary.innerHTML = '<article class="fcr">' +
+          '<div class="fcr__topbar"><div class="fcr__topbar-left"><p class="fcr__eyebrow">REPORTS</p><h2 class="fcr__title">Fees Collection Report</h2><p class="fcr__subtitle">Detailed analysis of all fee payments and collections.</p></div>' +
+          '<div class="fcr__topbar-right"><button class="fcr__btn" id="fcrExportBtn" type="button"><i class="fas fa-download"></i> Export</button><button class="fcr__btn" id="fcrPrintBtn" type="button"><i class="fas fa-print"></i> Print</button><button class="fcr__btn fcr__btn--primary" id="fcrRefreshBtn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div></div>' +
+          '<div class="fcr__stats" id="fcrStats"></div>' +
+          '<div class="fcr__filters" id="fcrFilters"><div class="fcr__filters-row">' +
+            '<div class="fcr__filters-group"><button class="fcr__preset fcr__preset--active" data-fcr-preset="today" type="button">Today</button><button class="fcr__preset" data-fcr-preset="week" type="button">This Week</button><button class="fcr__preset" data-fcr-preset="month" type="button">This Month</button><button class="fcr__preset" data-fcr-preset="lastMonth" type="button">Last Month</button><button class="fcr__preset" data-fcr-preset="all" type="button">All Time</button><button class="fcr__preset" data-fcr-preset="custom" type="button">Custom</button></div>' +
+            '<div class="fcr__field" id="fcrCustomDates" style="display:none"><div style="display:flex;gap:4px;align-items:center"><input type="date" id="fcrDateFrom" class="fcr__field"><span style="color:#94a3b8;font-size:0.72rem;">to</span><input type="date" id="fcrDateTo" class="fcr__field"></div></div>' +
+            '<div class="fcr__field"><select id="fcrClass"><option value="all">All Classes</option>' + _fcrClassOpts + '</select></div>' +
+            '<div class="fcr__field"><select id="fcrSection"><option value="all">All Sections</option></select></div>' +
+            '<div class="fcr__field"><select id="fcrFeeType"><option value="all">All Fee Types</option></select></div>' +
+            '<div class="fcr__field"><select id="fcrPayMethod"><option value="all">All Methods</option></select></div>' +
+            '<div class="fcr__field"><select id="fcrStatus"><option value="all">All Status</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="unpaid">Unpaid</option></select></div>' +
+            '<div class="fcr__search-wrap"><i class="fas fa-search"></i><input type="search" id="fcrSearch" class="fcr__search-input" placeholder="Search student, roll no, receipt..."></div>' +
+            '<div class="fcr__filter-actions"><button class="fcr__filter-btn fcr__filter-btn--apply" id="fcrApplyBtn" type="button">Apply</button><button class="fcr__filter-btn" id="fcrResetBtn" type="button">Reset</button></div>' +
+          '</div></div>' +
+          '<div class="fcr__charts"><div class="fcr__chart-card"><h4 class="fcr__chart-title"><i class="fas fa-chart-line" style="color:#6366f1;margin-right:6px;"></i>Collection Trend</h4><div id="fcrTrendChart"></div></div><div class="fcr__chart-card"><h4 class="fcr__chart-title"><i class="fas fa-credit-card" style="color:#6366f1;margin-right:6px;"></i>Payment Methods</h4><div id="fcrPayMethods"></div></div></div>' +
+          '<div class="fcr__chart-card" style="margin-bottom:1.1rem"><h4 class="fcr__chart-title"><i class="fas fa-tags" style="color:#6366f1;margin-right:6px;"></i>Collection by Fee Type</h4><div id="fcrFeeTypeBreakdown" class="fcr__fee-types"></div></div>' +
+          '<div class="fcr__table-wrap"><div class="fcr__table-head"><div><h4 class="fcr__table-title">Fee Collection Transactions</h4><span class="fcr__table-count" id="fcrTableCount"></span></div></div>' +
+          '<div class="fcr__table-scroll"><table class="fcr__tbl"><thead><tr>' +
+            '<td data-fcr-col="receiptNo" class="fcr__sort-active">Receipt # <span class="fcr__sort"><i class="fas fa-sort-down"></i></span></td>' +
+            '<td data-fcr-col="date">Date <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="studentName">Student <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="rollNo">Roll No <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="baseClass">Class <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="feeType">Fee Type <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="amount">Amount <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="discount">Discount <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="netPaid">Net Paid <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="paymentMethod">Method <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="status">Status <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td>Action</td>' +
+          '</tr></thead><tbody id="fcrTableBody"></tbody></table></div>' +
+          '<div class="fcr__pagination" id="fcrPagination"></div></div>' +
+          '<div class="fcr__summary-section" id="fcrDailySection"><div class="fcr__summary-head"><h4 class="fcr__summary-title"><i class="fas fa-calendar-day" style="color:#6366f1;margin-right:6px;"></i>Daily Collection Summary</h4></div><div class="fcr__summary-scroll" id="fcrDailySummary"></div></div>' +
+          '<div class="fcr__summary-section" id="fcrMonthlySection"><div class="fcr__summary-head"><h4 class="fcr__summary-title"><i class="fas fa-calendar-alt" style="color:#6366f1;margin-right:6px;"></i>Monthly Collection Summary</h4></div><div class="fcr__summary-scroll" id="fcrMonthlySummary"></div></div>' +
+          '<div class="fcr__receipt-modal-overlay" id="fcrReceiptOverlay"><div class="fcr__receipt-modal"><div class="fcr__receipt-head"><h3><i class="fas fa-receipt" style="color:#6366f1;margin-right:6px;"></i>Payment Details</h3><button class="fcr__receipt-close" id="fcrReceiptClose" type="button"><i class="fas fa-times"></i></button></div><div class="fcr__receipt-body" id="fcrReceiptBody"></div><div class="fcr__receipt-actions"><button class="fcr__receipt-print" id="fcrReceiptPrint" type="button"><i class="fas fa-print"></i> Print Receipt</button></div></div></div>' +
+          '</article>';
+
         moduleGuide.innerHTML = "";
-        const monthInput = document.getElementById("feeReportMonthInput");
-        const classSelect = document.getElementById("feeReportClassSelect");
-        const statusSelect = document.getElementById("feeReportStatusSelect");
-        const searchInput = document.getElementById("feeReportSearchInput");
-        const searchDropdown = document.getElementById("feeReportSearchDropdown");
-        const searchContainer = document.getElementById("feeReportSearchContainer");
-        const statsWrap = document.getElementById("feeReportStats");
-        const chartWrap = document.getElementById("feeReportChart");
-        const barsWrap = document.getElementById("feeReportBars");
-        const tableBody = document.getElementById("feeReportTableBody");
+        if(moduleGuideHeader) moduleGuideHeader.style.display = "none";
 
-        initializeStudentProfessionalSearch(
-          "feeReportSearchInput",
-          "feeReportSearchDropdown",
-          "feeReportSearchContainer",
-          function(student) {
-            searchInput.value = student.name || "";
-            renderRows();
+        var _fcrStatsEl = _fcrE("fcrStats");
+        var _fcrTrendEl = _fcrE("fcrTrendChart");
+        var _fcrPayMethodsEl = _fcrE("fcrPayMethods");
+        var _fcrFeeTypeEl = _fcrE("fcrFeeTypeBreakdown");
+        var _fcrTableBody = _fcrE("fcrTableBody");
+        var _fcrTableCount = _fcrE("fcrTableCount");
+        var _fcrPagination = _fcrE("fcrPagination");
+        var _fcrDailySummary = _fcrE("fcrDailySummary");
+        var _fcrMonthlySummary = _fcrE("fcrMonthlySummary");
+        var _fcrClassEl = _fcrE("fcrClass");
+        var _fcrSectionEl = _fcrE("fcrSection");
+        var _fcrFeeTypeEl2 = _fcrE("fcrFeeType");
+        var _fcrPayMethodEl = _fcrE("fcrPayMethod");
+        var _fcrStatusEl = _fcrE("fcrStatus");
+        var _fcrSearchEl = _fcrE("fcrSearch");
+        var _fcrDateFromEl = _fcrE("fcrDateFrom");
+        var _fcrDateToEl = _fcrE("fcrDateTo");
+        var _fcrCustomDatesEl = _fcrE("fcrCustomDates");
+        var _fcrReceiptOverlay = _fcrE("fcrReceiptOverlay");
+        var _fcrReceiptBody = _fcrE("fcrReceiptBody");
+        var _fcrLastTxn = null;
+
+        function _fcrPopulateSections(){
+          var base = _fcrClassEl.value;
+          var opts = '<option value="all">All Sections</option>';
+          if(base !== "all" && _fcrClassSections[base]){
+            Object.keys(_fcrClassSections[base]).sort().forEach(function(s){ opts += '<option value="'+escapeAttr(s)+'">'+_fcrEsc(s)+'</option>'; });
           }
-        );
-
-        function getRows() {
-          return getFeeCollectionReportRows(monthInput.value, classSelect.value, searchInput.value, statusSelect.value);
+          _fcrSectionEl.innerHTML = opts;
         }
 
-        function renderRows() {
-          const rows = getRows();
-          const paid = rows.filter(function (row) { return row.status === "paid"; }).length;
-          const due = rows.length - paid;
-          const totalAmount = rows.reduce(function (sum, row) { return sum + row.totalAmount; }, 0);
-          const totalDeposit = rows.reduce(function (sum, row) { return sum + row.deposit; }, 0);
-          const totalDue = rows.reduce(function (sum, row) { return sum + row.remaining; }, 0);
-          const paidPercent = rows.length ? Math.round((paid / rows.length) * 100) : 0;
-          statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>Total Students</strong><span>${rows.length}</span></article><article class="stat-card stat-card--violet"><strong>Total Amount</strong><span>${totalAmount}</span></article><article class="stat-card stat-card--emerald"><strong>Collected</strong><span>${totalDeposit}</span></article><article class="stat-card stat-card--rose"><strong>Due</strong><span>${totalDue}</span></article>`;
-          chartWrap.innerHTML = rows.length ? buildCircleChart(paidPercent, `Paid ${paid} | Due ${due}`, "#10b981", "#e2e8f0") : `<p class="empty-state">No data found.</p>`;
-          const classTotals = rows.reduce(function (map, row) { map.set(row.student.className || "-", (map.get(row.student.className || "-") || 0) + row.deposit); return map; }, new Map());
-          const bars = Array.from(classTotals.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
-          const max = bars.length ? Math.max.apply(null, bars.map(function (item) { return item.value; })) : 1;
-          barsWrap.innerHTML = bars.length ? buildBarChart(bars, max) : `<p class="empty-state">No class data.</p>`;
-          tableBody.innerHTML = rows.map(function (row) {
-            return `<tr><td>${escapeHtml(row.student.admissionNo || "-")}</td><td>${escapeHtml(row.student.name || "-")}</td><td>${escapeHtml(row.student.className || "-")}</td><td>${escapeHtml(row.month || "-")}</td><td>${row.totalAmount}</td><td>${row.deposit}</td><td>${row.remaining}</td><td><span class="status-pill ${row.status === "paid" ? "active" : "inactive"}">${row.status === "paid" ? "Paid" : "Due"}</span></td></tr>`;
+        function _fcrPopulateDropdowns(){
+          _fcrFeeTypeEl2.innerHTML = '<option value="all">All Fee Types</option>' + _fcrFeeTypes.filter(function(f){ return f !== "all"; }).map(function(f){ return '<option value="'+escapeAttr(f)+'">'+_fcrEsc(f)+'</option>'; }).join("");
+          _fcrPayMethodEl.innerHTML = '<option value="all">All Methods</option>' + _fcrPayMethods.filter(function(m){ return m !== "all"; }).map(function(m){ return '<option value="'+escapeAttr(m)+'">'+_fcrEsc(m)+'</option>'; }).join("");
+          _fcrPopulateSections();
+        }
+        _fcrPopulateDropdowns();
+
+        function _fcrRenderStats(filtered){
+          var totalCollected = 0, totalDiscount = 0, totalOutstanding = 0;
+          var todayCount = 0, todayAmt = 0, monthCount = 0, monthAmt = 0;
+          var txCount = filtered.length;
+          filtered.forEach(function(t){
+            totalCollected += t.netPaid;
+            totalDiscount += t.discount;
+            totalOutstanding += t.remaining;
+            if(t.date === _fcrTodayStr){ todayCount++; todayAmt += t.netPaid; }
+            if(t.date && t.date.slice(0,7) === _fcrCurMonth){ monthCount++; monthAmt += t.netPaid; }
+          });
+          _fcrStatsEl.innerHTML =
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--blue"><i class="fas fa-dollar-sign"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Total Collection</div><div class="fcr__stat-value">' + _fcrFc(totalCollected) + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--green"><i class="fas fa-receipt"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Total Transactions</div><div class="fcr__stat-value">' + txCount.toLocaleString() + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--purple"><i class="fas fa-clock"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Today</div><div class="fcr__stat-value">' + _fcrFc(todayAmt) + '</div><div class="fcr__stat-sub">' + todayCount + ' transaction' + (todayCount !== 1 ? 's' : '') + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--teal"><i class="fas fa-calendar-check"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">This Month</div><div class="fcr__stat-value">' + _fcrFc(monthAmt) + '</div><div class="fcr__stat-sub">' + monthCount + ' transaction' + (monthCount !== 1 ? 's' : '') + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--red"><i class="fas fa-exclamation-circle"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Outstanding</div><div class="fcr__stat-value">' + _fcrFc(totalOutstanding) + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--amber"><i class="fas fa-percentage"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Discounts</div><div class="fcr__stat-value">' + _fcrFc(totalDiscount) + '</div></div></div>';
+        }
+
+        function _fcrRenderTrend(filtered){
+          var dayMap = {};
+          filtered.forEach(function(t){
+            if(!t.date) return;
+            if(!dayMap[t.date]) dayMap[t.date] = 0;
+            dayMap[t.date] += t.netPaid;
+          });
+          var days = Object.keys(dayMap).sort();
+          if(days.length === 0){ _fcrTrendEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-chart-line"></i><h4>No Collection Data</h4><p>No fee collections found for the selected period.</p></div>'; return; }
+          var max = Math.max.apply(null, days.map(function(d){ return dayMap[d]; }));
+          if(max === 0) max = 1;
+          var total = days.reduce(function(s,d){ return s + dayMap[d]; }, 0);
+          var barW = Math.max(4, Math.floor(100 / days.length));
+          var bars = days.map(function(d){
+            var h = Math.round((dayMap[d] / max) * 100);
+            var short = d.slice(5);
+            return '<div class="fcr__trend-bar" data-tip="' + short + ': ' + _fcrFc(dayMap[d]) + '" style="height:' + h + '%;width:' + barW + '%;background:linear-gradient(180deg,#6366f1,#818cf8);"></div>';
           }).join("");
+          var firstLabel = days[0] ? days[0].slice(5) : "";
+          var lastLabel = days[days.length-1] ? days[days.length-1].slice(5) : "";
+          _fcrTrendEl.innerHTML = '<div class="fcr__trend-chart"><div class="fcr__trend-bars">' + bars + '</div><div class="fcr__trend-labels"><span>' + firstLabel + '</span><span>' + lastLabel + '</span></div><div class="fcr__trend-total">Total: ' + _fcrFc(total) + ' across ' + days.length + ' day' + (days.length !== 1 ? 's' : '') + '</div></div>';
         }
 
-        safeOn(document.getElementById("printFeeReportBtn"), "click", function () {
-          const rows = getRows();
-          if (!rows.length) {
-            return;
+        function _fcrRenderPayMethods(filtered){
+          var map = {};
+          filtered.forEach(function(t){
+            var m = t.paymentMethod || "Cash";
+            if(!map[m]) map[m] = { amount:0, count:0 };
+            map[m].amount += t.netPaid;
+            map[m].count++;
+          });
+          var items = Object.keys(map).sort(function(a,b){ return map[b].amount - map[a].amount; });
+          var totalAmt = items.reduce(function(s,k){ return s + map[k].amount; }, 0);
+          var colors = ["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#ec4899"];
+          if(items.length === 0){ _fcrPayMethodsEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-credit-card"></i><h4>No Payment Data</h4></div>'; return; }
+          _fcrPayMethodsEl.innerHTML = '<div class="fcr__payment-methods">' + items.map(function(k,i){
+            var pct = totalAmt > 0 ? Math.round((map[k].amount / totalAmt) * 100) : 0;
+            var color = colors[i % colors.length];
+            return '<div class="fcr__pm"><div class="fcr__pm-name">' + _fcrEsc(k) + '</div><div class="fcr__pm-amount">' + _fcrFc(map[k].amount) + '</div><div class="fcr__pm-count">' + map[k].count + ' transaction' + (map[k].count !== 1 ? 's' : '') + ' &middot; ' + pct + '%</div><div class="fcr__pm-bar"><div class="fcr__pm-bar-fill" style="width:' + pct + '%;background:' + color + ';"></div></div></div>';
+          }).join("") + '</div>';
+        }
+
+        function _fcrRenderFeeTypes(filtered){
+          var map = {};
+          filtered.forEach(function(t){
+            var ft = t.feeType || "Other";
+            if(!map[ft]) map[ft] = { invoices:0, collected:0, outstanding:0 };
+            map[ft].invoices++;
+            map[ft].collected += t.netPaid;
+            map[ft].outstanding += t.remaining;
+          });
+          var items = Object.keys(map).sort(function(a,b){ return map[b].collected - map[a].collected; });
+          if(items.length === 0){ _fcrFeeTypeEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-tags"></i><h4>No Fee Type Data</h4></div>'; return; }
+          var maxCol = Math.max.apply(null, items.map(function(k){ return map[k].collected; }));
+          if(maxCol === 0) maxCol = 1;
+          _fcrFeeTypeEl.innerHTML = '<table><thead><tr><th>Fee Type</th><th>Invoices</th><th>Collected</th><th>Outstanding</th><th>Collection %</th></tr></thead><tbody>' + items.map(function(k){
+            var total = map[k].collected + map[k].outstanding;
+            var pct = total > 0 ? Math.round((map[k].collected / total) * 100) : 0;
+            var barW = Math.round((map[k].collected / maxCol) * 100);
+            return '<tr><td style="font-weight:600;">' + _fcrEsc(k) + '</td><td>' + map[k].invoices + '</td><td>' + _fcrFc(map[k].collected) + '</td><td>' + _fcrFc(map[k].outstanding) + '</td><td>' + pct + '% <span class="fcr__pct-bar" style="width:' + barW + 'px;"></span></td></tr>';
+          }).join("") + '</tbody></table>';
+        }
+
+        function _fcrRenderTable(filtered){
+          var sorted = _fcrSort(filtered);
+          var total = sorted.length;
+          var totalPages = Math.max(1, Math.ceil(total / _fcrState.perPage));
+          if(_fcrState.page > totalPages) _fcrState.page = totalPages;
+          var start = (_fcrState.page - 1) * _fcrState.perPage;
+          var pageRows = sorted.slice(start, start + _fcrState.perPage);
+          _fcrTableCount.textContent = "Showing " + (total > 0 ? start + 1 : 0) + "\u2013" + Math.min(start + _fcrState.perPage, total) + " of " + total + " transactions";
+          if(pageRows.length === 0){
+            _fcrTableBody.innerHTML = '<tr><td colspan="12"><div class="fcr__empty"><i class="fas fa-search"></i><h4>No Transactions Found</h4><p>Try changing the date range or filters.</p></div></td></tr>';
+          } else {
+            _fcrTableBody.innerHTML = pageRows.map(function(t){
+              var statusCls = t.status === "paid" ? "fcr__status--paid" : (t.status === "partial" ? "fcr__status--partial" : "fcr__status--unpaid");
+              var statusLbl = t.status === "paid" ? "Paid" : (t.status === "partial" ? "Partial" : "Unpaid");
+              var payDate = t.date ? (function(){ var p = t.date.split("-"); return p.length === 3 ? p[2] + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(p[1],10)-1] + " " + p[0] : t.date; })() : "-";
+              return '<tr>' +
+                '<td style="font-weight:600;color:#6366f1;">' + _fcrEsc(t.receiptNo) + '</td>' +
+                '<td>' + _fcrEsc(payDate) + '</td>' +
+                '<td style="font-weight:600;">' + _fcrEsc(t.studentName) + '</td>' +
+                '<td>' + _fcrEsc(t.rollNo) + '</td>' +
+                '<td>' + _fcrEsc(t.baseClass) + (t.section !== "-" ? " | " + _fcrEsc(t.section) : "") + '</td>' +
+                '<td>' + _fcrEsc(t.feeType) + '</td>' +
+                '<td style="font-weight:600;">' + _fcrFc(t.amount) + '</td>' +
+                '<td>' + (t.discount > 0 ? _fcrFc(t.discount) : '-') + '</td>' +
+                '<td style="font-weight:700;color:#16a34a;">' + _fcrFc(t.netPaid) + '</td>' +
+                '<td>' + _fcrEsc(t.paymentMethod) + '</td>' +
+                '<td><span class="fcr__status ' + statusCls + '">' + statusLbl + '</span></td>' +
+                '<td><button class="fcr__action-btn" data-fcr-view="' + escapeAttr(t.id) + '" type="button"><i class="fas fa-eye"></i> View</button></td>' +
+                '</tr>';
+            }).join("");
           }
+          var btns = '';
+          btns += '<button class="fcr__page-btn' + (_fcrState.page <= 1 ? ' fcr__page-btn--disabled' : '') + '" data-fcr-page="prev" type="button"' + (_fcrState.page <= 1 ? ' disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
+          var startPage = Math.max(1, _fcrState.page - 2);
+          var endPage = Math.min(totalPages, startPage + 4);
+          if(endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+          for(var pi = startPage; pi <= endPage; pi++){
+            btns += '<button class="fcr__page-btn' + (pi === _fcrState.page ? ' fcr__page-btn--active' : '') + '" data-fcr-page="' + pi + '" type="button">' + pi + '</button>';
+          }
+          btns += '<button class="fcr__page-btn' + (_fcrState.page >= totalPages ? ' fcr__page-btn--disabled' : '') + '" data-fcr-page="next" type="button"' + (_fcrState.page >= totalPages ? ' disabled' : '') + '><i class="fas fa-chevron-right"></i></button>';
+          _fcrPagination.innerHTML = '<span class="fcr__page-info">Page ' + _fcrState.page + ' of ' + totalPages + '</span><div class="fcr__page-btns">' + btns + '</div>';
+        }
+
+        function _fcrRenderDaily(filtered){
+          var dayMap = {};
+          filtered.forEach(function(t){
+            if(!t.date) return;
+            if(!dayMap[t.date]) dayMap[t.date] = { txns:0, collected:0, discount:0 };
+            dayMap[t.date].txns++;
+            dayMap[t.date].collected += t.netPaid;
+            dayMap[t.date].discount += t.discount;
+          });
+          var days = Object.keys(dayMap).sort().reverse();
+          if(days.length === 0){ _fcrDailySummary.innerHTML = '<div class="fcr__empty"><p>No daily data available.</p></div>'; document.getElementById("fcrDailySection").style.display = "none"; return; }
+          document.getElementById("fcrDailySection").style.display = "";
+          var totalTx = 0, totalCol = 0, totalDis = 0;
+          days.forEach(function(d){ totalTx += dayMap[d].txns; totalCol += dayMap[d].collected; totalDis += dayMap[d].discount; });
+          _fcrDailySummary.innerHTML = '<table class="fcr__summary-table"><thead><tr><th>Date</th><th>Transactions</th><th>Collected</th><th>Discount</th><th>Net Collection</th></tr></thead><tbody>' +
+            days.map(function(d){
+              var v = dayMap[d];
+              var net = v.collected;
+              var short = d.split("-").reverse().join("-");
+              return '<tr><td style="font-weight:600;">' + _fcrEsc(short) + '</td><td>' + v.txns + '</td><td>' + _fcrFc(v.collected) + '</td><td>' + (v.discount > 0 ? _fcrFc(v.discount) : '-') + '</td><td style="font-weight:700;color:#16a34a;">' + _fcrFc(net) + '</td></tr>';
+            }).join("") +
+            '<tr class="fcr__total-row"><td>Total</td><td>' + totalTx + '</td><td>' + _fcrFc(totalCol) + '</td><td>' + (totalDis > 0 ? _fcrFc(totalDis) : '-') + '</td><td style="color:#16a34a;">' + _fcrFc(totalCol) + '</td></tr></tbody></table>';
+        }
+
+        function _fcrRenderMonthly(filtered){
+          var monthMap = {};
+          filtered.forEach(function(t){
+            if(!t.date) return;
+            var mk = t.date.slice(0,7);
+            if(!monthMap[mk]) monthMap[mk] = { txns:0, collected:0, discount:0 };
+            monthMap[mk].txns++;
+            monthMap[mk].collected += t.netPaid;
+            monthMap[mk].discount += t.discount;
+          });
+          var months = Object.keys(monthMap).sort().reverse();
+          if(months.length <= 1){ document.getElementById("fcrMonthlySection").style.display = "none"; return; }
+          document.getElementById("fcrMonthlySection").style.display = "";
+          var totalTx = 0, totalCol = 0, totalDis = 0;
+          months.forEach(function(m){ totalTx += monthMap[m].txns; totalCol += monthMap[m].collected; totalDis += monthMap[m].discount; });
+          var monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+          _fcrMonthlySummary.innerHTML = '<table class="fcr__summary-table"><thead><tr><th>Month</th><th>Transactions</th><th>Total Collected</th><th>Discounts</th><th>Net Collection</th><th>Avg. Transaction</th></tr></thead><tbody>' +
+            months.map(function(m){
+              var v = monthMap[m];
+              var parts = m.split("-");
+              var label = monthNames[parseInt(parts[1],10)-1] + " " + parts[0];
+              var avg = v.txns > 0 ? Math.round(v.collected / v.txns) : 0;
+              return '<tr><td style="font-weight:600;">' + label + '</td><td>' + v.txns + '</td><td>' + _fcrFc(v.collected) + '</td><td>' + (v.discount > 0 ? _fcrFc(v.discount) : '-') + '</td><td style="font-weight:700;color:#16a34a;">' + _fcrFc(v.collected) + '</td><td>' + _fcrFc(avg) + '</td></tr>';
+            }).join("") +
+            '<tr class="fcr__total-row"><td>Total</td><td>' + totalTx + '</td><td>' + _fcrFc(totalCol) + '</td><td>' + (totalDis > 0 ? _fcrFc(totalDis) : '-') + '</td><td style="color:#16a34a;">' + _fcrFc(totalCol) + '</td><td>' + (totalTx > 0 ? _fcrFc(Math.round(totalCol / totalTx)) : _fcrFc(0)) + '</td></tr></tbody></table>';
+        }
+
+        function _fcrRenderAll(){
+          var allTxns = _fcrBuildTransactions();
+          var filtered = _fcrFilterAll(allTxns);
+          _fcrRenderStats(filtered);
+          _fcrRenderTrend(filtered);
+          _fcrRenderPayMethods(filtered);
+          _fcrRenderFeeTypes(filtered);
+          _fcrRenderTable(filtered);
+          _fcrRenderDaily(filtered);
+          _fcrRenderMonthly(filtered);
+        }
+
+        function _fcrShowReceipt(txn){
+          _fcrLastTxn = txn;
+          var profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+          var schoolName = profile.instituteName || database.schoolName || "SagarSoft";
+          var payDate = txn.date ? (function(){ var p = txn.date.split("-"); return p.length === 3 ? p[2] + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(p[1],10)-1] + " " + p[0] : txn.date; })() : "-";
+          _fcrReceiptBody.innerHTML =
+            '<div class="fcr__receipt-section"><div class="fcr__receipt-section-title">Student Information</div><div class="fcr__receipt-grid">' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Student Name</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.studentName) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Roll No</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.rollNo) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Class</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.baseClass) + (txn.section !== "-" ? " | " + _fcrEsc(txn.section) : "") + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Fee Month</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.feeMonth) + '</span></div>' +
+            '</div></div>' +
+            '<div class="fcr__receipt-section"><div class="fcr__receipt-section-title">Payment Information</div><div class="fcr__receipt-grid">' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Receipt No</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.receiptNo) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Invoice No</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.invoiceNo) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Fee Type</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.feeType) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Payment Date</span><span class="fcr__receipt-item-value">' + _fcrEsc(payDate) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Payment Method</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.paymentMethod) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Collected By</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.collectedBy) + '</span></div>' +
+            '</div></div>' +
+            '<div class="fcr__receipt-section"><div class="fcr__receipt-section-title">Financial Breakdown</div><div class="fcr__receipt-financial">' +
+              '<div class="fcr__receipt-fin-row"><span>Gross Amount</span><span>' + _fcrFc(txn.amount) + '</span></div>' +
+              '<div class="fcr__receipt-fin-row"><span>Discount</span><span>' + (txn.discount > 0 ? _fcrFc(txn.discount) : "PKR 0") + '</span></div>' +
+              '<div class="fcr__receipt-fin-row fcr__receipt-fin-total"><span>Net Amount Paid</span><span>' + _fcrFc(txn.netPaid) + '</span></div>' +
+              '<div class="fcr__receipt-fin-row"><span>Remaining Balance</span><span style="color:' + (txn.remaining > 0 ? '#dc2626' : '#16a34a') + ';">' + _fcrFc(txn.remaining) + '</span></div>' +
+            '</div></div>';
+          _fcrReceiptOverlay.classList.add("fcr__receipt-modal-overlay--open");
+        }
+
+        _fcrPresetDates("month");
+
+        safeOn(_fcrE("fcrRefreshBtn"), "click", function(){ refreshDatabase(); setRoute("fee-collection-report"); });
+
+        document.querySelectorAll("[data-fcr-preset]").forEach(function(btn){
+          safeOn(btn, "click", function(){
+            document.querySelectorAll("[data-fcr-preset]").forEach(function(b){ b.classList.remove("fcr__preset--active"); });
+            btn.classList.add("fcr__preset--active");
+            var preset = btn.getAttribute("data-fcr-preset");
+            if(preset === "custom"){
+              _fcrCustomDatesEl.style.display = "";
+              _fcrState.dateFrom = _fcrDateFromEl.value || "";
+              _fcrState.dateTo = _fcrDateToEl.value || "";
+            } else {
+              _fcrCustomDatesEl.style.display = "none";
+              _fcrPresetDates(preset);
+              _fcrState.page = 1;
+              _fcrRenderAll();
+            }
+          });
+        });
+
+        safeOn(_fcrDateFromEl, "change", function(){ _fcrState.dateFrom = _fcrDateFromEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrDateToEl, "change", function(){ _fcrState.dateTo = _fcrDateToEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrClassEl, "change", function(){ _fcrState.classVal = _fcrClassEl.value; _fcrState.page = 1; _fcrPopulateSections(); _fcrRenderAll(); });
+        safeOn(_fcrSectionEl, "change", function(){ _fcrState.section = _fcrSectionEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrFeeTypeEl2, "change", function(){ _fcrState.feeType = _fcrFeeTypeEl2.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrPayMethodEl, "change", function(){ _fcrState.payMethod = _fcrPayMethodEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrStatusEl, "change", function(){ _fcrState.status = _fcrStatusEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrSearchEl, "input", function(){ _fcrState.search = _fcrSearchEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+
+        safeOn(_fcrE("fcrApplyBtn"), "click", function(){
+          if(_fcrCustomDatesEl.style.display !== "none"){
+            _fcrState.dateFrom = _fcrDateFromEl.value || "";
+            _fcrState.dateTo = _fcrDateToEl.value || "";
+          }
+          _fcrState.page = 1;
+          _fcrRenderAll();
+        });
+
+        safeOn(_fcrE("fcrResetBtn"), "click", function(){
+          _fcrState = { preset:"month", dateFrom:"", dateTo:"", classVal:"all", section:"all", feeType:"all", payMethod:"all", status:"all", collectedBy:"all", search:"", sortCol:"date", sortDir:"desc", page:1, perPage:25 };
+          _fcrPresetDates("month");
+          _fcrClassEl.value = "all"; _fcrSectionEl.value = "all"; _fcrFeeTypeEl2.value = "all"; _fcrPayMethodEl.value = "all"; _fcrStatusEl.value = "all"; _fcrSearchEl.value = ""; _fcrDateFromEl.value = ""; _fcrDateToEl.value = "";
+          _fcrCustomDatesEl.style.display = "none";
+          document.querySelectorAll("[data-fcr-preset]").forEach(function(b){ b.classList.remove("fcr__preset--active"); });
+          document.querySelector('[data-fcr-preset="month"]').classList.add("fcr__preset--active");
+          _fcrPopulateSections();
+          _fcrRenderAll();
+        });
+
+        document.querySelectorAll("[data-fcr-col]").forEach(function(th){
+          safeOn(th, "click", function(){
+            var col = th.getAttribute("data-fcr-col");
+            if(_fcrState.sortCol === col) _fcrState.sortDir = _fcrState.sortDir === "asc" ? "desc" : "asc";
+            else { _fcrState.sortCol = col; _fcrState.sortDir = "asc"; }
+            document.querySelectorAll("[data-fcr-col]").forEach(function(h){ h.classList.remove("fcr__sort-active"); h.querySelector(".fcr__sort i").className = "fas fa-sort"; });
+            th.classList.add("fcr__sort-active");
+            th.querySelector(".fcr__sort i").className = "fas fa-sort-" + (_fcrState.sortDir === "asc" ? "up" : "down");
+            _fcrRenderAll();
+          });
+        });
+
+        safeOn(_fcrPagination, "click", function(e){
+          var btn = e.target.closest("[data-fcr-page]");
+          if(!btn || btn.disabled) return;
+          var pg = btn.getAttribute("data-fcr-page");
+          if(pg === "prev") _fcrState.page = Math.max(1, _fcrState.page - 1);
+          else if(pg === "next") _fcrState.page++;
+          else _fcrState.page = parseInt(pg) || 1;
+          _fcrRenderAll();
+        });
+
+        safeOn(_fcrTableBody, "click", function(e){
+          var btn = e.target.closest("[data-fcr-view]");
+          if(!btn) return;
+          var tid = btn.getAttribute("data-fcr-view");
+          var allTxns = _fcrBuildTransactions();
+          var txn = allTxns.find(function(t){ return t.id === tid; });
+          if(txn) _fcrShowReceipt(txn);
+        });
+
+        safeOn(_fcrReceiptOverlay, "click", function(e){ if(e.target === _fcrReceiptOverlay) _fcrReceiptOverlay.classList.remove("fcr__receipt-modal-overlay--open"); });
+        safeOn(_fcrE("fcrReceiptClose"), "click", function(){ _fcrReceiptOverlay.classList.remove("fcr__receipt-modal-overlay--open"); });
+
+        safeOn(_fcrE("fcrReceiptPrint"), "click", function(){
+          if(!_fcrLastTxn) return;
+          var t = _fcrLastTxn;
+          var profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+          var schoolName = profile.instituteName || database.schoolName || "SagarSoft";
           openPrintReport({
-            title: "Fee Collection Report",
-            subtitle: `Month: ${normalizeFeeMonthLabel(monthInput.value)} | Class: ${classSelect.value} | Status: ${statusSelect.value}`,
-            headers: ["Roll No", "Student", "Class", "Month", "Total", "Deposit", "Remaining", "Status"],
-            rows: rows.map(function (row) {
-              return [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), escapeHtml(row.month || "-"), row.totalAmount, row.deposit, row.remaining, row.status === "paid" ? "Paid" : "Due"];
+            title: "Fee Collection Receipt",
+            subtitle: "Receipt: " + t.receiptNo + " | Date: " + t.date,
+            headers: ["Field", "Details"],
+            rows: [
+              ["School", schoolName], ["Receipt No", t.receiptNo], ["Invoice No", t.invoiceNo],
+              ["Student", t.studentName], ["Roll No", t.rollNo], ["Class", t.baseClass + (t.section !== "-" ? " | " + t.section : "")],
+              ["Fee Month", t.feeMonth], ["Fee Type", t.feeType], ["Payment Date", t.date],
+              ["Gross Amount", _fcrFc(t.amount)], ["Discount", _fcrFc(t.discount)], ["Net Paid", _fcrFc(t.netPaid)],
+              ["Remaining", _fcrFc(t.remaining)], ["Payment Method", t.paymentMethod], ["Status", t.status]
+            ]
+          });
+        });
+
+        safeOn(_fcrE("fcrExportBtn"), "click", function(){
+          var allTxns = _fcrBuildTransactions();
+          var filtered = _fcrFilterAll(allTxns);
+          if(filtered.length === 0){ openAppMessageBox("No Data", "No transactions to export.", "warning"); return; }
+          var csv = "Receipt No,Date,Student,Roll No,Class,Section,Fee Month,Invoice No,Fee Type,Amount,Discount,Net Paid,Remaining,Payment Method,Collected By,Status\n";
+          filtered.forEach(function(t){
+            csv += '"' + [t.receiptNo,t.date,t.studentName,t.rollNo,t.baseClass,t.section,t.feeMonth,t.invoiceNo,t.feeType,t.amount,t.discount,t.netPaid,t.remaining,t.paymentMethod,t.collectedBy,t.status].join('","') + '"\n';
+          });
+          var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a"); a.href = url; a.download = "fees-collection-report-" + _fcrTodayStr + ".csv";
+          document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        });
+
+        safeOn(_fcrE("fcrPrintBtn"), "click", function(){
+          var allTxns = _fcrBuildTransactions();
+          var filtered = _fcrFilterAll(allTxns);
+          if(filtered.length === 0){ openAppMessageBox("No Data", "No transactions to print.", "warning"); return; }
+          var profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+          var schoolName = profile.instituteName || database.schoolName || "SagarSoft";
+          openPrintReport({
+            title: "Fees Collection Report",
+            subtitle: schoolName + " | " + (_fcrState.dateFrom || "Start") + " to " + (_fcrState.dateTo || "End") + " | " + filtered.length + " transactions",
+            headers: ["Receipt #", "Date", "Student", "Roll No", "Class", "Fee Type", "Amount", "Discount", "Net Paid", "Method", "Status"],
+            rows: filtered.map(function(t){
+              return [t.receiptNo, t.date, t.studentName, t.rollNo, t.baseClass, t.feeType, t.amount, t.discount > 0 ? t.discount : "-", t.netPaid, t.paymentMethod, t.status];
             })
           });
         });
 
-        [monthInput, classSelect, statusSelect].forEach(function (input) {
-          input.addEventListener("change", renderRows);
-        });
-        searchInput.addEventListener("input", renderRows);
-        renderRows();
+        _fcrPresetDates("month");
+        _fcrRenderAll();
         return;
       }
 
