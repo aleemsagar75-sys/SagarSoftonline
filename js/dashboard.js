@@ -4932,6 +4932,16 @@ document.addEventListener("DOMContentLoaded", function () {
       changed = true;
     }
 
+    if (!settings.__reversedEntriesCleanedV1) {
+      var _beforeLen = settings.accountsLedger.length;
+      settings.accountsLedger = settings.accountsLedger.filter(function (entry) {
+        var cat = String(entry.category || "").toLowerCase();
+        return cat.indexOf("reversed") === -1 && cat.indexOf("reversal") === -1;
+      });
+      settings.__reversedEntriesCleanedV1 = true;
+      if (settings.accountsLedger.length !== _beforeLen) changed = true;
+    }
+
     return changed;
   }
 
@@ -4973,7 +4983,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     var grossIncome = incomeEntries.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
     var totalReversals = reversalEntries.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
-    var revenue = grossIncome - totalReversals;
+    var revenue = grossIncome > 0 ? Math.max(0, grossIncome - totalReversals) : 0;
     var expenses = expenseEntries.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
     var salaries = salaryEntries.reduce(function (sum, item) { return sum + Number(item.netSalary || item.salaryAmount || 0); }, 0);
     var profit = revenue - expenses - salaries;
@@ -6352,7 +6362,7 @@ document.addEventListener("DOMContentLoaded", function () {
         <article class="gs-form-section">
           <div class="gs-form-section__header">
             <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;">??</div>
-            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view ï¿½ edits are managed in Fee Structure</p></div>
+            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view � edits are managed in Fee Structure</p></div>
           </div>
           <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Fee Particulars for*</label><select class="gs-field__input" id="feeParticularClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
           <div id="feeParticularRows" class="gs-row-list" style="margin-top:1rem;"></div>
@@ -6752,7 +6762,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var assignedCount = database.students.filter(function (s) { return s.discountTypeId === dt.id; }).length;
             if (assignedCount > 0) {
               var msg = document.getElementById("dtMessage");
-              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" ï¿½ it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
+              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" � it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
               msg.querySelector(".gs-message__icon").textContent = "?";
               msg.className = "gs-message gs-message--error gs-message--visible";
               return;
@@ -6990,7 +7000,7 @@ document.addEventListener("DOMContentLoaded", function () {
           var percent = dt ? dt.percentage : (student.discountInFee || "-");
           return '<article style="padding:8px 10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">' +
             '<div><strong>' + escapeHtml(student.name) + '</strong> <small style="color:#888;">(' + escapeHtml(student.admissionNo || "-") + ')</small>' +
-            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' ï¿½ <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
+            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' � <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
             '</article>';
         }).join("");
       }
@@ -8484,9 +8494,9 @@ ${allContent}
           name: student.name || "-",
           status: status === "paid" ? "Paid" : "Due",
           feeMonth: feeMonth,
-          totalAmount: `â‚¨ ${totalAmount}`,
-          deposit: `â‚¨ ${deposit}`,
-          remaining: `â‚¨ ${remaining}`
+          totalAmount: `₨ ${totalAmount}`,
+          deposit: `₨ ${deposit}`,
+          remaining: `₨ ${remaining}`
         };
         latestReceiptData.totalAmount = `${currencySymbol} ${totalAmount}`;
         latestReceiptData.deposit = `${currencySymbol} ${deposit}`;
@@ -14618,7 +14628,7 @@ ${allContent}
               <td>${index + 1}</td>
               <td class="att-info">
                 <span class="att-info__name">${escapeHtml(employee.name || "-")}</span>
-                <span class="att-info__meta">${escapeHtml(employee.fatherOrHusbandName || "-")} ï¿½ ${escapeHtml(employee.role || employee.designation || "-")}</span>
+                <span class="att-info__meta">${escapeHtml(employee.fatherOrHusbandName || "-")} � ${escapeHtml(employee.role || employee.designation || "-")}</span>
               </td>
               <td>${statusButtonsMarkup(employee.id, employee.currentStatus)}</td>
               <td><button class="table-action-btn" type="button" data-attendance-wa-employee="${employee.id}">WhatsApp</button></td>
@@ -18883,7 +18893,7 @@ ${allContent}
         const message = document.getElementById("qpChapterMessage");
         const tableBody = document.getElementById("qpChapterBody");
 
-        // â”€â”€ Question Type UI Functions (subject-chapters route) â”€â”€
+        // ── Question Type UI Functions (subject-chapters route) ──
         var _qpAutoTitleDefaults = {
           mcq: "Choose The Correct Option",
           fill: "Fill In The Blanks",
@@ -18976,7 +18986,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Save Question Button Handler â”€â”€
+        // ── Save Question Button Handler ──
         safeOn(document.getElementById("qpSaveQuestion"), "click", function() {
           var className = classSelect.value;
           var subject = subjectSelect.value;
@@ -19052,7 +19062,7 @@ ${allContent}
           }
         });
 
-        // â”€â”€ MCQ Add/Remove Handlers â”€â”€
+        // ── MCQ Add/Remove Handlers ──
         safeOn(document.getElementById("qpAddMcq"), "click", function() {
           if (mcqOptions.length >= 8) return;
           mcqOptions.push("");
@@ -19064,7 +19074,7 @@ ${allContent}
           renderMcqRows();
         });
 
-        // â”€â”€ Document Object Model State Manager â”€â”€
+        // ── Document Object Model State Manager ──
         var _qeDoc = {
           objects: new Map(),
           selectedIds: new Set(),
@@ -19201,7 +19211,7 @@ ${allContent}
               if (obj.h) tbl.style.height = obj.h + "px";
               tbl.style.borderCollapse = "collapse";
             }
-            // Wrapper adapts to table â€” no fixed width/height on wrapper
+            // Wrapper adapts to table — no fixed width/height on wrapper
             obj.el.style.width = "";
             obj.el.style.height = "";
           }
@@ -19325,7 +19335,7 @@ ${allContent}
           }
         }
 
-        // â”€â”€ Selection System â”€â”€
+        // ── Selection System ──
         function _qeSelect(el, type) {
           // Exit text edit mode if selecting a different object
           if (_qeTextEditActive && _qeTextEditTarget && !el.contains(_qeTextEditTarget)) {
@@ -19363,7 +19373,7 @@ ${allContent}
           _qeHidePropsPanel();
         }
 
-        // â”€â”€ Properties Panel â”€â”€
+        // ── Properties Panel ──
         function _qeShowPropsPanel() {
           _qeHidePropsPanel();
           if (!_qe.selectedEl || !_qe.selectedType) return;
@@ -19441,7 +19451,7 @@ ${allContent}
           }
         }
 
-        // â”€â”€ Context Menu System â”€â”€
+        // ── Context Menu System ──
         function _qeShowContextMenu(e, type, el, extra) {
           e.preventDefault();
           e.stopPropagation();
@@ -19574,7 +19584,7 @@ ${allContent}
           if (_qe.contextMenu) { _qe.contextMenu.remove(); _qe.contextMenu = null; }
         }
 
-        // â”€â”€ Color Picker Popup (for context menu) â”€â”€
+        // ── Color Picker Popup (for context menu) ──
         function _qeShowColorPopup(e, title, currentColor, onApply) {
           _qeHideContextMenu();
           var popup = document.createElement("div");
@@ -19675,7 +19685,7 @@ ${allContent}
           }, 10);
         }
 
-        // â”€â”€ Text Edit Mode â”€â”€
+        // ── Text Edit Mode ──
         var _qeTextEditActive = false;
         var _qeTextEditTarget = null;
 
@@ -19715,7 +19725,7 @@ ${allContent}
           _qeTextEditTarget = null;
         }
 
-        // â”€â”€ Object Manipulation â”€â”€
+        // ── Object Manipulation ──
         function _qeSetupObjectDrag(el) {
           if (el.getAttribute("data-drag-wired")) return;
           el.setAttribute("data-drag-wired", "1");
@@ -19854,7 +19864,7 @@ ${allContent}
           _qeSetupRotateHandle(el);
         }
 
-        // â”€â”€ Duplicate Object â”€â”€
+        // ── Duplicate Object ──
         function _qeDuplicateObject(el) {
           var obj = _qeGetObject(el);
           if (!obj) return;
@@ -19910,7 +19920,7 @@ ${allContent}
           setTimeout(function() { _qeWireAllObjects(); }, 0);
         }
 
-        // â”€â”€ Crop Image â”€â”€
+        // ── Crop Image ──
         function _qeStartCrop(el) {
           var img = el.querySelector("img");
           if (!img) return;
@@ -19934,7 +19944,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Wire All Objects â”€â”€
+        // ── Wire All Objects ──
         function _qeWireAllObjects() {
           if (!_qe.el) return;
           _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(fig) {
@@ -20034,7 +20044,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Move Handle â”€â”€
+        // ── Table Move Handle ──
         function _qeSetupTableMoveHandle(ft) {
           if (ft.querySelector(".ss-qe-table-move-handle")) return;
           var handle = document.createElement("div");
@@ -20059,7 +20069,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Resize Handle â”€â”€
+        // ── Table Resize Handle ──
         function _qeSetupTableResizeHandle(ft) {
           if (ft.querySelector(".ss-qe-table-resize-handle")) return;
           var handle = document.createElement("div");
@@ -20091,7 +20101,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Column Resize (Word-style border dragging) â”€â”€
+        // ── Table Column Resize (Word-style border dragging) ──
         function _qeSetupTableColResize(table) {
           if (!table) return;
           var _colResizeActive = false;
@@ -20204,7 +20214,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Row Resize (Word-style border dragging) â”€â”€
+        // ── Table Row Resize (Word-style border dragging) ──
         function _qeSetupTableRowResize(table) {
           if (!table) return;
           var _rowResizeActive = false;
@@ -20300,7 +20310,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Selection (click/double-click/triple-click) â”€â”€
+        // ── Table Selection (click/double-click/triple-click) ──
         function _qeSetupTableSelection(ft, table) {
           if (!table) return;
           // Click on cell: allow it to receive focus for typing
@@ -20312,7 +20322,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Operations â”€â”€
+        // ── Table Operations ──
         function _qeInsertTable(rows, cols) {
           var wrapper = document.createElement("figure");
           wrapper.className = "ss-qe-float-table";
@@ -20404,7 +20414,7 @@ ${allContent}
           }
         }
 
-        // â”€â”€ Shape Library â”€â”€
+        // ── Shape Library ──
         var _qeShapeLibrary = {
           rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
           roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
@@ -20643,7 +20653,7 @@ ${allContent}
           _qeShowUrlPopup("Insert Link", "https://", function(url) { _qeExec("createLink", url); });
         }
 
-        // â”€â”€ Toolbar â”€â”€
+        // ── Toolbar ──
         function _qeBuildToolbar() {
           var tb = _qe.toolbar; if (!tb) return;
           function btn(icon, title, cmd, val, cls) {
@@ -20755,7 +20765,7 @@ ${allContent}
           }); }
         }
 
-        // â”€â”€ Keyboard Shortcuts â”€â”€
+        // ── Keyboard Shortcuts ──
         function _qeHandleKeydown(e) {
           if (!_qe.el || !_qe.el.contains(e.target)) return;
           var ctrl = e.ctrlKey || e.metaKey;
@@ -20775,7 +20785,7 @@ ${allContent}
             if (an && an.getAttribute && an.getAttribute("contenteditable") === "true") isInEditable = true;
             if (an && an.closest && (an.closest("td") || an.closest("th") || an.closest(".ss-qe-shape-text-editor") || an.closest("#ssQEContent"))) isInEditable = true;
           }
-          // If inside an editable text area, only handle Escape â€” let browser handle everything else
+          // If inside an editable text area, only handle Escape — let browser handle everything else
           if (isInEditable) {
             if (e.key === "Escape") { e.preventDefault(); _qeExitTextEditMode(); }
             return;
@@ -20842,7 +20852,7 @@ ${allContent}
           }
         }
 
-        // â”€â”€ Drag Selection (Marquee) â”€â”€
+        // ── Drag Selection (Marquee) ──
         var _qeMarquee = null;
         var _qeMarqueeStart = null;
 
@@ -20924,7 +20934,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Wire Events â”€â”€
+        // ── Wire Events ──
         function _qeWireEvents() {
           _qe.el.addEventListener("input", function() { _qeUpdateStatus(); });
           _qe.el.addEventListener("keyup", function() { _qeUpdateStatus(); _qeUpdateToolbar(); });
@@ -21005,7 +21015,7 @@ ${allContent}
         function insertAtCursor(html) { _qeInsertHTML(html); }
 
 
-        // â”€â”€ Question Editor initialization â”€â”€
+        // ── Question Editor initialization ──
         (function initQuestionEditor() {
           _qe.el = document.getElementById("ssQEContent");
           _qe.toolbar = document.getElementById("ssQEToolbar");
@@ -21040,7 +21050,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
         renderMcqRows();
         renderChapterRows();
 
-        // â”€â”€ Edit Mode: Load question from Question Bank â”€â”€
+        // ── Edit Mode: Load question from Question Bank ──
         var editQId = sessionStorage.getItem("sagarsoft_edit_question_id");
         if (editQId) {
           var editRow = (settings.questionChapters || []).find(function(r) { return String(r.id) === String(editQId); });
@@ -24210,8 +24220,8 @@ classSelect.addEventListener("change", renderSubjectSelect);
             <ol class="sms-guide-list" style="margin:6px 0 0;">
               <li>Install <strong>SagarSoft SMS Agent</strong> app on phone ? Login with school credentials.</li>
               <li>In app, go to <strong>SIM Registration</strong> ? enter SIM number ? tap <strong>Register SIM</strong>.</li>
-              <li>Tap <strong>Start Service</strong> ï¿½ it will auto-send queued SMS.</li>
-              <li>Works from <strong>any network</strong> ï¿½ WiFi, mobile data, different locations, no setup needed.</li>
+              <li>Tap <strong>Start Service</strong> � it will auto-send queued SMS.</li>
+              <li>Works from <strong>any network</strong> � WiFi, mobile data, different locations, no setup needed.</li>
             </ol>
           </div>
         </article>
@@ -26314,7 +26324,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
           <div class="admission-field"><strong>Admission Date</strong><span>${student.dateOfAdmission || "-"}</span></div>
           <div class="admission-field"><strong>Account Status</strong><span>${loginInfo.status}</span></div>
           <div class="admission-field"><strong>Username</strong><span>${loginInfo.username}</span></div>
-          <div class="admission-field"><strong>Password</strong><span>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</span></div>
+          <div class="admission-field"><strong>Password</strong><span>��������</span></div>
         </div>
       </article>
     `;
@@ -29614,7 +29624,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
   initKeyboardScanner();
 
   /* ===================================================================
-     NUCLEAR MOBILE RESPONSIVE FIX ï¿½ JS-based, runs after every render
+     NUCLEAR MOBILE RESPONSIVE FIX � JS-based, runs after every render
      Bypasses ALL CSS specificity wars and inline style conflicts
      =================================================================== */
   function forceMobileLayout() {
