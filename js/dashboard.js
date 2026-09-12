@@ -17492,6 +17492,29 @@ ${allContent}
               status: status, remaining: remaining
             });
           });
+          _fcrAllStudents.forEach(function(stu){
+            if(stu.status === "inactive") return;
+            if(seenFeeIds["stu_" + stu.id]) return;
+            var hasRecord = _fcrAllFees.some(function(f){ return f.studentId === stu.id; });
+            if(hasRecord) return;
+            var cls = stu.className || "-";
+            var clsObj = _fcrAllClasses.find(function(c){ return c.name === cls; }) || {};
+            var classFee = Number(clsObj.monthlyTuitionFees || clsObj.fee || 0);
+            if(classFee <= 0) return;
+            var pp = cls.split("|");
+            txns.push({
+              id: "UNPAID-" + stu.id, receiptNo: "-",
+              date: "", studentId: stu.id || "",
+              studentName: stu.name || "-",
+              rollNo: stu.admissionNo || "-",
+              className: cls, baseClass: pp[0] ? pp[0].trim() : cls, section: pp[1] ? pp[1].trim() : "-",
+              feeMonth: _fcrCurMonth || "-", feeType: "Tuition Fee",
+              invoiceNo: "-",
+              amount: classFee, discount: 0, netPaid: 0,
+              paymentMethod: "-", collectedBy: "-",
+              status: "unpaid", remaining: classFee
+            });
+          });
           return txns;
         }
 
@@ -17734,7 +17757,7 @@ ${allContent}
             var s = t.status || "unpaid";
             if(!statusMap[s]) statusMap[s] = { amount:0, count:0 };
             if(s === "unpaid"){
-              statusMap[s].amount += Math.max(0, Number(t.amount || 0));
+              statusMap[s].amount += Math.max(0, Number(t.remaining || t.amount || 0));
             } else if(s === "partial"){
               statusMap[s].amount += Math.max(0, Number(t.remaining || 0));
             } else {
