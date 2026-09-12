@@ -17432,7 +17432,7 @@ ${allContent}
             var section = pp[1] ? pp[1].trim() : "-";
             var totalAmt = Number(fee.totalAmount || fee.amount || 0);
             var deposit = Math.max(0, Number(fee.deposit || 0));
-            var remaining = Math.max(0, Number(fee.remaining || Math.max(totalAmt - deposit, 0)));
+            var remaining = Math.max(0, totalAmt - deposit);
             var discount = Math.max(0, totalAmt - deposit - remaining);
             var payDate = fee.paymentDate || fee.date || "";
             var feeMonth = fee.feeMonth || fee.month || "-";
@@ -17445,6 +17445,7 @@ ${allContent}
             var status = "unpaid";
             if(deposit > 0 && remaining <= 0) status = "paid";
             else if(deposit > 0 && remaining > 0) status = "partial";
+            if(deposit <= 0) return;
             var col = _fcrAllCollections.find(function(c){ return c.feeId === fee.id; }) || null;
             var collectedAt = col ? (col.collectedAt || "") : "";
             var bankName = "Cash";
@@ -17473,7 +17474,8 @@ ${allContent}
             var pp = cls.split("|");
             var totalAmt = Number(col.totalAmount || 0);
             var deposit = Math.max(0, Number(col.deposit || 0));
-            var remaining = Math.max(0, Number(col.remaining || Math.max(totalAmt - deposit, 0)));
+            if(deposit <= 0) return;
+            var remaining = Math.max(0, totalAmt - deposit);
             var discount = Math.max(0, totalAmt - deposit - remaining);
             var payDate = col.collectedAt ? col.collectedAt.slice(0,10) : "";
             var status = "unpaid";
@@ -17490,29 +17492,6 @@ ${allContent}
               amount: totalAmt, discount: discount, netPaid: Math.max(0, deposit),
               paymentMethod: "Cash", collectedBy: "Admin",
               status: status, remaining: remaining
-            });
-          });
-          _fcrAllStudents.forEach(function(stu){
-            if(stu.status === "inactive") return;
-            if(seenFeeIds["stu_" + stu.id]) return;
-            var hasRecord = _fcrAllFees.some(function(f){ return f.studentId === stu.id; });
-            if(hasRecord) return;
-            var cls = stu.className || "-";
-            var clsObj = _fcrAllClasses.find(function(c){ return c.name === cls; }) || {};
-            var classFee = Number(clsObj.monthlyTuitionFees || clsObj.fee || 0);
-            if(classFee <= 0) return;
-            var pp = cls.split("|");
-            txns.push({
-              id: "UNPAID-" + stu.id, receiptNo: "-",
-              date: _fcrTodayStr, studentId: stu.id || "",
-              studentName: stu.name || "-",
-              rollNo: stu.admissionNo || "-",
-              className: cls, baseClass: pp[0] ? pp[0].trim() : cls, section: pp[1] ? pp[1].trim() : "-",
-              feeMonth: _fcrCurMonth || "-", feeType: "Tuition Fee",
-              invoiceNo: "-",
-              amount: classFee, discount: 0, netPaid: 0,
-              paymentMethod: "-", collectedBy: "-",
-              status: "unpaid", remaining: classFee
             });
           });
           return txns;
@@ -17764,6 +17743,18 @@ ${allContent}
               statusMap[s].amount += Math.max(0, Number(t.netPaid || 0));
             }
             statusMap[s].count++;
+          });
+          var paidStudentIds = {};
+          filtered.forEach(function(t){ if(t.status === "paid" || t.status === "partial") paidStudentIds[t.studentId] = true; });
+          _fcrAllStudents.forEach(function(stu){
+            if(stu.status === "inactive") return;
+            if(paidStudentIds[stu.id]) return;
+            var cls = stu.className || "-";
+            var clsObj = _fcrAllClasses.find(function(c){ return c.name === cls; }) || {};
+            var classFee = Number(clsObj.monthlyTuitionFees || clsObj.fee || 0);
+            if(classFee <= 0) return;
+            statusMap.unpaid.amount += classFee;
+            statusMap.unpaid.count++;
           });
           var total = filtered.length;
           var cfg = [
