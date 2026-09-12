@@ -17599,7 +17599,7 @@ ${allContent}
             '<div class="fcr__search-wrap"><i class="fas fa-search"></i><input type="search" id="fcrSearch" class="fcr__search-input" placeholder="Search student, roll no, receipt..."></div>' +
             '<div class="fcr__filter-actions"><button class="fcr__filter-btn fcr__filter-btn--apply" id="fcrApplyBtn" type="button">Apply</button><button class="fcr__filter-btn" id="fcrResetBtn" type="button">Reset</button></div>' +
           '</div></div>' +
-          '<div class="fcr__charts"><div class="fcr__chart-card"><h4 class="fcr__chart-title"><i class="fas fa-chart-line" style="color:#6366f1;margin-right:6px;"></i>Collection Trend</h4><div id="fcrTrendChart"></div></div><div class="fcr__chart-card"><h4 class="fcr__chart-title"><i class="fas fa-credit-card" style="color:#6366f1;margin-right:6px;"></i>Payment Methods</h4><div id="fcrPayMethods"></div></div></div>' +
+          '<div class="fcr__charts"><div class="fcr__chart-card"><h4 class="fcr__chart-title"><i class="fas fa-chart-line" style="color:#6366f1;margin-right:6px;"></i>Payment Status Trend</h4><div id="fcrTrendChart"></div></div><div class="fcr__chart-card"><h4 class="fcr__chart-title"><i class="fas fa-chart-pie" style="color:#6366f1;margin-right:6px;"></i>Payment Status</h4><div id="fcrPayMethods"></div></div></div>' +
           '<div class="fcr__chart-card" style="margin-bottom:1.1rem"><h4 class="fcr__chart-title"><i class="fas fa-tags" style="color:#6366f1;margin-right:6px;"></i>Collection by Fee Type</h4><div id="fcrFeeTypeBreakdown" class="fcr__fee-types"></div></div>' +
           '<div class="fcr__table-wrap"><div class="fcr__table-head"><div><h4 class="fcr__table-title">Fee Collection Transactions</h4><span class="fcr__table-count" id="fcrTableCount"></span></div></div>' +
           '<div class="fcr__table-scroll"><table class="fcr__tbl"><thead><tr>' +
@@ -17687,42 +17687,84 @@ ${allContent}
           var dayMap = {};
           filtered.forEach(function(t){
             if(!t.date) return;
-            if(!dayMap[t.date]) dayMap[t.date] = 0;
-            dayMap[t.date] += t.netPaid;
+            if(!dayMap[t.date]) dayMap[t.date] = { paid:0, partial:0, unpaid:0 };
+            var s = t.status || "unpaid";
+            if(!dayMap[t.date][s]) dayMap[t.date][s] = 0;
+            dayMap[t.date][s]++;
           });
           var days = Object.keys(dayMap).sort();
-          if(days.length === 0){ _fcrTrendEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-chart-line"></i><h4>No Collection Data</h4><p>No fee collections found for the selected period.</p></div>'; return; }
-          var max = Math.max.apply(null, days.map(function(d){ return dayMap[d]; }));
-          if(max === 0) max = 1;
-          var total = days.reduce(function(s,d){ return s + dayMap[d]; }, 0);
-          var barW = Math.max(4, Math.floor(100 / days.length));
+          if(days.length === 0){ _fcrTrendEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-chart-line"></i><h4>No Data</h4></div>'; return; }
+          var maxPaid = 0, maxPartial = 0, maxUnpaid = 0;
+          days.forEach(function(d){
+            if(dayMap[d].paid > maxPaid) maxPaid = dayMap[d].paid;
+            if(dayMap[d].partial > maxPartial) maxPartial = dayMap[d].partial;
+            if(dayMap[d].unpaid > maxUnpaid) maxUnpaid = dayMap[d].unpaid;
+          });
+          var maxAll = Math.max(maxPaid, maxPartial, maxUnpaid, 1);
+          var barW = Math.max(8, Math.floor(100 / days.length));
+          var cfg = [
+            { key:"paid", color:"#10b981", label:"Paid" },
+            { key:"partial", color:"#f59e0b", label:"Partial" },
+            { key:"unpaid", color:"#ef4444", label:"Unpaid" }
+          ];
           var bars = days.map(function(d){
-            var h = Math.round((dayMap[d] / max) * 100);
+            var v = dayMap[d];
+            var hPd = Math.round((v.paid / maxAll) * 100);
+            var hPt = Math.round((v.partial / maxAll) * 100);
+            var hUn = Math.round((v.unpaid / maxAll) * 100);
             var short = d.slice(5);
-            return '<div class="fcr__trend-bar" data-tip="' + short + ': ' + _fcrFc(dayMap[d]) + '" style="height:' + h + '%;width:' + barW + '%;background:linear-gradient(180deg,#6366f1,#818cf8);"></div>';
+            var tip = short + ": Paid=" + v.paid + " Partial=" + v.partial + " Unpaid=" + v.unpaid;
+            return '<div class="fcr__trend-bar-group" data-tip="' + tip + '" style="width:' + barW + '%;">' +
+              '<div class="fcr__trend-bar-seg" style="height:' + hUn + '%;background:#ef4444;bottom:0;"></div>' +
+              '<div class="fcr__trend-bar-seg" style="height:' + hPt + '%;background:#f59e0b;bottom:' + hUn + '%;"></div>' +
+              '<div class="fcr__trend-bar-seg" style="height:' + hPd + '%;background:#10b981;bottom:' + (hUn + hPt) + '%;"></div>' +
+              '</div>';
           }).join("");
           var firstLabel = days[0] ? days[0].slice(5) : "";
           var lastLabel = days[days.length-1] ? days[days.length-1].slice(5) : "";
-          _fcrTrendEl.innerHTML = '<div class="fcr__trend-chart"><div class="fcr__trend-bars">' + bars + '</div><div class="fcr__trend-labels"><span>' + firstLabel + '</span><span>' + lastLabel + '</span></div><div class="fcr__trend-total">Total: ' + _fcrFc(total) + ' across ' + days.length + ' day' + (days.length !== 1 ? 's' : '') + '</div></div>';
+          var legendHtml = cfg.map(function(c){
+            return '<span class="fcr__trend-legend"><span class="fcr__trend-legend-dot" style="background:' + c.color + ';"></span>' + c.label + '</span>';
+          }).join("");
+          _fcrTrendEl.innerHTML = '<div class="fcr__trend-chart"><div class="fcr__trend-legend-row">' + legendHtml + '</div><div class="fcr__trend-bars">' + bars + '</div><div class="fcr__trend-labels"><span>' + firstLabel + '</span><span>' + lastLabel + '</span></div></div>';
         }
 
         function _fcrRenderPayMethods(filtered){
-          var map = {};
+          var statusMap = { paid:{ amount:0, count:0 }, partial:{ amount:0, count:0 }, unpaid:{ amount:0, count:0 } };
           filtered.forEach(function(t){
-            var m = t.paymentMethod || "Cash";
-            if(!map[m]) map[m] = { amount:0, count:0 };
-            map[m].amount += t.netPaid;
-            map[m].count++;
+            var s = t.status || "unpaid";
+            if(!statusMap[s]) statusMap[s] = { amount:0, count:0 };
+            statusMap[s].amount += Math.max(0, Number(t.netPaid || 0));
+            statusMap[s].count++;
           });
-          var items = Object.keys(map).sort(function(a,b){ return map[b].amount - map[a].amount; });
-          var totalAmt = items.reduce(function(s,k){ return s + map[k].amount; }, 0);
-          var colors = ["#6366f1","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#ec4899"];
-          if(items.length === 0){ _fcrPayMethodsEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-credit-card"></i><h4>No Payment Data</h4></div>'; return; }
-          _fcrPayMethodsEl.innerHTML = '<div class="fcr__payment-methods">' + items.map(function(k,i){
-            var pct = totalAmt > 0 ? Math.round((map[k].amount / totalAmt) * 100) : 0;
-            var color = colors[i % colors.length];
-            return '<div class="fcr__pm"><div class="fcr__pm-name">' + _fcrEsc(k) + '</div><div class="fcr__pm-amount">' + _fcrFc(map[k].amount) + '</div><div class="fcr__pm-count">' + map[k].count + ' transaction' + (map[k].count !== 1 ? 's' : '') + ' &middot; ' + pct + '%</div><div class="fcr__pm-bar"><div class="fcr__pm-bar-fill" style="width:' + pct + '%;background:' + color + ';"></div></div></div>';
-          }).join("") + '</div>';
+          var total = filtered.length;
+          var cfg = [
+            { key:"paid", label:"Paid", color:"#10b981", icon:"fa-check-circle" },
+            { key:"partial", label:"Partial", color:"#f59e0b", icon:"fa-hourglass-half" },
+            { key:"unpaid", label:"Unpaid", color:"#ef4444", icon:"fa-times-circle" }
+          ];
+          var totalAmt = cfg.reduce(function(s,c){ return s + statusMap[c.key].amount; }, 0);
+          var totalCount = cfg.reduce(function(s,c){ return s + statusMap[c.key].count; }, 0);
+          if(totalCount === 0){ _fcrPayMethodsEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-chart-pie"></i><h4>No Data</h4></div>'; return; }
+          var slices = [];
+          var cumDeg = 0;
+          cfg.forEach(function(c){
+            var pct = totalCount > 0 ? (statusMap[c.key].count / totalCount) * 100 : 0;
+            var deg = (pct / 100) * 360;
+            slices.push(c.color + " " + cumDeg + "deg " + (cumDeg + deg) + "deg");
+            cumDeg += deg;
+          });
+          var pieBg = "conic-gradient(" + slices.join(",") + ")";
+          var legend = cfg.map(function(c){
+            var cnt = statusMap[c.key].count;
+            var pct = totalCount > 0 ? Math.round((cnt / totalCount) * 100) : 0;
+            return '<div class="fcr__pie-legend"><span class="fcr__pie-dot" style="background:' + c.color + ';"></span><span class="fcr__pie-label"><i class="fas ' + c.icon + '" style="color:' + c.color + ';margin-right:4px;"></i>' + c.label + '</span><span class="fcr__pie-count">' + cnt + ' (' + pct + '%)</span><span class="fcr__pie-amt">' + _fcrFc(statusMap[c.key].amount) + '</span></div>';
+          }).join("");
+          _fcrPayMethodsEl.innerHTML =
+            '<div class="fcr__pie-wrap">' +
+              '<div class="fcr__pie-chart" style="background:' + pieBg + ';"></div>' +
+              '<div class="fcr__pie-center"><span class="fcr__pie-total">' + totalCount + '</span><span class="fcr__pie-sub">Total</span></div>' +
+            '</div>' +
+            '<div class="fcr__pie-legend-wrap">' + legend + '</div>';
         }
 
         function _fcrRenderFeeTypes(filtered){
