@@ -17431,8 +17431,8 @@ ${allContent}
             var baseClass = pp[0] ? pp[0].trim() : cls;
             var section = pp[1] ? pp[1].trim() : "-";
             var totalAmt = Number(fee.totalAmount || fee.amount || 0);
-            var deposit = Number(fee.deposit || 0);
-            var remaining = Number(fee.remaining || Math.max(totalAmt - deposit, 0));
+            var deposit = Math.max(0, Number(fee.deposit || 0));
+            var remaining = Math.max(0, Number(fee.remaining || Math.max(totalAmt - deposit, 0)));
             var discount = Math.max(0, totalAmt - deposit - remaining);
             var payDate = fee.paymentDate || fee.date || "";
             var feeMonth = fee.feeMonth || fee.month || "-";
@@ -17460,7 +17460,7 @@ ${allContent}
               className: cls, baseClass: baseClass, section: section,
               feeMonth: feeMonth, feeType: feeType,
               invoiceNo: "INV-" + String(fee.id).slice(-6).toUpperCase(),
-              amount: totalAmt, discount: discount, netPaid: deposit,
+              amount: totalAmt, discount: discount, netPaid: Math.max(0, deposit),
               paymentMethod: bankName, collectedBy: "Admin",
               status: status, remaining: remaining
             });
@@ -17472,8 +17472,8 @@ ${allContent}
             var cls = stu.className || "-";
             var pp = cls.split("|");
             var totalAmt = Number(col.totalAmount || 0);
-            var deposit = Number(col.deposit || 0);
-            var remaining = Number(col.remaining || Math.max(totalAmt - deposit, 0));
+            var deposit = Math.max(0, Number(col.deposit || 0));
+            var remaining = Math.max(0, Number(col.remaining || Math.max(totalAmt - deposit, 0)));
             var discount = Math.max(0, totalAmt - deposit - remaining);
             var payDate = col.collectedAt ? col.collectedAt.slice(0,10) : "";
             var status = "unpaid";
@@ -17487,7 +17487,7 @@ ${allContent}
               className: cls, baseClass: pp[0] ? pp[0].trim() : cls, section: pp[1] ? pp[1].trim() : "-",
               feeMonth: col.feeMonth || "-", feeType: "Tuition Fee",
               invoiceNo: "INV-" + String(col.feeId || "").slice(-6).toUpperCase(),
-              amount: totalAmt, discount: discount, netPaid: deposit,
+              amount: totalAmt, discount: discount, netPaid: Math.max(0, deposit),
               paymentMethod: "Cash", collectedBy: "Admin",
               status: status, remaining: remaining
             });
@@ -17668,11 +17668,11 @@ ${allContent}
           var todayCount = 0, todayAmt = 0, monthCount = 0, monthAmt = 0;
           var txCount = filtered.length;
           filtered.forEach(function(t){
-            totalCollected += t.netPaid;
-            totalDiscount += t.discount;
-            totalOutstanding += t.remaining;
-            if(t.date === _fcrTodayStr){ todayCount++; todayAmt += t.netPaid; }
-            if(t.date && t.date.slice(0,7) === _fcrCurMonth){ monthCount++; monthAmt += t.netPaid; }
+            totalCollected += Math.max(0, Number(t.netPaid || 0));
+            totalDiscount += Math.max(0, Number(t.discount || 0));
+            totalOutstanding += Math.max(0, Number(t.remaining || 0));
+            if(t.date === _fcrTodayStr){ todayCount++; todayAmt += Math.max(0, Number(t.netPaid || 0)); }
+            if(t.date && t.date.slice(0,7) === _fcrCurMonth){ monthCount++; monthAmt += Math.max(0, Number(t.netPaid || 0)); }
           });
           _fcrStatsEl.innerHTML =
             '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--blue"><i class="fas fa-dollar-sign"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Total Collection</div><div class="fcr__stat-value">' + _fcrFc(totalCollected) + '</div></div></div>' +
