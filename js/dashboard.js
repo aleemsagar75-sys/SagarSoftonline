@@ -17392,13 +17392,21 @@ ${allContent}
         var _fcrCurMonth = _fcrToday.getFullYear() + "-" + String(_fcrToday.getMonth()+1).padStart(2,"0");
 
         var _fcrClassOpts = classOptions.map(function(n){ return '<option value="'+escapeAttr(n)+'">'+_fcrEsc(n)+'</option>'; }).join("");
-        var _fcrAllFees = database.fees || [];
-        var _fcrAllCollections = settings.feeCollections || [];
         var _fcrAllStudents = database.students || [];
+        var _fcrAllFees = database.fees || [];
+        var _fcrGS = database.generalSettings || {};
+        if (!Array.isArray(_fcrGS.feeCollections)) _fcrGS.feeCollections = [];
+        if (_fcrGS.feeCollections.length === 0 && _fcrAllFees.length > 0) {
+          _fcrGS.feeCollections = _fcrAllFees.map(function(f, i){
+            var _stu = _fcrAllStudents.find(function(s){ return s.id === f.studentId; }) || null;
+            return { id: f.id || ("COL-SYNC-" + (i+1)), feeId: f.id || "", studentId: f.studentId || "", studentName: f.studentName || (_stu ? _stu.name : "") || "-", studentRollNo: f.admissionNo || (_stu ? _stu.admissionNo : "") || "-", feeMonth: f.feeMonth || f.month || "-", totalAmount: Number(f.totalAmount || f.amount || 0), deposit: Number(f.deposit || 0), remaining: Number(f.remaining || 0), collectedAt: f.paymentDate || f.date || f.createdAt || "" };
+          });
+        }
+        var _fcrAllCollections = _fcrGS.feeCollections;
         var _fcrAllClasses = database.classes || [];
-        var _fcrBanks = database.banks || [];
+        var _fcrBanks = _fcrGS.bankAccounts || [];
 
-        var _fcrState = { preset:"month", dateFrom:"", dateTo:"", classVal:"all", section:"all", feeType:"all", payMethod:"all", status:"all", collectedBy:"all", search:"", sortCol:"date", sortDir:"desc", page:1, perPage:25 };
+        var _fcrState = { preset:"all", dateFrom:"", dateTo:"", classVal:"all", section:"all", feeType:"all", payMethod:"all", status:"all", collectedBy:"all", search:"", sortCol:"date", sortDir:"desc", page:1, perPage:25 };
 
         function _fcrBuildTransactions(){
           var txns = [];
@@ -17476,7 +17484,8 @@ ${allContent}
 
         function _fcrFilterDate(txn){
           var d = txn.date || "";
-          if(!d) return false;
+          if(!_fcrState.dateFrom && !_fcrState.dateTo) return true;
+          if(!d) return true;
           if(_fcrState.dateFrom && d < _fcrState.dateFrom) return false;
           if(_fcrState.dateTo && d > _fcrState.dateTo) return false;
           return true;
@@ -17567,7 +17576,7 @@ ${allContent}
           '<div class="fcr__topbar-right"><button class="fcr__btn" id="fcrExportBtn" type="button"><i class="fas fa-download"></i> Export</button><button class="fcr__btn" id="fcrPrintBtn" type="button"><i class="fas fa-print"></i> Print</button><button class="fcr__btn fcr__btn--primary" id="fcrRefreshBtn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div></div>' +
           '<div class="fcr__stats" id="fcrStats"></div>' +
           '<div class="fcr__filters" id="fcrFilters"><div class="fcr__filters-row">' +
-            '<div class="fcr__filters-group"><button class="fcr__preset fcr__preset--active" data-fcr-preset="today" type="button">Today</button><button class="fcr__preset" data-fcr-preset="week" type="button">This Week</button><button class="fcr__preset" data-fcr-preset="month" type="button">This Month</button><button class="fcr__preset" data-fcr-preset="lastMonth" type="button">Last Month</button><button class="fcr__preset" data-fcr-preset="all" type="button">All Time</button><button class="fcr__preset" data-fcr-preset="custom" type="button">Custom</button></div>' +
+            '<div class="fcr__filters-group"><button class="fcr__preset" data-fcr-preset="today" type="button">Today</button><button class="fcr__preset" data-fcr-preset="week" type="button">This Week</button><button class="fcr__preset" data-fcr-preset="month" type="button">This Month</button><button class="fcr__preset" data-fcr-preset="lastMonth" type="button">Last Month</button><button class="fcr__preset fcr__preset--active" data-fcr-preset="all" type="button">All Time</button><button class="fcr__preset" data-fcr-preset="custom" type="button">Custom</button></div>' +
             '<div class="fcr__field" id="fcrCustomDates" style="display:none"><div style="display:flex;gap:4px;align-items:center"><input type="date" id="fcrDateFrom" class="fcr__field"><span style="color:#94a3b8;font-size:0.72rem;">to</span><input type="date" id="fcrDateTo" class="fcr__field"></div></div>' +
             '<div class="fcr__field"><select id="fcrClass"><option value="all">All Classes</option>' + _fcrClassOpts + '</select></div>' +
             '<div class="fcr__field"><select id="fcrSection"><option value="all">All Sections</option></select></div>' +
@@ -17859,7 +17868,7 @@ ${allContent}
           _fcrReceiptOverlay.classList.add("fcr__receipt-modal-overlay--open");
         }
 
-        _fcrPresetDates("month");
+        _fcrPresetDates("all");
 
         safeOn(_fcrE("fcrRefreshBtn"), "click", function(){ refreshDatabase(); setRoute("fee-collection-report"); });
 
@@ -17900,12 +17909,12 @@ ${allContent}
         });
 
         safeOn(_fcrE("fcrResetBtn"), "click", function(){
-          _fcrState = { preset:"month", dateFrom:"", dateTo:"", classVal:"all", section:"all", feeType:"all", payMethod:"all", status:"all", collectedBy:"all", search:"", sortCol:"date", sortDir:"desc", page:1, perPage:25 };
-          _fcrPresetDates("month");
+          _fcrState = { preset:"all", dateFrom:"", dateTo:"", classVal:"all", section:"all", feeType:"all", payMethod:"all", status:"all", collectedBy:"all", search:"", sortCol:"date", sortDir:"desc", page:1, perPage:25 };
+          _fcrPresetDates("all");
           _fcrClassEl.value = "all"; _fcrSectionEl.value = "all"; _fcrFeeTypeEl2.value = "all"; _fcrPayMethodEl.value = "all"; _fcrStatusEl.value = "all"; _fcrSearchEl.value = ""; _fcrDateFromEl.value = ""; _fcrDateToEl.value = "";
           _fcrCustomDatesEl.style.display = "none";
           document.querySelectorAll("[data-fcr-preset]").forEach(function(b){ b.classList.remove("fcr__preset--active"); });
-          document.querySelector('[data-fcr-preset="month"]').classList.add("fcr__preset--active");
+          document.querySelector('[data-fcr-preset="all"]').classList.add("fcr__preset--active");
           _fcrPopulateSections();
           _fcrRenderAll();
         });
@@ -17993,7 +18002,7 @@ ${allContent}
           });
         });
 
-        _fcrPresetDates("month");
+        _fcrPresetDates("all");
         _fcrRenderAll();
         return;
       }
