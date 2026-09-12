@@ -17733,7 +17733,13 @@ ${allContent}
           filtered.forEach(function(t){
             var s = t.status || "unpaid";
             if(!statusMap[s]) statusMap[s] = { amount:0, count:0 };
-            statusMap[s].amount += Math.max(0, Number(t.netPaid || 0));
+            if(s === "unpaid"){
+              statusMap[s].amount += Math.max(0, Number(t.amount || 0));
+            } else if(s === "partial"){
+              statusMap[s].amount += Math.max(0, Number(t.remaining || 0));
+            } else {
+              statusMap[s].amount += Math.max(0, Number(t.netPaid || 0));
+            }
             statusMap[s].count++;
           });
           var total = filtered.length;
