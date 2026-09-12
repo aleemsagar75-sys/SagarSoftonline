@@ -9321,7 +9321,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      tableBody.addEventListener("click", function (event) {
+      tableBody.addEventListener("click", async function (event) {
         const actionButton = event.target.closest("[data-fee-action='delete-fee-record']");
         if (!actionButton) {
           return;
@@ -9335,15 +9335,13 @@ ${allContent}
         const depositAmount = Number(actionButton.dataset.deposit || 0);
         
         settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
-        settings.accountsLedger.unshift({
-          id: "LEDGER-" + generateId(),
-          date: getTodayDateISO(),
-          type: "Expense",
-          category: "Fee Collection Reversed",
-          description: "Fee Collection Reversed - " + (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ") for " + feeMonth,
-          amount: depositAmount,
-          note: "Fee collection reversed for " + feeMonth,
-          createdAt: new Date().toISOString()
+        var _studentDesc = (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ")";
+        settings.accountsLedger = settings.accountsLedger.filter(function (entry) {
+          if (String(entry.type || "").toLowerCase() !== "income") return true;
+          if (String(entry.category || "").toLowerCase() !== "fee collection") return true;
+          if (String(entry.description || "").indexOf(_studentDesc) === -1) return true;
+          if (String(entry.note || "").indexOf(feeMonth) === -1) return true;
+          return false;
         });
         trackDeletion(collectionId);
         trackDeletion(feeId);
@@ -9393,7 +9391,7 @@ ${allContent}
         });
         
         addActivity("Fee deleted", "A submitted fee record was deleted.");
-        saveDatabase("Deleting fee...", [
+        await saveDatabase("Deleting fee...", [
           { table: "fees", record: _removedFee, operation: "delete" },
           { table: "fee_collections", record: _removedFeeCollection, operation: "delete" },
           { table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }
@@ -10160,15 +10158,20 @@ ${allContent}
           });
           if (totalDeleted > 0) {
             settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
-            settings.accountsLedger.unshift({
-          id: "LEDGER-" + generateId(),
-              date: getTodayDateISO(),
-              type: "Income",
-              category: "Salary Deletion",
-              description: "Salary deletion for " + (deletedNames.join(", ") || "Employee"),
-              amount: totalDeleted,
-              note: "Salary record(s) deleted",
-              createdAt: new Date().toISOString()
+            settings.accountsLedger = settings.accountsLedger.filter(function (entry) {
+              if (String(entry.type || "").toLowerCase() !== "expense") return true;
+              if (String(entry.category || "").toLowerCase() !== "salary") return true;
+              for (var di = 0; di < deletedPayments.length; di++) {
+                var dp = deletedPayments[di];
+                var dpName = dp.employeeName || dp.employeeId || "";
+                if (dpName && String(entry.description || "").indexOf(dpName) !== -1) {
+                  var dpDate = String(dp.paymentDate || dp.date || dp.salaryMonth || "").substring(0, 10);
+                  var eDate = String(entry.date || "").substring(0, 10);
+                  if (dpDate && eDate && dpDate === eDate) return false;
+                  if (dpDate && !eDate) return false;
+                }
+              }
+              return true;
             });
           }
           saveDatabase("Deleting salary record...", [{ table: "school_settings", record: { id: "salaryPayments", source_id: "salaryPayments", data: settings.salaryPayments, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }, { table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
@@ -18186,10 +18189,11 @@ ${allContent}
       });
 
       safeOn(document.getElementById("clearAccountsHistoryBtn"), "click", function () {
-        showStyledDeleteConfirmation("all account ledger history", function () {
+        showStyledDeleteConfirmation("all account ledger history", async function () {
           var settings = database.generalSettings || {};
           settings.accountsLedger = [];
-          saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+          settings.__accountsLedgerUserTouched = true;
+          await saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
           refreshDatabase();
           renderStatement();
         });
