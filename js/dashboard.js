@@ -18016,7 +18016,7 @@ ${allContent}
           <div class="accounts-filter-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
             <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">From<input id="accountsFromInput" type="date" value="${_firstOfMonth}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
             <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">To<input id="accountsToInput" type="date" value="${_today}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
-            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.72rem;font-weight:600;margin-bottom:2px;">Type</label><select id="accountsTypeFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Types</option><option value="fees">Fees</option><option value="income">Income</option><option value="expense">Expense</option></select></div>
+            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.72rem;font-weight:600;margin-bottom:2px;">Type</label><select id="accountsTypeFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Types</option><option value="income">Income (Debit)</option><option value="expense">Expense (Credit)</option><option value="reversal">Reversal</option></select></div>
             <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.72rem;font-weight:600;margin-bottom:2px;">Search</label><input id="accountsSearchInput" type="search" placeholder="Search description..." style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
             <button id="clearAccountsHistoryBtn" type="button" class="btn-account-action btn-danger-action" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Clear History</button>
             <button id="printAccountsBtn" type="button" class="btn-account-action btn-primary-action" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Print</button>
@@ -18052,14 +18052,31 @@ ${allContent}
           if (!inRange(item.date || item.createdAt)) return;
           var amt = Number(item.amount || 0);
           var _type = String(item.type || "").toLowerCase();
-          rows.push({
-            date: String(item.date || item.createdAt || "-").substring(0, 10),
-            description: item.description || item.note || item.category || "-",
-            debit: _type === "expense" ? amt : 0,
-            credit: _type === "income" ? amt : 0,
-            source: _type === "expense" ? "expense" : "income",
-            category: item.category || ""
-          });
+          var _cat = String(item.category || "").toLowerCase();
+          var _isReversal = _cat.indexOf("reversed") !== -1 || _cat.indexOf("reversal") !== -1;
+          var _desc = item.description || item.note || item.category || "-";
+          if (_isReversal) _desc = (_desc.indexOf("Reversed") !== -1 ? _desc : item.description || ("Fee Collection Reversed - " + (item.note || ""))) + "";
+          if (_type === "income") {
+            rows.push({
+              date: String(item.date || item.createdAt || "-").substring(0, 10),
+              description: _desc,
+              debit: amt,
+              credit: 0,
+              source: "income",
+              category: item.category || "",
+              isReversal: false
+            });
+          } else {
+            rows.push({
+              date: String(item.date || item.createdAt || "-").substring(0, 10),
+              description: _desc,
+              debit: 0,
+              credit: amt,
+              source: _isReversal ? "reversal" : "expense",
+              category: item.category || "",
+              isReversal: _isReversal
+            });
+          }
         });
         (settings.salaryPayments || []).forEach(function (item) {
           if (!inRange(item.paymentDate || item.date || "")) return;
@@ -18067,21 +18084,22 @@ ${allContent}
           rows.push({
             date: String(item.paymentDate || item.date || "-").substring(0, 10),
             description: "Salary paid to " + (item.employeeName || item.employeeId || "-"),
-            debit: total,
-            credit: 0,
+            debit: 0,
+            credit: total,
             source: "expense",
-            category: "Salary"
+            category: "Salary",
+            isReversal: false
           });
         });
         rows.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
         var balance = 0;
         rows.forEach(function (r) {
-          balance = balance + r.credit - r.debit;
+          balance = balance + r.debit - r.credit;
           r.balance = balance;
         });
         var totalDebit = rows.reduce(function (s, r) { return s + r.debit; }, 0);
         var totalCredit = rows.reduce(function (s, r) { return s + r.credit; }, 0);
-        return { rows: rows, totalDebit: totalDebit, totalCredit: totalCredit, netBalance: totalCredit - totalDebit };
+        return { rows: rows, totalDebit: totalDebit, totalCredit: totalCredit, netBalance: totalDebit - totalCredit };
       }
 
       function getDateRangeLabel() {
@@ -18105,18 +18123,21 @@ ${allContent}
         }
         var balance = 0;
         data.rows.forEach(function (r) {
-          balance = balance + r.credit - r.debit;
+          balance = balance + r.debit - r.credit;
           r.balance = balance;
         });
         data.totalDebit = data.rows.reduce(function (s, r) { return s + r.debit; }, 0);
         data.totalCredit = data.rows.reduce(function (s, r) { return s + r.credit; }, 0);
-        data.netBalance = data.totalCredit - data.totalDebit;
-        statsWrap.innerHTML = '<article class="stat-card stat-card--emerald" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Credit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#10b981;margin-top:2px;">' + data.totalCredit + '</span></article><article class="stat-card stat-card--rose" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Debit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#ef4444;margin-top:2px;">' + data.totalDebit + '</span></article><article class="stat-card stat-card--sky" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Net Balance</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0ea5e9;margin-top:2px;">' + data.netBalance + '</span></article><article class="stat-card stat-card--amber" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Transactions</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#f59e0b;margin-top:2px;">' + data.rows.length + '</span></article>';
+        data.netBalance = data.totalDebit - data.totalCredit;
+        statsWrap.innerHTML = '<article class="stat-card stat-card--emerald" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Debit (Income)</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#10b981;margin-top:2px;">' + data.totalDebit + '</span></article><article class="stat-card stat-card--rose" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Credit (Expenses)</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#ef4444;margin-top:2px;">' + data.totalCredit + '</span></article><article class="stat-card stat-card--sky" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Net Balance</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:' + (data.netBalance >= 0 ? '#0ea5e9' : '#ef4444') + ';margin-top:2px;">' + data.netBalance + '</span></article><article class="stat-card stat-card--amber" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Transactions</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#f59e0b;margin-top:2px;">' + data.rows.length + '</span></article>';
         var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
         var tbody = data.rows.map(function (r) {
-          return '<tr><td>' + escapeHtml(r.date) + '</td><td>' + escapeHtml(r.description) + '</td><td>' + (r.debit > 0 ? r.debit : "-") + '</td><td>' + (r.credit > 0 ? r.credit : "-") + '</td><td><strong>' + currencySymbol + ' ' + r.balance + '</strong></td></tr>';
+          var descHtml = escapeHtml(r.description);
+          if (r.isReversal) descHtml += ' <span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:0.68rem;font-weight:600;background:#fef3c7;color:#b45309;margin-left:4px;">Reversed</span>';
+          var amtColor = r.source === "income" ? "#10b981" : (r.source === "reversal" ? "#f59e0b" : "#ef4444");
+          return '<tr' + (r.isReversal ? ' style="background:#fffbeb;"' : '') + '><td>' + escapeHtml(r.date) + '</td><td>' + descHtml + '</td><td style="color:#10b981;font-weight:600;">' + (r.debit > 0 ? currencySymbol + " " + r.debit : "-") + '</td><td style="color:#ef4444;font-weight:600;">' + (r.credit > 0 ? currencySymbol + " " + r.credit : "-") + '</td><td><strong style="color:' + (r.balance >= 0 ? '#0ea5e9' : '#ef4444') + ';">' + currencySymbol + ' ' + r.balance + '</strong></td></tr>';
         }).join("");
-        tbody += '<tr style="font-weight:700;background:rgba(27,95,122,0.06);border-top:2px solid #1b5f7a;"><td colspan="2"><strong>Total</strong></td><td>' + data.totalDebit + '</td><td>' + data.totalCredit + '</td><td><strong>' + currencySymbol + ' ' + data.netBalance + '</strong></td></tr>';
+        tbody += '<tr style="font-weight:700;background:rgba(27,95,122,0.06);border-top:2px solid #1b5f7a;"><td colspan="2"><strong>Total</strong></td><td style="color:#10b981;">' + currencySymbol + " " + data.totalDebit + '</td><td style="color:#ef4444;">' + currencySymbol + " " + data.totalCredit + '</td><td><strong style="color:' + (data.netBalance >= 0 ? '#0ea5e9' : '#ef4444') + ';">' + currencySymbol + ' ' + data.netBalance + '</strong></td></tr>';
         tableBody.innerHTML = tbody;
       }
 
