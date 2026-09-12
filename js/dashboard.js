@@ -17504,7 +17504,7 @@ ${allContent}
             var pp = cls.split("|");
             txns.push({
               id: "UNPAID-" + stu.id, receiptNo: "-",
-              date: "", studentId: stu.id || "",
+              date: _fcrTodayStr, studentId: stu.id || "",
               studentName: stu.name || "-",
               rollNo: stu.admissionNo || "-",
               className: cls, baseClass: pp[0] ? pp[0].trim() : cls, section: pp[1] ? pp[1].trim() : "-",
