@@ -16805,6 +16805,167 @@ ${allContent}
       return { rows: rows, income: summary.revenue, expense: summary.totalExpenses, net: summary.profit };
     }
 
+    async function openReportCardPrint(rows, examName, className) {
+      const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+      const printableLogo = await normalizeImageForPrintShared(profile.logo || "");
+      const schoolName = profile.name || database.school.name || "School Name";
+      const schoolSlogan = profile.slogan || "Knowledge \u2022 Character \u2022 Success";
+      const schoolAddress = profile.address || database.school.address || "";
+      const schoolPhone = profile.phone || database.school.phone || "";
+      const todayStr = new Date().toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
+      const nowYear = new Date().getFullYear();
+
+      function getStudentAttendance(studentId, examStartDate, examEndDate) {
+        var att = (database.attendance || []).filter(function(a){
+          if (a.entityType && a.entityType !== "student") return false;
+          if (String(a.studentId || "") !== String(studentId)) return false;
+          if (examStartDate && examEndDate && a.date) {
+            if (a.date < examStartDate || a.date > examEndDate) return false;
+          }
+          return true;
+        });
+        var total = att.length;
+        var present = att.filter(function(a){ var s = String(a.status||"").toLowerCase(); return s === "present" || s === "p" || s === "late"; }).length;
+        var absent = att.filter(function(a){ var s = String(a.status||"").toLowerCase(); return s === "absent" || s === "a"; }).length;
+        var leave = att.filter(function(a){ var s = String(a.status||"").toLowerCase(); return s === "leave" || s === "l" || s === "half day"; }).length;
+        var pct = total > 0 ? Math.round((present / total) * 100) : -1;
+        return { total: total, present: present, absent: absent, leave: leave, pct: pct };
+      }
+
+      function getSubjectGrade(obtained, total, gradingRows) {
+        var pct = total > 0 ? Math.round((obtained / total) * 100) : 0;
+        var g = gradingRows.find(function(r){ return pct >= r.from && pct <= r.upto; });
+        return g ? g.grade : "-";
+      }
+
+      var gradingRows = (settings.marksGrading || []).map(function(r){
+        return { grade: r.grade || "-", from: Number(r.from || 0), upto: Number(r.upto || 0) };
+      }).sort(function(a,b){ return b.from - a.from; });
+
+      var pageCards = rows.map(function(row, idx){
+        var student = row.student;
+        var result = row.result;
+        var exam = typeof getExamById === "function" ? getExamById(rows._examId || "") : null;
+        var examStartDate = exam ? (exam.startDate || "") : "";
+        var examEndDate = exam ? (exam.endDate || "") : "";
+        var att = getStudentAttendance(student.id, examStartDate, examEndDate);
+        var cls = student.className || "-";
+        var pp = cls.split("|");
+        var baseClass = pp[0] ? pp[0].trim() : cls;
+        var section = pp[1] ? pp[1].trim() : "-";
+        var photoHtml = student.photo ? '<img src="' + student.photo + '" style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid #1b5f7a;">' : '<div style="width:70px;height:70px;border-radius:50%;background:#e8f4f8;border:2px solid #1b5f7a;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#1b5f7a;">' + escapeHtml((student.name || "?").charAt(0).toUpperCase()) + '</div>';
+
+        var subjectRows = result.subjectRows || [];
+        var subjectTableHtml = "";
+        if (subjectRows.length > 0) {
+          var subjectRowsHtml = subjectRows.map(function(sr){
+            var subPct = sr.totalMarks > 0 ? Math.round((sr.obtainedMarks / sr.totalMarks) * 100) : 0;
+            var subGrade = getSubjectGrade(sr.obtainedMarks, sr.totalMarks, gradingRows);
+            var subStatus = subPct <= 33 ? "FAIL" : "PASS";
+            var statusColor = subStatus === "PASS" ? "#16a34a" : "#dc2626";
+            return '<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">' + escapeHtml(sr.subjectName) + '</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;">' + sr.totalMarks + '</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:600;">' + sr.obtainedMarks + '</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;">' + subPct + '%</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:600;">' + escapeHtml(subGrade) + '</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:700;color:' + statusColor + ';">' + subStatus + '</td></tr>';
+          }).join("");
+          subjectTableHtml = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-top:6px;"><thead><tr style="background:#f0f4f8;"><th style="padding:7px 8px;text-align:left;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Subject</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Total</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Obtained</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">%</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Grade</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Status</th></tr></thead><tbody>' + subjectRowsHtml + '</tbody></table>';
+        } else {
+          subjectTableHtml = '<div style="text-align:center;padding:16px;color:#888;font-style:italic;">No examination result available.</div>';
+        }
+
+        var attHtml = "";
+        if (att.total > 0) {
+          var attPct = att.pct >= 0 ? att.pct : 0;
+          attHtml = '<div style="margin-top:10px;"><div style="font-weight:700;font-size:0.85rem;color:#1b5f7a;margin-bottom:6px;border-bottom:1px solid #dde4ea;padding-bottom:4px;">ATTENDANCE RECORD</div><table style="width:100%;font-size:0.82rem;border-collapse:collapse;"><tr style="background:#f8fafc;"><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">Total Working Days</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">' + att.total + '</td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">Present</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:#16a34a;">' + att.present + '</td></tr><tr style="background:#f8fafc;"><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">Absent</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:#dc2626;">' + att.absent + '</td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">Leave</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:#f59e0b;">' + att.leave + '</td></tr><tr style="background:#f0f7ff;font-weight:700;"><td style="padding:6px 8px;">Attendance</td><td style="padding:6px 8px;text-align:right;font-size:0.9rem;">' + attPct + '%</td></tr></table><div style="margin-top:6px;background:#e5e7eb;border-radius:6px;height:8px;overflow:hidden;"><div style="width:' + attPct + '%;height:100%;background:' + (attPct >= 75 ? "#16a34a" : attPct >= 50 ? "#f59e0b" : "#dc2626") + ';border-radius:6px;"></div></div></div>';
+        } else {
+          attHtml = '<div style="margin-top:10px;"><div style="font-weight:700;font-size:0.85rem;color:#1b5f7a;margin-bottom:6px;border-bottom:1px solid #dde4ea;padding-bottom:4px;">ATTENDANCE RECORD</div><div style="text-align:center;padding:12px;color:#888;font-style:italic;">No attendance record available.</div></div>';
+        }
+
+        var resultStatusColor = result.status === "Pass" ? "#16a34a" : "#dc2626";
+
+        var pageHtml = '<div class="rc-page" style="page-break-after:always;break-after:always;padding:12mm 10mm;font-family:\'Segoe UI\',Arial,Helvetica,sans-serif;color:#102542;background:#fff;position:relative;min-height:260mm;">' +
+          '<div style="text-align:center;border-bottom:3px double #1b5f7a;padding-bottom:8px;margin-bottom:10px;">' +
+            (printableLogo ? '<img src="' + printableLogo + '" style="height:50px;margin-bottom:4px;">' : '') +
+            '<div style="font-size:1.15rem;font-weight:800;letter-spacing:0.08em;color:#0f2b3f;text-transform:uppercase;">' + escapeHtml(schoolName) + '</div>' +
+            '<div style="font-size:0.7rem;color:#666;letter-spacing:0.05em;margin-top:2px;">' + escapeHtml(schoolSlogan) + '</div>' +
+            (schoolAddress || schoolPhone ? '<div style="font-size:0.65rem;color:#888;margin-top:2px;">' + escapeHtml(schoolAddress) + (schoolAddress && schoolPhone ? ' | ' : '') + escapeHtml(schoolPhone) + '</div>' : '') +
+            '<div style="margin-top:8px;font-size:1rem;font-weight:700;color:#1b5f7a;letter-spacing:0.06em;border-top:1px solid #ccc;border-bottom:1px solid #ccc;padding:4px 0;">STUDENT REPORT CARD</div>' +
+            '<div style="font-size:0.75rem;color:#555;margin-top:4px;">Academic Year: ' + escapeHtml(String(nowYear)) + ' &nbsp;&nbsp;|&nbsp;&nbsp; Examination: ' + escapeHtml(examName || "-") + '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-start;">' +
+            '<div style="flex:0 0 auto;">' + photoHtml + '</div>' +
+            '<div style="flex:1;"><table style="width:100%;font-size:0.8rem;border-collapse:collapse;">' +
+              '<tr><td style="padding:3px 6px;font-weight:600;color:#555;width:110px;">Student Name</td><td style="padding:3px 6px;font-weight:700;border-bottom:1px solid #eee;">' + escapeHtml(student.name || "-") + '</td></tr>' +
+              (student.fatherName ? '<tr><td style="padding:3px 6px;font-weight:600;color:#555;">Father Name</td><td style="padding:3px 6px;border-bottom:1px solid #eee;">' + escapeHtml(student.fatherName) + '</td></tr>' : '') +
+              '<tr><td style="padding:3px 6px;font-weight:600;color:#555;">Roll No</td><td style="padding:3px 6px;border-bottom:1px solid #eee;">' + escapeHtml(student.admissionNo || "-") + '</td></tr>' +
+              '<tr><td style="padding:3px 6px;font-weight:600;color:#555;">Class</td><td style="padding:3px 6px;border-bottom:1px solid #eee;">' + escapeHtml(baseClass) + (section !== "-" ? ' - ' + escapeHtml(section) : '') + '</td></tr>' +
+              (student.id ? '<tr><td style="padding:3px 6px;font-weight:600;color:#555;">Student ID</td><td style="padding:3px 6px;border-bottom:1px solid #eee;">' + escapeHtml(student.id) + '</td></tr>' : '') +
+            '</table></div>' +
+          '</div>' +
+          '<div style="margin-bottom:10px;"><div style="font-weight:700;font-size:0.85rem;color:#1b5f7a;margin-bottom:4px;border-bottom:1px solid #dde4ea;padding-bottom:4px;">ACADEMIC RESULTS</div>' +
+            subjectTableHtml +
+          '</div>';
+
+        if (subjectRows.length > 0) {
+          pageHtml += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">' +
+            '<div style="background:#f0f7ff;border:1px solid #c7d9ef;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Total Marks</div><div style="font-size:1.05rem;font-weight:800;color:#1b5f7a;margin-top:2px;">' + result.totalMarks + '</div></div>' +
+            '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Obtained</div><div style="font-size:1.05rem;font-weight:800;color:#16a34a;margin-top:2px;">' + result.obtainedMarks + '</div></div>' +
+            '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Percentage</div><div style="font-size:1.05rem;font-weight:800;color:#92400e;margin-top:2px;">' + result.percentage + '%</div></div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">' +
+            '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Grade</div><div style="font-size:1.1rem;font-weight:800;color:#1b5f7a;margin-top:2px;">' + escapeHtml(result.grade) + '</div></div>' +
+            '<div style="background:' + (result.status === "Pass" ? "#f0fdf4" : "#fef2f2") + ';border:1px solid ' + (result.status === "Pass" ? "#bbf7d0" : "#fecaca") + ';border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Result</div><div style="font-size:1.1rem;font-weight:800;color:' + resultStatusColor + ';margin-top:2px;">' + escapeHtml(result.status) + '</div></div>' +
+          '</div>';
+        }
+
+        pageHtml += attHtml;
+
+        pageHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;">' +
+          '<div><div style="font-weight:600;font-size:0.78rem;color:#333;margin-bottom:2px;">Teacher\'s Remarks</div><div style="border:1px solid #ddd;border-radius:4px;min-height:40px;padding:6px;font-size:0.78rem;color:#555;background:#fafbfc;">' + escapeHtml(student.remarks || "") + '</div></div>' +
+          '<div><div style="font-weight:600;font-size:0.78rem;color:#333;margin-bottom:2px;">Principal\'s Remarks</div><div style="border:1px solid #ddd;border-radius:4px;min-height:40px;padding:6px;font-size:0.78rem;color:#555;background:#fafbfc;">' + escapeHtml(student.principalRemarks || "") + '</div></div>' +
+        '</div>';
+
+        pageHtml += '<div style="display:flex;justify-content:space-between;margin-top:22px;padding-top:8px;">' +
+          '<div style="text-align:center;width:30%;"><div style="border-top:1px solid #333;margin-top:30px;padding-top:4px;font-size:0.75rem;font-weight:600;">Class Teacher</div></div>' +
+          '<div style="text-align:center;width:30%;"><div style="border-top:1px solid #333;margin-top:30px;padding-top:4px;font-size:0.75rem;font-weight:600;">Principal</div></div>' +
+          '<div style="text-align:center;width:30%;"><div style="border-top:1px solid #333;margin-top:30px;padding-top:4px;font-size:0.75rem;font-weight:600;">Parent / Guardian</div></div>' +
+        '</div>';
+
+        pageHtml += '<div style="position:absolute;bottom:8mm;left:10mm;right:10mm;text-align:center;border-top:1px solid #ccc;padding-top:4px;font-size:0.6rem;color:#999;">' +
+          escapeHtml(schoolName) + ' &bull; Student Report Card &bull; ' + escapeHtml(String(nowYear)) + ' &bull; Generated on: ' + todayStr +
+        '</div>';
+
+        pageHtml += '</div>';
+        return pageHtml;
+      }).join("");
+
+      var fullHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Student Report Card</title><style>' +
+        '@page{size:A4 portrait;margin:0;}' +
+        '*,*::before,*::after{box-sizing:border-box;}' +
+        'body{margin:0;padding:0;font-family:"Segoe UI",Arial,Helvetica,sans-serif;color:#102542;background:#f1f5f9;-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
+        '.rc-toolbar{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 20px;display:flex;gap:8px;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);}' +
+        '.rc-toolbar button{padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;}' +
+        '.rc-toolbar .rc-print{background:#1b5f7a;color:#fff;}.rc-toolbar .rc-print:hover{background:#144a60;}' +
+        '.rc-toolbar .rc-close{background:#e2e8f0;color:#333;}.rc-toolbar .rc-close:hover{background:#cbd5e1;}' +
+        '.rc-container{max-width:210mm;margin:10px auto;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.1);}' +
+        '@media print{' +
+          'body{background:#fff;}' +
+          '.rc-toolbar{display:none!important;}' +
+          '.rc-container{box-shadow:none;margin:0;max-width:none;width:100%;}' +
+          '.rc-page{padding:10mm 10mm 14mm 10mm!important;page-break-after:always;break-after:always;}' +
+          '.rc-page:last-child{page-break-after:auto;break-after:auto;}' +
+        '}' +
+      '</style></head><body>' +
+        '<div class="rc-toolbar"><button class="rc-print" onclick="window.print();">Print Report Card</button><button class="rc-close" onclick="window.close();">Close / Back</button></div>' +
+        '<div class="rc-container">' + pageCards + '</div>' +
+      '</body></html>';
+
+      var printWin = window.open("", "_blank", "width=900,height=700");
+      if (printWin) {
+        printWin.document.write(fullHtml);
+        printWin.document.close();
+      } else {
+        alert("Please allow pop-ups to print the report card.");
+      }
+    }
+
     if (route === "students-report-card") {
       const examOptionsMarkup = getExams().map(function (exam) {
         return `<option value="${exam.id}">${escapeHtml(exam.name)}</option>`;
@@ -16886,19 +17047,13 @@ ${allContent}
       }
 
       safeOn(document.getElementById("printExamReportBtn"), "click", function () {
-        const rows = getRows();
-        const exam = getExamById(examSelect.value);
+        var rows = getRows();
         if (!rows.length) {
           return;
         }
-        openPrintReport({
-          title: "Students Report Card",
-          subtitle: `Exam: ${exam ? exam.name : "-"} | Class: ${classSelect.value}`,
-          headers: ["Roll No", "Name", "Class", "Total", "Obtain", "%", "Grade", "Status"],
-          rows: rows.map(function (row) {
-            return [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), row.result.totalMarks, row.result.obtainedMarks, `${row.result.percentage}%`, escapeHtml(row.result.grade), escapeHtml(row.result.status)];
-          })
-        });
+        var exam = getExamById(examSelect.value);
+        rows._examId = examSelect.value;
+        openReportCardPrint(rows, exam ? exam.name : "-", classSelect.value);
       });
 
       [examSelect, classSelect].forEach(function (input) {
