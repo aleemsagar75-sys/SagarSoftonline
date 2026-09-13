@@ -17050,6 +17050,8 @@ ${allContent}
       var _rcClassDrillBody = document.getElementById("rcClassDrillBody");
       var _rcSearchWrap = document.getElementById("rcSearchWrap");
       var _rcMode = "student";
+      var _rcClassField = _rcC.closest(".rc-bar__field");
+      if (_rcClassField) _rcClassField.style.display = "none";
 
       var _activeExam = getExams().find(function (e) { return e.status === "active"; }) || getExams()[0] || null;
       if (_activeExam) _rcE.value = _activeExam.id;
@@ -17262,6 +17264,8 @@ ${allContent}
         document.getElementById("rcModeStudent").className = "rc-toggle" + (mode === "student" ? " rc-toggle--active" : "");
         document.getElementById("rcModeClass").className = "rc-toggle" + (mode === "class" ? " rc-toggle--active" : "");
         _rcSearchWrap.style.display = mode === "student" ? "" : "none";
+        var classField = _rcC.closest(".rc-bar__field");
+        if (classField) classField.style.display = mode === "class" ? "" : "none";
         _rcRender();
       }
 
