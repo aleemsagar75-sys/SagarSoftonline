@@ -16967,129 +16967,242 @@ ${allContent}
     }
 
     if (route === "students-report-card") {
-      const examOptionsMarkup = getExams().map(function (exam) {
-        return `<option value="${exam.id}">${escapeHtml(exam.name)}</option>`;
+      var _rcExamOptions = getExams().map(function (e) {
+        return '<option value="' + escapeAttr(e.id) + '">' + escapeHtml(e.name) + '</option>';
       }).join("");
-      const classOptionsMarkup = classOptions.map(function (name) {
-        return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
+      var _rcClassOptions = classOptions.map(function (n) {
+        return '<option value="' + escapeAttr(n) + '">' + escapeHtml(n) + '</option>';
       }).join("");
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">Students Report Card</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Exam</label><select id="reportExamSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="reportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="reportSearchInput" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="reportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-          </div>
-          <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printExamReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
-          <div class="report-cards" id="examReportStats"></div>
-          <div class="split-grid report-grid">
-            <article class="panel-card"><strong>Result Ratio</strong><div id="examReportChart" class="report-chart-box"></div></article>
-            <article class="panel-card"><strong>Top Students</strong><div id="examReportBars" class="report-bar-list"></div></article>
-          </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:600px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Name</th><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Total</th><th style="white-space:nowrap;">Obtain</th><th style="white-space:nowrap;">%</th><th style="white-space:nowrap;">Grade</th><th style="white-space:nowrap;">Status</th><th style="white-space:nowrap;">WhatsApp</th></tr></thead><tbody id="examReportTableBody"></tbody></table></div>
-        </article>
-      `;
+
+      moduleSummary.innerHTML =
+        '<div class="rc-wrap">' +
+          '<div class="rc-header">' +
+            '<div class="rc-header__left">' +
+              '<div class="rc-eyebrow">GENERAL SETTINGS</div>' +
+              '<h1 class="rc-header__title">Students Report Card</h1>' +
+              '<p class="rc-header__subtitle">View student academic performance, results, grades and overall class performance.</p>' +
+            '</div>' +
+            '<div class="rc-header__actions">' +
+              '<button class="rc-btn rc-btn--outline" type="button" id="rcRefreshBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg> Refresh</button>' +
+              '<button class="rc-btn rc-btn--outline" type="button" id="rcExportBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Export PDF</button>' +
+              '<button class="rc-btn rc-btn--primary" type="button" id="rcPrintBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Print Report</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="rc-control-bar">' +
+            '<div class="rc-controls">' +
+              '<div class="rc-ctrl"><label class="rc-ctrl__label">Exam</label><select class="rc-ctrl__select" id="rcExam"><option value="">Select Exam</option>' + _rcExamOptions + '</select></div>' +
+              '<div class="rc-ctrl"><label class="rc-ctrl__label">Class</label><select class="rc-ctrl__select" id="rcClass"><option value="all">All Classes</option>' + _rcClassOptions + '</select></div>' +
+              '<div class="rc-ctrl rc-ctrl--search"><label class="rc-ctrl__label">Student Search</label><div style="position:relative;"><input class="rc-ctrl__input" id="rcSearch" type="search" placeholder="Search by roll no / student name"><div id="rcSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>' +
+              '<div class="rc-ctrl rc-ctrl--btns"><button class="rc-btn rc-btn--apply" type="button" id="rcApplyBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Apply</button><button class="rc-btn rc-btn--clear" type="button" id="rcClearBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Clear</button></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="rc-empty-state" id="rcEmptyState">' +
+            '<div class="rc-empty-state__icon"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>' +
+            '<h3 class="rc-empty-state__title">Select an examination to view student results.</h3>' +
+            '<p class="rc-empty-state__sub">Choose an exam and class to view academic performance.</p>' +
+          '</div>' +
+          '<div class="rc-dashboard" id="rcDashboard" style="display:none;">' +
+            '<div class="rc-summary" id="rcSummary"></div>' +
+            '<div class="rc-grid-2">' +
+              '<div class="rc-panel"><div class="rc-panel__head"><h3 class="rc-panel__title">Academic Performance Overview</h3></div><div class="rc-panel__body" id="rcPerformance"></div></div>' +
+              '<div class="rc-panel"><div class="rc-panel__head"><h3 class="rc-panel__title">Top Performers</h3></div><div class="rc-panel__body" id="rcTopPerformers"></div></div>' +
+            '</div>' +
+            '<div class="rc-panel" style="margin-top:0.85rem;"><div class="rc-panel__head"><h3 class="rc-panel__title">Student Result Table</h3><span class="rc-panel__badge" id="rcTableCount">0 students</span></div><div class="rc-panel__body rc-panel__body--table"><div class="rc-table-wrap"><table class="rc-table"><thead><tr><th>Roll No</th><th>Student</th><th>Class</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th><th>Action</th></tr></thead><tbody id="rcTableBody"></tbody></table></div></div></div>' +
+          '</div>' +
+          '<div class="rc-modal-overlay" id="rcModalOverlay" style="display:none;"><div class="rc-modal" id="rcModal"><div class="rc-modal__header"><h3 class="rc-modal__title" id="rcModalTitle">Student Result</h3><button class="rc-modal__close" id="rcModalClose" type="button">&times;</button></div><div class="rc-modal__body" id="rcModalBody"></div></div></div>' +
+        '</div>';
       moduleGuide.innerHTML = "";
-      const examSelect = document.getElementById("reportExamSelect");
-      const classSelect = document.getElementById("reportClassSelect");
-      const searchInput = document.getElementById("reportSearchInput");
-      const searchDropdown = document.getElementById("reportSearchDropdown");
-      const searchContainer = document.getElementById("reportSearchContainer");
-      const statsWrap = document.getElementById("examReportStats");
-      const chartWrap = document.getElementById("examReportChart");
-      const barsWrap = document.getElementById("examReportBars");
-      const tableBody = document.getElementById("examReportTableBody");
 
-      initializeStudentProfessionalSearch(
-        "reportSearchInput",
-        "reportSearchDropdown",
-        "reportSearchContainer",
-        function(student) {
-          searchInput.value = student.name || "";
-          renderRows();
-        }
-      );
-      const activeExam = getExams().find(function (exam) { return exam.status === "active"; }) || getExams()[0] || null;
-      if (activeExam) {
-        examSelect.value = activeExam.id;
-      }
+      var _rcExam = document.getElementById("rcExam");
+      var _rcClass = document.getElementById("rcClass");
+      var _rcSearch = document.getElementById("rcSearch");
+      var _rcEmpty = document.getElementById("rcEmptyState");
+      var _rcDash = document.getElementById("rcDashboard");
+      var _rcSummary = document.getElementById("rcSummary");
+      var _rcPerf = document.getElementById("rcPerformance");
+      var _rcTopP = document.getElementById("rcTopPerformers");
+      var _rcTBody = document.getElementById("rcTableBody");
+      var _rcTableCount = document.getElementById("rcTableCount");
+      var _rcOverlay = document.getElementById("rcModalOverlay");
+      var _rcModal = document.getElementById("rcModal");
+      var _rcModalTitle = document.getElementById("rcModalTitle");
+      var _rcModalBody = document.getElementById("rcModalBody");
 
-      function getRows() {
-        if (!examSelect.value) {
-          return [];
-        }
-        return getStudentsByFilter(classSelect.value, searchInput.value).map(function (student) {
-          return { student: student, result: evaluateExamResult(examSelect.value, student.className, student.id) };
+      var _activeExam = getExams().find(function (e) { return e.status === "active"; }) || getExams()[0] || null;
+      if (_activeExam) { _rcExam.value = _activeExam.id; }
+
+      initializeStudentProfessionalSearch("rcSearch", "rcSearchDropdown", null, function (student) {
+        _rcSearch.value = student.name || "";
+        _rcDataRender();
+      });
+
+      function _rcGetRows() {
+        if (!_rcExam.value) return [];
+        return getStudentsByFilter(_rcClass.value, _rcSearch.value).map(function (s) {
+          return { student: s, result: evaluateExamResult(_rcExam.value, s.className, s.id) };
         });
       }
 
-      function renderRows() {
-        const rows = getRows();
-        const pass = rows.filter(function (row) { return row.result.status === "Pass"; }).length;
-        const fail = rows.length - pass;
-        const avg = rows.length ? Math.round(rows.reduce(function (sum, row) { return sum + row.result.percentage; }, 0) / rows.length) : 0;
-        const passPercent = rows.length ? Math.round((pass / rows.length) * 100) : 0;
-        statsWrap.innerHTML = `
-          <article class="stat-card stat-card--indigo"><strong>Total</strong><span>${rows.length}</span></article>
-          <article class="stat-card stat-card--emerald"><strong>Pass</strong><span>${pass}</span></article>
-          <article class="stat-card stat-card--rose"><strong>Fail</strong><span>${fail}</span></article>
-          <article class="stat-card stat-card--amber"><strong>Average %</strong><span>${avg}%</span></article>
-        `;
-        chartWrap.innerHTML = rows.length ? buildCircleChart(passPercent, `Pass ${pass} | Fail ${fail}`, "#6366f1", "#e2e8f0") : `<p class="empty-state">No data found.</p>`;
-        const top = rows.slice().sort(function (a, b) { return b.result.percentage - a.result.percentage; }).slice(0, 8).map(function (row) {
-          return { label: `${row.student.name}`, value: row.result.percentage };
-        });
-        barsWrap.innerHTML = top.length ? buildBarChart(top, 100) : `<p class="empty-state">No chart data.</p>`;
-        tableBody.innerHTML = rows.map(function (row) {
-          return `<tr><td>${escapeHtml(row.student.admissionNo || "-")}</td><td>${escapeHtml(row.student.name || "-")}</td><td>${escapeHtml(row.student.className || "-")}</td><td>${row.result.totalMarks}</td><td>${row.result.obtainedMarks}</td><td>${row.result.percentage}%</td><td>${escapeHtml(row.result.grade)}</td><td><span class="status-pill ${row.result.status === "Pass" ? "active" : "inactive"}">${escapeHtml(row.result.status)}</span></td><td><button class="table-action-btn" type="button" data-report-wa-student="${row.student.id}">WhatsApp</button></td></tr>`;
+      function _rcGradeColor(g) {
+        var x = String(g || "").trim();
+        if (/^A\+?$/.test(x)) return { bg: "#dcfce7", fg: "#166534" };
+        if (/^[AB]\+?$/.test(x)) return { bg: "#dbeafe", fg: "#1e40af" };
+        if (/^[BC]\+?$/.test(x)) return { bg: "#fef3c7", fg: "#92400e" };
+        return { bg: "#fee2e2", fg: "#991b1b" };
+      }
+
+      function _rcDataRender() {
+        var rows = _rcGetRows();
+        if (!rows.length) { _rcEmpty.style.display = ""; _rcDash.style.display = "none"; return; }
+        _rcEmpty.style.display = "none"; _rcDash.style.display = "";
+
+        var pass = rows.filter(function (r) { return r.result.status === "Pass"; }).length;
+        var fail = rows.length - pass;
+        var avg = rows.length ? Math.round(rows.reduce(function (s, r) { return s + r.result.percentage; }, 0) / rows.length) : 0;
+        var passPct = rows.length ? Math.round((pass / rows.length) * 100) : 0;
+        var highest = rows.length ? Math.max.apply(null, rows.map(function (r) { return r.result.percentage; })) : 0;
+        var lowest = rows.length ? Math.min.apply(null, rows.filter(function (r) { return r.result.totalMarks > 0; }).map(function (r) { return r.result.percentage; })) : 0;
+
+        _rcSummary.innerHTML =
+          '<div class="rc-stat rc-stat--total"><div class="rc-stat__icon" style="background:#ede9fe;color:#7c3aed;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="rc-stat__body"><span class="rc-stat__label">Total Students</span><span class="rc-stat__value">' + rows.length + '</span><span class="rc-stat__sub">Included in report</span></div></div>' +
+          '<div class="rc-stat rc-stat--pass"><div class="rc-stat__icon" style="background:#dcfce7;color:#16a34a;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="rc-stat__body"><span class="rc-stat__label">Passed</span><span class="rc-stat__value">' + pass + '</span><span class="rc-stat__sub">' + passPct + '% pass rate</span></div></div>' +
+          '<div class="rc-stat rc-stat--fail"><div class="rc-stat__icon" style="background:#fee2e2;color:#dc2626;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="rc-stat__body"><span class="rc-stat__label">Failed</span><span class="rc-stat__value">' + fail + '</span><span class="rc-stat__sub">' + (100 - passPct) + '% fail rate</span></div></div>' +
+          '<div class="rc-stat rc-stat--avg"><div class="rc-stat__icon" style="background:#fef3c7;color:#d97706;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></div><div class="rc-stat__body"><span class="rc-stat__label">Average %</span><span class="rc-stat__value">' + avg + '%</span><span class="rc-stat__sub">Class average</span></div></div>';
+
+        var perfHtml = '<div class="rc-perf-grid">' +
+          '<div class="rc-perf-item"><div class="rc-perf-ring" style="--pct:' + passPct + ';--clr:#16a34a;"><span>' + passPct + '%</span></div><div class="rc-perf-label">Pass Rate</div></div>' +
+          '<div class="rc-perf-item"><div class="rc-perf-ring" style="--pct:' + (100 - passPct) + ';--clr:#dc2626;"><span>' + (100 - passPct) + '%</span></div><div class="rc-perf-label">Fail Rate</div></div>' +
+          '<div class="rc-perf-item"><div class="rc-perf-stat"><span class="rc-perf-stat__val">' + highest + '%</span><span class="rc-perf-stat__lbl">Highest</span></div></div>' +
+          '<div class="rc-perf-item"><div class="rc-perf-stat"><span class="rc-perf-stat__val">' + lowest + '%</span><span class="rc-perf-stat__lbl">Lowest</span></div></div>' +
+          '<div class="rc-perf-item"><div class="rc-perf-stat"><span class="rc-perf-stat__val">' + avg + '%</span><span class="rc-perf-stat__lbl">Average</span></div></div>' +
+        '</div>';
+        _rcPerf.innerHTML = perfHtml;
+
+        var sorted = rows.slice().sort(function (a, b) { return b.result.percentage - a.result.percentage; });
+        var topRows = sorted.filter(function (r) { return r.result.totalMarks > 0; }).slice(0, 5);
+        if (topRows.length) {
+          var medals = ["#FFD700", "#C0C0C0", "#CD7F32", "#6366f1", "#19A889"];
+          _rcTopP.innerHTML = '<div class="rc-performers">' + topRows.map(function (r, i) {
+            var gc = _rcGradeColor(r.result.grade);
+            var cls = String(r.student.className || "").split("|");
+            return '<div class="rc-performer' + (i < 3 ? " rc-performer--top" : "") + '"><div class="rc-performer__rank" style="background:' + medals[i] + ';color:' + (i === 0 ? "#78350f" : i === 1 ? "#374151" : i === 2 ? "#7c2d12" : "#fff") + ';">' + (i + 1) + '</div><div class="rc-performer__info"><div class="rc-performer__name">' + escapeHtml(r.student.name || "-") + '</div><div class="rc-performer__meta">Roll: ' + escapeHtml(r.student.admissionNo || "-") + ' &bull; Class: ' + escapeHtml(cls[0] || "-") + (cls[1] ? " - " + escapeHtml(cls[1]) : "") + '</div></div><div class="rc-performer__scores"><span class="rc-performer__pct">' + r.result.percentage + '%</span><span class="rc-performer__grade" style="background:' + gc.bg + ';color:' + gc.fg + ';">' + escapeHtml(r.result.grade) + '</span></div></div>';
+          }).join("") + '</div>';
+        } else {
+          _rcTopP.innerHTML = '<div class="rc-no-data"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg><span>No student performance data available.</span></div>';
+        }
+
+        _rcTableCount.textContent = rows.length + " student" + (rows.length !== 1 ? "s" : "");
+        _rcTBody.innerHTML = rows.map(function (r) {
+          var gc = _rcGradeColor(r.result.grade);
+          var cls = String(r.student.className || "").split("|");
+          var statusCls = r.result.status === "Pass" ? "active" : "inactive";
+          return '<tr>' +
+            '<td class="rc-troll">' + escapeHtml(r.student.admissionNo || "-") + '</td>' +
+            '<td><div class="rc-tname"><span class="rc-tname__avatar">' + escapeHtml((r.student.name || "?").charAt(0).toUpperCase()) + '</span><div><div class="rc-tname__text">' + escapeHtml(r.student.name || "-") + '</div>' + (r.student.fatherName ? '<div class="rc-tname__sub">' + escapeHtml(r.student.fatherName) + '</div>' : '') + '</div></div></td>' +
+            '<td>' + escapeHtml(cls[0] || "-") + (cls[1] ? " - " + escapeHtml(cls[1]) : "") + '</td>' +
+            '<td class="rc-tnum">' + r.result.totalMarks + '</td>' +
+            '<td class="rc-tnum"><strong>' + r.result.obtainedMarks + '</strong></td>' +
+            '<td class="rc-tnum"><span class="rc-tpct" style="background:' + (r.result.percentage >= 50 ? "#dcfce7" : "#fee2e2") + ';color:' + (r.result.percentage >= 50 ? "#166534" : "#991b1b") + ';">' + r.result.percentage + '%</span></td>' +
+            '<td><span class="rc-tgrade" style="background:' + gc.bg + ';color:' + gc.fg + ';">' + escapeHtml(r.result.grade) + '</span></td>' +
+            '<td><span class="status-pill ' + statusCls + '">' + escapeHtml(r.result.status) + '</span></td>' +
+            '<td><div class="rc-tactions"><button class="rc-tbtn rc-tbtn--view" type="button" data-rc-view="' + r.student.id + '" title="View Result"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="rc-tbtn rc-tbtn--print" type="button" data-rc-print="' + r.student.id + '" title="Print Result"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg></button></div></td>' +
+          '</tr>';
         }).join("");
       }
 
-      safeOn(document.getElementById("printExamReportBtn"), "click", function () {
-        var rows = getRows();
-        if (!rows.length) {
-          return;
+      function _rcOpenModal(studentId) {
+        var exam = getExamById(_rcExam.value);
+        var student = database.students.find(function (s) { return s.id === studentId; }) || null;
+        if (!student || !exam) return;
+        var result = evaluateExamResult(_rcExam.value, student.className, student.id);
+        var cls = String(student.className || "").split("|");
+        _rcModalTitle.textContent = "Result — " + (student.name || "-");
+
+        var subjectHtml = "";
+        if (result.subjectRows && result.subjectRows.length) {
+          subjectHtml = '<table class="rc-detail-table"><thead><tr><th>Subject</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' +
+            result.subjectRows.map(function (sr) {
+              var pct = sr.totalMarks > 0 ? Math.round((sr.obtainedMarks / sr.totalMarks) * 100) : 0;
+              var g = _rcGradeColor(sr.grade);
+              var st = pct <= 33 ? "Fail" : "Pass";
+              var stc = st === "Pass" ? "active" : "inactive";
+              return '<tr><td>' + escapeHtml(sr.subjectName) + '</td><td>' + sr.totalMarks + '</td><td><strong>' + sr.obtainedMarks + '</strong></td><td>' + pct + '%</td><td><span class="rc-tgrade" style="background:' + g.bg + ';color:' + g.fg + ';">' + escapeHtml(sr.grade) + '</span></td><td><span class="status-pill ' + stc + '">' + st + '</span></td></tr>';
+            }).join("") +
+          '</tbody></table>';
+        } else {
+          subjectHtml = '<div class="rc-no-data" style="padding:16px;"><span>No examination marks recorded for this student.</span></div>';
         }
-        var exam = getExamById(examSelect.value);
-        rows._examId = examSelect.value;
-        openReportCardPrint(rows, exam ? exam.name : "-", classSelect.value);
+
+        var gc = _rcGradeColor(result.grade);
+        var sc = result.status === "Pass" ? "active" : "inactive";
+
+        _rcModalBody.innerHTML =
+          '<div class="rc-detail-header">' +
+            '<div class="rc-detail-info"><table class="rc-detail-info__table">' +
+              '<tr><td>Student Name</td><td><strong>' + escapeHtml(student.name || "-") + '</strong></td></tr>' +
+              (student.fatherName ? '<tr><td>Father/Guardian</td><td>' + escapeHtml(student.fatherName) + '</td></tr>' : '') +
+              '<tr><td>Roll No</td><td>' + escapeHtml(student.admissionNo || "-") + '</td></tr>' +
+              '<tr><td>Class</td><td>' + escapeHtml(cls[0] || "-") + (cls[1] ? " - " + escapeHtml(cls[1]) : "") + '</td></tr>' +
+              '<tr><td>Exam</td><td>' + escapeHtml(exam.name || "-") + '</td></tr>' +
+            '</table></div>' +
+          '</div>' +
+          '<div class="rc-detail-subjects"><h4 class="rc-detail-section">Subject-wise Result</h4>' + subjectHtml + '</div>' +
+          '<div class="rc-detail-summary">' +
+            '<div class="rc-detail-card"><span class="rc-detail-card__lbl">Total Marks</span><span class="rc-detail-card__val">' + result.totalMarks + '</span></div>' +
+            '<div class="rc-detail-card"><span class="rc-detail-card__lbl">Obtained</span><span class="rc-detail-card__val rc-detail-card__val--obt">' + result.obtainedMarks + '</span></div>' +
+            '<div class="rc-detail-card"><span class="rc-detail-card__lbl">Percentage</span><span class="rc-detail-card__val">' + result.percentage + '%</span></div>' +
+            '<div class="rc-detail-card"><span class="rc-detail-card__lbl">Grade</span><span class="rc-detail-card__val" style="background:' + gc.bg + ';color:' + gc.fg + ';padding:4px 14px;border-radius:6px;">' + escapeHtml(result.grade) + '</span></div>' +
+            '<div class="rc-detail-card"><span class="rc-detail-card__lbl">Result</span><span class="status-pill ' + sc + '" style="font-size:0.85rem;">' + escapeHtml(result.status) + '</span></div>' +
+          '</div>';
+        _rcOverlay.style.display = "";
+      }
+
+      function _rcPrintStudent(studentId) {
+        var exam = getExamById(_rcExam.value);
+        var student = database.students.find(function (s) { return s.id === studentId; }) || null;
+        if (!student || !exam) return;
+        var result = evaluateExamResult(_rcExam.value, student.className, student.id);
+        var row = [{ student: student, result: result }];
+        row._examId = _rcExam.value;
+        openReportCardPrint(row, exam.name || "-", _rcClass.value);
+      }
+
+      safeOn(document.getElementById("rcApplyBtn"), "click", function () { _rcDataRender(); });
+      safeOn(document.getElementById("rcClearBtn"), "click", function () {
+        _rcExam.value = ""; _rcClass.value = "all"; _rcSearch.value = "";
+        _rcEmpty.style.display = ""; _rcDash.style.display = "none";
+      });
+      safeOn(document.getElementById("rcRefreshBtn"), "click", function () { _rcDataRender(); });
+      safeOn(document.getElementById("rcPrintBtn"), "click", function () {
+        var rows = _rcGetRows();
+        if (!rows.length) return;
+        var exam = getExamById(_rcExam.value);
+        rows._examId = _rcExam.value;
+        openReportCardPrint(rows, exam ? exam.name : "-", _rcClass.value);
+      });
+      safeOn(document.getElementById("rcExportBtn"), "click", function () {
+        var rows = _rcGetRows();
+        if (!rows.length) return;
+        var exam = getExamById(_rcExam.value);
+        rows._examId = _rcExam.value;
+        openReportCardPrint(rows, exam ? exam.name : "-", _rcClass.value);
       });
 
-      [examSelect, classSelect].forEach(function (input) {
-        input.addEventListener("change", renderRows);
-      });
-      searchInput.addEventListener("input", renderRows);
-      tableBody.addEventListener("click", function (event) {
-        const waButton = event.target.closest("[data-report-wa-student]");
-        if (!waButton) {
-          return;
-        }
-        const studentId = waButton.getAttribute("data-report-wa-student");
-        const student = database.students.find(function (item) { return item.id === studentId; }) || null;
-        if (!student || !examSelect.value) {
-          return;
-        }
-        const result = evaluateExamResult(examSelect.value, student.className, student.id);
-        const exam = getExamById(examSelect.value);
-        const template = getSavedMessageTemplate("studentReportWhatsapp", "Dear student/parent {prefix} {roll},\nResult ({exam}): {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.\nBest regards,\n{school}.");
-        const text = interpolateTemplate(template, {
-          name: student.name || "-",
-          roll: student.admissionNo || "-",
-          class: student.className || "-",
-          prefix: getGenderPrefix(student.gender),
-          exam: exam ? exam.name : "Exam",
-          obtained: result.obtainedMarks,
-          total: result.totalMarks,
-          percent: result.percentage,
-          grade: result.grade,
-          status: result.status,
-          school: database.school.name || "School"
-        });
-        sendDirectWhatsappToStudent(student, student.name || "student", text);
+      _rcExam.addEventListener("change", _rcDataRender);
+      _rcClass.addEventListener("change", _rcDataRender);
+      _rcSearch.addEventListener("input", _rcDataRender);
+
+      safeOn(_rcTBody, "click", function (e) {
+        var viewBtn = e.target.closest("[data-rc-view]");
+        var printBtn = e.target.closest("[data-rc-print]");
+        if (viewBtn) _rcOpenModal(viewBtn.getAttribute("data-rc-view"));
+        if (printBtn) _rcPrintStudent(printBtn.getAttribute("data-rc-print"));
       });
 
-      renderRows();
+      safeOn(document.getElementById("rcModalClose"), "click", function () { _rcOverlay.style.display = "none"; });
+      safeOn(_rcOverlay, "click", function (e) { if (e.target === _rcOverlay) _rcOverlay.style.display = "none"; });
+
+      _rcDataRender();
       return;
     }
 
