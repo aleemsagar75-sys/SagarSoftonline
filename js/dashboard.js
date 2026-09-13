@@ -16988,10 +16988,14 @@ ${allContent}
               '<button class="rc-btn rc-btn--accent" type="button" id="rcPrintBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print Report</button>' +
             '</div>' +
           '</div>' +
+          '<div class="rc-toggle-wrap">' +
+            '<button class="rc-toggle rc-toggle--active" type="button" id="rcModeStudent"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Student-wise</button>' +
+            '<button class="rc-toggle" type="button" id="rcModeClass"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Class-wise</button>' +
+          '</div>' +
           '<div class="rc-bar">' +
             '<div class="rc-bar__field"><label class="rc-bar__lbl">Exam</label><select class="rc-bar__sel" id="rcExam"><option value="">Select Examination</option>' + _rcExamOpts + '</select></div>' +
             '<div class="rc-bar__field"><label class="rc-bar__lbl">Class</label><select class="rc-bar__sel" id="rcClass"><option value="all">All Classes</option>' + _rcClassOpts + '</select></div>' +
-            '<div class="rc-bar__field rc-bar__field--wide"><label class="rc-bar__lbl">Student Search</label><div style="position:relative;"><input class="rc-bar__inp" id="rcSearch" type="search" placeholder="Search by roll no / student name"><div id="rcSearchDrop" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>' +
+            '<div class="rc-bar__field rc-bar__field--wide" id="rcSearchWrap"><label class="rc-bar__lbl">Student Search</label><div style="position:relative;"><input class="rc-bar__inp" id="rcSearch" type="search" placeholder="Search by roll no / student name"><div id="rcSearchDrop" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>' +
             '<div class="rc-bar__field rc-bar__field--clr"><button class="rc-btn rc-btn--clear" type="button" id="rcClearBtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</button></div>' +
           '</div>' +
           '<div class="rc-empty" id="rcEmpty1">' +
@@ -17012,6 +17016,11 @@ ${allContent}
             '</div>' +
             '<div class="rc-panel" style="margin-top:0.75rem;"><div class="rc-panel__hd"><h3 class="rc-panel__tt">Student Results</h3><span class="rc-panel__badge" id="rcCount">0 students</span></div><div class="rc-panel__bd rc-panel__bd--tbl"><div class="rc-tblwrap"><table class="rc-tbl"><thead><tr><th>Rank</th><th>Roll No</th><th>Student</th><th>Class</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th><th>Action</th></tr></thead><tbody id="rcTBody"></tbody></table></div></div></div>' +
           '</div>' +
+          '<div class="rc-dash" id="rcClassDash" style="display:none;">' +
+            '<div class="rc-stats" id="rcClassStats"></div>' +
+            '<div class="rc-panel" style="margin-top:0.75rem;"><div class="rc-panel__hd"><h3 class="rc-panel__tt">Class-wise Results</h3><span class="rc-panel__badge" id="rcClassCount">0 classes</span></div><div class="rc-panel__bd rc-panel__bd--tbl"><div class="rc-tblwrap"><table class="rc-tbl"><thead><tr><th>#</th><th>Class</th><th>Students</th><th>Passed</th><th>Failed</th><th>Avg %</th><th>Highest</th><th>Pass Rate</th><th>Action</th></tr></thead><tbody id="rcClassTBody"></tbody></table></div></div></div>' +
+          '</div>' +
+          '<div class="rc-modal-mask" id="rcClassDrillMask" style="display:none;"><div class="rc-modal" id="rcClassDrillModal"><div class="rc-modal__hd"><h3 class="rc-modal__tt" id="rcClassDrillTitle">Class Students</h3><button class="rc-modal__x" id="rcClassDrillX" type="button">&times;</button></div><div class="rc-modal__bd" id="rcClassDrillBody"></div></div></div>' +
           '<div class="rc-modal-mask" id="rcMask" style="display:none;"><div class="rc-modal" id="rcModal"><div class="rc-modal__hd"><h3 class="rc-modal__tt" id="rcModalTitle">Student Result</h3><button class="rc-modal__x" id="rcModalX" type="button">&times;</button></div><div class="rc-modal__bd" id="rcModalBody"></div></div></div>' +
         '</div>';
       moduleGuide.innerHTML = "";
@@ -17022,6 +17031,7 @@ ${allContent}
       var _rcE1 = document.getElementById("rcEmpty1");
       var _rcE2 = document.getElementById("rcEmpty2");
       var _rcD = document.getElementById("rcDash");
+      var _rcClassDash = document.getElementById("rcClassDash");
       var _rcStats = document.getElementById("rcStats");
       var _rcClassPerf = document.getElementById("rcClassPerf");
       var _rcClassPanel = document.getElementById("rcClassPanel");
@@ -17032,6 +17042,14 @@ ${allContent}
       var _rcMask = document.getElementById("rcMask");
       var _rcModalTitle = document.getElementById("rcModalTitle");
       var _rcModalBody = document.getElementById("rcModalBody");
+      var _rcClassStats = document.getElementById("rcClassStats");
+      var _rcClassTB = document.getElementById("rcClassTBody");
+      var _rcClassCount = document.getElementById("rcClassCount");
+      var _rcClassDrillMask = document.getElementById("rcClassDrillMask");
+      var _rcClassDrillTitle = document.getElementById("rcClassDrillTitle");
+      var _rcClassDrillBody = document.getElementById("rcClassDrillBody");
+      var _rcSearchWrap = document.getElementById("rcSearchWrap");
+      var _rcMode = "student";
 
       var _activeExam = getExams().find(function (e) { return e.status === "active"; }) || getExams()[0] || null;
       if (_activeExam) _rcE.value = _activeExam.id;
@@ -17078,8 +17096,10 @@ ${allContent}
       }
 
       function _rcRender() {
+        if (_rcMode === "class") { _rcClassRender(); return; }
         var rows = _rcRows();
         var allRows = _rcAllRowsForExam();
+        _rcClassDash.style.display = "none";
 
         if (!_rcE.value) { _rcE1.style.display = ""; _rcE2.style.display = "none"; _rcD.style.display = "none"; return; }
         if (!rows.length) { _rcE1.style.display = "none"; _rcE2.style.display = ""; _rcD.style.display = "none"; return; }
@@ -17161,6 +17181,90 @@ ${allContent}
         }).join("");
       }
 
+      function _rcClassRender() {
+        var allRows = _rcAllRowsForExam();
+        if (!_rcE.value) { _rcE1.style.display = ""; _rcE2.style.display = "none"; _rcD.style.display = "none"; _rcClassDash.style.display = "none"; return; }
+        if (!allRows.length) { _rcE1.style.display = "none"; _rcE2.style.display = ""; _rcD.style.display = "none"; _rcClassDash.style.display = "none"; return; }
+        _rcE1.style.display = "none"; _rcE2.style.display = "none"; _rcD.style.display = "none"; _rcClassDash.style.display = "";
+
+        var classMap = {};
+        allRows.forEach(function (r) {
+          var cn = String(r.student.className || "").split("|")[0].trim() || "Unknown";
+          if (!classMap[cn]) classMap[cn] = [];
+          classMap[cn].push(r);
+        });
+        var classKeys = Object.keys(classMap).sort();
+
+        var totalStudents = allRows.length;
+        var totalPassed = allRows.filter(function (r) { return r.result.status === "Pass"; }).length;
+        var totalAvg = allRows.length ? Math.round(allRows.reduce(function (s, r) { return s + r.result.percentage; }, 0) / allRows.length) : 0;
+        var totalPassRate = allRows.length ? Math.round((totalPassed / allRows.length) * 1000) / 10 : 0;
+
+        _rcClassStats.innerHTML =
+          '<div class="rc-st rc-st--purple"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Total Classes</span><span class="rc-st__val">' + classKeys.length + '</span><span class="rc-st__note">Active classes</span></div></div>' +
+          '<div class="rc-st rc-st--blue"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Total Students</span><span class="rc-st__val">' + totalStudents + '</span><span class="rc-st__note">All classes combined</span></div></div>' +
+          '<div class="rc-st rc-st--green"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Overall Pass</span><span class="rc-st__val">' + totalPassRate + '%</span><span class="rc-st__note">' + totalPassed + ' passed</span></div></div>' +
+          '<div class="rc-st rc-st--amber"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Average %</span><span class="rc-st__val">' + totalAvg + '%</span><span class="rc-st__note">Overall average</span></div></div>';
+
+        _rcClassCount.textContent = classKeys.length + " class" + (classKeys.length !== 1 ? "es" : "");
+        _rcClassTB.innerHTML = classKeys.map(function (cn, idx) {
+          var cr = classMap[cn];
+          var cPass = cr.filter(function (r) { return r.result.status === "Pass"; }).length;
+          var cFail = cr.length - cPass;
+          var cAvg = cr.length ? Math.round(cr.reduce(function (s, r) { return s + r.result.percentage; }, 0) / cr.length) : 0;
+          var cPassRate = cr.length ? Math.round((cPass / cr.length) * 1000) / 10 : 0;
+          var cHigh = cr.length ? Math.max.apply(null, cr.filter(function (r) { return r.result.totalMarks > 0; }).map(function (r) { return r.result.percentage; })) : 0;
+          return '<tr>' +
+            '<td class="rc-mono">' + (idx + 1) + '</td>' +
+            '<td><strong>' + escapeHtml(cn) + '</strong></td>' +
+            '<td class="rc-mono">' + cr.length + '</td>' +
+            '<td><span class="rc-pctpill" style="background:#dcfce7;color:#166534;">' + cPass + '</span></td>' +
+            '<td><span class="rc-pctpill" style="background:#fee2e2;color:#991b1b;">' + cFail + '</span></td>' +
+            '<td><span class="rc-pctpill" style="background:' + (cAvg >= 50 ? "#dcfce7" : "#fee2e2") + ';color:' + (cAvg >= 50 ? "#166534" : "#991b1b") + ';">' + cAvg + '%</span></td>' +
+            '<td class="rc-mono"><strong>' + cHigh + '%</strong></td>' +
+            '<td><span class="rc-pctpill" style="background:' + (cPassRate >= 50 ? "#dbeafe" : "#fef3c7") + ';color:' + (cPassRate >= 50 ? "#1e40af" : "#92400e") + ';">' + cPassRate + '%</span></td>' +
+            '<td><button class="rc-viewbtn" type="button" data-rc-class-view="' + escapeAttr(cn) + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View Students</button></td>' +
+          '</tr>';
+        }).join("");
+      }
+
+      function _rcOpenClassDrill(className) {
+        var allRows = _rcAllRowsForExam();
+        var classStudents = allRows.filter(function (r) {
+          return String(r.student.className || "").split("|")[0].trim() === className;
+        });
+        if (!classStudents.length) return;
+        var sorted = classStudents.sort(function (a, b) { return b.result.percentage - a.result.percentage; });
+        var exam = getExamById(_rcE.value);
+
+        _rcClassDrillTitle.textContent = className + " — Student Results" + (exam ? " (" + exam.name + ")" : "");
+        _rcClassDrillBody.innerHTML = '<div class="rc-tblwrap"><table class="rc-tbl"><thead><tr><th>Rank</th><th>Roll No</th><th>Student</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th><th>Action</th></tr></thead><tbody>' +
+          sorted.map(function (r, idx) {
+            var gc2 = _gc(r.result.grade);
+            var sc = r.result.status === "Pass" ? "active" : "inactive";
+            return '<tr>' +
+              '<td>' + _rankBadge(idx) + '</td>' +
+              '<td class="rc-mono">' + escapeHtml(r.student.admissionNo || "-") + '</td>' +
+              '<td><div class="rc-tname"><span class="rc-tname__av">' + escapeHtml((r.student.name || "?").charAt(0).toUpperCase()) + '</span><div><div class="rc-tname__n">' + escapeHtml(r.student.name || "-") + '</div>' + (r.student.fatherName ? '<div class="rc-tname__f">' + escapeHtml(r.student.fatherName) + '</div>' : '') + '</div></div></td>' +
+              '<td class="rc-mono">' + r.result.totalMarks + '</td>' +
+              '<td class="rc-mono"><strong>' + r.result.obtainedMarks + '</strong></td>' +
+              '<td><span class="rc-pctpill" style="background:' + (r.result.percentage >= 50 ? "#dcfce7" : "#fee2e2") + ';color:' + (r.result.percentage >= 50 ? "#166534" : "#991b1b") + ';">' + r.result.percentage + '%</span></td>' +
+              '<td><span class="rc-gbadge" style="background:' + gc2.bg + ';color:' + gc2.fg + ';">' + escapeHtml(r.result.grade) + '</span></td>' +
+              '<td><span class="status-pill ' + sc + '">' + escapeHtml(r.result.status) + '</span></td>' +
+              '<td><button class="rc-viewbtn" type="button" data-rc-view="' + r.student.id + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View</button></td>' +
+            '</tr>';
+          }).join("") + '</tbody></table></div>';
+        _rcClassDrillMask.style.display = "";
+      }
+
+      function _rcSwitchMode(mode) {
+        _rcMode = mode;
+        document.getElementById("rcModeStudent").className = "rc-toggle" + (mode === "student" ? " rc-toggle--active" : "");
+        document.getElementById("rcModeClass").className = "rc-toggle" + (mode === "class" ? " rc-toggle--active" : "");
+        _rcSearchWrap.style.display = mode === "student" ? "" : "none";
+        _rcRender();
+      }
+
       function _rcOpenModal(studentId) {
         var exam = getExamById(_rcE.value);
         var student = database.students.find(function (s) { return s.id === studentId; }) || null;
@@ -17233,9 +17337,12 @@ ${allContent}
       _rcC.addEventListener("change", _rcRender);
       _rcS.addEventListener("input", _rcRender);
 
+      safeOn(document.getElementById("rcModeStudent"), "click", function () { _rcSwitchMode("student"); });
+      safeOn(document.getElementById("rcModeClass"), "click", function () { _rcSwitchMode("class"); });
+
       safeOn(document.getElementById("rcClearBtn"), "click", function () {
         _rcE.value = ""; _rcC.value = "all"; _rcS.value = "";
-        _rcE1.style.display = ""; _rcE2.style.display = "none"; _rcD.style.display = "none";
+        _rcE1.style.display = ""; _rcE2.style.display = "none"; _rcD.style.display = "none"; _rcClassDash.style.display = "none";
       });
       safeOn(document.getElementById("rcRefreshBtn"), "click", function () { _rcRender(); });
       safeOn(document.getElementById("rcPrintBtn"), "click", function () {
@@ -17263,6 +17370,17 @@ ${allContent}
       });
       safeOn(document.getElementById("rcModalX"), "click", function () { _rcMask.style.display = "none"; });
       safeOn(_rcMask, "click", function (e) { if (e.target === _rcMask) _rcMask.style.display = "none"; });
+
+      safeOn(_rcClassTB, "click", function (e) {
+        var v = e.target.closest("[data-rc-class-view]");
+        if (v) _rcOpenClassDrill(v.getAttribute("data-rc-class-view"));
+      });
+      safeOn(document.getElementById("rcClassDrillX"), "click", function () { _rcClassDrillMask.style.display = "none"; });
+      safeOn(_rcClassDrillMask, "click", function (e) { if (e.target === _rcClassDrillMask) _rcClassDrillMask.style.display = "none"; });
+      safeOn(_rcClassDrillBody, "click", function (e) {
+        var v = e.target.closest("[data-rc-view]");
+        if (v) { _rcClassDrillMask.style.display = "none"; _rcOpenModal(v.getAttribute("data-rc-view")); }
+      });
 
       _rcRender();
       return;
