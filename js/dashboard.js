@@ -17607,97 +17607,418 @@ ${allContent}
     }
 
     if (route === "students-info-report" || route === "parents-info-report") {
-      const classOptionsMarkup = classOptions.map(function (name) {
-        return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
-      }).join("");
       const isParents = route === "parents-info-report";
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">${isParents ? "Parents Info Report" : "Students Info Report"}</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="infoReportSearchInput" type="search" placeholder="${isParents ? "Search by student / father / phone" : "Search by roll no / name / phone"}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="infoReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="infoReportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-          </div>
-          <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printInfoReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
-          ${isParents ? "" : `<div class="report-cards" id="studentsInfoStats"></div><div class="split-grid report-grid"><article class="panel-card"><strong>Gender Distribution</strong><div id="studentsInfoChart" class="report-chart-box"></div></article><article class="panel-card"><strong>Class Strength</strong><div id="studentsInfoBars" class="report-bar-list"></div></article></div>`}
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead>
-            ${isParents ? "<tr><th style='white-space:nowrap;'>Student</th><th style='white-space:nowrap;'>Roll No</th><th style='white-space:nowrap;'>Class</th><th style='white-space:nowrap;'>Father Name</th><th style='white-space:nowrap;'>Father Phone</th><th style='white-space:nowrap;'>Mother Name</th><th style='white-space:nowrap;'>Mother Phone</th><th style='white-space:nowrap;'>Address</th></tr>" : "<tr><th style='white-space:nowrap;'>Roll No</th><th style='white-space:nowrap;'>Name</th><th style='white-space:nowrap;'>Father Name</th><th style='white-space:nowrap;'>Class</th><th style='white-space:nowrap;'>Gender</th><th style='white-space:nowrap;'>Phone</th><th style='white-space:nowrap;'>Status</th></tr>"}
-          </thead><tbody id="infoReportTableBody"></tbody></table></div>
-        </article>
-      `;
+      const _sirClassOpts = classOptions.map(function (n) {
+        return '<option value="' + escapeAttr(n) + '">' + escapeHtml(n) + '</option>';
+      }).join("");
+      const _sirGenderOpts = ["Male", "Female", "Other", "Not specified"].map(function (g) {
+        return '<option value="' + escapeAttr(g) + '">' + escapeHtml(g) + '</option>';
+      }).join("");
+      const _sirStatusOpts = ["active", "inactive", "left", "transferred"].map(function (s) {
+        return '<option value="' + escapeAttr(s) + '">' + escapeHtml(s.charAt(0).toUpperCase() + s.slice(1)) + '</option>';
+      }).join("");
+
+      moduleSummary.innerHTML =
+        '<div class="sir-wrap">' +
+          '<div class="sir-hdr"><div class="sir-hdr__left"><div class="sir-hdr__eyebrow">REPORTS</div><h1 class="sir-hdr__title">' + (isParents ? "Parents Information Report" : "Students Information Report") + '</h1><p class="sir-hdr__sub">' + (isParents ? "Complete parent and guardian contact overview for all enrolled students." : "Complete student enrollment, demographic and contact overview.") + '</p></div><div class="sir-hdr__btns"><button class="sir-btn sir-btn--ghost" type="button" id="sirRefresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh</button><button class="sir-btn sir-btn--ghost" type="button" id="sirExport"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button><button class="sir-btn sir-btn--accent" type="button" id="sirPrint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print Report</button></div></div>' +
+          '<div class="sir-stats" id="sirStats"></div>' +
+          '<div class="sir-grid2">' +
+            '<div class="sir-panel"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Gender Distribution</h3></div><div class="sir-panel__bd" id="sirGender"></div></div>' +
+            '<div class="sir-panel"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Enrollment Status</h3></div><div class="sir-panel__bd" id="sirStatus"></div></div>' +
+          '</div>' +
+          '<div class="sir-panel" style="margin-top:14px;"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Class-wise Enrollment</h3><span class="sir-panel__badge" id="sirClassCount">0 classes</span></div><div class="sir-panel__bd" id="sirClassEnroll"></div></div>' +
+          (isParents ? "" :
+          '<div class="sir-panel" style="margin-top:14px;"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Contact Information</h3></div><div class="sir-panel__bd" id="sirContact"></div></div>') +
+          '<div class="sir-bar">' +
+            '<div class="sir-bar__field sir-bar__field--wide"><label class="sir-bar__lbl">Search</label><div style="position:relative;"><input class="sir-bar__inp" id="sirSearch" type="search" placeholder="' + (isParents ? "Search by student / father / phone" : "Search by name, roll no, father name or phone") + '"><div id="sirSearchDrop" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>' +
+            '<div class="sir-bar__field"><label class="sir-bar__lbl">Class</label><select class="sir-bar__sel" id="sirClass"><option value="all">All Classes</option>' + _sirClassOpts + '</select></div>' +
+            (isParents ? "" :
+            '<div class="sir-bar__field"><label class="sir-bar__lbl">Gender</label><select class="sir-bar__sel" id="sirGenderF"><option value="all">All</option>' + _sirGenderOpts + '</select></div>' +
+            '<div class="sir-bar__field"><label class="sir-bar__lbl">Status</label><select class="sir-bar__sel" id="sirStatusF"><option value="all">All</option>' + _sirStatusOpts + '</select></div>') +
+            '<div class="sir-bar__field sir-bar__field--clr"><button class="sir-btn sir-btn--clear" type="button" id="sirClear"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</button></div>' +
+          '</div>' +
+          '<div class="sir-panel" style="margin-top:14px;"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Student Directory</h3><span class="sir-panel__badge" id="sirDirCount">0 students</span></div><div class="sir-panel__bd sir-panel__bd--tbl" id="sirTableWrap">' +
+            '<div class="sir-empty" id="sirEmpty"><div class="sir-empty__ico"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><h3 class="sir-empty__tt">No students found</h3><p class="sir-empty__sub">There are no students enrolled in the system yet.</p></div>' +
+            '<div class="sir-empty" id="sirEmptyF" style="display:none;"><div class="sir-empty__ico"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h3 class="sir-empty__tt">No students match your current filters</h3><p class="sir-empty__sub">Try adjusting your search or filter criteria.</p></div>' +
+            '<div id="sirTableArea" style="display:none;"><div class="sir-tblwrap"><table class="sir-tbl"><thead><tr>' +
+              (isParents ?
+              '<th>Student</th><th>Roll No</th><th>Class</th><th>Father Name</th><th>Father Phone</th><th>Mother Name</th><th>Mother Phone</th><th>Address</th><th>Action</th>' :
+              '<th class="sir-sort" data-sir-sort="name">Student <span class="sir-sort-ico" id="sirSortName"></span></th><th class="sir-sort" data-sir-sort="admissionNo">Roll No <span class="sir-sort-ico" id="sirSortRoll"></span></th><th>Father Name</th><th class="sir-sort" data-sir-sort="className">Class <span class="sir-sort-ico" id="sirSortClass"></span></th><th>Gender</th><th>Phone</th><th class="sir-sort" data-sir-sort="status">Status <span class="sir-sort-ico" id="sirSortStatus"></span></th><th>Action</th>') +
+            '</tr></thead><tbody id="sirTB"></tbody></table></div>' +
+            '<div class="sir-pagebar"><span class="sir-pagebar__info" id="sirPageInfo">Showing 1-20 of 0</span><div class="sir-pagebar__btns" id="sirPageBtns"></div></div>' +
+          '</div></div>' +
+          '<div class="sir-modal-mask" id="sirMask" style="display:none;"><div class="sir-modal"><div class="sir-modal__hd"><h3 class="sir-modal__tt" id="sirMTitle">Student Profile</h3><button class="sir-modal__x" id="sirMX" type="button">&times;</button></div><div class="sir-modal__bd" id="sirMBody"></div></div></div>' +
+        '</div>';
       moduleGuide.innerHTML = "";
-      const searchInput = document.getElementById("infoReportSearchInput");
-      const searchDropdown = document.getElementById("infoReportSearchDropdown");
-      const searchContainer = document.getElementById("infoReportSearchContainer");
-      const classSelect = document.getElementById("infoReportClassSelect");
-      const tableBody = document.getElementById("infoReportTableBody");
-      const statsWrap = document.getElementById("studentsInfoStats");
-      const chartWrap = document.getElementById("studentsInfoChart");
-      const barsWrap = document.getElementById("studentsInfoBars");
 
-      initializeStudentProfessionalSearch(
-        "infoReportSearchInput",
-        "infoReportSearchDropdown",
-        "infoReportSearchContainer",
-        function(student) {
-          searchInput.value = student.name || "";
-          renderRows();
-        }
-      );
+      var _sirE = document.getElementById("sirSearch");
+      var _sirED = document.getElementById("sirSearchDrop");
+      var _sirC = document.getElementById("sirClass");
+      var _sirG = isParents ? null : document.getElementById("sirGenderF");
+      var _sirS = isParents ? null : document.getElementById("sirStatusF");
+      var _sirStats = document.getElementById("sirStats");
+      var _sirGenderEl = isParents ? null : document.getElementById("sirGender");
+      var _sirStatusEl = isParents ? null : document.getElementById("sirStatus");
+      var _sirClassEnroll = document.getElementById("sirClassEnroll");
+      var _sirClassCountEl = document.getElementById("sirClassCount");
+      var _sirContactEl = isParents ? null : document.getElementById("sirContact");
+      var _sirTB = document.getElementById("sirTB");
+      var _sirDirCount = document.getElementById("sirDirCount");
+      var _sirEmpty = document.getElementById("sirEmpty");
+      var _sirEmptyF = document.getElementById("sirEmptyF");
+      var _sirTableArea = document.getElementById("sirTableArea");
+      var _sirPageInfo = document.getElementById("sirPageInfo");
+      var _sirPageBtns = document.getElementById("sirPageBtns");
+      var _sirMask = document.getElementById("sirMask");
+      var _sirMTitle = document.getElementById("sirMTitle");
+      var _sirMBody = document.getElementById("sirMBody");
+      var _sirPage = 1;
+      var _sirPerPage = 20;
+      var _sirSortCol = "";
+      var _sirSortDir = "asc";
+      var _sirFiltered = [];
 
-      function getRows() {
-        return getStudentsByFilter(classSelect.value, searchInput.value);
+      initializeStudentProfessionalSearch("sirSearch", "sirSearchDrop", null, function (st) {
+        _sirE.value = st.name || "";
+        _sirRender();
+      });
+
+      function _sirGetAll() {
+        return database.students || [];
       }
 
-      function renderRows() {
-        const rows = getRows();
-        if (!isParents) {
-          const male = rows.filter(function (row) { return row.gender === "Male"; }).length;
-          const female = rows.filter(function (row) { return row.gender === "Female"; }).length;
-          const active = rows.filter(function (row) { return String(row.status || "").toLowerCase() === "active"; }).length;
-          const malePercent = rows.length ? Math.round((male / rows.length) * 100) : 0;
-          statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>Total</strong><span>${rows.length}</span></article><article class="stat-card stat-card--emerald"><strong>Active</strong><span>${active}</span></article><article class="stat-card stat-card--sky"><strong>Male</strong><span>${male}</span></article><article class="stat-card stat-card--rose"><strong>Female</strong><span>${female}</span></article>`;
-          chartWrap.innerHTML = rows.length ? buildCircleChart(malePercent, `Male ${male} | Female ${female}`, "#6366f1", "#e2e8f0") : `<p class="empty-state">No data found.</p>`;
-          const classStats = rows.reduce(function (map, student) { map.set(student.className || "-", (map.get(student.className || "-") || 0) + 1); return map; }, new Map());
-          const barRows = Array.from(classStats.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
-          const max = barRows.length ? Math.max.apply(null, barRows.map(function (item) { return item.value; })) : 1;
-          barsWrap.innerHTML = barRows.length ? buildBarChart(barRows, max) : `<p class="empty-state">No class data.</p>`;
-        }
+      function _sirFilter() {
+        var q = String(_sirE.value || "").trim().toLowerCase();
+        var cv = _sirC.value;
+        var gv = _sirG ? _sirG.value : "all";
+        var sv = _sirS ? _sirS.value : "all";
+        return _sirGetAll().filter(function (s) {
+          var cm = !cv || cv === "all" || s.className === cv;
+          var gm = gv === "all" || String(s.gender || "").toLowerCase() === gv.toLowerCase();
+          var sm = sv === "all" || String(s.status || "").toLowerCase() === sv.toLowerCase();
+          var tm = !q ||
+            String(s.name || "").toLowerCase().includes(q) ||
+            String(s.admissionNo || "").toLowerCase().includes(q) ||
+            String(s.fatherName || "").toLowerCase().includes(q) ||
+            String(s.phone || s.studentPhone || "").toLowerCase().includes(q) ||
+            String(s.fatherPhone || "").toLowerCase().includes(q);
+          return cm && gm && sm && tm;
+        });
+      }
 
-        tableBody.innerHTML = rows.map(function (student) {
-          if (isParents) {
-            return `<tr><td>${escapeHtml(student.name || "-")}</td><td>${escapeHtml(student.admissionNo || "-")}</td><td>${escapeHtml(student.className || "-")}</td><td>${escapeHtml(student.fatherName || "-")}</td><td>${escapeHtml(student.fatherPhone || "-")}</td><td>${escapeHtml(student.motherName || "-")}</td><td>${escapeHtml(student.motherPhone || "-")}</td><td>${escapeHtml(student.address || "-")}</td></tr>`;
+      function _sirPct(a, b) { return b > 0 ? Math.round((a / b) * 100) : 0; }
+
+      function _sirStatusColor(st) {
+        var x = String(st || "").toLowerCase();
+        if (x === "active") return { bg: "#dcfce7", fg: "#166534" };
+        if (x === "inactive") return { bg: "#fef3c7", fg: "#92400e" };
+        if (x === "left") return { bg: "#fee2e2", fg: "#991b1b" };
+        if (x === "transferred") return { bg: "#dbeafe", fg: "#1e40af" };
+        return { bg: "#f1f5f9", fg: "#475569" };
+      }
+
+      function _sirGenderColor(g) {
+        var x = String(g || "").toLowerCase();
+        if (x === "male") return "#6366f1";
+        if (x === "female") return "#ec4899";
+        return "#94a3b8";
+      }
+
+      function _sirRenderStats(rows) {
+        var total = rows.length;
+        var active = rows.filter(function (s) { return String(s.status || "").toLowerCase() === "active"; }).length;
+        var inactive = total - active;
+        var male = rows.filter(function (s) { return String(s.gender || "").toLowerCase() === "male"; }).length;
+        var female = rows.filter(function (s) { return String(s.gender || "").toLowerCase() === "female"; }).length;
+        var classSet = new Set(rows.map(function (s) { return s.className; }).filter(Boolean));
+        _sirStats.innerHTML =
+          '<div class="sir-st sir-st--purple"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Total Students</span><span class="sir-st__val">' + total + '</span><span class="sir-st__note">All enrolled records</span></div></div>' +
+          '<div class="sir-st sir-st--green"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Active</span><span class="sir-st__val">' + active + '</span><span class="sir-st__note">' + _sirPct(active, total) + '% of total</span></div></div>' +
+          '<div class="sir-st sir-st--amber"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Inactive</span><span class="sir-st__val">' + inactive + '</span><span class="sir-st__note">' + _sirPct(inactive, total) + '% of total</span></div></div>' +
+          '<div class="sir-st sir-st--blue"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Male</span><span class="sir-st__val">' + male + '</span><span class="sir-st__note">' + _sirPct(male, total) + '% of total</span></div></div>' +
+          '<div class="sir-st sir-st--pink"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Female</span><span class="sir-st__val">' + female + '</span><span class="sir-st__note">' + _sirPct(female, total) + '% of total</span></div></div>' +
+          '<div class="sir-st sir-st--teal"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Classes</span><span class="sir-st__val">' + classSet.size + '</span><span class="sir-st__note">Active classes</span></div></div>';
+      }
+
+      function _sirRenderGender(rows) {
+        if (isParents) return;
+        var total = rows.length;
+        var male = rows.filter(function (s) { return String(s.gender || "").toLowerCase() === "male"; }).length;
+        var female = rows.filter(function (s) { return String(s.gender || "").toLowerCase() === "female"; }).length;
+        var other = rows.filter(function (s) { var g = String(s.gender || "").toLowerCase(); return g && g !== "male" && g !== "female"; }).length;
+        var unspecified = total - male - female - other;
+        if (total === 0) { _sirGenderEl.innerHTML = '<div class="sir-nodata">No students to analyze.</div>'; return; }
+        var hasData = male > 0 || female > 0 || other > 0;
+        if (!hasData) { _sirGenderEl.innerHTML = '<div class="sir-nodata">No gender data available.</div>'; return; }
+        var malePct = _sirPct(male, total);
+        var femalePct = _sirPct(female, total);
+        var otherPct = _sirPct(other, total);
+        var unPct = _sirPct(unspecified, total);
+        _sirGenderEl.innerHTML =
+          '<div class="sir-donut-wrap">' +
+            '<div class="sir-donut" style="background:conic-gradient(#6366f1 0% ' + malePct + '%,#ec4899 ' + malePct + '% ' + (malePct + femalePct) + '%,#a78bfa ' + (malePct + femalePct) + '% ' + (malePct + femalePct + otherPct) + '%,#e2e8f0 ' + (malePct + femalePct + otherPct) + '% 100%);"><div class="sir-donut__hole"><span class="sir-donut__pct">' + total + '</span><span class="sir-donut__lbl">Total</span></div></div>' +
+          '</div>' +
+          '<div class="sir-donut-legend">' +
+            '<div class="sir-donut-legend__item"><span class="sir-donut-legend__dot" style="background:#6366f1;"></span><span class="sir-donut-legend__lbl">Male</span><span class="sir-donut-legend__val">' + male + ' (' + malePct + '%)</span></div>' +
+            '<div class="sir-donut-legend__item"><span class="sir-donut-legend__dot" style="background:#ec4899;"></span><span class="sir-donut-legend__lbl">Female</span><span class="sir-donut-legend__val">' + female + ' (' + femalePct + '%)</span></div>' +
+            (other > 0 ? '<div class="sir-donut-legend__item"><span class="sir-donut-legend__dot" style="background:#a78bfa;"></span><span class="sir-donut-legend__lbl">Other</span><span class="sir-donut-legend__val">' + other + ' (' + otherPct + '%)</span></div>' : '') +
+            (unspecified > 0 ? '<div class="sir-donut-legend__item"><span class="sir-donut-legend__dot" style="background:#e2e8f0;"></span><span class="sir-donut-legend__lbl">Not specified</span><span class="sir-donut-legend__val">' + unspecified + ' (' + unPct + '%)</span></div>' : '') +
+          '</div>';
+      }
+
+      function _sirRenderStatus(rows) {
+        if (isParents) return;
+        var total = rows.length;
+        if (total === 0) { _sirStatusEl.innerHTML = '<div class="sir-nodata">No students to analyze.</div>'; return; }
+        var statusMap = {};
+        rows.forEach(function (s) {
+          var st = String(s.status || "active").toLowerCase() || "active";
+          statusMap[st] = (statusMap[st] || 0) + 1;
+        });
+        var colors = { active: { bg: "#dcfce7", fg: "#166534", bar: "#16a34a" }, inactive: { bg: "#fef3c7", fg: "#92400e", bar: "#f59e0b" }, left: { bg: "#fee2e2", fg: "#991b1b", bar: "#dc2626" }, transferred: { bg: "#dbeafe", fg: "#1e40af", bar: "#2563eb" } };
+        var items = Object.keys(statusMap).sort();
+        _sirStatusEl.innerHTML = '<div class="sir-status-list">' + items.map(function (st) {
+          var cnt = statusMap[st];
+          var pct = _sirPct(cnt, total);
+          var c = colors[st] || { bg: "#f1f5f9", fg: "#475569", bar: "#94a3b8" };
+          return '<div class="sir-status-item"><div class="sir-status-item__hd"><span class="sir-status-item__dot" style="background:' + c.bar + ';"></span><span class="sir-status-item__lbl">' + escapeHtml(st.charAt(0).toUpperCase() + st.slice(1)) + '</span><span class="sir-status-item__val">' + cnt + ' (' + pct + '%)</span></div><div class="sir-status-item__bar"><div class="sir-status-item__fill" style="width:' + pct + '%;background:' + c.bar + ';"></div></div></div>';
+        }).join("") + '</div>';
+      }
+
+      function _sirRenderClassEnroll(rows) {
+        var total = rows.length;
+        var classMap = {};
+        rows.forEach(function (s) {
+          var cn = s.className || "Unknown";
+          if (!classMap[cn]) classMap[cn] = 0;
+          classMap[cn]++;
+        });
+        var classKeys = Object.keys(classMap);
+        _sirClassCountEl.textContent = classKeys.length + " class" + (classKeys.length !== 1 ? "es" : "");
+        if (classKeys.length === 0) { _sirClassEnroll.innerHTML = '<div class="sir-nodata">No class data available.</div>'; return; }
+        var sorted = classKeys.sort(function (a, b) { return classMap[b] - classMap[a]; });
+        var maxVal = Math.max.apply(null, sorted.map(function (k) { return classMap[k]; }));
+        _sirClassEnroll.innerHTML = '<div class="sir-class-bars">' + sorted.map(function (cn) {
+          var cnt = classMap[cn];
+          var pct = _sirPct(cnt, total);
+          var w = maxVal > 0 ? Math.round((cnt / maxVal) * 100) : 0;
+          return '<div class="sir-class-bar"><div class="sir-class-bar__nm">' + escapeHtml(cn) + '</div><div class="sir-class-bar__trk"><div class="sir-class-bar__fill" style="width:' + w + '%;"></div></div><div class="sir-class-bar__info"><span class="sir-class-bar__cnt">' + cnt + ' students</span><span class="sir-class-bar__pct">' + pct + '%</span></div></div>';
+        }).join("") + '</div>';
+      }
+
+      function _sirRenderContact(rows) {
+        if (isParents || !_sirContactEl) return;
+        var total = rows.length;
+        if (total === 0) { _sirContactEl.innerHTML = ''; return; }
+        var withPhone = rows.filter(function (s) { return String(s.phone || s.studentPhone || "").trim().length > 0; }).length;
+        var withFather = rows.filter(function (s) { return String(s.fatherPhone || "").trim().length > 0; }).length;
+        var without = total - withPhone;
+        _sirContactEl.innerHTML =
+          '<div class="sir-contact-grid">' +
+            '<div class="sir-contact-card"><div class="sir-contact-card__ico" style="background:#dcfce7;color:#16a34a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div><div class="sir-contact-card__body"><span class="sir-contact-card__val">' + withPhone + '</span><span class="sir-contact-card__lbl">Students with phone</span></div></div>' +
+            '<div class="sir-contact-card"><div class="sir-contact-card__ico" style="background:#dcfce7;color:#16a34a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div><div class="sir-contact-card__body"><span class="sir-contact-card__val">' + withFather + '</span><span class="sir-contact-card__lbl">Father phone available</span></div></div>' +
+            '<div class="sir-contact-card"><div class="sir-contact-card__ico" style="background:#fee2e2;color:#dc2626;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="sir-contact-card__body"><span class="sir-contact-card__val">' + without + '</span><span class="sir-contact-card__lbl">Students without phone</span></div></div>' +
+          '</div>';
+      }
+
+      function _sirSortData(rows) {
+        if (!_sirSortCol) return rows;
+        var dir = _sirSortDir === "asc" ? 1 : -1;
+        return rows.slice().sort(function (a, b) {
+          var va = String(a[_sirSortCol] || "").toLowerCase();
+          var vb = String(b[_sirSortCol] || "").toLowerCase();
+          if (va < vb) return -1 * dir;
+          if (va > vb) return 1 * dir;
+          return 0;
+        });
+      }
+
+      function _sirRenderTable(rows) {
+        var total = rows.length;
+        var pages = Math.max(1, Math.ceil(total / _sirPerPage));
+        if (_sirPage > pages) _sirPage = pages;
+        var start = (_sirPage - 1) * _sirPerPage;
+        var end = Math.min(start + _sirPerPage, total);
+        var pageRows = rows.slice(start, end);
+
+        if (total === 0) {
+          _sirEmpty.style.display = _sirGetAll().length === 0 ? "" : "none";
+          _sirEmptyF.style.display = _sirGetAll().length > 0 ? "" : "none";
+          _sirTableArea.style.display = "none";
+          _sirDirCount.textContent = "0 students";
+          return;
+        }
+        _sirEmpty.style.display = "none";
+        _sirEmptyF.style.display = "none";
+        _sirTableArea.style.display = "";
+        _sirDirCount.textContent = total + " student" + (total !== 1 ? "s" : "");
+
+        _sirPageInfo.textContent = "Showing " + (start + 1) + "-" + end + " of " + total + " students";
+
+        var pgHtml = '<button class="sir-pg-btn" data-sir-pg="prev" ' + (_sirPage <= 1 ? 'disabled' : '') + '>&laquo; Prev</button>';
+        for (var p = 1; p <= pages; p++) {
+          if (pages > 7 && p > 3 && p < pages - 1 && Math.abs(p - _sirPage) > 1) {
+            if (p === 4 || p === pages - 2) pgHtml += '<span class="sir-pg-dots">...</span>';
+            continue;
           }
-          return `<tr><td>${escapeHtml(student.admissionNo || "-")}</td><td>${escapeHtml(student.name || "-")}</td><td>${escapeHtml(student.fatherName || "-")}</td><td>${escapeHtml(student.className || "-")}</td><td>${escapeHtml(student.gender || "-")}</td><td>${escapeHtml(student.studentPhone || student.phone || "-")}</td><td><span class="status-pill ${String(student.status || "").toLowerCase() === "active" ? "active" : "inactive"}">${escapeHtml(student.status || "-")}</span></td></tr>`;
+          pgHtml += '<button class="sir-pg-btn' + (p === _sirPage ? ' sir-pg-btn--active' : '') + '" data-sir-pg="' + p + '">' + p + '</button>';
+        }
+        pgHtml += '<button class="sir-pg-btn" data-sir-pg="next" ' + (_sirPage >= pages ? 'disabled' : '') + '>Next &raquo;</button>';
+        _sirPageBtns.innerHTML = pgHtml;
+
+        _sirTB.innerHTML = pageRows.map(function (s) {
+          var cls = String(s.className || "").split("|");
+          var sect = cls[1] ? cls[1].trim() : "";
+          var sc = _sirStatusColor(s.status);
+          var genderLabel = s.gender || "Not specified";
+          if (isParents) {
+            return '<tr><td><div class="sir-tname"><span class="sir-tname__av">' + escapeHtml((s.name || "?").charAt(0).toUpperCase()) + '</span><div><div class="sir-tname__n">' + escapeHtml(s.name || "-") + '</div></div></div></td><td class="sir-mono">' + escapeHtml(s.admissionNo || "-") + '</td><td>' + escapeHtml(cls[0] || "-") + '</td><td>' + escapeHtml(s.fatherName || "-") + '</td><td>' + escapeHtml(s.fatherPhone || "-") + '</td><td>' + escapeHtml(s.motherName || "-") + '</td><td>' + escapeHtml(s.motherPhone || "-") + '</td><td>' + escapeHtml(s.address || "-") + '</td><td><button class="sir-viewbtn" type="button" data-sir-view="' + s.id + '">View</button></td></tr>';
+          }
+          return '<tr><td><div class="sir-tname"><span class="sir-tname__av">' + escapeHtml((s.name || "?").charAt(0).toUpperCase()) + '</span><div><div class="sir-tname__n">' + escapeHtml(s.name || "-") + '</div>' + (s.fatherName ? '<div class="sir-tname__f">' + escapeHtml(s.fatherName) + '</div>' : '') + '</div></div></td><td class="sir-mono">' + escapeHtml(s.admissionNo || "-") + '</td><td>' + escapeHtml(s.fatherName || "-") + '</td><td>' + escapeHtml(cls[0] || "-") + (sect ? ' / ' + escapeHtml(sect) : '') + '</td><td>' + escapeHtml(genderLabel) + '</td><td>' + escapeHtml(s.phone || s.studentPhone || "\u2014") + '</td><td><span class="sir-badge" style="background:' + sc.bg + ';color:' + sc.fg + ';">' + escapeHtml(String(s.status || "active").charAt(0).toUpperCase() + String(s.status || "active").slice(1)) + '</span></td><td><button class="sir-viewbtn" type="button" data-sir-view="' + s.id + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View</button></td></tr>';
         }).join("");
       }
 
-      safeOn(document.getElementById("printInfoReportBtn"), "click", function () {
-        const rows = getRows();
-        if (!rows.length) {
-          return;
-        }
-        const headers = isParents
-          ? ["Student", "Roll No", "Class", "Father Name", "Father Phone", "Mother Name", "Mother Phone", "Address"]
-          : ["Roll No", "Name", "Father Name", "Class", "Gender", "Phone", "Status"];
-        const printRows = rows.map(function (student) {
-          return isParents
-            ? [escapeHtml(student.name || "-"), escapeHtml(student.admissionNo || "-"), escapeHtml(student.className || "-"), escapeHtml(student.fatherName || "-"), escapeHtml(student.fatherPhone || "-"), escapeHtml(student.motherName || "-"), escapeHtml(student.motherPhone || "-"), escapeHtml(student.address || "-")]
-            : [escapeHtml(student.admissionNo || "-"), escapeHtml(student.name || "-"), escapeHtml(student.fatherName || "-"), escapeHtml(student.className || "-"), escapeHtml(student.gender || "-"), escapeHtml(student.studentPhone || student.phone || "-"), escapeHtml(student.status || "-")];
+      function _sirRender() {
+        var rows = _sirFilter();
+        _sirFiltered = _sirSortData(rows);
+        _sirRenderStats(rows);
+        _sirRenderGender(rows);
+        _sirRenderStatus(rows);
+        _sirRenderClassEnroll(rows);
+        _sirRenderContact(rows);
+        _sirRenderTable(_sirFiltered);
+      }
+
+      function _sirOpenModal(sid) {
+        var s = _sirGetAll().find(function (x) { return x.id === sid; }) || null;
+        if (!s) return;
+        var cls = String(s.className || "").split("|");
+        var sect = cls[1] ? cls[1].trim() : "";
+        var sc = _sirStatusColor(s.status);
+        _sirMTitle.textContent = "Student Profile \u2014 " + (s.name || "-");
+        var rows = [
+          ["Student Name", s.name || "-"],
+          ["Roll No", s.admissionNo || "-"],
+          ["Father Name", s.fatherName || "\u2014"],
+          ["Class", cls[0] || "-"],
+          sect ? ["Section", sect] : null,
+          ["Gender", s.gender || "Not specified"],
+          ["Date of Birth", s.dateOfBirth || "\u2014"],
+          ["Phone", s.phone || s.studentPhone || "\u2014"],
+          ["Father Phone", s.fatherPhone || "\u2014"],
+          ["Mother Name", s.motherName || "\u2014"],
+          ["Address", s.address || "\u2014"],
+          ["Admission Date", s.dateOfAdmission || "\u2014"],
+          ["Religion", s.religion || "\u2014"],
+          ["Blood Group", s.bloodGroup || "\u2014"],
+          ["Status", s.status || "active"]
+        ].filter(Boolean);
+        _sirMBody.innerHTML =
+          '<div class="sir-dinfo"><div class="sir-dinfo__av"><div class="sir-dinfo__avcircle">' + escapeHtml((s.name || "?").charAt(0).toUpperCase()) + '</div></div><table class="sir-dinfo__tbl">' +
+          rows.map(function (r) {
+            if (r[0] === "Status") {
+              var sc2 = _sirStatusColor(r[1]);
+              return '<tr><td>' + r[0] + '</td><td><span class="sir-badge" style="background:' + sc2.bg + ';color:' + sc2.fg + ';">' + escapeHtml(String(r[1]).charAt(0).toUpperCase() + String(r[1]).slice(1)) + '</span></td></tr>';
+            }
+            return '<tr><td>' + r[0] + '</td><td><strong>' + escapeHtml(r[1]) + '</strong></td></tr>';
+          }).join("") + '</table></div>' +
+          '<div class="sir-modal-actions"><button class="sir-btn sir-btn--accent" type="button" id="sirMProfile">View Student Profile</button><button class="sir-btn sir-btn--ghost" type="button" id="sirMPrint">Print Student Information</button></div>';
+        _sirMask.style.display = "";
+
+        safeOn(document.getElementById("sirMProfile"), "click", function () {
+          _sirMask.style.display = "none";
+          setRoute("all-students");
+          setTimeout(function () { sessionStorage.setItem("sagarsoft_prefill_student_search", s.name + " (" + (s.admissionNo || "-") + ")"); }, 300);
         });
-        openPrintReport({
-          title: isParents ? "Parents Info Report" : "Students Info Report",
-          subtitle: `Class: ${classSelect.value}`,
-          headers: headers,
-          rows: printRows
+        safeOn(document.getElementById("sirMPrint"), "click", function () {
+          openPrintReport({
+            title: "Student Information",
+            subtitle: s.name + " (" + (s.admissionNo || "-") + ")",
+            headers: ["Field", "Value"],
+            rows: rows.map(function (r) { return ['<strong>' + escapeHtml(r[0]) + '</strong>', escapeHtml(r[1])]; })
+          });
+        });
+      }
+
+      function _sirExportCSV(rows) {
+        if (!rows.length) return;
+        var headers = isParents ?
+          ["Student", "Roll No", "Class", "Father Name", "Father Phone", "Mother Name", "Mother Phone", "Address"] :
+          ["Student", "Roll No", "Father Name", "Class", "Gender", "Phone", "Status"];
+        var csvRows = [headers.join(",")];
+        rows.forEach(function (s) {
+          var cls = String(s.className || "").split("|");
+          var row = isParents ?
+            [s.name, s.admissionNo, cls[0], s.fatherName, s.fatherPhone, s.motherName, s.motherPhone, s.address] :
+            [s.name, s.admissionNo, s.fatherName, cls[0], s.gender, s.phone || s.studentPhone, s.status];
+          csvRows.push(row.map(function (c) { return '"' + String(c || "").replace(/"/g, '""') + '"'; }).join(","));
+        });
+        var blob = new Blob(["\uFEFF" + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = (isParents ? "parents-info-report" : "students-info-report") + ".csv";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+
+      safeOn(document.getElementById("sirRefresh"), "click", function () { _sirRender(); });
+      safeOn(document.getElementById("sirExport"), "click", function () { _sirExportCSV(_sirFiltered); });
+      safeOn(document.getElementById("sirPrint"), "click", function () {
+        if (!_sirFiltered.length) return;
+        var hdrs = isParents ?
+          ["Student", "Roll No", "Class", "Father Name", "Father Phone", "Mother Name", "Mother Phone", "Address"] :
+          ["Student", "Roll No", "Father Name", "Class", "Gender", "Phone", "Status"];
+        var pr = _sirFiltered.map(function (s) {
+          var cls = String(s.className || "").split("|");
+          return isParents ?
+            [escapeHtml(s.name || "-"), escapeHtml(s.admissionNo || "-"), escapeHtml(cls[0] || "-"), escapeHtml(s.fatherName || "-"), escapeHtml(s.fatherPhone || "-"), escapeHtml(s.motherName || "-"), escapeHtml(s.motherPhone || "-"), escapeHtml(s.address || "-")] :
+            [escapeHtml(s.name || "-"), escapeHtml(s.admissionNo || "-"), escapeHtml(s.fatherName || "-"), escapeHtml(cls[0] || "-"), escapeHtml(s.gender || "-"), escapeHtml(s.phone || s.studentPhone || "-"), escapeHtml(s.status || "-")];
+        });
+        openPrintReport({ title: isParents ? "Parents Information Report" : "Students Information Report", subtitle: "Class: " + _sirC.value, headers: hdrs, rows: pr });
+      });
+      safeOn(document.getElementById("sirClear"), "click", function () {
+        _sirE.value = ""; _sirC.value = "all";
+        if (_sirG) _sirG.value = "all";
+        if (_sirS) _sirS.value = "all";
+        _sirPage = 1; _sirSortCol = ""; _sirSortDir = "asc";
+        _sirRender();
+      });
+      safeOn(_sirE, "input", function () { _sirPage = 1; _sirRender(); });
+      safeOn(_sirC, "change", function () { _sirPage = 1; _sirRender(); });
+      if (_sirG) safeOn(_sirG, "change", function () { _sirPage = 1; _sirRender(); });
+      if (_sirS) safeOn(_sirS, "change", function () { _sirPage = 1; _sirRender(); });
+
+      safeOn(_sirPageBtns, "click", function (e) {
+        var btn = e.target.closest("[data-sir-pg]");
+        if (!btn || btn.disabled) return;
+        var v = btn.getAttribute("data-sir-pg");
+        if (v === "prev") _sirPage--;
+        else if (v === "next") _sirPage++;
+        else _sirPage = parseInt(v) || 1;
+        _sirRenderTable(_sirFiltered);
+      });
+
+      document.querySelectorAll("[data-sir-sort]").forEach(function (th) {
+        safeOn(th, "click", function () {
+          var col = th.getAttribute("data-sir-sort");
+          if (_sirSortCol === col) { _sirSortDir = _sirSortDir === "asc" ? "desc" : "asc"; }
+          else { _sirSortCol = col; _sirSortDir = "asc"; }
+          document.querySelectorAll(".sir-sort-ico").forEach(function (el) { el.textContent = ""; });
+          var ico = th.querySelector(".sir-sort-ico");
+          if (ico) ico.textContent = _sirSortDir === "asc" ? " \u25B2" : " \u25BC";
+          _sirFiltered = _sirSortData(_sirFiltered);
+          _sirRenderTable(_sirFiltered);
         });
       });
 
-      [searchInput, classSelect].forEach(function (input) {
-        input.addEventListener("input", renderRows);
-        input.addEventListener("change", renderRows);
+      safeOn(_sirTB, "click", function (e) {
+        var v = e.target.closest("[data-sir-view]");
+        if (v) _sirOpenModal(v.getAttribute("data-sir-view"));
       });
-      renderRows();
+      safeOn(document.getElementById("sirMX"), "click", function () { _sirMask.style.display = "none"; });
+      safeOn(_sirMask, "click", function (e) { if (e.target === _sirMask) _sirMask.style.display = "none"; });
+
+      _sirRender();
       return;
     }
 
