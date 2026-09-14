@@ -19657,17 +19657,18 @@ ${allContent}
       }
 
       function _crptBuildTypeSelector() {
-        var html = "";
+        var html = '<div class="crpt-type-grid">';
         _crptCats.forEach(function (cat) {
           var items = _crptReportTypes.filter(function (t) { return t.cat === cat; });
           if (!items.length) return;
-          html += '<div class="crpt-cat"><div class="crpt-cat__hd"><i class="fas ' + (_crptCatIcons[cat] || "fa-folder") + '"></i> ' + escapeHtml(cat) + '</div><div class="crpt-cat__items">';
+          html += '<div class="crpt-type-cat"><div class="crpt-type-cat__hd"><i class="fas ' + (_crptCatIcons[cat] || "fa-folder") + '"></i> ' + escapeHtml(cat) + '</div><div class="crpt-type-cat__items">';
           items.forEach(function (t) {
             var active = t.value === _crptCurrentType ? " crpt-type--active" : "";
-            html += '<button class="crpt-type' + active + '" type="button" data-crpt-type="' + t.value + '"><i class="fas ' + t.icon + '"></i> ' + escapeHtml(t.label) + '</button>';
+            html += '<button class="crpt-type' + active + '" type="button" data-crpt-type="' + t.value + '">' + escapeHtml(t.label) + '</button>';
           });
           html += '</div></div>';
         });
+        html += '</div>';
         return html;
       }
 
@@ -19922,13 +19923,12 @@ ${allContent}
 
       moduleSummary.innerHTML = '<div class="crpt-wrap">' +
         '<div class="crpt-hdr"><div class="crpt-hdr__left"><div class="crpt-hdr__eyebrow">SagarSoft Analytics</div><h2 class="crpt-hdr__title">Customised Reports</h2><p class="crpt-hdr__sub">Generate, preview and export professional school reports from one place.</p></div></div>' +
-        '<div class="crpt-center">' +
-        '<div class="crpt-panel"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-th-large"></i> Report Center</h3><p class="crpt-panel__sub">Select a report type and apply filters to generate your report.</p></div><div class="crpt-panel__bd" id="crptTypeArea">' + _crptBuildTypeSelector() + '</div></div>' +
-        '<div class="crpt-panel"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-filter"></i> Filters</h3></div><div class="crpt-panel__bd"><div class="crpt-filter-grid" id="crptFiltersArea"></div><div class="crpt-filter-actions"><button class="crpt-btn crpt-btn--accent" type="button" id="crptGenBtn"><i class="fas fa-search"></i> Generate Report</button><button class="crpt-btn crpt-btn--ghost" type="button" id="crptResetBtn"><i class="fas fa-undo"></i> Reset</button></div></div></div>' +
+        '<div class="crpt-top">' +
+        '<div class="crpt-panel crpt-panel--types"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-th-large"></i> Report Center</h3></div><div class="crpt-panel__bd" id="crptTypeArea">' + _crptBuildTypeSelector() + '</div></div>' +
+        '<div class="crpt-panel crpt-panel--filters"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-filter"></i> Filters</h3></div><div class="crpt-panel__bd"><div class="crpt-filter-grid" id="crptFiltersArea"></div><div class="crpt-filter-actions"><button class="crpt-btn crpt-btn--accent" type="button" id="crptGenBtn"><i class="fas fa-search"></i> Generate Report</button><button class="crpt-btn crpt-btn--ghost" type="button" id="crptResetBtn"><i class="fas fa-undo"></i> Reset</button></div></div></div></div>' +
         '<div id="crptSummaryCards" class="crpt-scards"></div>' +
-        '<div class="crpt-panel crpt-panel--preview" id="crptPreviewPanel" style="display:none;"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-eye"></i> Report Preview</h3></div><div class="crpt-panel__bd" id="crptPreview"></div></div>' +
-        '<div class="crpt-export-bar" id="crptExportBar" style="display:none;"><button class="crpt-btn crpt-btn--accent" type="button" id="crptPrintBtn"><i class="fas fa-print"></i> Print</button><button class="crpt-btn crpt-btn--accent" type="button" id="crptPdfBtn"><i class="fas fa-file-pdf"></i> PDF</button><button class="crpt-btn crpt-btn--accent" type="button" id="crptCsvBtn"><i class="fas fa-file-csv"></i> CSV</button></div>' +
-        '</div></div>';
+        '<div class="crpt-panel crpt-panel--preview" id="crptPreviewPanel"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-eye"></i> Report Preview</h3><div class="crpt-export-bar" id="crptExportBar" style="display:none;"><button class="crpt-btn crpt-btn--sm" type="button" id="crptPrintBtn"><i class="fas fa-print"></i> Print</button><button class="crpt-btn crpt-btn--sm" type="button" id="crptPdfBtn"><i class="fas fa-file-pdf"></i> PDF</button><button class="crpt-btn crpt-btn--sm" type="button" id="crptCsvBtn"><i class="fas fa-file-csv"></i> CSV</button></div></div><div class="crpt-panel__bd" id="crptPreview"><div class="crpt-empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Select a report type and click Generate</p></div></div></div>' +
+        '</div>';
       moduleGuide.innerHTML = "";
 
       _crptRenderFilters();
@@ -19943,17 +19943,13 @@ ${allContent}
           _crptHeaders = [];
           _crptSummary = {};
           document.getElementById("crptSummaryCards").innerHTML = "";
-          document.getElementById("crptPreview").innerHTML = "";
-          var previewPanel = document.getElementById("crptPreviewPanel");
-          if (previewPanel) previewPanel.style.display = "none";
+          document.getElementById("crptPreview").innerHTML = '<div class="crpt-empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Select a report type and click Generate</p></div>';
           var exportBar = document.getElementById("crptExportBar");
           if (exportBar) exportBar.style.display = "none";
         });
       });
 
       safeOn(document.getElementById("crptGenBtn"), "click", function () {
-        var previewPanel = document.getElementById("crptPreviewPanel");
-        if (previewPanel) previewPanel.style.display = "block";
         _crptGenerate();
       });
       safeOn(document.getElementById("crptResetBtn"), "click", function () { _crptResetFilters(); });
