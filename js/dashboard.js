@@ -18023,148 +18023,392 @@ ${allContent}
     }
 
     if (route === "students-monthly-attendance-report" || route === "staff-monthly-attendance-report") {
-      const classOptionsMarkup = classOptions.map(function (name) {
-        return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
-      }).join("");
-      const isStaff = route === "staff-monthly-attendance-report";
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">${isStaff ? "Staff Monthly Attendance Report" : "Students Monthly Attendance Report"}</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Month</label><input id="attendanceReportMonthInput" type="month" value="${getCurrentMonthInputValue()}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            ${isStaff ? "" : `<div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="attendanceReportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>`}
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="attendanceReportSearchInput" type="search" placeholder="${isStaff ? "Search employee by name / phone" : "Search by roll no / name"}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="attendanceReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-          </div>
-          <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printAttendanceReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
-          <div class="report-cards" id="attendanceReportStats"></div>
-          <div class="split-grid report-grid">
-            <article class="panel-card"><strong>Attendance Ratio</strong><div id="attendanceReportChart" class="report-chart-box"></div></article>
-            <article class="panel-card"><strong>Attendance % (Bar)</strong><div id="attendanceReportBars" class="report-bar-list"></div></article>
-          </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead>
-            ${isStaff ? "<tr><th style='white-space:nowrap;'>Employee</th><th style='white-space:nowrap;'>Role</th><th style='white-space:nowrap;'>P</th><th style='white-space:nowrap;'>A</th><th style='white-space:nowrap;'>L</th><th style='white-space:nowrap;'>Total</th><th style='white-space:nowrap;'>%</th><th style='white-space:nowrap;'>WhatsApp</th></tr>" : "<tr><th style='white-space:nowrap;'>Roll No</th><th style='white-space:nowrap;'>Student</th><th style='white-space:nowrap;'>Class</th><th style='white-space:nowrap;'>P</th><th style='white-space:nowrap;'>A</th><th style='white-space:nowrap;'>L</th><th style='white-space:nowrap;'>Total</th><th style='white-space:nowrap;'>%</th></tr>"}
-          </thead><tbody id="attendanceReportBody"></tbody></table></div>
-        </article>
-      `;
+      var _matIsStaff = route === "staff-monthly-attendance-report";
+      var _matCurMonth = getCurrentMonthInputValue();
+      var _matPage = 1;
+      var _matPerPage = 15;
+      var _matSortCol = "name";
+      var _matSortDir = "asc";
+      var _matClassOpts = classOptions.map(function(n){ return '<option value="'+escapeAttr(n)+'">'+escapeHtml(n)+'</option>'; }).join("");
+      moduleSummary.innerHTML = '<div class="mat-wrap">' +
+        '<div class="mat-hdr"><div class="mat-hdr__left"><div class="mat-hdr__eyebrow">SagarSoft Analytics</div><h2 class="mat-hdr__title">' + (_matIsStaff ? "Staff Monthly Attendance Report" : "Students Monthly Attendance Report") + '</h2><p class="mat-hdr__sub">Track attendance patterns, identify trends, and monitor performance across ' + (_matIsStaff ? "staff members" : "classes") + '.</p></div><div class="mat-hdr__btns"><button class="mat-btn mat-btn--ghost" type="button" id="matRefreshBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh</button><button class="mat-btn mat-btn--ghost" type="button" id="matExportBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button><button class="mat-btn mat-btn--accent" type="button" id="matPrintBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print Report</button></div></div>' +
+        '<div class="mat-bar"><div class="mat-bar__field"><label class="mat-bar__lbl">Month</label><input class="mat-bar__inp" type="month" id="matMonth" value="' + _matCurMonth + '"></div>' +
+        (_matIsStaff ? '' : '<div class="mat-bar__field"><label class="mat-bar__lbl">Class</label><select class="mat-bar__sel" id="matClass"><option value="all">All Classes</option>' + _matClassOpts + '</select></div>') +
+        '<div class="mat-bar__field mat-bar__field--wide"><label class="mat-bar__lbl">Search</label><div class="mat-search-wrap" id="matSearchContainer"><input class="mat-bar__inp" type="search" id="matSearch" placeholder="' + (_matIsStaff ? "Search by name / phone / department" : "Search by roll no / name") + '"><div id="matSearchDropdown" class="mat-search-dd" style="display:none;"></div></div></div>' +
+        '<div class="mat-bar__field mat-bar__field--clr"><label class="mat-bar__lbl">&nbsp;</label><button class="mat-btn mat-btn--clear" type="button" id="matClearBtn">Clear Filters</button></div></div>' +
+        '<div class="mat-stats" id="matStats"></div>' +
+        '<div class="mat-grid2">' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">Attendance Distribution</h3><span class="mat-panel__badge" id="matDonutBadge"></span></div><div class="mat-panel__bd"><div class="mat-donut-wrap" id="matDonut"></div></div></div>' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">' + (_matIsStaff ? "Department" : "Class") + ' Performance</h3><span class="mat-panel__badge" id="matClassBadge"></span></div><div class="mat-panel__bd"><div class="mat-class-bars" id="matClassBars"></div></div></div></div>' +
+        '<div class="mat-grid3">' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">Performance Categories</h3></div><div class="mat-panel__bd"><div class="mat-cat-list" id="matCategories"></div></div></div>' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">Attendance Trend</h3></div><div class="mat-panel__bd"><div class="mat-trend" id="matTrend"></div></div></div>' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">Alerts & Insights</h3></div><div class="mat-panel__bd"><div class="mat-alerts" id="matAlerts"></div></div></div></div>' +
+        '<div class="mat-panel" style="margin-top:14px;"><div class="mat-panel__hd"><h3 class="mat-panel__tt">' + (_matIsStaff ? "Staff" : "Student") + ' Performance Details</h3><span class="mat-panel__badge" id="matTableBadge"></span></div><div class="mat-panel__bd mat-panel__bd--tbl"><div class="mat-tblwrap"><table class="mat-tbl" id="matTable"><thead><tr>' +
+        (_matIsStaff ? '<th class="mat-th mat-sort" data-col="name">Employee <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="department">Department <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="designation">Designation <span class="mat-sort-ico">↕</span></th>' : '<th class="mat-th mat-sort" data-col="name">Student <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="className">Class <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="rollNo">Roll No <span class="mat-sort-ico">↕</span></th>') +
+        '<th class="mat-th mat-sort" data-col="present">Present <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="absent">Absent <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="leave">Leave <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="total">Total <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="percent">Attendance % <span class="mat-sort-ico">↕</span></th><th class="mat-th">Status</th><th class="mat-th">Actions</th></tr></thead><tbody id="matTbody"></tbody></table></div>' +
+        '<div class="mat-pagebar"><span class="mat-pagebar__info" id="matPageInfo"></span><div class="mat-pagebar__btns" id="matPageBtns"></div></div></div></div>' +
+        '</div>';
       moduleGuide.innerHTML = "";
-      const monthInput = document.getElementById("attendanceReportMonthInput");
-      const classSelect = document.getElementById("attendanceReportClassSelect");
-      const searchInput = document.getElementById("attendanceReportSearchInput");
-      const searchDropdown = document.getElementById("attendanceReportSearchDropdown");
-      const searchContainer = document.getElementById("attendanceReportSearchContainer");
-      const statsWrap = document.getElementById("attendanceReportStats");
-      const chartWrap = document.getElementById("attendanceReportChart");
-      const barsWrap = document.getElementById("attendanceReportBars");
-      const tableBody = document.getElementById("attendanceReportBody");
 
-      if (isStaff) {
-        initializeEmployeeProfessionalSearch(
-          "attendanceReportSearchInput",
-          "attendanceReportSearchDropdown",
-          "attendanceReportSearchContainer",
-          function(employee) {
-            searchInput.value = employee.name || "";
-            renderRows();
-          }
-        );
-      } else {
-        initializeStudentProfessionalSearch(
-          "attendanceReportSearchInput",
-          "attendanceReportSearchDropdown",
-          "attendanceReportSearchContainer",
-          function(student) {
-            searchInput.value = student.name || "";
-            renderRows();
-          }
-        );
-      }
+      var _matMonth = document.getElementById("matMonth");
+      var _matClass = document.getElementById("matClass");
+      var _matSearch = document.getElementById("matSearch");
+      var _matStats = document.getElementById("matStats");
+      var _matDonut = document.getElementById("matDonut");
+      var _matDonutBadge = document.getElementById("matDonutBadge");
+      var _matClassBars = document.getElementById("matClassBars");
+      var _matClassBadge = document.getElementById("matClassBadge");
+      var _matCategories = document.getElementById("matCategories");
+      var _matTrend = document.getElementById("matTrend");
+      var _matAlerts = document.getElementById("matAlerts");
+      var _matTbody = document.getElementById("matTbody");
+      var _matTableBadge = document.getElementById("matTableBadge");
+      var _matPageInfo = document.getElementById("matPageInfo");
+      var _matPageBtns = document.getElementById("matPageBtns");
 
-      function getRows() {
-        return isStaff
-          ? getEmployeeMonthlyAttendance(monthInput.value, searchInput.value)
-          : getStudentMonthlyAttendance(monthInput.value, classSelect ? classSelect.value : "all", searchInput.value);
-      }
-
-      function renderRows() {
-        const rows = getRows();
-        const totalPresent = rows.reduce(function (sum, row) { return sum + row.present; }, 0);
-        const totalAbsent = rows.reduce(function (sum, row) { return sum + row.absent; }, 0);
-        const totalLeave = rows.reduce(function (sum, row) { return sum + row.leave; }, 0);
-        const totalDays = totalPresent + totalAbsent + totalLeave;
-        const presentPercent = totalDays ? Math.round((totalPresent / totalDays) * 100) : 0;
-        statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>${isStaff ? "Employees" : "Students"}</strong><span>${rows.length}</span></article><article class="stat-card stat-card--emerald"><strong>Present</strong><span>${totalPresent}</span></article><article class="stat-card stat-card--rose"><strong>Absent</strong><span>${totalAbsent}</span></article><article class="stat-card stat-card--amber"><strong>Leave</strong><span>${totalLeave}</span></article>`;
-        chartWrap.innerHTML = totalDays ? buildCircleChart(presentPercent, `Present ${totalPresent} | Absent ${totalAbsent} | Leave ${totalLeave}`, "#10b981", "#e2e8f0") : `<p class="empty-state">No attendance data.</p>`;
-        const barsData = rows.slice().sort(function (a, b) { return b.percent - a.percent; }).slice(0, 10).map(function (row) {
-          return { label: isStaff ? row.employee.name : row.student.name, value: row.percent };
+      if (_matIsStaff) {
+        initializeEmployeeProfessionalSearch("matSearch", "matSearchDropdown", "matSearchContainer", function(emp) {
+          _matSearch.value = emp.name || "";
+          _matPage = 1;
+          _matRender();
         });
-        barsWrap.innerHTML = barsData.length ? buildBarChart(barsData, 100) : `<p class="empty-state">No bar data.</p>`;
-        tableBody.innerHTML = rows.map(function (row) {
-          return isStaff
-            ? `<tr><td>${escapeHtml(row.employee.name || "-")}</td><td>${escapeHtml(row.employee.role || "-")}</td><td>${row.present}</td><td>${row.absent}</td><td>${row.leave}</td><td>${row.total}</td><td>${row.percent}%</td><td><button class="table-action-btn" type="button" data-employee-report-wa="${escapeAttr(row.employee.id || "")}">WhatsApp</button></td></tr>`
-            : `<tr><td>${escapeHtml(row.student.admissionNo || "-")}</td><td>${escapeHtml(row.student.name || "-")}</td><td>${escapeHtml(row.student.className || "-")}</td><td>${row.present}</td><td>${row.absent}</td><td>${row.leave}</td><td>${row.total}</td><td>${row.percent}%</td></tr>`;
-        }).join("");
+      } else {
+        initializeStudentProfessionalSearch("matSearch", "matSearchDropdown", "matSearchContainer", function(stu) {
+          _matSearch.value = stu.name || "";
+          _matPage = 1;
+          _matRender();
+        });
       }
 
-      safeOn(document.getElementById("printAttendanceReportBtn"), "click", function () {
-        const rows = getRows();
-        if (!rows.length) {
-          return;
+      function _matGetRows() {
+        return _matIsStaff
+          ? getEmployeeMonthlyAttendance(_matMonth.value, _matSearch.value)
+          : getStudentMonthlyAttendance(_matMonth.value, _matClass ? _matClass.value : "all", _matSearch.value);
+      }
+
+      function _matClassify(pct) {
+        if (pct >= 90) return { label: "Excellent", color: "#16a34a", bg: "#dcfce7" };
+        if (pct >= 75) return { label: "Good", color: "#2563eb", bg: "#dbeafe" };
+        if (pct >= 60) return { label: "Average", color: "#d97706", bg: "#fef3c7" };
+        return { label: "Poor", color: "#dc2626", bg: "#fee2e2" };
+      }
+
+      function _matStatusBadge(pct) {
+        var c = _matClassify(pct);
+        return '<span class="mat-badge" style="background:' + c.bg + ';color:' + c.color + ';">' + c.label + '</span>';
+      }
+
+      function _matRender() {
+        var rows = _matGetRows();
+        var totalPresent = rows.reduce(function(s, r) { return s + r.present; }, 0);
+        var totalAbsent = rows.reduce(function(s, r) { return s + r.absent; }, 0);
+        var totalLeave = rows.reduce(function(s, r) { return s + r.leave; }, 0);
+        var totalDays = totalPresent + totalAbsent + totalLeave;
+        var presentPct = totalDays ? Math.round((totalPresent / totalDays) * 100) : 0;
+        var absentPct = totalDays ? Math.round((totalAbsent / totalDays) * 100) : 0;
+        var leavePct = totalDays ? Math.round((totalLeave / totalDays) * 100) : 0;
+        var workingDays = totalDays > 0 ? Math.max.apply(null, rows.map(function(r) { return r.total; })) : 0;
+        var highPerf = rows.filter(function(r) { return r.percent >= 90; }).length;
+        var lowPerf = rows.filter(function(r) { return r.percent < 60; }).length;
+        var monthLabel = normalizeFeeMonthLabel(_matMonth.value);
+
+        _matStats.innerHTML =
+          '<div class="mat-st mat-st--indigo"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">' + (_matIsStaff ? "Employees" : "Students") + '</div><div class="mat-st__val">' + rows.length + '</div><div class="mat-st__note">Total enrolled</div></div></div>' +
+          '<div class="mat-st mat-st--green"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Present</div><div class="mat-st__val">' + totalPresent + '</div><div class="mat-st__note">' + presentPct + '% of total</div></div></div>' +
+          '<div class="mat-st mat-st--rose"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Absent</div><div class="mat-st__val">' + totalAbsent + '</div><div class="mat-st__note">' + absentPct + '% of total</div></div></div>' +
+          '<div class="mat-st mat-st--amber"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><rect x="9" y="7" width="6" height="6"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Leave</div><div class="mat-st__val">' + totalLeave + '</div><div class="mat-st__note">' + leavePct + '% of total</div></div></div>' +
+          '<div class="mat-st mat-st--teal"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Attendance Rate</div><div class="mat-st__val">' + presentPct + '%</div><div class="mat-st__note">Overall</div></div></div>' +
+          '<div class="mat-st mat-st--blue"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Working Days</div><div class="mat-st__val">' + workingDays + '</div><div class="mat-st__note">Days tracked</div></div></div>';
+
+        _matDonutBadge.textContent = presentPct + '% Present';
+        if (totalDays) {
+          var donutSegments = [
+            { pct: presentPct, color: "#16a34a", label: "Present (" + totalPresent + ")" },
+            { pct: absentPct, color: "#dc2626", label: "Absent (" + totalAbsent + ")" },
+            { pct: leavePct, color: "#d97706", label: "Leave (" + totalLeave + ")" }
+          ].filter(function(seg) { return seg.pct > 0; });
+          var gradientParts = [];
+          var accumulated = 0;
+          donutSegments.forEach(function(seg) {
+            gradientParts.push(seg.color + " " + accumulated + "% " + (accumulated + seg.pct) + "%");
+            accumulated += seg.pct;
+          });
+          _matDonut.innerHTML = '<div class="mat-donut" style="background:conic-gradient(' + gradientParts.join(", ") + ');"><div class="mat-donut__hole"><div class="mat-donut__pct">' + presentPct + '%</div><div class="mat-donut__lbl">Present</div></div></div>' +
+            '<div class="mat-donut-legend">' + donutSegments.map(function(seg) {
+              return '<div class="mat-donut-legend__item"><div class="mat-donut-legend__dot" style="background:' + seg.color + ';"></div><span class="mat-donut-legend__lbl">' + seg.label + '</span><span class="mat-donut-legend__val">' + seg.pct + '%</span></div>';
+            }).join("") + '</div>';
+        } else {
+          _matDonut.innerHTML = '<div class="mat-nodata"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg><div>No attendance data for this month.</div></div>';
         }
-        const headers = isStaff ? ["Employee", "Role", "P", "A", "L", "Total", "%"] : ["Roll No", "Student", "Class", "P", "A", "L", "Total", "%"];
-        const printRows = rows.map(function (row) {
-          return isStaff
-            ? [escapeHtml(row.employee.name || "-"), escapeHtml(row.employee.role || "-"), row.present, row.absent, row.leave, row.total, `${row.percent}%`]
-            : [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), row.present, row.absent, row.leave, row.total, `${row.percent}%`];
+
+        var groupMap = {};
+        rows.forEach(function(r) {
+          var key = _matIsStaff ? (r.employee.department || "Unknown") : (r.student.className || "Unknown");
+          if (!groupMap[key]) groupMap[key] = { name: key, present: 0, absent: 0, leave: 0, total: 0, count: 0 };
+          groupMap[key].present += r.present;
+          groupMap[key].absent += r.absent;
+          groupMap[key].leave += r.leave;
+          groupMap[key].total += r.total;
+          groupMap[key].count++;
+        });
+        var groups = Object.keys(groupMap).map(function(k) {
+          var g = groupMap[k];
+          g.percent = g.total ? Math.round((g.present / g.total) * 100) : 0;
+          return g;
+        }).sort(function(a, b) { return b.percent - a.percent; });
+        _matClassBadge.textContent = groups.length + " " + (_matIsStaff ? "departments" : "classes");
+        if (groups.length) {
+          _matClassBars.innerHTML = groups.map(function(g) {
+            var clr = g.percent >= 90 ? "#16a34a" : g.percent >= 75 ? "#2563eb" : g.percent >= 60 ? "#d97706" : "#dc2626";
+            return '<div class="mat-cbar"><div class="mat-cbar__nm">' + escapeHtml(g.name) + '</div><div class="mat-cbar__trk"><div class="mat-cbar__fill" style="width:' + g.percent + '%;background:' + clr + ';"></div></div><div class="mat-cbar__info"><span class="mat-cbar__pct" style="color:' + clr + ';">' + g.percent + '%</span><span class="mat-cbar__cnt">' + g.count + ' ' + (_matIsStaff ? "staff" : "students") + '</span></div></div>';
+          }).join("");
+        } else {
+          _matClassBars.innerHTML = '<div class="mat-nodata"><div>No group data available.</div></div>';
+        }
+
+        var cats = { excellent: 0, good: 0, average: 0, poor: 0 };
+        rows.forEach(function(r) {
+          if (r.percent >= 90) cats.excellent++;
+          else if (r.percent >= 75) cats.good++;
+          else if (r.percent >= 60) cats.average++;
+          else cats.poor++;
+        });
+        var catData = [
+          { label: "Excellent (≥90%)", count: cats.excellent, color: "#16a34a", bg: "#dcfce7" },
+          { label: "Good (75-89%)", count: cats.good, color: "#2563eb", bg: "#dbeafe" },
+          { label: "Average (60-74%)", count: cats.average, color: "#d97706", bg: "#fef3c7" },
+          { label: "Poor (<60%)", count: cats.poor, color: "#dc2626", bg: "#fee2e2" }
+        ];
+        _matCategories.innerHTML = catData.map(function(c) {
+          var pctVal = rows.length ? Math.round((c.count / rows.length) * 100) : 0;
+          return '<div class="mat-cat"><div class="mat-cat__hd"><div class="mat-cat__dot" style="background:' + c.color + ';"></div><span class="mat-cat__lbl">' + c.label + '</span><span class="mat-cat__val">' + c.count + ' (' + pctVal + '%)</span></div><div class="mat-cat__bar"><div class="mat-cat__fill" style="width:' + pctVal + '%;background:' + c.color + ';"></div></div></div>';
+        }).join("");
+
+        var trendMonths = [];
+        var now = new Date();
+        for (var ti = 5; ti >= 0; ti--) {
+          var td = new Date(now.getFullYear(), now.getMonth() - ti, 1);
+          var tmVal = td.getFullYear() + "-" + String(td.getMonth() + 1).padStart(2, "0");
+          var tmLabel = td.toLocaleString("default", { month: "short" }) + " " + td.getFullYear();
+          var tmRows = _matIsStaff
+            ? getEmployeeMonthlyAttendance(tmVal, "")
+            : getStudentMonthlyAttendance(tmVal, "all", "");
+          var tp = tmRows.reduce(function(s, r) { return s + r.present; }, 0);
+          var tt = tmRows.reduce(function(s, r) { return s + r.total; }, 0);
+          var tpct = tt ? Math.round((tp / tt) * 100) : 0;
+          var isCur = tmVal === _matMonth.value;
+          trendMonths.push({ label: tmLabel, pct: tpct, current: isCur });
+        }
+        var maxPct = Math.max.apply(null, trendMonths.map(function(t) { return t.pct; }).concat([1]));
+        _matTrend.innerHTML = '<div class="mat-trend-bars">' + trendMonths.map(function(t) {
+          var h = Math.max(4, Math.round((t.pct / maxPct) * 100));
+          var clr = t.current ? "#6366f1" : t.pct >= 90 ? "#16a34a" : t.pct >= 75 ? "#2563eb" : t.pct >= 60 ? "#d97706" : "#dc2626";
+          return '<div class="mat-trend-col' + (t.current ? ' mat-trend-col--cur' : '') + '"><div class="mat-trend-val">' + t.pct + '%</div><div class="mat-trend-bar" style="height:' + h + '%;background:' + clr + ';"></div><div class="mat-trend-lbl">' + t.label + '</div></div>';
+        }).join("") + '</div>';
+
+        var alertsHtml = "";
+        var lowRows = rows.filter(function(r) { return r.percent < 60; }).sort(function(a, b) { return a.percent - b.percent; });
+        if (lowRows.length > 0) {
+          alertsHtml += '<div class="mat-alert mat-alert--danger"><div class="mat-alert__ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="mat-alert__body"><div class="mat-alert__tt">' + lowRows.length + ' ' + (_matIsStaff ? "staff" : "student") + (lowRows.length > 1 ? "s" : "") + ' with critical attendance</div><div class="mat-alert__sub">Below 60% attendance: ' + lowRows.slice(0, 5).map(function(r) { return escapeHtml(_matIsStaff ? r.employee.name : r.student.name) + " (" + r.percent + "%)"; }).join(", ") + (lowRows.length > 5 ? " and " + (lowRows.length - 5) + " more" : "") + '</div></div></div>';
+        }
+        var highRows = rows.filter(function(r) { return r.percent >= 90; });
+        if (highRows.length > 0) {
+          alertsHtml += '<div class="mat-alert mat-alert--success"><div class="mat-alert__ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="mat-alert__body"><div class="mat-alert__tt">' + highRows.length + ' ' + (_matIsStaff ? "staff" : "student") + (highRows.length > 1 ? "s" : "") + ' with excellent attendance</div><div class="mat-alert__sub">90% or above attendance rate</div></div></div>';
+        }
+        var leaveRows = rows.filter(function(r) { return r.leave > 0; }).sort(function(a, b) { return b.leave - a.leave; });
+        if (leaveRows.length > 0) {
+          alertsHtml += '<div class="mat-alert mat-alert--warning"><div class="mat-alert__ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="mat-alert__body"><div class="mat-alert__tt">' + leaveRows.length + ' ' + (_matIsStaff ? "staff" : "student") + (leaveRows.length > 1 ? "s" : "") + ' with multiple leaves</div><div class="mat-alert__sub">' + leaveRows.slice(0, 5).map(function(r) { return escapeHtml(_matIsStaff ? r.employee.name : r.student.name) + " (" + r.leave + " days)"; }).join(", ") + (leaveRows.length > 5 ? " and " + (leaveRows.length - 5) + " more" : "") + '</div></div></div>';
+        }
+        if (!alertsHtml) {
+          alertsHtml = '<div class="mat-nodata"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div>No alerts. All attendance is within normal range.</div></div>';
+        }
+        _matAlerts.innerHTML = alertsHtml;
+
+        var sorted = rows.slice();
+        sorted.sort(function(a, b) {
+          var av = _matSortCol === "name" ? (_matIsStaff ? a.employee.name : a.student.name)
+            : _matSortCol === "className" ? (a.student.className || "")
+            : _matSortCol === "rollNo" ? (a.student.admissionNo || "")
+            : _matSortCol === "department" ? (a.employee.department || "")
+            : _matSortCol === "designation" ? (a.employee.designation || "")
+            : a[_matSortCol];
+          var bv = _matSortCol === "name" ? (_matIsStaff ? b.employee.name : b.student.name)
+            : _matSortCol === "className" ? (b.student.className || "")
+            : _matSortCol === "rollNo" ? (b.student.admissionNo || "")
+            : _matSortCol === "department" ? (b.employee.department || "")
+            : _matSortCol === "designation" ? (b.employee.designation || "")
+            : b[_matSortCol];
+          if (typeof av === "string") { av = av.toLowerCase(); bv = (bv || "").toLowerCase(); }
+          if (av < bv) return _matSortDir === "asc" ? -1 : 1;
+          if (av > bv) return _matSortDir === "asc" ? 1 : -1;
+          return 0;
+        });
+
+        var totalItems = sorted.length;
+        var totalPages = Math.max(1, Math.ceil(totalItems / _matPerPage));
+        if (_matPage > totalPages) _matPage = totalPages;
+        var startIdx = (_matPage - 1) * _matPerPage;
+        var pageRows = sorted.slice(startIdx, startIdx + _matPerPage);
+
+        _matTableBadge.textContent = totalItems + " " + (_matIsStaff ? "staff" : "students");
+        _matTbody.innerHTML = pageRows.map(function(r, idx) {
+          var name, details;
+          if (_matIsStaff) {
+            name = escapeHtml(r.employee.name || "-");
+            details = '<div class="mat-tname__sub">' + escapeHtml(r.employee.department || "-") + '</div>';
+          } else {
+            var initials = (r.student.name || "?").split(" ").map(function(w) { return w.charAt(0); }).join("").substring(0, 2).toUpperCase();
+            name = '<div class="mat-tname"><div class="mat-tname__av">' + escapeHtml(initials) + '</div><div><div class="mat-tname__n">' + escapeHtml(r.student.name || "-") + '</div><div class="mat-tname__f">' + escapeHtml(r.student.admissionNo || "") + '</div></div></div>';
+            details = escapeHtml(r.student.className || "-");
+          }
+          return '<tr>' +
+            '<td>' + (_matIsStaff ? escapeHtml(r.employee.name || "-") : name) + '</td>' +
+            '<td>' + (_matIsStaff ? escapeHtml(r.employee.department || "-") : details) + '</td>' +
+            (_matIsStaff ? '<td>' + escapeHtml(r.employee.designation || "-") + '</td>' : '<td>' + escapeHtml(r.student.admissionNo || "-") + '</td>') +
+            '<td class="mat-mono">' + r.present + '</td><td class="mat-mono">' + r.absent + '</td><td class="mat-mono">' + r.leave + '</td><td class="mat-mono">' + r.total + '</td><td class="mat-mono" style="font-weight:700;color:' + (r.percent >= 90 ? "#16a34a" : r.percent >= 75 ? "#2563eb" : r.percent >= 60 ? "#d97706" : "#dc2626") + ';">' + r.percent + '%</td>' +
+            '<td>' + _matStatusBadge(r.percent) + '</td>' +
+            '<td><button class="mat-viewbtn" type="button" data-mat-detail="' + escapeAttr(_matIsStaff ? r.employee.id : r.student.id) + '">View</button>' +
+            (_matIsStaff ? '<button class="mat-wabtn" type="button" data-mat-wa="' + escapeAttr(r.employee.id) + '" title="Send via WhatsApp"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></button>' : '') +
+            '</td></tr>';
+        }).join("");
+
+        _matPageInfo.textContent = "Showing " + (totalItems ? startIdx + 1 : 0) + "–" + Math.min(startIdx + _matPerPage, totalItems) + " of " + totalItems;
+        var pgBtnsHtml = '<button class="mat-pg-btn" data-mat-page="prev" ' + (_matPage <= 1 ? 'disabled' : '') + '>‹</button>';
+        for (var pi = 1; pi <= totalPages; pi++) {
+          if (totalPages > 7 && pi > 3 && pi < totalPages - 1 && Math.abs(pi - _matPage) > 1) {
+            if (pgBtnsHtml.indexOf("mat-pg-dots") === -1) pgBtnsHtml += '<span class="mat-pg-dots">…</span>';
+            continue;
+          }
+          pgBtnsHtml += '<button class="mat-pg-btn' + (pi === _matPage ? ' mat-pg-btn--active' : '') + '" data-mat-page="' + pi + '">' + pi + '</button>';
+        }
+        pgBtnsHtml += '<button class="mat-pg-btn" data-mat-page="next" ' + (_matPage >= totalPages ? 'disabled' : '') + '>›</button>';
+        _matPageBtns.innerHTML = pgBtnsHtml;
+      }
+
+      _matMonth.addEventListener("change", function() { _matPage = 1; _matRender(); });
+      _matMonth.addEventListener("input", function() { _matPage = 1; _matRender(); });
+      _matSearch.addEventListener("input", function() { _matPage = 1; _matRender(); });
+      if (_matClass) _matClass.addEventListener("change", function() { _matPage = 1; _matRender(); });
+
+      safeOn(document.getElementById("matClearBtn"), "click", function() {
+        _matMonth.value = _matCurMonth;
+        if (_matClass) _matClass.value = "all";
+        _matSearch.value = "";
+        _matPage = 1;
+        _matRender();
+      });
+
+      safeOn(document.getElementById("matRefreshBtn"), "click", function() { _matRender(); });
+
+      safeOn(document.getElementById("matExportBtn"), "click", function() {
+        var rows = _matGetRows();
+        if (!rows.length) return;
+        var csv = (_matIsStaff ? "Employee,Department,Designation,Present,Absent,Leave,Total,Percentage,Status" : "Roll No,Student,Class,Present,Absent,Leave,Total,Percentage,Status") + "\n";
+        rows.forEach(function(r) {
+          if (_matIsStaff) {
+            csv += '"' + (r.employee.name||"").replace(/"/g,'""') + '","' + (r.employee.department||"").replace(/"/g,'""') + '","' + (r.employee.designation||"").replace(/"/g,'""') + '",' + r.present + ',' + r.absent + ',' + r.leave + ',' + r.total + ',' + r.percent + '%,' + _matClassify(r.percent).label + '\n';
+          } else {
+            csv += '"' + (r.student.admissionNo||"").replace(/"/g,'""') + '","' + (r.student.name||"").replace(/"/g,'""') + '","' + (r.student.className||"").replace(/"/g,'""') + '",' + r.present + ',' + r.absent + ',' + r.leave + ',' + r.total + ',' + r.percent + '%,' + _matClassify(r.percent).label + '\n';
+          }
+        });
+        var blob = new Blob([csv], { type: "text/csv" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = (_matIsStaff ? "staff-monthly-attendance" : "students-monthly-attendance") + "-" + _matMonth.value + ".csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      safeOn(document.getElementById("matPrintBtn"), "click", function() {
+        var rows = _matGetRows();
+        if (!rows.length) return;
+        var headers = _matIsStaff ? ["Employee", "Department", "Designation", "Present", "Absent", "Leave", "Total", "%", "Status"] : ["Roll No", "Student", "Class", "Present", "Absent", "Leave", "Total", "%", "Status"];
+        var printRows = rows.map(function(r) {
+          if (_matIsStaff) {
+            return [escapeHtml(r.employee.name||"-"), escapeHtml(r.employee.department||"-"), escapeHtml(r.employee.designation||"-"), r.present, r.absent, r.leave, r.total, r.percent+"%", _matClassify(r.percent).label];
+          }
+          return [escapeHtml(r.student.admissionNo||"-"), escapeHtml(r.student.name||"-"), escapeHtml(r.student.className||"-"), r.present, r.absent, r.leave, r.total, r.percent+"%", _matClassify(r.percent).label];
         });
         openPrintReport({
-          title: isStaff ? "Staff Monthly Attendance Report" : "Students Monthly Attendance Report",
-          subtitle: `Month: ${normalizeFeeMonthLabel(monthInput.value)}${isStaff ? "" : ` | Class: ${classSelect.value}`}`,
+          title: _matIsStaff ? "Staff Monthly Attendance Report" : "Students Monthly Attendance Report",
+          subtitle: "Month: " + normalizeFeeMonthLabel(_matMonth.value),
           headers: headers,
           rows: printRows
         });
       });
 
-      [monthInput, searchInput].forEach(function (input) {
-        input.addEventListener("change", renderRows);
-        input.addEventListener("input", renderRows);
-      });
-      if (classSelect) {
-        classSelect.addEventListener("change", renderRows);
-      }
-      tableBody.addEventListener("click", function (event) {
-        const waBtn = event.target.closest("[data-employee-report-wa]");
-        if (!waBtn || !isStaff) {
-          return;
-        }
-        const employeeId = waBtn.getAttribute("data-employee-report-wa");
-        const employee = database.teachers.find(function (item) { return String(item.id) === String(employeeId); }) || null;
-        if (!employee) {
-          return;
-        }
-        if (!isEmployeeWhatsappActive(employee)) {
-          openAppMessageBox("Error", "The employee is not active account on whatsapp with this number.", "error");
-          return;
-        }
-        const rows = getRows();
-        const match = rows.find(function (row) { return String(row.employee && row.employee.id) === String(employeeId); }) || null;
-        if (!match) {
-          return;
-        }
-        const template = getSavedMessageTemplate("employeeReportWhatsapp", "Dear {prefix} {name},\nAttendance report for {month}: Present {present}, Absent {absent}, Leave {leave}, Attendance {percent}%.\nBest regards,\n{school}.");
-        const messageText = interpolateTemplate(template, {
-          prefix: getGenderPrefix(employee.gender),
-          name: employee.name || "-",
-          month: normalizeFeeMonthLabel(monthInput.value),
-          present: match.present,
-          absent: match.absent,
-          leave: match.leave,
-          percent: match.percent,
-          school: database.school.name || "School"
-        });
-        sendDirectWhatsappToEmployee(employee, employee.name || "employee", messageText);
+      _matPageBtns.addEventListener("click", function(e) {
+        var btn = e.target.closest("[data-mat-page]");
+        if (!btn) return;
+        var val = btn.getAttribute("data-mat-page");
+        if (val === "prev") _matPage = Math.max(1, _matPage - 1);
+        else if (val === "next") _matPage++;
+        else _matPage = parseInt(val) || 1;
+        _matRender();
       });
 
-      renderRows();
+      document.querySelectorAll(".mat-sort").forEach(function(th) {
+        th.addEventListener("click", function() {
+          var col = th.getAttribute("data-col");
+          if (_matSortCol === col) _matSortDir = _matSortDir === "asc" ? "desc" : "asc";
+          else { _matSortCol = col; _matSortDir = "asc"; }
+          _matRender();
+        });
+      });
+
+      _matTbody.addEventListener("click", function(e) {
+        var detailBtn = e.target.closest("[data-mat-detail]");
+        var waBtn = e.target.closest("[data-mat-wa]");
+        if (detailBtn) {
+          var id = detailBtn.getAttribute("data-mat-detail");
+          var rows = _matGetRows();
+          var match = rows.find(function(r) { return String(_matIsStaff ? r.employee.id : r.student.id) === String(id); });
+          if (!match) return;
+          _matShowDetail(match);
+          return;
+        }
+        if (waBtn && _matIsStaff) {
+          var empId = waBtn.getAttribute("data-mat-wa");
+          var emp = database.teachers.find(function(t) { return String(t.id) === String(empId); });
+          if (!emp) return;
+          if (!isEmployeeWhatsappActive(emp)) {
+            openAppMessageBox("Error", "The employee is not active on WhatsApp.", "error");
+            return;
+          }
+          var rows2 = _matGetRows();
+          var m = rows2.find(function(r) { return String(r.employee.id) === String(empId); });
+          if (!m) return;
+          var tpl = getSavedMessageTemplate("employeeReportWhatsapp", "Dear {prefix} {name},\nAttendance report for {month}: Present {present}, Absent {absent}, Leave {leave}, Attendance {percent}%.\nBest regards,\n{school}.");
+          var msg = interpolateTemplate(tpl, { prefix: getGenderPrefix(emp.gender), name: emp.name||"-", month: normalizeFeeMonthLabel(_matMonth.value), present: m.present, absent: m.absent, leave: m.leave, percent: m.percent, school: database.school.name||"School" });
+          sendDirectWhatsappToEmployee(emp, emp.name||"employee", msg);
+        }
+      });
+
+      function _matShowDetail(row) {
+        var entity = _matIsStaff ? row.employee : row.student;
+        var cat = _matClassify(row.percent);
+        var mask = document.createElement("div");
+        mask.className = "mat-modal-mask";
+        mask.innerHTML = '<div class="mat-modal"><div class="mat-modal__hd"><h3 class="mat-modal__tt">' + escapeHtml(entity.name || "-") + ' — Attendance Detail</h3><button class="mat-modal__x" type="button">×</button></div><div class="mat-modal__bd">' +
+          '<div class="mat-detail"><div class="mat-detail__avatar">' + ((_matIsStaff ? "" : ((entity.name||"?").split(" ").map(function(w){return w.charAt(0);}).join("").substring(0,2).toUpperCase())) || (entity.name||"?").charAt(0).toUpperCase()) + '</div>' +
+          '<table class="mat-detail__tbl"><tbody>' +
+          '<tr><td>' + (_matIsStaff ? "Department" : "Class") + '</td><td>' + escapeHtml(_matIsStaff ? (entity.department||"-") : (entity.className||"-")) + '</td></tr>' +
+          (_matIsStaff ? '<tr><td>Designation</td><td>' + escapeHtml(entity.designation||"-") + '</td></tr>' : '<tr><td>Roll No</td><td>' + escapeHtml(entity.admissionNo||"-") + '</td></tr>') +
+          '<tr><td>Present</td><td><strong style="color:#16a34a;">' + row.present + ' days</strong></td></tr>' +
+          '<tr><td>Absent</td><td><strong style="color:#dc2626;">' + row.absent + ' days</strong></td></tr>' +
+          '<tr><td>Leave</td><td><strong style="color:#d97706;">' + row.leave + ' days</strong></td></tr>' +
+          '<tr><td>Total Working Days</td><td><strong>' + row.total + '</strong></td></tr>' +
+          '<tr><td>Attendance Rate</td><td><strong style="color:' + cat.color + ';">' + row.percent + '%</strong></td></tr>' +
+          '<tr><td>Status</td><td>' + _matStatusBadge(row.percent) + '</td></tr>' +
+          '</tbody></table></div></div></div>';
+        document.body.appendChild(mask);
+        mask.querySelector(".mat-modal__x").addEventListener("click", function() { mask.remove(); });
+        mask.addEventListener("click", function(e) { if (e.target === mask) mask.remove(); });
+      }
+
+      _matRender();
       return;
     }
 
