@@ -4933,13 +4933,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     if (!settings.__reversedEntriesCleanedV1) {
-      var _beforeLen = settings.accountsLedger.length;
-      settings.accountsLedger = settings.accountsLedger.filter(function (entry) {
-        var cat = String(entry.category || "").toLowerCase();
-        return cat.indexOf("reversed") === -1 && cat.indexOf("reversal") === -1;
-      });
       settings.__reversedEntriesCleanedV1 = true;
-      if (settings.accountsLedger.length !== _beforeLen) changed = true;
     }
 
     return changed;
@@ -9346,13 +9340,25 @@ ${allContent}
         
         settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
         var _studentDesc = (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ")";
-        settings.accountsLedger = settings.accountsLedger.filter(function (entry) {
-          if (String(entry.type || "").toLowerCase() !== "income") return true;
-          if (String(entry.category || "").toLowerCase() !== "fee collection") return true;
-          if (String(entry.description || "").indexOf(_studentDesc) === -1) return true;
-          if (String(entry.note || "").indexOf(feeMonth) === -1) return true;
-          return false;
+        var _existingReversal = settings.accountsLedger.find(function (entry) {
+          var cat = String(entry.category || "").toLowerCase();
+          if (cat.indexOf("reversed") === -1 && cat.indexOf("reversal") === -1) return false;
+          if (String(entry.description || "").indexOf(_studentDesc) === -1) return false;
+          if (String(entry.note || "").indexOf(feeMonth) === -1) return false;
+          return true;
         });
+        if (!_existingReversal && depositAmount > 0) {
+          settings.accountsLedger.unshift({
+            id: "LEDGER-" + generateId(),
+            date: getTodayDateISO(),
+            type: "Expense",
+            category: "Fee Collection Reversed",
+            description: "Fee Collection Reversed - " + (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ") for " + feeMonth,
+            amount: depositAmount,
+            note: "Fee collection reversed for " + feeMonth,
+            createdAt: new Date().toISOString()
+          });
+        }
         trackDeletion(collectionId);
         trackDeletion(feeId);
         
@@ -19227,199 +19233,373 @@ ${allContent}
       }
 
       var _now = new Date();
-      var _firstOfMonth = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-01";
-      var _today = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-" + String(_now.getDate()).padStart(2, "0");
-      moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong class="module-center-title">Account Statement</strong>
-          <div class="accounts-filter-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
-            <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">From<input id="accountsFromInput" type="date" value="${_firstOfMonth}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
-            <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">To<input id="accountsToInput" type="date" value="${_today}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
-            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.72rem;font-weight:600;margin-bottom:2px;">Type</label><select id="accountsTypeFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Types</option><option value="income">Income (Debit)</option><option value="expense">Expense (Credit)</option><option value="reversal">Reversal</option></select></div>
-            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.72rem;font-weight:600;margin-bottom:2px;">Search</label><input id="accountsSearchInput" type="search" placeholder="Search description..." style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <button id="clearAccountsHistoryBtn" type="button" class="btn-account-action btn-danger-action" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Clear History</button>
-            <button id="printAccountsBtn" type="button" class="btn-account-action btn-primary-action" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Print</button>
-            <button id="pdfAccountsBtn" type="button" class="btn-account-action btn-secondary-action" style="flex:1 1 60px;min-width:0;white-space:normal;text-align:center;justify-content:center;">PDF</button>
-            <button id="excelAccountsBtn" type="button" class="btn-account-action btn-secondary-action" style="flex:1 1 60px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Excel</button>
-          </div>
-          <div class="report-cards" id="accountsStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;"></div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:500px;width:100%;"><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Net Balance</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
-        </article>
-      `;
-      moduleGuide.innerHTML = "";
-      const fromInput = document.getElementById("accountsFromInput");
-      const toInput = document.getElementById("accountsToInput");
-      const typeFilter = document.getElementById("accountsTypeFilter");
-      const searchFilter = document.getElementById("accountsSearchInput");
-      const statsWrap = document.getElementById("accountsStats");
-      const tableBody = document.getElementById("accountsTableBody");
+      var _acrFirstOfMonth = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-01";
+      var _acrToday = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-" + String(_now.getDate()).padStart(2, "0");
+      var _acrCurrency = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
+      var _acrFromVal = _acrFirstOfMonth;
+      var _acrToVal = _acrToday;
+      var _acrCategoryVal = "all";
+      var _acrStatusVal = "all";
+      var _acrSearchVal = "";
+      var _acrPeriod = "month";
 
-      function getStatementRows() {
+      function _acrGetAllRows() {
         var settings = database.generalSettings || {};
-        var fromVal = fromInput.value;
-        var toVal = toInput.value;
-        function inRange(dv) {
-          if (!fromVal && !toVal) return true;
-          var d = String(dv || "").substring(0, 10);
-          if (!d) return false;
-          if (fromVal && d < fromVal) return false;
-          if (toVal && d > toVal) return false;
-          return true;
-        }
         var rows = [];
         (settings.accountsLedger || []).forEach(function (item) {
-          if (!inRange(item.date || item.createdAt)) return;
           var amt = Number(item.amount || 0);
+          if (amt <= 0) return;
           var _type = String(item.type || "").toLowerCase();
           var _cat = String(item.category || "").toLowerCase();
           var _isReversal = _cat.indexOf("reversed") !== -1 || _cat.indexOf("reversal") !== -1;
           var _desc = item.description || item.note || item.category || "-";
-          if (_isReversal) _desc = (_desc.indexOf("Reversed") !== -1 ? _desc : item.description || ("Fee Collection Reversed - " + (item.note || ""))) + "";
-          if (_type === "income") {
-            rows.push({
-              date: String(item.date || item.createdAt || "-").substring(0, 10),
-              description: _desc,
-              debit: amt,
-              credit: 0,
-              source: "income",
-              category: item.category || "",
-              isReversal: false
-            });
-          } else {
-            rows.push({
-              date: String(item.date || item.createdAt || "-").substring(0, 10),
-              description: _desc,
-              debit: 0,
-              credit: amt,
-              source: _isReversal ? "reversal" : "expense",
-              category: item.category || "",
-              isReversal: _isReversal
-            });
+          var _status = "Completed";
+          if (_isReversal) {
+            _status = "Reversed";
+            if (_desc.indexOf("Reversed") === -1) _desc = "Fee Collection Reversed - " + (_desc || item.note || "");
           }
+          rows.push({
+            id: item.id || "",
+            date: String(item.date || item.createdAt || "-").substring(0, 10),
+            description: _desc,
+            amount: amt,
+            income: _type === "income" ? amt : 0,
+            expense: _type === "expense" ? amt : 0,
+            category: item.category || "-",
+            type: _type === "income" ? "income" : "expense",
+            source: _isReversal ? "reversal" : (_type === "income" ? "income" : "expense"),
+            status: _status,
+            note: item.note || "",
+            createdAt: item.createdAt || "",
+            rawType: "ledger"
+          });
         });
         (settings.salaryPayments || []).forEach(function (item) {
-          if (!inRange(item.paymentDate || item.date || "")) return;
-          var total = Number(item.netAmount ?? (Number(item.salaryAmount || 0) + Number(item.bonus || 0) - Number(item.deduction || 0)));
+          if (!item.paymentDate && !item.date) return;
+          var total = Number(item.netSalary ?? (Number(item.salaryAmount || 0) + Number(item.bonus || 0) - Number(item.deduction || 0)));
+          if (total <= 0) return;
           rows.push({
+            id: item.id || "",
             date: String(item.paymentDate || item.date || "-").substring(0, 10),
-            description: "Salary paid to " + (item.employeeName || item.employeeId || "-"),
-            debit: 0,
-            credit: total,
-            source: "expense",
+            description: "Salary paid to " + (item.employeeName || item.employeeId || "-") + (item.salaryMonth ? " (" + item.salaryMonth + ")" : ""),
+            amount: total,
+            income: 0,
+            expense: total,
             category: "Salary",
-            isReversal: false
+            type: "expense",
+            source: "expense",
+            status: "Completed",
+            note: "Salary: " + _acrCurrency + " " + (item.salaryAmount || 0) + (item.bonus ? " + Bonus " + item.bonus : "") + (item.deduction ? " - Deduction " + item.deduction : ""),
+            createdAt: item.createdAt || "",
+            employeeName: item.employeeName || "-",
+            employeeRole: item.role || item.designation || "-",
+            salaryMonth: item.salaryMonth || "-",
+            rawType: "salary"
           });
         });
         rows.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
-        var balance = 0;
+        return rows;
+      }
+
+      function _acrFilterRows(allRows) {
+        return allRows.filter(function (r) {
+          if (r.date && r.date >= _acrFromVal && r.date <= _acrToVal) {} else if (_acrFromVal || _acrToVal) return false;
+          if (_acrCategoryVal !== "all" && r.category.toLowerCase() !== _acrCategoryVal.toLowerCase()) return false;
+          if (_acrStatusVal !== "all" && r.status.toLowerCase() !== _acrStatusVal.toLowerCase()) return false;
+          if (_acrSearchVal) {
+            var s = _acrSearchVal.toLowerCase();
+            var haystack = (r.description + " " + r.category + " " + r.note + " " + (r.employeeName || "") + " " + r.id).toLowerCase();
+            if (haystack.indexOf(s) === -1) return false;
+          }
+          return true;
+        });
+      }
+
+      function _acrCalcStats(rows) {
+        var totalIncome = 0, totalExpenses = 0, feeIncome = 0, salaries = 0, otherExpenses = 0;
+        var categories = {};
+        var monthly = {};
         rows.forEach(function (r) {
-          balance = balance + r.debit - r.credit;
-          r.balance = balance;
+          if (r.status === "Reversed") return;
+          if (r.type === "income") {
+            totalIncome += r.amount;
+            if (r.category.toLowerCase() === "fee collection") feeIncome += r.amount;
+          } else {
+            totalExpenses += r.amount;
+            if (r.category.toLowerCase() === "salary") salaries += r.amount;
+            else otherExpenses += r.amount;
+          }
+          var catKey = r.category || "Other";
+          if (!categories[catKey]) categories[catKey] = { income: 0, expense: 0 };
+          if (r.type === "income") categories[catKey].income += r.amount;
+          else categories[catKey].expense += r.amount;
+          var mKey = (r.date || "").substring(0, 7);
+          if (mKey) {
+            if (!monthly[mKey]) monthly[mKey] = { income: 0, expense: 0 };
+            if (r.type === "income" && r.status !== "Reversed") monthly[mKey].income += r.amount;
+            else if (r.type === "expense" && r.status !== "Reversed") monthly[mKey].expense += r.amount;
+          }
         });
-        var totalDebit = rows.reduce(function (s, r) { return s + r.debit; }, 0);
-        var totalCredit = rows.reduce(function (s, r) { return s + r.credit; }, 0);
-        return { rows: rows, totalDebit: totalDebit, totalCredit: totalCredit, netBalance: totalDebit - totalCredit };
+        return { totalIncome: totalIncome, totalExpenses: totalExpenses, netBalance: totalIncome - totalExpenses, feeIncome: feeIncome, salaries: salaries, otherExpenses: otherExpenses, categories: categories, monthly: monthly };
       }
 
-      function getDateRangeLabel() {
-        if (fromInput.value && toInput.value) return fromInput.value + " to " + toInput.value;
-        if (fromInput.value) return "From " + fromInput.value;
-        if (toInput.value) return "Until " + toInput.value;
-        return "All Time";
-      }
-
-      function renderStatement() {
-        var data = getStatementRows();
-        var _typeVal = typeFilter ? typeFilter.value : "all";
-        var _searchVal = searchFilter ? searchFilter.value.trim().toLowerCase() : "";
-        if (_typeVal !== "all") {
-          data.rows = data.rows.filter(function (r) { return r.source === _typeVal; });
+      function _acrSetPeriod(period, el) {
+        _acrPeriod = period;
+        var today = new Date();
+        var from = new Date();
+        switch (period) {
+          case "today": from = new Date(today); break;
+          case "week": from.setDate(today.getDate() - 7); break;
+          case "month": from = new Date(today.getFullYear(), today.getMonth(), 1); break;
+          case "lastMonth": from = new Date(today.getFullYear(), today.getMonth() - 1, 1); today = new Date(today.getFullYear(), today.getMonth(), 0); break;
+          case "year": from = new Date(today.getFullYear(), 0, 1); break;
+          default: from = new Date(today.getFullYear(), today.getMonth(), 1);
         }
-        if (_searchVal) {
-          data.rows = data.rows.filter(function (r) {
-            return String(r.description || "").toLowerCase().includes(_searchVal) || String(r.category || "").toLowerCase().includes(_searchVal);
-          });
+        _acrFromVal = from.getFullYear() + "-" + String(from.getMonth() + 1).padStart(2, "0") + "-" + String(from.getDate()).padStart(2, "0");
+        _acrToVal = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+        var fromEl = document.getElementById("acrFromDate");
+        var toEl = document.getElementById("acrToDate");
+        if (fromEl) fromEl.value = _acrFromVal;
+        if (toEl) toEl.value = _acrToVal;
+        document.querySelectorAll(".acr-period-btn").forEach(function (b) { b.classList.remove("acr-period-btn--active"); });
+        if (el) el.classList.add("acr-period-btn--active");
+        _acrRender();
+      }
+
+      function _acrFormatMoney(v) {
+        return _acrCurrency + " " + Math.round(v).toLocaleString();
+      }
+
+      function _acrRender() {
+        var allRows = _acrGetAllRows();
+        var rows = _acrFilterRows(allRows);
+        var stats = _acrCalcStats(rows);
+        var statsAll = _acrCalcStats(allRows);
+
+        document.getElementById("acrTotalIncome").textContent = _acrFormatMoney(stats.totalIncome);
+        document.getElementById("acrTotalExpenses").textContent = _acrFormatMoney(stats.totalExpenses);
+        var nbEl = document.getElementById("acrNetBalance");
+        nbEl.textContent = _acrFormatMoney(stats.netBalance);
+        nbEl.className = "acr-card__val " + (stats.netBalance >= 0 ? "acr-card__val--positive" : "acr-card__val--negative");
+        document.getElementById("acrFeeIncome").textContent = _acrFormatMoney(stats.feeIncome);
+        document.getElementById("acrSalaries").textContent = _acrFormatMoney(stats.salaries);
+        document.getElementById("acrOtherExpenses").textContent = _acrFormatMoney(stats.otherExpenses);
+
+        var cats = Object.keys(statsAll.categories).sort();
+        var catOpts = '<option value="all">All Categories</option>';
+        cats.forEach(function (c) { catOpts += '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>'; });
+        var catSelect = document.getElementById("acrCategoryFilter");
+        if (catSelect) { var sv = catSelect.value; catSelect.innerHTML = catOpts; catSelect.value = sv; }
+
+        _acrRenderTransactionTable(rows);
+
+        var periodMonths = Object.keys(stats.monthly).sort();
+        _acrRenderIncExpChart(stats);
+        _acrRenderExpBreakdown(stats);
+        _acrRenderMonthlyTrend(stats);
+      }
+
+      function _acrRenderTransactionTable(rows) {
+        var tbody = document.getElementById("acrTransBody");
+        if (!tbody) return;
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="8" class="acr-nodata-td"><div class="acr-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No financial transactions found</p><span>Try changing the date range or transaction filters.</span></div></td></tr>';
+          return;
         }
         var balance = 0;
-        data.rows.forEach(function (r) {
-          balance = balance + r.debit - r.credit;
-          r.balance = balance;
-        });
-        data.totalDebit = data.rows.reduce(function (s, r) { return s + r.debit; }, 0);
-        data.totalCredit = data.rows.reduce(function (s, r) { return s + r.credit; }, 0);
-        data.netBalance = data.totalDebit - data.totalCredit;
-        statsWrap.innerHTML = '<article class="stat-card stat-card--emerald" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Debit (Income)</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#10b981;margin-top:2px;">' + data.totalDebit + '</span></article><article class="stat-card stat-card--rose" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Credit (Expenses)</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#ef4444;margin-top:2px;">' + data.totalCredit + '</span></article><article class="stat-card stat-card--sky" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Net Balance</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:' + (data.netBalance >= 0 ? '#0ea5e9' : '#ef4444') + ';margin-top:2px;">' + data.netBalance + '</span></article><article class="stat-card stat-card--amber" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Transactions</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#f59e0b;margin-top:2px;">' + data.rows.length + '</span></article>';
-        var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
-        var tbody = data.rows.map(function (r) {
-          var descHtml = escapeHtml(r.description);
-          if (r.isReversal) descHtml += ' <span style="display:inline-block;padding:1px 6px;border-radius:10px;font-size:0.68rem;font-weight:600;background:#fef3c7;color:#b45309;margin-left:4px;">Reversed</span>';
-          var amtColor = r.source === "income" ? "#10b981" : (r.source === "reversal" ? "#f59e0b" : "#ef4444");
-          return '<tr' + (r.isReversal ? ' style="background:#fffbeb;"' : '') + '><td>' + escapeHtml(r.date) + '</td><td>' + descHtml + '</td><td style="color:#10b981;font-weight:600;">' + (r.debit > 0 ? currencySymbol + " " + r.debit : "-") + '</td><td style="color:#ef4444;font-weight:600;">' + (r.credit > 0 ? currencySymbol + " " + r.credit : "-") + '</td><td><strong style="color:' + (r.balance >= 0 ? '#0ea5e9' : '#ef4444') + ';">' + currencySymbol + ' ' + r.balance + '</strong></td></tr>';
+        tbody.innerHTML = rows.map(function (r, i) {
+          balance += r.income - r.expense;
+          var statusClass = r.status === "Reversed" ? "acr-badge--reversed" : (r.status === "Voided" ? "acr-badge--voided" : "acr-badge--completed");
+          var rowClass = r.status === "Reversed" ? " acr-row--reversed" : "";
+          return '<tr class="acr-row' + rowClass + '"><td>' + escapeHtml(r.date) + '</td><td><div class="acr-desc">' + escapeHtml(r.description) + '</div></td><td><span class="acr-cat-badge">' + escapeHtml(r.category) + '</span></td><td class="acr-mono acr-income">' + (r.income > 0 ? _acrFormatMoney(r.income) : '<span class="acr-dash">-</span>') + '</td><td class="acr-mono acr-expense">' + (r.expense > 0 ? _acrFormatMoney(r.expense) : '<span class="acr-dash">-</span>') + '</td><td class="acr-mono"><strong style="color:' + (balance >= 0 ? "#059669" : "#dc2626") + ';">' + _acrFormatMoney(balance) + '</strong></td><td><span class="acr-badge ' + statusClass + '">' + r.status + '</span></td><td><button class="acr-view-btn" type="button" data-acr-idx="' + i + '">View</button></td></tr>';
         }).join("");
-        tbody += '<tr style="font-weight:700;background:rgba(27,95,122,0.06);border-top:2px solid #1b5f7a;"><td colspan="2"><strong>Total</strong></td><td style="color:#10b981;">' + currencySymbol + " " + data.totalDebit + '</td><td style="color:#ef4444;">' + currencySymbol + " " + data.totalCredit + '</td><td><strong style="color:' + (data.netBalance >= 0 ? '#0ea5e9' : '#ef4444') + ';">' + currencySymbol + ' ' + data.netBalance + '</strong></td></tr>';
-        tableBody.innerHTML = tbody;
-      }
-
-      function getStatementPrintData() {
-        var data = getStatementRows();
-        var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
-        return {
-          title: "Account Statement",
-          subtitle: getDateRangeLabel(),
-          headers: ["Date", "Description", "Debit", "Credit", "Net Balance"],
-          rows: data.rows.map(function (r) { return [r.date, r.description, r.debit > 0 ? r.debit : "-", r.credit > 0 ? r.credit : "-", currencySymbol + " " + r.balance]; }),
-          footerHtml: '<p style="margin-top:12px;"><strong>Total Debit:</strong> ' + data.totalDebit + ' | <strong>Total Credit:</strong> ' + data.totalCredit + ' | <strong>Net:</strong> ' + currencySymbol + " " + data.netBalance + '</p>'
-        };
-      }
-
-      safeOn(document.getElementById("printAccountsBtn"), "click", function () {
-        var pd = getStatementPrintData();
-        if (!pd.rows.length) return;
-        openPrintReport(pd);
-      });
-
-      safeOn(document.getElementById("pdfAccountsBtn"), "click", function () {
-        var pd = getStatementPrintData();
-        if (!pd.rows.length) return;
-        openPrintReport(pd);
-      });
-
-      safeOn(document.getElementById("excelAccountsBtn"), "click", function () {
-        var data = getStatementRows();
-        if (!data.rows.length) return;
-        var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
-        var csvRows = [["Date", "Description", "Debit", "Credit", "Net Balance"].join(",")];
-        data.rows.forEach(function (r) {
-          csvRows.push([r.date, '"' + r.description.replace(/"/g, '""') + '"', r.debit > 0 ? r.debit : "", r.credit > 0 ? r.credit : "", r.balance].join(","));
+        var totalRow = '<tr class="acr-total-row"><td colspan="3"><strong>Total (' + rows.length + ' transactions)</strong></td><td class="acr-mono acr-income"><strong>' + _acrFormatMoney(rows.reduce(function (s, r) { return s + r.income; }, 0)) + '</strong></td><td class="acr-mono acr-expense"><strong>' + _acrFormatMoney(rows.reduce(function (s, r) { return s + r.expense; }, 0)) + '</strong></td><td class="acr-mono"><strong style="color:' + (balance >= 0 ? "#059669" : "#dc2626") + ';">' + _acrFormatMoney(balance) + '</strong></td><td colspan="2"></td></tr>';
+        tbody.innerHTML += totalRow;
+        tbody.querySelectorAll(".acr-view-btn").forEach(function (btn) {
+          safeOn(btn, "click", function () {
+            var idx = Number(btn.getAttribute("data-acr-idx"));
+            if (idx >= 0 && idx < rows.length) _acrShowDetail(rows[idx]);
+          });
         });
-        csvRows.push(["Total", "", data.totalDebit, data.totalCredit, data.netBalance].join(","));
+      }
+
+      function _acrShowDetail(row) {
+        var modal = document.getElementById("acrDetailModal");
+        var body = document.getElementById("acrDetailBody");
+        if (!modal || !body) return;
+        var amount = row.income || row.expense;
+        var typeLabel = row.type === "income" ? "Income" : "Expense";
+        var typeColor = row.type === "income" ? "#059669" : "#dc2626";
+        body.innerHTML = '<div class="acr-detail-row"><span class="acr-detail-lbl">Transaction ID</span><span class="acr-detail-val">' + escapeHtml(row.id || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Date</span><span class="acr-detail-val">' + escapeHtml(row.date || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Description</span><span class="acr-detail-val">' + escapeHtml(row.description || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Category</span><span class="acr-detail-val">' + escapeHtml(row.category || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Amount</span><span class="acr-detail-val" style="font-size:1.1rem;font-weight:700;color:' + typeColor + ';">' + _acrFormatMoney(amount) + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Type</span><span class="acr-detail-val"><span class="acr-badge ' + (row.type === "income" ? "acr-badge--completed" : "acr-badge--reversed") + '">' + typeLabel + '</span></span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Status</span><span class="acr-detail-val"><span class="acr-badge ' + (row.status === "Reversed" ? "acr-badge--reversed" : "acr-badge--completed") + '">' + row.status + '</span></span></div>';
+        if (row.rawType === "salary") {
+          body.innerHTML += '<div class="acr-detail-row"><span class="acr-detail-lbl">Employee</span><span class="acr-detail-val">' + escapeHtml(row.employeeName || "-") + '</span></div>' +
+            '<div class="acr-detail-row"><span class="acr-detail-lbl">Role</span><span class="acr-detail-val">' + escapeHtml(row.employeeRole || "-") + '</span></div>' +
+            '<div class="acr-detail-row"><span class="acr-detail-lbl">Salary Month</span><span class="acr-detail-val">' + escapeHtml(row.salaryMonth || "-") + '</span></div>';
+        }
+        if (row.note) body.innerHTML += '<div class="acr-detail-row"><span class="acr-detail-lbl">Note</span><span class="acr-detail-val">' + escapeHtml(row.note) + '</span></div>';
+        if (row.createdAt) body.innerHTML += '<div class="acr-detail-row"><span class="acr-detail-lbl">Created</span><span class="acr-detail-val">' + escapeHtml(row.createdAt) + '</span></div>';
+        modal.style.display = "flex";
+      }
+
+      function _acrRenderIncExpChart(stats) {
+        var wrap = document.getElementById("acrIncExpChart");
+        if (!wrap) return;
+        var inc = Math.max(0, stats.totalIncome);
+        var exp = Math.max(0, stats.totalExpenses);
+        var total = inc + exp;
+        if (total === 0) { wrap.innerHTML = '<div class="acr-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><p>No financial data for this period</p></div>'; return; }
+        var incPct = Math.round((inc / total) * 100);
+        var expPct = 100 - incPct;
+        wrap.innerHTML = '<div class="acr-bar-chart"><div class="acr-bar-row"><span class="acr-bar-lbl">Income</span><div class="acr-bar-track"><div class="acr-bar-fill acr-bar-fill--green" style="width:' + incPct + '%;"></div></div><span class="acr-bar-val acr-income">' + _acrFormatMoney(inc) + '</span></div>' +
+          '<div class="acr-bar-row"><span class="acr-bar-lbl">Expenses</span><div class="acr-bar-track"><div class="acr-bar-fill acr-bar-fill--red" style="width:' + expPct + '%;"></div></div><span class="acr-bar-val acr-expense">' + _acrFormatMoney(exp) + '</span></div></div>' +
+          '<div class="acr-chart-legend"><span class="acr-legend-dot" style="background:#059669;"></span> Income ' + incPct + '%<span class="acr-legend-dot" style="background:#dc2626;margin-left:12px;"></span> Expenses ' + expPct + '%</div>';
+      }
+
+      function _acrRenderExpBreakdown(stats) {
+        var wrap = document.getElementById("acrExpBreakdown");
+        if (!wrap) return;
+        var cats = [];
+        Object.keys(stats.categories).forEach(function (k) {
+          var v = stats.categories[k];
+          if (v.expense > 0) cats.push({ name: k, amount: v.expense });
+        });
+        cats.sort(function (a, b) { return b.amount - a.amount; });
+        var totalExp = cats.reduce(function (s, c) { return s + c.amount; }, 0);
+        if (!cats.length) { wrap.innerHTML = '<div class="acr-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><path d="M16 8l-8 8"/><path d="M8 8l8 8"/></svg><p>No expense data available for this period.</p></div>'; return; }
+        var colors = ["#6366f1", "#0ea5e9", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#64748b"];
+        var html = cats.map(function (c, i) {
+          var pct = totalExp > 0 ? Math.round((c.amount / totalExp) * 100) : 0;
+          var clr = colors[i % colors.length];
+          return '<div class="acr-exp-row"><div class="acr-exp-info"><span class="acr-exp-dot" style="background:' + clr + ';"></span><span class="acr-exp-name">' + escapeHtml(c.name) + '</span></div><div class="acr-exp-right"><div class="acr-exp-track"><div class="acr-exp-fill" style="width:' + pct + '%;background:' + clr + ';"></div></div><span class="acr-exp-amt">' + _acrFormatMoney(c.amount) + '</span><span class="acr-exp-pct">' + pct + '%</span></div></div>';
+        }).join("");
+        wrap.innerHTML = html;
+      }
+
+      function _acrRenderMonthlyTrend(stats) {
+        var wrap = document.getElementById("acrMonthlyTrend");
+        if (!wrap) return;
+        var months = Object.keys(stats.monthly).sort();
+        if (!months.length) { wrap.innerHTML = '<div class="acr-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><p>No monthly data available.</p></div>'; return; }
+        var maxVal = 0;
+        months.forEach(function (m) {
+          var d = stats.monthly[m];
+          if (d.income > maxVal) maxVal = d.income;
+          if (d.expense > maxVal) maxVal = d.expense;
+        });
+        if (maxVal === 0) maxVal = 1;
+        var html = '<div class="acr-trend-chart">';
+        months.forEach(function (m) {
+          var d = stats.monthly[m];
+          var incH = Math.round((d.income / maxVal) * 120);
+          var expH = Math.round((d.expense / maxVal) * 120);
+          var net = d.income - d.expense;
+          html += '<div class="acr-trend-col"><div class="acr-trend-bars"><div class="acr-trend-bar acr-trend-bar--inc" style="height:' + incH + 'px;" title="Income: ' + _acrFormatMoney(d.income) + '"></div><div class="acr-trend-bar acr-trend-bar--exp" style="height:' + expH + 'px;" title="Expenses: ' + _acrFormatMoney(d.expense) + '"></div></div><div class="acr-trend-lbl">' + escapeHtml(m) + '</div><div class="acr-trend-net" style="color:' + (net >= 0 ? "#059669" : "#dc2626") + ';">' + (net >= 0 ? "+" : "") + Math.round(net) + '</div></div>';
+        });
+        html += '</div><div class="acr-chart-legend"><span class="acr-legend-dot" style="background:#059669;"></span> Income<span class="acr-legend-dot" style="background:#dc2626;margin-left:12px;"></span> Expenses</div>';
+        wrap.innerHTML = html;
+      }
+
+      moduleSummary.innerHTML = '<div class="acr-wrap">' +
+        '<div class="acr-hdr"><div class="acr-hdr__left"><div class="acr-hdr__eyebrow">SagarSoft Finance</div><h2 class="acr-hdr__title">Accounts Report</h2><p class="acr-hdr__sub">Complete financial overview and transaction statement.</p></div>' +
+        '<div class="acr-hdr__actions"><button class="acr-btn acr-btn--ghost" type="button" id="acrRefreshBtn">Refresh</button><button class="acr-btn acr-btn--accent" type="button" id="acrPrintBtn">Print</button><button class="acr-btn acr-btn--accent" type="button" id="acrPdfBtn">PDF</button><button class="acr-btn acr-btn--accent" type="button" id="acrExcelBtn">Excel</button></div></div>' +
+        '<div class="acr-period">' +
+        '<button class="acr-period-btn" type="button" data-period="today">Today</button>' +
+        '<button class="acr-period-btn" type="button" data-period="week">This Week</button>' +
+        '<button class="acr-period-btn acr-period-btn--active" type="button" data-period="month">This Month</button>' +
+        '<button class="acr-period-btn" type="button" data-period="lastMonth">Last Month</button>' +
+        '<button class="acr-period-btn" type="button" data-period="year">This Year</button>' +
+        '<div class="acr-period-custom"><label class="acr-period-lbl">From</label><input class="acr-period-date" type="date" id="acrFromDate" value="' + _acrFromVal + '"><label class="acr-period-lbl">To</label><input class="acr-period-date" type="date" id="acrToDate" value="' + _acrToVal + '"></div></div>' +
+        '<div class="acr-cards">' +
+        '<div class="acr-card acr-card--green"><div class="acr-card__icon" style="background:#059669;"><i class="fas fa-arrow-down"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Total Income</div><div class="acr-card__val acr-card__val--positive" id="acrTotalIncome">Rs 0</div><div class="acr-card__sub">All incoming funds</div></div></div>' +
+        '<div class="acr-card acr-card--red"><div class="acr-card__icon" style="background:#dc2626;"><i class="fas fa-arrow-up"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Total Expenses</div><div class="acr-card__val acr-card__val--negative" id="acrTotalExpenses">Rs 0</div><div class="acr-card__sub">All outgoing funds</div></div></div>' +
+        '<div class="acr-card acr-card--blue"><div class="acr-card__icon" style="background:#2563eb;"><i class="fas fa-balance-scale"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Net Balance</div><div class="acr-card__val acr-card__val--positive" id="acrNetBalance">Rs 0</div><div class="acr-card__sub">Income minus expenses</div></div></div>' +
+        '<div class="acr-card acr-card--emerald"><div class="acr-card__icon" style="background:#10b981;"><i class="fas fa-graduation-cap"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Fee Income</div><div class="acr-card__val" id="acrFeeIncome">Rs 0</div><div class="acr-card__sub">Student fee collections</div></div></div>' +
+        '<div class="acr-card acr-card--amber"><div class="acr-card__icon" style="background:#f59e0b;"><i class="fas fa-users"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Salaries</div><div class="acr-card__val acr-card__val--negative" id="acrSalaries">Rs 0</div><div class="acr-card__sub">Employee salary payments</div></div></div>' +
+        '<div class="acr-card acr-card--purple"><div class="acr-card__icon" style="background:#8b5cf6;"><i class="fas fa-receipt"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Other Expenses</div><div class="acr-card__val acr-card__val--negative" id="acrOtherExpenses">Rs 0</div><div class="acr-card__sub">Utilities, maintenance, etc.</div></div></div></div>' +
+        '<div class="acr-toolbar"><input class="acr-search" type="search" id="acrSearchInput" placeholder="Search transactions..."><select class="acr-filter-sel" id="acrCategoryFilter"><option value="all">All Categories</option></select><select class="acr-filter-sel" id="acrStatusFilter"><option value="all">All Status</option><option value="Completed">Completed</option><option value="Reversed">Reversed</option><option value="Voided">Voided</option></select></div>' +
+        '<div class="acr-trans-wrap"><table class="acr-tbl"><thead><tr><th>Date</th><th>Transaction</th><th>Category</th><th>Income</th><th>Expense</th><th>Running Balance</th><th>Status</th><th>Action</th></tr></thead><tbody id="acrTransBody"></tbody></table></div>' +
+        '<div class="acr-grid2">' +
+        '<div class="acr-panel"><div class="acr-panel__hd"><h3 class="acr-panel__tt">Income vs Expenses</h3></div><div class="acr-panel__bd" id="acrIncExpChart"></div></div>' +
+        '<div class="acr-panel"><div class="acr-panel__hd"><h3 class="acr-panel__tt">Expense Breakdown</h3></div><div class="acr-panel__bd" id="acrExpBreakdown"></div></div></div>' +
+        '<div class="acr-panel"><div class="acr-panel__hd"><h3 class="acr-panel__tt">Monthly Financial Trend</h3></div><div class="acr-panel__bd" id="acrMonthlyTrend"></div></div>' +
+        '</div>' +
+        '<div class="acr-modal" id="acrDetailModal"><div class="acr-modal__overlay"></div><div class="acr-modal__dialog"><div class="acr-modal__hd"><h3 class="acr-modal__tt">Transaction Details</h3><button class="acr-modal__close" type="button" id="acrModalClose">&times;</button></div><div class="acr-modal__bd" id="acrDetailBody"></div><div class="acr-modal__ft"><button class="acr-btn acr-btn--ghost" type="button" id="acrModalCloseBtn">Close</button></div></div></div>';
+      moduleGuide.innerHTML = "";
+
+      safeOn(document.getElementById("acrFromDate"), "change", function () { _acrFromVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrToDate"), "change", function () { _acrToVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrCategoryFilter"), "change", function () { _acrCategoryVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrStatusFilter"), "change", function () { _acrStatusVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrSearchInput"), "input", function () { _acrSearchVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrRefreshBtn"), "click", function () { refreshDatabase(); _acrRender(); });
+      document.querySelectorAll(".acr-period-btn").forEach(function (btn) {
+        safeOn(btn, "click", function () { _acrSetPeriod(btn.getAttribute("data-period"), btn); });
+      });
+      safeOn(document.getElementById("acrModalClose"), "click", function () { document.getElementById("acrDetailModal").style.display = "none"; });
+      safeOn(document.getElementById("acrModalCloseBtn"), "click", function () { document.getElementById("acrDetailModal").style.display = "none"; });
+      safeOn(document.querySelector(".acr-modal__overlay"), "click", function () { document.getElementById("acrDetailModal").style.display = "none"; });
+
+      safeOn(document.getElementById("acrPrintBtn"), "click", function () {
+        var allRows = _acrGetAllRows();
+        var rows = _acrFilterRows(allRows);
+        var stats = _acrCalcStats(rows);
+        if (!rows.length) return;
+        var schoolName = ((database.generalSettings || {}).instituteProfile || {}).name || (database.school || {}).name || "SagarSoft";
+        var pw = window.open("", "_blank", "width=900,height=700");
+        if (!pw) { alert("Please allow popups for printing."); return; }
+        pw.document.write("<!DOCTYPE html><html><head><title>Accounts Report</title><style>body{font-family:'Segoe UI',sans-serif;margin:20px;color:#1e293b;}h1{font-size:20px;margin:0 0 4px;}h2{font-size:14px;color:#64748b;margin:0 0 16px;font-weight:500;}.summary{display:flex;gap:16px;margin-bottom:16px;}.summary>div{flex:1;padding:10px;border:1px solid #e2e8f0;border-radius:8px;}.summary .lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;}.summary .val{font-size:18px;font-weight:700;margin-top:2px;}.green{color:#059669;}.red{color:#dc2626;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:left;}th{background:#f8fafc;font-weight:600;font-size:11px;text-transform:uppercase;}.total{font-weight:700;background:#f1f5f9;}.footer{margin-top:16px;font-size:10px;color:#94a3b8;text-align:center;}</style></head><body>");
+        pw.document.write("<h1>" + escapeHtml(schoolName) + " - Accounts Report</h1>");
+        pw.document.write("<h2>" + _acrFromVal + " to " + _acrToVal + "</h2>");
+        pw.document.write('<div class="summary"><div><div class="lbl">Total Income</div><div class="val green">' + _acrFormatMoney(stats.totalIncome) + '</div></div><div><div class="lbl">Total Expenses</div><div class="val red">' + _acrFormatMoney(stats.totalExpenses) + '</div></div><div><div class="lbl">Net Balance</div><div class="val ' + (stats.netBalance >= 0 ? "green" : "red") + '">' + _acrFormatMoney(stats.netBalance) + '</div></div></div>');
+        pw.document.write("<table><thead><tr><th>Date</th><th>Transaction</th><th>Category</th><th>Income</th><th>Expense</th><th>Balance</th><th>Status</th></tr></thead><tbody>");
+        var bal = 0;
+        rows.forEach(function (r) {
+          bal += r.income - r.expense;
+          var incCol = r.income > 0 ? _acrFormatMoney(r.income) : "-";
+          var expCol = r.expense > 0 ? _acrFormatMoney(r.expense) : "-";
+          pw.document.write("<tr><td>" + escapeHtml(r.date) + "</td><td>" + escapeHtml(r.description) + "</td><td>" + escapeHtml(r.category) + "</td><td>" + incCol + "</td><td>" + expCol + "</td><td><strong>" + _acrFormatMoney(bal) + "</strong></td><td>" + r.status + "</td></tr>");
+        });
+        pw.document.write('<tr class="total"><td colspan="3"><strong>Total</strong></td><td><strong>' + _acrFormatMoney(stats.totalIncome) + '</strong></td><td><strong>' + _acrFormatMoney(stats.totalExpenses) + '</strong></td><td><strong>' + _acrFormatMoney(stats.netBalance) + '</strong></td><td></td></tr>');
+        pw.document.write("</tbody></table>");
+        pw.document.write('<div class="footer">Generated on ' + new Date().toLocaleString() + '</div>');
+        pw.document.write("</body></html>");
+        pw.document.close();
+        setTimeout(function () { pw.print(); }, 400);
+      });
+
+      safeOn(document.getElementById("acrPdfBtn"), "click", function () {
+        document.getElementById("acrPrintBtn").click();
+      });
+
+      safeOn(document.getElementById("acrExcelBtn"), "click", function () {
+        var allRows = _acrGetAllRows();
+        var rows = _acrFilterRows(allRows);
+        if (!rows.length) return;
+        var csvRows = [["Date", "Transaction", "Category", "Income", "Expense", "Running Balance", "Status", "Reference"].join(",")];
+        var bal = 0;
+        rows.forEach(function (r) { bal += r.income - r.expense; csvRows.push([r.date, '"' + r.description.replace(/"/g, '""') + '"', '"' + r.category.replace(/"/g, '""') + '"', r.income > 0 ? r.income : "", r.expense > 0 ? r.expense : "", bal, r.status, r.id].join(",")); });
+        var stats = _acrCalcStats(rows);
+        csvRows.push(["", "", "Total Income", stats.totalIncome, "", "", "", ""].join(","));
+        csvRows.push(["", "", "Total Expenses", "", stats.totalExpenses, "", "", ""].join(","));
+        csvRows.push(["", "", "Net Balance", "", "", stats.netBalance, "", ""].join(","));
         var csv = csvRows.join("\r\n");
         var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
         var link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "Account_Statement_" + getTodayDateISO() + ".csv";
+        link.download = "Accounts_Report_" + getTodayDateISO() + ".csv";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
       });
 
-      safeOn(document.getElementById("clearAccountsHistoryBtn"), "click", function () {
-        showStyledDeleteConfirmation("all account ledger history", async function () {
-          var settings = database.generalSettings || {};
-          settings.accountsLedger = [];
-          settings.__accountsLedgerUserTouched = true;
-          await saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          refreshDatabase();
-          renderStatement();
-        });
-      });
-
-      fromInput.addEventListener("change", renderStatement);
-      toInput.addEventListener("change", renderStatement);
-      if (typeFilter) typeFilter.addEventListener("change", renderStatement);
-      if (searchFilter) searchFilter.addEventListener("input", renderStatement);
-      renderStatement();
+      _acrRender();
       return;
     }
 

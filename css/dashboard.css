@@ -15347,3 +15347,179 @@ button.ss-btn-loading {
   .spr-att-summary{grid-template-columns:1fr;}
   .spr-sbar__nm{width:80px;font-size:0.68rem;}
 }
+
+/* ============================================================
+   SagarSoft — Accounts Report (.acr-)
+   ============================================================ */
+
+/* === Wrap === */
+.acr-wrap{padding:0;max-width:100%;overflow-x:hidden;}
+
+/* === Header === */
+.acr-hdr{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px;margin-bottom:16px;}
+.acr-hdr__left{flex:1;min-width:200px;}
+.acr-hdr__eyebrow{font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366f1;margin-bottom:2px;}
+.acr-hdr__title{font-size:1.5rem;font-weight:800;color:#1e293b;margin:0 0 2px;}
+.acr-hdr__sub{font-size:0.82rem;color:#64748b;margin:0;}
+.acr-hdr__actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* === Buttons === */
+.acr-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:0.78rem;font-weight:600;font-family:inherit;border-radius:8px;cursor:pointer;transition:all 0.15s;border:none;}
+.acr-btn--accent{background:#6366f1;color:#fff;}
+.acr-btn--accent:hover{background:#4f46e5;}
+.acr-btn--ghost{background:transparent;color:#64748b;border:1px solid #e2e8f0;}
+.acr-btn--ghost:hover{background:#f8fafc;border-color:#cbd5e1;}
+
+/* === Period Presets === */
+.acr-period{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:14px;}
+.acr-period-btn{padding:6px 12px;font-size:0.75rem;font-weight:600;font-family:inherit;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;transition:all 0.15s;}
+.acr-period-btn:hover{border-color:#6366f1;color:#6366f1;}
+.acr-period-btn--active{background:#6366f1;color:#fff;border-color:#6366f1;}
+.acr-period-custom{display:flex;align-items:center;gap:6px;margin-left:8px;}
+.acr-period-lbl{font-size:0.72rem;font-weight:600;color:#64748b;}
+.acr-period-date{padding:5px 8px;font-size:0.75rem;border:1px solid #e2e8f0;border-radius:6px;font-family:inherit;}
+
+/* === Summary Cards === */
+.acr-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+.acr-card{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:12px;background:#fff;border:1px solid #f1f5f9;transition:box-shadow 0.2s;}
+.acr-card:hover{box-shadow:0 4px 16px rgba(0,0,0,0.06);}
+.acr-card__icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.9rem;flex-shrink:0;}
+.acr-card__body{flex:1;min-width:0;}
+.acr-card__lbl{font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#94a3b8;}
+.acr-card__val{font-size:1.2rem;font-weight:800;color:#1e293b;margin:2px 0 0;}
+.acr-card__val--positive{color:#059669;}
+.acr-card__val--negative{color:#dc2626;}
+.acr-card__sub{font-size:0.66rem;color:#94a3b8;margin-top:1px;}
+
+/* === Toolbar (Search + Filters) === */
+.acr-toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.acr-search{flex:1 1 220px;padding:7px 12px;font-size:0.78rem;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;min-width:0;}
+.acr-search:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.1);}
+.acr-filter-sel{padding:7px 10px;font-size:0.78rem;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;background:#fff;cursor:pointer;min-width:120px;}
+
+/* === Transaction Table === */
+.acr-trans-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-bottom:16px;border:1px solid #f1f5f9;border-radius:12px;background:#fff;}
+.acr-tbl{width:100%;border-collapse:collapse;font-size:0.78rem;}
+.acr-tbl thead{background:#f8fafc;}
+.acr-tbl th{padding:8px 10px;text-align:left;font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#64748b;border-bottom:2px solid #e2e8f0;white-space:nowrap;}
+.acr-tbl td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}
+.acr-row--reversed{background:#fffbeb !important;}
+.acr-row:hover{background:#f8fafc;}
+.acr-desc{font-weight:600;color:#1e293b;}
+.acr-mono{font-family:'SF Mono',Consolas,monospace;font-size:0.78rem;}
+.acr-income{color:#059669;}
+.acr-expense{color:#dc2626;}
+.acr-dash{color:#cbd5e1;}
+.acr-total-row{background:#f1f5f9 !important;border-top:2px solid #e2e8f0;}
+.acr-total-row td{padding:10px;}
+
+/* === Category Badge === */
+.acr-cat-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.68rem;font-weight:600;background:#f1f5f9;color:#475569;}
+
+/* === Status Badges === */
+.acr-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:0.68rem;font-weight:600;}
+.acr-badge--completed{background:#dcfce7;color:#166534;}
+.acr-badge--reversed{background:#fef3c7;color:#92400e;}
+.acr-badge--voided{background:#fee2e2;color:#991b1b;}
+
+/* === View Button === */
+.acr-view-btn{padding:3px 10px;font-size:0.7rem;font-weight:600;font-family:inherit;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#6366f1;cursor:pointer;transition:all 0.15s;}
+.acr-view-btn:hover{background:#6366f1;color:#fff;border-color:#6366f1;}
+
+/* === Empty State === */
+.acr-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 16px;color:#94a3b8;text-align:center;}
+.acr-empty svg{margin-bottom:8px;opacity:0.5;}
+.acr-empty p{font-size:0.85rem;font-weight:600;color:#64748b;margin:0 0 2px;}
+.acr-empty span{font-size:0.75rem;color:#94a3b8;}
+.acr-nodata-td{padding:0 !important;}
+
+/* === Charts Grid === */
+.acr-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.acr-panel{background:#fff;border:1px solid #f1f5f9;border-radius:12px;overflow:hidden;}
+.acr-panel__hd{padding:12px 16px;border-bottom:1px solid #f1f5f9;}
+.acr-panel__tt{font-size:0.85rem;font-weight:700;color:#1e293b;margin:0;}
+.acr-panel__bd{padding:16px;min-height:100px;}
+
+/* === Income vs Expenses Bar Chart === */
+.acr-bar-chart{display:flex;flex-direction:column;gap:12px;}
+.acr-bar-row{display:flex;align-items:center;gap:10px;}
+.acr-bar-lbl{width:70px;font-size:0.75rem;font-weight:600;color:#475569;text-align:right;}
+.acr-bar-track{flex:1;height:24px;background:#f1f5f9;border-radius:6px;overflow:hidden;}
+.acr-bar-fill{height:100%;border-radius:6px;transition:width 0.4s ease;}
+.acr-bar-fill--green{background:linear-gradient(90deg,#059669,#10b981);}
+.acr-bar-fill--red{background:linear-gradient(90deg,#dc2626,#ef4444);}
+.acr-bar-val{width:100px;font-size:0.78rem;font-weight:700;font-family:'SF Mono',Consolas,monospace;}
+
+/* === Expense Breakdown === */
+.acr-exp-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f8fafc;}
+.acr-exp-row:last-child{border-bottom:none;}
+.acr-exp-info{display:flex;align-items:center;gap:8px;}
+.acr-exp-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+.acr-exp-name{font-size:0.78rem;font-weight:600;color:#1e293b;}
+.acr-exp-right{display:flex;align-items:center;gap:8px;}
+.acr-exp-track{width:80px;height:6px;background:#f1f5f9;border-radius:3px;overflow:hidden;}
+.acr-exp-fill{height:100%;border-radius:3px;}
+.acr-exp-amt{font-size:0.78rem;font-weight:700;color:#1e293b;font-family:'SF Mono',Consolas,monospace;min-width:80px;text-align:right;}
+.acr-exp-pct{font-size:0.68rem;color:#94a3b8;min-width:32px;text-align:right;}
+
+/* === Monthly Trend Chart === */
+.acr-trend-chart{display:flex;align-items:flex-end;justify-content:center;gap:6px;padding:8px 0;min-height:160px;}
+.acr-trend-col{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.acr-trend-bars{display:flex;align-items:flex-end;gap:3px;height:120px;}
+.acr-trend-bar{width:18px;border-radius:3px 3px 0 0;transition:height 0.3s ease;min-height:2px;}
+.acr-trend-bar--inc{background:#059669;}
+.acr-trend-bar--exp{background:#dc2626;}
+.acr-trend-lbl{font-size:0.62rem;font-weight:600;color:#94a3b8;}
+.acr-trend-net{font-size:0.62rem;font-weight:700;font-family:'SF Mono',Consolas,monospace;}
+
+/* === Chart Legend === */
+.acr-chart-legend{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:12px;font-size:0.72rem;color:#64748b;font-weight:500;}
+.acr-legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+
+/* === Detail Modal === */
+.acr-modal{display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;align-items:center;justify-content:center;}
+.acr-modal__overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);}
+.acr-modal__dialog{position:relative;background:#fff;border-radius:16px;width:90%;max-width:520px;max-height:85vh;overflow-y:auto;box-shadow:0 25px 60px rgba(0,0,0,0.15);z-index:1;}
+.acr-modal__hd{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid #f1f5f9;}
+.acr-modal__tt{font-size:1rem;font-weight:700;color:#1e293b;margin:0;}
+.acr-modal__close{background:none;border:none;font-size:1.3rem;color:#94a3b8;cursor:pointer;padding:0 4px;line-height:1;}
+.acr-modal__close:hover{color:#1e293b;}
+.acr-modal__bd{padding:16px 20px;}
+.acr-modal__ft{padding:12px 20px;border-top:1px solid #f1f5f9;display:flex;justify-content:flex-end;}
+
+/* === Detail Rows === */
+.acr-detail-row{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f8fafc;}
+.acr-detail-row:last-child{border-bottom:none;}
+.acr-detail-lbl{font-size:0.75rem;font-weight:600;color:#64748b;min-width:120px;}
+.acr-detail-val{font-size:0.82rem;font-weight:600;color:#1e293b;text-align:right;word-break:break-word;}
+
+/* === Responsive === */
+@media(max-width:1024px){
+  .acr-cards{grid-template-columns:repeat(2,1fr);}
+  .acr-grid2{grid-template-columns:1fr;}
+}
+@media(max-width:768px){
+  .acr-cards{grid-template-columns:1fr 1fr;}
+  .acr-hdr{flex-direction:column;}
+  .acr-hdr__actions{width:100%;}
+  .acr-period{flex-direction:column;align-items:stretch;}
+  .acr-period-custom{margin-left:0;}
+  .acr-toolbar{flex-direction:column;}
+  .acr-search{flex:none;width:100%;}
+  .acr-filter-sel{width:100%;}
+  .acr-tbl{font-size:0.72rem;}
+  .acr-tbl th,.acr-tbl td{padding:6px 8px;}
+  .acr-bar-lbl{width:55px;font-size:0.68rem;}
+  .acr-bar-val{width:80px;font-size:0.7rem;}
+  .acr-exp-right{flex-wrap:wrap;}
+  .acr-exp-track{width:60px;}
+}
+@media(max-width:480px){
+  .acr-cards{grid-template-columns:1fr;}
+  .acr-card{padding:10px 12px;}
+  .acr-card__val{font-size:1rem;}
+  .acr-hdr__title{font-size:1.2rem;}
+  .acr-btn{padding:6px 10px;font-size:0.72rem;}
+  .acr-trend-bar{width:12px;}
+  .acr-modal__dialog{width:95%;}
+}
