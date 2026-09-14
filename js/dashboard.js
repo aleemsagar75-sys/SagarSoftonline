@@ -23740,50 +23740,268 @@ classSelect.addEventListener("change", renderSubjectSelect);
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
       }).join("");
       if (route === "certificate-templates") {
-        moduleSummary.innerHTML = `
-          <article style="max-width:100%;overflow-x:hidden;">
-            <strong class="module-center-title">Certificate Templates</strong>
-            <div style="margin:10px 0 4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template Name*</label><input id="certificateTemplateName" type="text" placeholder="e.g Achievement Certificate" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template Body*</label><textarea id="certificateTemplateBody" rows="5" placeholder="Use placeholders: {student}, {roll}, {class}, {date}, {school}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;"></textarea></div>
-            <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="saveCertificateTemplateBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Save Template</button></div>
-            <p class="form-message" id="certificateTemplateMessage"></p>
-            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:400px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Name</th><th style="white-space:nowrap;">Template</th><th style="white-space:nowrap;">Action</th></tr></thead><tbody id="certificateTemplateBodyRows"></tbody></table></div>
-          </article>
-        `;
+        settings.certificateTemplates = Array.isArray(settings.certificateTemplates) ? settings.certificateTemplates : [];
+        var _ctplTemplates = settings.certificateTemplates;
+        var _ctplEditId = null;
+        var _ctplTypes = [
+          { value: "achievement", label: "Achievement" },
+          { value: "character", label: "Character" },
+          { value: "birth", label: "Birth" },
+          { value: "bonafide", label: "Bonafide" },
+          { value: "leaving", label: "Leaving" },
+          { value: "transfer", label: "Transfer" },
+          { value: "custom", label: "Custom" }
+        ];
+        var _ctplPlaceholders = [
+          { label: "Student Name", value: "{student_name}" },
+          { label: "Father Name", value: "{father_name}" },
+          { label: "Class", value: "{class}" },
+          { label: "Section", value: "{section}" },
+          { label: "Roll No", value: "{roll_no}" },
+          { label: "DOB", value: "{dob}" },
+          { label: "Admission Date", value: "{admission_date}" },
+          { label: "Issue Date", value: "{issue_date}" },
+          { label: "Leaving Date", value: "{leaving_date}" },
+          { label: "Conduct", value: "{conduct}" },
+          { label: "School Name", value: "{school_name}" },
+          { label: "Certificate No", value: "{certificate_no}" }
+        ];
+        var _ctplTypeBadgeColors = {
+          achievement: { bg: "#ebf8ff", fg: "#2b6cb0" },
+          character: { bg: "#fefcbf", fg: "#975a16" },
+          birth: { bg: "#f0fff4", fg: "#276749" },
+          bonafide: { bg: "#faf5ff", fg: "#6b46c1" },
+          leaving: { bg: "#fff5f5", fg: "#c53030" },
+          transfer: { bg: "#edf2f7", fg: "#4a5568" },
+          custom: { bg: "#e2e8f0", fg: "#2d3748" }
+        };
+
+        function _ctplTypeLabel(val) {
+          var found = _ctplTypes.find(function (t) { return t.value === val; });
+          return found ? found.label : val || "Custom";
+        }
+        function _ctplTypeBadgeStyle(val) {
+          var c = _ctplTypeBadgeColors[val] || _ctplTypeBadgeColors.custom;
+          return "background:" + c.bg + ";color:" + c.fg + ";";
+        }
+        function _ctplTruncate(text, max) {
+          var t = String(text || "").replace(/\n/g, " ");
+          return t.length > max ? t.substring(0, max) + "..." : t;
+        }
+
+        moduleSummary.innerHTML = '' +
+          '<div class="ctpl-page">' +
+            '<div class="ctpl-page__header">' +
+              '<div><h2 class="ctpl-page__title">Certificate Templates</h2><p class="ctpl-page__subtitle">Create and manage reusable certificate templates.</p></div>' +
+              '<div class="ctpl-page__stat"><span class="ctpl-page__stat-num">' + _ctplTemplates.length + '</span><span class="ctpl-page__stat-label">Templates</span></div>' +
+            '</div>' +
+
+            '<div class="ctpl-section">' +
+              '<div class="ctpl-section__header"><h3 class="ctpl-section__title" id="ctplFormTitle">Create Template</h3></div>' +
+              '<div class="ctpl-section__body">' +
+                '<div class="ctpl-form-row">' +
+                  '<div class="ctpl-field ctpl-field--lg"><label class="ctpl-field__label">Template Name *</label><input id="ctplName" type="text" class="ctpl-input" placeholder="e.g. Achievement Certificate"></div>' +
+                  '<div class="ctpl-field ctpl-field--sm"><label class="ctpl-field__label">Certificate Type</label><select id="ctplType" class="ctpl-input">' + _ctplTypes.map(function (t) { return '<option value="' + t.value + '">' + t.label + '</option>'; }).join("") + '</select></div>' +
+                '</div>' +
+                '<div class="ctpl-field" style="margin-bottom:6px;"><label class="ctpl-field__label">Template Body *</label><textarea id="ctplBody" class="ctpl-textarea" rows="10" placeholder="Write your certificate template text here. Use placeholders like {student_name}, {father_name}, {class} etc."></textarea></div>' +
+                '<div class="ctpl-placeholder-bar">' +
+                  '<span class="ctpl-placeholder-bar__label">Insert Placeholder:</span>' +
+                  '<div class="ctpl-placeholder-bar__items">' +
+                    _ctplPlaceholders.map(function (p) {
+                      return '<button type="button" class="ctpl-ph-btn" data-ph="' + escapeAttr(p.value) + '" title="' + escapeAttr(p.value) + '">' + escapeHtml(p.label) + '</button>';
+                    }).join("") +
+                  '</div>' +
+                '</div>' +
+                '<div class="ctpl-form-actions">' +
+                  '<button class="ctpl-btn ctpl-btn--primary" id="ctplSaveBtn" type="button">Save Template</button>' +
+                  '<button class="ctpl-btn ctpl-btn--ghost" id="ctplResetBtn" type="button">Reset</button>' +
+                  '<button class="ctpl-btn ctpl-btn--ghost" id="ctplCancelEditBtn" type="button" style="display:none;">Cancel Edit</button>' +
+                '</div>' +
+                '<p class="form-message" id="ctplMessage"></p>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="ctpl-section">' +
+              '<div class="ctpl-section__header"><h3 class="ctpl-section__title">Saved Templates</h3></div>' +
+              '<div class="ctpl-section__body">' +
+                '<div class="ctpl-table-wrap">' +
+                  '<table class="ctpl-table">' +
+                    '<thead><tr><th>Template Name</th><th>Type</th><th>Preview</th><th>Actions</th></tr></thead>' +
+                    '<tbody id="ctplListBody"></tbody>' +
+                  '</table>' +
+                  '<div id="ctplEmptyState" class="ctpl-empty" style="' + (_ctplTemplates.length > 0 ? 'display:none;' : '') + '">' +
+                    '<div class="ctpl-empty__icon">&#128203;</div>' +
+                    '<p>No certificate templates yet.</p>' +
+                    '<p class="ctpl-empty__sub">Create your first certificate template to get started.</p>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+
         moduleGuide.innerHTML = "";
-        const body = document.getElementById("certificateTemplateBodyRows");
-        function renderTemplates() {
-          body.innerHTML = (settings.certificateTemplates || []).map(function (item) {
-            return `<tr><td>${escapeHtml(item.name || "-")}</td><td>${escapeHtml(item.body || "-")}</td><td><button class="table-action-btn danger" type="button" data-delete-certificate-template="${escapeAttr(item.id)}">Delete</button></td></tr>`;
+
+        var ctplName = document.getElementById("ctplName");
+        var ctplType = document.getElementById("ctplType");
+        var ctplBody = document.getElementById("ctplBody");
+        var ctplMessage = document.getElementById("ctplMessage");
+        var ctplFormTitle = document.getElementById("ctplFormTitle");
+        var ctplCancelEditBtn = document.getElementById("ctplCancelEditBtn");
+
+        function _ctplRenderList() {
+          var listBody = document.getElementById("ctplListBody");
+          var emptyState = document.getElementById("ctplEmptyState");
+          var statNum = document.querySelector(".ctpl-page__stat-num");
+          if (statNum) statNum.textContent = _ctplTemplates.length;
+          if (_ctplTemplates.length === 0) {
+            listBody.innerHTML = "";
+            if (emptyState) emptyState.style.display = "";
+            return;
+          }
+          if (emptyState) emptyState.style.display = "none";
+          listBody.innerHTML = _ctplTemplates.map(function (tpl) {
+            var preview = _ctplTruncate(tpl.body || "", 80);
+            var typeBadge = '<span class="ctpl-type-badge" style="' + _ctplTypeBadgeStyle(tpl.type) + '">' + escapeHtml(_ctplTypeLabel(tpl.type)) + '</span>';
+            return '<tr>' +
+              '<td><strong>' + escapeHtml(tpl.name || "-") + '</strong></td>' +
+              '<td>' + typeBadge + '</td>' +
+              '<td class="ctpl-td-preview">' + escapeHtml(preview || "No content") + '</td>' +
+              '<td><div class="ctpl-row-actions">' +
+                '<button class="ctpl-btn ctpl-btn--xs ctpl-btn--outline" data-ctpl-edit="' + escapeAttr(tpl.id) + '">Edit</button>' +
+                '<button class="ctpl-btn ctpl-btn--xs ctpl-btn--danger" data-ctpl-delete="' + escapeAttr(tpl.id) + '">Delete</button>' +
+                '<button class="ctpl-btn ctpl-btn--xs ctpl-btn--primary" data-ctpl-use="' + escapeAttr(tpl.id) + '">Use Template</button>' +
+              '</div></td>' +
+            '</tr>';
           }).join("");
         }
-        safeOn(document.getElementById("saveCertificateTemplateBtn"), "click", function () {
-          const name = document.getElementById("certificateTemplateName").value.trim();
-          const bodyText = document.getElementById("certificateTemplateBody").value.trim();
-          const message = document.getElementById("certificateTemplateMessage");
+
+        function _ctplResetForm() {
+          ctplName.value = "";
+          ctplType.value = "character";
+          ctplBody.value = "";
+          _ctplEditId = null;
+          ctplFormTitle.textContent = "Create Template";
+          ctplCancelEditBtn.style.display = "none";
+        }
+
+        safeOn(document.getElementById("ctplSaveBtn"), "click", function () {
+          var name = ctplName.value.trim();
+          var bodyText = ctplBody.value.trim();
+          var type = ctplType.value;
           if (!name || !bodyText) {
-            message.textContent = "Please fill required fields.";
-            message.className = "form-message error";
+            ctplMessage.textContent = "Please fill required fields (Name and Body).";
+            ctplMessage.className = "form-message error";
             return;
           }
-          settings.certificateTemplates.unshift({ id: `CRT-TPL-${generateId()}`, name: name, body: bodyText });
-          saveDatabase("", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: settings.certificateTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          message.textContent = "Certificate template saved successfully.";
-          message.className = "form-message success";
-          renderTemplates();
-        });
-        body.addEventListener("click", function (event) {
-          const button = event.target.closest("[data-delete-certificate-template]");
-          if (!button) {
-            return;
+          if (_ctplEditId) {
+            var idx = _ctplTemplates.findIndex(function (t) { return String(t.id) === String(_ctplEditId); });
+            if (idx >= 0) {
+              _ctplTemplates[idx].name = name;
+              _ctplTemplates[idx].type = type;
+              _ctplTemplates[idx].body = bodyText;
+              _ctplTemplates[idx].updatedAt = new Date().toISOString();
+            }
+            ctplMessage.textContent = "Template updated successfully.";
+          } else {
+            _ctplTemplates.unshift({
+              id: "CRT-TPL-" + generateId(),
+              name: name,
+              type: type,
+              body: bodyText,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+            ctplMessage.textContent = "Certificate template saved successfully.";
           }
-          const id = button.getAttribute("data-delete-certificate-template");
-          trackDeletion(id);
-          settings.certificateTemplates = (settings.certificateTemplates || []).filter(function (item) { return String(item.id) !== String(id); });
-          saveDatabase("Deleting template...", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: settings.certificateTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          renderTemplates();
+          ctplMessage.className = "form-message success";
+          saveDatabase("", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: _ctplTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+          _ctplResetForm();
+          _ctplRenderList();
         });
-        renderTemplates();
+
+        safeOn(document.getElementById("ctplResetBtn"), "click", function () {
+          _ctplResetForm();
+          ctplMessage.textContent = "";
+          ctplMessage.className = "form-message";
+        });
+
+        safeOn(ctplCancelEditBtn, "click", function () {
+          _ctplResetForm();
+          ctplMessage.textContent = "";
+          ctplMessage.className = "form-message";
+        });
+
+        document.querySelectorAll("[data-ctpl-ph]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var ph = btn.getAttribute("data-ctpl-ph");
+            var ta = ctplBody;
+            var start = ta.selectionStart;
+            var end = ta.selectionEnd;
+            var text = ta.value;
+            ta.value = text.substring(0, start) + ph + text.substring(end);
+            ta.selectionStart = ta.selectionEnd = start + ph.length;
+            ta.focus();
+          });
+        });
+
+        var ctplPlaceholderBar = document.querySelector(".ctpl-placeholder-bar");
+        if (ctplPlaceholderBar) {
+          ctplPlaceholderBar.addEventListener("click", function (ev) {
+            var btn = ev.target.closest(".ctpl-ph-btn");
+            if (!btn) return;
+            var ph = btn.getAttribute("data-ph");
+            var ta = ctplBody;
+            var start = ta.selectionStart;
+            var end = ta.selectionEnd;
+            var text = ta.value;
+            ta.value = text.substring(0, start) + ph + text.substring(end);
+            ta.selectionStart = ta.selectionEnd = start + ph.length;
+            ta.focus();
+          });
+        }
+
+        document.getElementById("ctplListBody").addEventListener("click", function (ev) {
+          var editBtn = ev.target.closest("[data-ctpl-edit]");
+          var deleteBtn = ev.target.closest("[data-ctpl-delete]");
+          var useBtn = ev.target.closest("[data-ctpl-use]");
+          if (editBtn) {
+            var editId = editBtn.getAttribute("data-ctpl-edit");
+            var tpl = _ctplTemplates.find(function (t) { return String(t.id) === String(editId); });
+            if (tpl) {
+              ctplName.value = tpl.name || "";
+              ctplType.value = tpl.type || "character";
+              ctplBody.value = tpl.body || "";
+              _ctplEditId = tpl.id;
+              ctplFormTitle.textContent = "Edit Template";
+              ctplCancelEditBtn.style.display = "";
+              ctplMessage.textContent = "";
+              ctplMessage.className = "form-message";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }
+          if (deleteBtn) {
+            var delId = deleteBtn.getAttribute("data-ctpl-delete");
+            var delTpl = _ctplTemplates.find(function (t) { return String(t.id) === String(delId); });
+            var confirmMsg = 'Are you sure you want to delete "' + (delTpl ? delTpl.name : "this template") + '"?';
+            if (window.confirm(confirmMsg)) {
+              trackDeletion(delId);
+              _ctplTemplates = _ctplTemplates.filter(function (t) { return String(t.id) !== String(delId); });
+              settings.certificateTemplates = _ctplTemplates;
+              saveDatabase("Deleting template...", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: _ctplTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+              if (_ctplEditId === delId) _ctplResetForm();
+              _ctplRenderList();
+              ctplMessage.textContent = "Template deleted.";
+              ctplMessage.className = "form-message success";
+            }
+          }
+          if (useBtn) {
+            var useId = useBtn.getAttribute("data-ctpl-use");
+            try { sessionStorage.setItem("ctplUseTemplateId", useId); } catch (e) {}
+            setRoute("generate-certificate");
+          }
+        });
+
+        _ctplRenderList();
         return;
       }
 
@@ -23823,19 +24041,22 @@ classSelect.addEventListener("change", renderSubjectSelect);
         var replacements = {
           student_name: student ? (student.name || "-") : "-",
           father_name: student ? (student.fatherName || "-") : "-",
+          roll_no: student ? (student.rollNo || student.admissionNo || "-") : "-",
+          section: student ? (student.section || "-") : "-",
+          class: student ? (student.className || "-") : "-",
           dob: student ? (student.dateOfBirth || "-") : "-",
           admission_date: student ? (student.dateOfAdmission || "-") : "-",
-          admitted_class: student ? (student.className || "-") : "-",
-          last_class: student ? (student.className || "-") : "-",
+          issue_date: issueDateEl ? (issueDateEl.value || today) : today,
           leaving_date: leavingDateEl ? (leavingDateEl.value || "-") : "-",
           conduct: conductEl ? (conductEl.value || "-") : "-",
-          issue_date: issueDateEl ? (issueDateEl.value || today) : today,
           certificate_no: certNoEl ? (certNoEl.value || "-") : "-",
+          school_name: schoolName,
+          school: schoolName,
           student: student ? (student.name || "-") : "-",
           roll: student ? (student.rollNo || student.admissionNo || "-") : "-",
-          class: student ? (student.className || "-") : "-",
           date: issueDateEl ? (issueDateEl.value || today) : today,
-          school: schoolName
+          admitted_class: student ? (student.className || "-") : "-",
+          last_class: student ? (student.className || "-") : "-"
         };
         var result = String(text || "");
         result = result.replace(/\{\{(\w+)\}\}/g, function (_, key) { return typeof replacements[key] === "undefined" ? "" : String(replacements[key]); });
@@ -24051,7 +24272,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
                 '<div class="cert-section__header"><span class="cert-step-badge">3</span><h3 class="cert-section__title">Certificate Details</h3></div>' +
                 '<div class="cert-section__body">' +
                   '<div class="cert-field-row">' +
-                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Template</label><select id="certTemplateSelect" class="cert-input"><option value="">Select Template</option>' + templates.map(function (t) { return '<option value="' + escapeAttr(t.id) + '">' + escapeHtml(t.name || "-") + '</option>'; }).join("") + '</select></div>' +
+                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Template</label><select id="certTemplateSelect" class="cert-input"><option value="">Select Template</option>' + templates.map(function (t) { var typeLabel = t.type ? " [" + escapeHtml(t.type.charAt(0).toUpperCase() + t.type.slice(1)) + "]" : ""; return '<option value="' + escapeAttr(t.id) + '">' + escapeHtml(t.name || "-") + typeLabel + '</option>'; }).join("") + '</select></div>' +
                     '<div class="cert-field cert-field--sm"><label class="cert-field__label">Issue Date *</label><input id="certIssueDate" type="date" class="cert-input" value="' + today + '"></div>' +
                   '</div>' +
                   '<div class="cert-field-row" id="certSlcFields" style="display:none;">' +
@@ -24231,7 +24452,25 @@ classSelect.addEventListener("change", renderSubjectSelect);
         saveDatabase("", [{ table: "school_settings", record: { id: "certificates", source_id: "certificates", data: issuedCerts, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
         _certShowSuccess(certNo);
         certMessage.textContent = "";
-        certNumber.value = _certNextNumber();
+      certNumber.value = _certNextNumber();
+
+      var _ctplUseId = null;
+      try { _ctplUseId = sessionStorage.getItem("ctplUseTemplateId"); sessionStorage.removeItem("ctplUseTemplateId"); } catch (e) {}
+      if (_ctplUseId && certTemplateSelect) {
+        var _ctplUseMatch = templates.find(function (t) { return String(t.id) === String(_ctplUseId); });
+        if (_ctplUseMatch) {
+          certTemplateSelect.value = _ctplUseMatch.id;
+          var filledText = _certReplaceVars(_ctplUseMatch.body || "", null);
+          certBodyText.value = filledText;
+          var tplType = _ctplUseMatch.type || "";
+          if (tplType === "slc" || tplType === "leaving" || tplType === "character") {
+            _certType = tplType === "leaving" ? "slc" : tplType;
+            var typeBtn = document.querySelector('[data-cert-type="' + escapeAttr(_certType) + '"]');
+            if (typeBtn) typeBtn.click();
+          }
+          _certUpdatePreview();
+        }
+      }
         var histCountEl = document.querySelector(".cert-stat-card__num");
         if (histCountEl) histCountEl.textContent = issuedCerts.length;
         _certRenderHistory("", "all");
