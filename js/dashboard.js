@@ -23788,178 +23788,500 @@ classSelect.addEventListener("change", renderSubjectSelect);
       }
 
       const activeStudents = (database.students || []).filter(function (student) { return String(student.status || "").toLowerCase() === "active"; });
-      const studentSuggestions = activeStudents.map(function (student) {
-        return `<option value="${escapeAttr(student.name || "")} (${escapeAttr(student.admissionNo || "-")})"></option>`;
-      }).join("");
-      const templateOptionsMarkup = (settings.certificateTemplates || []).map(function (tpl) {
-        return `<option value="${escapeAttr(tpl.id)}">${escapeHtml(tpl.name || "-")}</option>`;
-      }).join("");
+      const templates = settings.certificateTemplates || [];
+      settings.certificates = Array.isArray(settings.certificates) ? settings.certificates : [];
+      const issuedCerts = settings.certificates;
+      const profile = settings.instituteProfile || {};
+      const schoolName = profile.name || database.school.name || "School";
+      const schoolLogo = profile.logo || "";
+      const schoolAddress = profile.address || database.school.address || "";
+      const schoolPhone = profile.phone || database.school.phone || "";
+      const today = new Date().toISOString().slice(0, 10);
+      var _certSelectedStudent = null;
+      var _certType = "character";
+      var _certPreviewDebounce = null;
 
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">Generate Certificate</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="certificateClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search Student*</label><input id="certificateStudentSearch" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="certificateSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Issue Date*</label><input id="certificateIssueDate" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Leaving Date (SLC)</label><input id="certificateLeavingDate" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Conduct (SLC)</label><input id="certificateConductText" type="text" placeholder="e.g., Excellent, Good" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template*</label><select id="certificateTemplateSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Template</option>${templateOptionsMarkup}</select></div>
-          </div>
-          <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Certificate Text</label><textarea id="certificateBodyPreview" rows="8" placeholder="Template text will appear here" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;"></textarea></div>
-          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="printCertificateBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Print Certificate</button></div>
-          <p class="form-message" id="certificateMessage"></p>
-        </article>
-      `;
-      moduleGuide.innerHTML = "";
-      const classSelect = document.getElementById("certificateClassSelect");
-      const studentSearch = document.getElementById("certificateStudentSearch");
-      const studentSearchDropdown = document.getElementById("certificateSearchDropdown");
-      const studentSearchContainer = document.getElementById("certificateSearchContainer");
-      const issueDateInput = document.getElementById("certificateIssueDate");
-
-      initializeStudentProfessionalSearch(
-        "certificateStudentSearch",
-        "certificateSearchDropdown",
-        "certificateSearchContainer",
-        function(student) {
-          studentSearch.value = student.name + " (" + (student.admissionNo || "-") + ")";
-          fillTemplatePreview();
+      function _certNextNumber() {
+        var maxNum = 0;
+        var year = new Date().getFullYear();
+        var prefix = "CERT-" + year + "-";
+        for (var ci = 0; ci < issuedCerts.length; ci++) {
+          var cn = String(issuedCerts[ci].certificateNumber || "");
+          if (cn.indexOf(prefix) === 0) {
+            var numPart = parseInt(cn.replace(prefix, ""), 10);
+            if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+          }
         }
-      );
-      const leavingDateInput = document.getElementById("certificateLeavingDate");
-      const conductInput = document.getElementById("certificateConductText");
-      const templateSelect = document.getElementById("certificateTemplateSelect");
-      const bodyPreview = document.getElementById("certificateBodyPreview");
-      const certificateMessage = document.getElementById("certificateMessage");
-
-      function getSelectedStudentForCertificate() {
-        const typed = String(studentSearch.value || "").trim().toLowerCase();
-        const filteredStudents = activeStudents.filter(function (student) {
-          return !classSelect.value || student.className === classSelect.value;
-        });
-        const matchedStudent = filteredStudents.find(function (student) {
-          const name = String(student.name || "").toLowerCase();
-          const roll = String(student.admissionNo || "-").toLowerCase();
-          const displayValue = `${name} (${roll})`;
-          return typed && (
-            typed === displayValue ||
-            typed === name ||
-            typed === roll ||
-            displayValue.includes(typed) ||
-            name.includes(typed) ||
-            roll.includes(typed)
-          );
-        });
-        if (matchedStudent) {
-          return matchedStudent;
-        }
-        return typed ? null : (filteredStudents.length === 1 ? filteredStudents[0] : null);
+        return prefix + String(maxNum + 1).padStart(5, "0");
       }
 
-      function fillTemplatePreview() {
-        const template = (settings.certificateTemplates || []).find(function (item) { return String(item.id) === String(templateSelect.value); }) || null;
-        const student = getSelectedStudentForCertificate();
-        if (!template) {
-          bodyPreview.value = "";
-          return;
-        }
-        let bodyText = String(template.body || "");
-        const replacements = {
+      function _certReplaceVars(text, student) {
+        var issueDateEl = document.getElementById("certIssueDate");
+        var leavingDateEl = document.getElementById("certLeavingDate");
+        var conductEl = document.getElementById("certConduct");
+        var certNoEl = document.getElementById("certNumber");
+        var replacements = {
           student_name: student ? (student.name || "-") : "-",
           father_name: student ? (student.fatherName || "-") : "-",
           dob: student ? (student.dateOfBirth || "-") : "-",
           admission_date: student ? (student.dateOfAdmission || "-") : "-",
-          admitted_class: student ? (student.className || "-") : (classSelect.value || "-"),
+          admitted_class: student ? (student.className || "-") : "-",
           last_class: student ? (student.className || "-") : "-",
-          leaving_date: leavingDateInput.value || "",
-          conduct: conductInput.value || "",
-          issue_date: issueDateInput.value || "-",
+          leaving_date: leavingDateEl ? (leavingDateEl.value || "-") : "-",
+          conduct: conductEl ? (conductEl.value || "-") : "-",
+          issue_date: issueDateEl ? (issueDateEl.value || today) : today,
+          certificate_no: certNoEl ? (certNoEl.value || "-") : "-",
           student: student ? (student.name || "-") : "-",
-          roll: student ? (student.admissionNo || "-") : "-",
-          class: student ? (student.className || "-") : (classSelect.value || "-"),
-          date: issueDateInput.value || "-",
-          school: database.school.name || "School"
+          roll: student ? (student.rollNo || student.admissionNo || "-") : "-",
+          class: student ? (student.className || "-") : "-",
+          date: issueDateEl ? (issueDateEl.value || today) : today,
+          school: schoolName
         };
-        bodyText = bodyText.replace(/\{\{(\w+)\}\}/g, function (_, key) {
-          return typeof replacements[key] === "undefined" ? "" : String(replacements[key]);
-        });
-        bodyText = bodyText.replace(/\{(\w+)\}/g, function (_, key) {
-          return typeof replacements[key] === "undefined" ? "" : String(replacements[key]);
-        });
-        bodyPreview.value = bodyText;
+        var result = String(text || "");
+        result = result.replace(/\{\{(\w+)\}\}/g, function (_, key) { return typeof replacements[key] === "undefined" ? "" : String(replacements[key]); });
+        result = result.replace(/\{(\w+)\}/g, function (_, key) { return typeof replacements[key] === "undefined" ? "" : String(replacements[key]); });
+        return result;
       }
 
-      [classSelect, studentSearch, issueDateInput, leavingDateInput, conductInput, templateSelect].forEach(function (input) {
-        input.addEventListener("input", fillTemplatePreview);
-        input.addEventListener("change", fillTemplatePreview);
-      });
-      safeOn(document.getElementById("printCertificateBtn"), "click", function () {
-        const student = getSelectedStudentForCertificate();
-        const text = bodyPreview.value.trim();
-        if (!student || !text) {
-          certificateMessage.textContent = "Please select student and template first.";
-          certificateMessage.className = "form-message error";
+      function _certRenderPreview() {
+        var previewEl = document.getElementById("certLivePreview");
+        if (!previewEl) return;
+        var text = document.getElementById("certBodyText") ? document.getElementById("certBodyText").value.trim() : "";
+        var student = _certSelectedStudent;
+        var lines = text.split("\n").filter(function (l) { return l.trim().length > 0; });
+        var heading = lines[0] || "Certificate";
+        var bodyLines = lines.slice(1).filter(function (l) {
+          var nl = l.trim().replace(/\s+/g, " ").toLowerCase();
+          return nl !== "signature: principal" && nl !== "signature principal" && nl !== "school stamp";
+        });
+        var bodyHtml = escapeHtml(bodyLines.join("\n")).replace(/\n/g, "<br>");
+        var logoHtml = schoolLogo ? '<img src="' + escapeAttr(schoolLogo) + '" alt="Logo" style="max-height:60px;object-fit:contain;">' : '<div style="width:56px;height:56px;border-radius:50%;background:#1b5f7a;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem;">SS</div>';
+        var studentNameHtml = student ? escapeHtml(student.name || "-") : '<span style="color:#999;font-style:italic;">Select a student</span>';
+        var fatherHtml = student ? ("S/O " + escapeHtml(student.fatherName || "-")) : "S/O __________________________";
+        var classRollHtml = student ? ("Class: " + escapeHtml(student.className || "-") + " | Roll No: " + escapeHtml(student.rollNo || student.admissionNo || "-")) : "Class: ______ | Roll No: ______";
+        var certNoEl = document.getElementById("certNumber");
+        var certNo = certNoEl ? (certNoEl.value || "-") : "-";
+        var issueDateEl = document.getElementById("certIssueDate");
+        var issueDate = issueDateEl ? (issueDateEl.value || today) : today;
+        previewEl.innerHTML = '<div class="cert-preview__paper">' +
+          '<div class="cert-preview__border">' +
+            '<div class="cert-preview__header">' +
+              '<div class="cert-preview__logo">' + logoHtml + '</div>' +
+              '<h2 class="cert-preview__school">' + escapeHtml(schoolName) + '</h2>' +
+              (schoolAddress ? '<p class="cert-preview__addr">' + escapeHtml(schoolAddress) + '</p>' : '') +
+            '</div>' +
+            '<div class="cert-preview__divider"></div>' +
+            '<h3 class="cert-preview__title">' + escapeHtml(heading) + '</h3>' +
+            '<div class="cert-preview__body">' +
+              '<p class="cert-preview__cert-text">' + bodyHtml + '</p>' +
+            '</div>' +
+            '<div class="cert-preview__meta">' +
+              '<p><strong>Certificate No:</strong> ' + escapeHtml(certNo) + '</p>' +
+              '<p><strong>Date:</strong> ' + escapeHtml(issueDate) + '</p>' +
+            '</div>' +
+            '<div class="cert-preview__footer">' +
+              '<div class="cert-preview__sig"><div class="cert-preview__sig-line"></div><p>Principal Signature</p></div>' +
+              '<div class="cert-preview__stamp"><div class="cert-preview__stamp-circle"></div><p>School Stamp</p></div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }
+
+      function _certUpdatePreview() {
+        if (_certPreviewDebounce) clearTimeout(_certPreviewDebounce);
+        _certPreviewDebounce = setTimeout(_certRenderPreview, 60);
+      }
+
+      function _certBuildPrintHtml(student, text) {
+        var lines = text.split("\n").filter(function (l) { return l.trim().length > 0; });
+        var heading = lines[0] || "Certificate";
+        var bodyLines = lines.slice(1).filter(function (l) {
+          var nl = l.trim().replace(/\s+/g, " ").toLowerCase();
+          return nl !== "signature: principal" && nl !== "signature principal" && nl !== "school stamp";
+        });
+        var bodyHtml = escapeHtml(bodyLines.join("\n")).replace(/\n/g, "<br>");
+        var logoHtml = schoolLogo ? '<img src="' + escapeAttr(schoolLogo) + '" alt="Logo" style="max-height:64px;object-fit:contain;">' : '';
+        var certNoEl = document.getElementById("certNumber");
+        var certNo = certNoEl ? (certNoEl.value || "-") : "-";
+        var issueDateEl = document.getElementById("certIssueDate");
+        var issueDate = issueDateEl ? (issueDateEl.value || today) : today;
+        return '<article class="report-card certificate-print-card" style="max-width:900px;min-height:560px;margin:0 auto;page-break-after:avoid;border:2px solid #0f2b3f;box-shadow:inset 0 0 0 5px rgba(15,43,63,0.08);display:flex;flex-direction:column;font-family:Georgia,\'Times New Roman\',serif;">' +
+          '<div style="text-align:center;margin-bottom:16px;padding-bottom:10px;border-bottom:3px double #0f2b3f;">' +
+            (logoHtml ? '<div style="margin-bottom:8px;">' + logoHtml + '</div>' : '') +
+            '<h1 style="margin:0;font-size:22px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(schoolName) + '</h1>' +
+            (schoolAddress ? '<p style="margin:4px auto 0;font-size:10px;color:#5b6777;">' + escapeHtml(schoolAddress) + '</p>' : '') +
+            '<h2 style="margin:14px 0 0;font-size:20px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(heading) + '</h2>' +
+          '</div>' +
+          '<div style="text-align:justify;line-height:1.65;font-size:14px;color:#1f2933;margin-bottom:22px;flex:1;">' +
+            '<p style="white-space:pre-wrap;margin:0;">' + bodyHtml + '</p>' +
+          '</div>' +
+          '<div style="margin-top:auto;padding-top:12px;border-top:1px solid #dde4ea;">' +
+            '<p style="margin:0 0 6px;font-size:11px;color:#555;"><strong>Certificate No:</strong> ' + escapeHtml(certNo) + ' &nbsp;&nbsp; <strong>Date:</strong> ' + escapeHtml(issueDate) + '</p>' +
+          '</div>' +
+          '<div style="margin-top:16px;padding-top:18px;">' +
+            '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:18px;align-items:end;">' +
+              '<div style="text-align:center;"><div style="height:34px;border-bottom:1.5px solid #0f2b3f;"></div><p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#0f2b3f;">Prepared By</p></div>' +
+              '<div style="text-align:center;"><div style="height:34px;border-bottom:1.5px solid #0f2b3f;"></div><p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#0f2b3f;">Principal Signature</p></div>' +
+              '<div style="text-align:center;"><div style="width:72px;height:72px;margin:0 auto;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#5b6777;font-size:9px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">School<br>Stamp</div><p style="margin:8px 0 0;font-size:11px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#0f2b3f;">School Stamp</p></div>' +
+            '</div>' +
+          '</div>' +
+        '</article>';
+      }
+
+      function _certRenderHistory(filterText, filterType) {
+        var histBody = document.getElementById("certHistBody");
+        var histEmpty = document.getElementById("certHistEmpty");
+        if (!histBody) return;
+        var filtered = issuedCerts.filter(function (c) {
+          var matchText = !filterText || String(c.studentName || "").toLowerCase().indexOf(filterText) >= 0 || String(c.certificateNumber || "").toLowerCase().indexOf(filterText) >= 0;
+          var matchType = !filterType || filterType === "all" || String(c.certificateType || "") === filterType;
+          return matchText && matchType;
+        });
+        if (filtered.length === 0) {
+          histBody.innerHTML = "";
+          if (histEmpty) histEmpty.style.display = "";
           return;
         }
-        
-        // Extract heading from certificate text (first line)
-        const textLines = text.split('\n').filter(function(line) { return line.trim().length > 0; });
-        const heading = textLines[0] || "Certificate";
-        const bodyContent = textLines.slice(1)
-          .filter(function (line) {
-            const normalizedLine = line.trim().replace(/\s+/g, " ").toLowerCase();
-            return normalizedLine !== "signature: principal" &&
-              normalizedLine !== "signature principal" &&
-              normalizedLine !== "school stamp";
-          })
-          .join('\n');
-        
-        const certificateHtml = `
-          <article class="report-card certificate-print-card" style="max-width: 900px; min-height: 560px; margin: 0 auto; page-break-after: avoid; border: 2px solid #0f2b3f; box-shadow: inset 0 0 0 5px rgba(15, 43, 63, 0.08); display: flex; flex-direction: column; font-family: Georgia, 'Times New Roman', serif;">
-            <div style="text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px double #0f2b3f;">
-              <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #0f2b3f;">
-                ${escapeHtml(heading)}
-              </h1>
-              <p style="margin: 8px auto 0; max-width: 520px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #5b6777;">Official School Certificate</p>
-            </div>
-            <div style="text-align: justify; line-height: 1.65; font-size: 14px; color: #1f2933; margin-bottom: 22px; flex: 1;">
-              <p style="white-space: pre-wrap; margin: 0;">${escapeHtml(bodyContent)}</p>
-            </div>
-            <div style="margin-top: auto; padding-top: 24px;">
-              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; align-items: end;">
-                <div style="text-align: center;">
-                  <div style="height: 34px; border-bottom: 1.5px solid #0f2b3f;"></div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">Prepared By</p>
-                </div>
-                <div style="text-align: center;">
-                  <div style="height: 34px; border-bottom: 1.5px solid #0f2b3f;"></div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">Checked By</p>
-                </div>
-                <div style="text-align: center;">
-                  <div style="height: 34px; border-bottom: 1.5px solid #0f2b3f;"></div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">Signature Principal</p>
-                </div>
-                <div style="text-align: center;">
-                  <div style="width: 72px; height: 72px; margin: 0 auto; border: 1.5px dashed #0f2b3f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #5b6777; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">School<br>Stamp</div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">School Stamp</p>
-                </div>
-              </div>
-            </div>
-          </article>
-        `;
-        
+        if (histEmpty) histEmpty.style.display = "none";
+        histBody.innerHTML = filtered.map(function (c) {
+          return '<tr>' +
+            '<td><strong>' + escapeHtml(c.certificateNumber || "-") + '</strong></td>' +
+            '<td>' + escapeHtml(c.studentName || "-") + '</td>' +
+            '<td><span class="cert-type-badge cert-type-badge--' + escapeAttr(c.certificateType || "character") + '">' + escapeHtml(c.certificateType || "Character") + '</span></td>' +
+            '<td>' + escapeHtml(c.issueDate || "-") + '</td>' +
+            '<td><span class="cert-status-pill cert-status--issued">Issued</span></td>' +
+            '<td><button class="cert-btn cert-btn--sm cert-btn--outline" data-cert-view="' + escapeAttr(c.id || "") + '">View</button></td>' +
+          '</tr>';
+        }).join("");
+      }
+
+      function _certShowSuccess(certNo) {
+        var el = document.getElementById("certSuccessMsg");
+        if (el) {
+          el.innerHTML = '<div class="cert-success-card">' +
+            '<div class="cert-success-icon">&#10003;</div>' +
+            '<div><strong>Certificate issued successfully.</strong><br><span class="cert-success-no">' + escapeHtml(certNo) + '</span></div>' +
+          '</div>';
+          el.style.display = "";
+        }
+      }
+
+      var certificateTypes = [
+        { key: "character", label: "Character Certificate", icon: "&#9733;" },
+        { key: "slc", label: "School Leaving Certificate", icon: "&#9998;" },
+        { key: "bonafide", label: "Bonafide Certificate", icon: "&#9878;" },
+        { key: "transfer", label: "Transfer Certificate", icon: "&#8644;" },
+        { key: "student", label: "Student Certificate", icon: "&#127891;" },
+        { key: "custom", label: "Custom Certificate", icon: "&#9997;" }
+      ];
+
+      var typeBadgeClass = { character: "cert-type--character", slc: "cert-type--slc", bonafide: "cert-type--bonafide", transfer: "cert-type--transfer", student: "cert-type--student", custom: "cert-type--custom" };
+
+      var typeCardsHtml = certificateTypes.map(function (t) {
+        return '<button type="button" class="cert-type-card' + (t.key === _certType ? ' cert-type-card--active' : '') + '" data-cert-type="' + escapeAttr(t.key) + '">' +
+          '<span class="cert-type-card__icon">' + t.icon + '</span>' +
+          '<span class="cert-type-card__label">' + escapeHtml(t.label) + '</span>' +
+        '</button>';
+      }).join("");
+
+      var templateCardsHtml = templates.map(function (tpl) {
+        var preview = String(tpl.body || "").substring(0, 80).replace(/\n/g, " ");
+        return '<div class="cert-tpl-card" data-tpl-id="' + escapeAttr(tpl.id) + '">' +
+          '<div class="cert-tpl-card__name">' + escapeHtml(tpl.name || "-") + '</div>' +
+          '<div class="cert-tpl-card__preview">' + escapeHtml(preview || "No preview") + '...</div>' +
+        '</div>';
+      }).join("");
+
+      var historyRowsHtml = "";
+      if (issuedCerts.length > 0) {
+        historyRowsHtml = issuedCerts.map(function (c) {
+          return '<tr>' +
+            '<td><strong>' + escapeHtml(c.certificateNumber || "-") + '</strong></td>' +
+            '<td>' + escapeHtml(c.studentName || "-") + '</td>' +
+            '<td><span class="cert-type-badge cert-type-badge--' + escapeAttr(c.certificateType || "character") + '">' + escapeHtml(c.certificateType || "Character") + '</span></td>' +
+            '<td>' + escapeHtml(c.issueDate || "-") + '</td>' +
+            '<td><span class="cert-status-pill cert-status--issued">Issued</span></td>' +
+            '<td><button class="cert-btn cert-btn--sm cert-btn--outline" data-cert-view="' + escapeAttr(c.id || "") + '">View</button></td>' +
+          '</tr>';
+        }).join("");
+      }
+
+      moduleSummary.innerHTML = '' +
+        '<div class="cert-mgmt">' +
+          '<div class="cert-mgmt__header">' +
+            '<div><h2 class="cert-mgmt__title">Certificate Management</h2><p class="cert-mgmt__subtitle">Create, preview, issue and manage student certificates.</p></div>' +
+            '<div class="cert-mgmt__stats"><div class="cert-stat-card"><span class="cert-stat-card__num">' + issuedCerts.length + '</span><span class="cert-stat-card__label">Issued</span></div><div class="cert-stat-card"><span class="cert-stat-card__num">' + templates.length + '</span><span class="cert-stat-card__label">Templates</span></div></div>' +
+          '</div>' +
+
+          '<div class="cert-section">' +
+            '<div class="cert-section__header"><span class="cert-step-badge">1</span><h3 class="cert-section__title">Student Selection</h3></div>' +
+            '<div class="cert-section__body">' +
+              '<div class="cert-field-row">' +
+                '<div class="cert-field cert-field--sm"><label class="cert-field__label">Class</label><select id="certClassSelect" class="cert-input"><option value="">Select Class</option>' + classOptionsMarkup + '</select></div>' +
+                '<div class="cert-field cert-field--lg" id="certSearchContainer"><label class="cert-field__label">Search Student</label><input id="certStudentSearch" type="search" class="cert-input" placeholder="Search by name, roll no, admission no..."><div id="certSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>' +
+              '</div>' +
+              '<div id="certStudentProfile" class="cert-student-profile" style="display:none;">' +
+                '<div class="cert-student-profile__photo" id="certProfilePhoto"></div>' +
+                '<div class="cert-student-profile__info">' +
+                  '<h4 class="cert-student-profile__name" id="certProfileName"></h4>' +
+                  '<div class="cert-student-profile__details">' +
+                    '<span id="certProfileRoll"></span>' +
+                    '<span id="certProfileFather"></span>' +
+                    '<span id="certProfileClass"></span>' +
+                    '<span id="certProfileAdmNo"></span>' +
+                    '<span id="certProfileStatus"></span>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+              '<div id="certNoStudentMsg" class="cert-empty-hint">Select a student to continue</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="cert-split">' +
+            '<div class="cert-split__form">' +
+
+              '<div class="cert-section">' +
+                '<div class="cert-section__header"><span class="cert-step-badge">2</span><h3 class="cert-section__title">Certificate Type</h3></div>' +
+                '<div class="cert-section__body">' +
+                  '<div class="cert-type-grid">' + typeCardsHtml + '</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="cert-section">' +
+                '<div class="cert-section__header"><span class="cert-step-badge">3</span><h3 class="cert-section__title">Certificate Details</h3></div>' +
+                '<div class="cert-section__body">' +
+                  '<div class="cert-field-row">' +
+                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Template</label><select id="certTemplateSelect" class="cert-input"><option value="">Select Template</option>' + templates.map(function (t) { return '<option value="' + escapeAttr(t.id) + '">' + escapeHtml(t.name || "-") + '</option>'; }).join("") + '</select></div>' +
+                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Issue Date *</label><input id="certIssueDate" type="date" class="cert-input" value="' + today + '"></div>' +
+                  '</div>' +
+                  '<div class="cert-field-row" id="certSlcFields" style="display:none;">' +
+                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Leaving Date</label><input id="certLeavingDate" type="date" class="cert-input"></div>' +
+                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Conduct</label><input id="certConduct" type="text" class="cert-input" placeholder="e.g., Excellent, Good"></div>' +
+                  '</div>' +
+                  '<div class="cert-field-row">' +
+                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Certificate No</label><input id="certNumber" type="text" class="cert-input" readonly></div>' +
+                  '</div>' +
+                  '<div class="cert-adv-toggle" id="certAdvToggle"><span>&#9660; Advanced Editing</span></div>' +
+                  '<div class="cert-adv-body" id="certAdvBody" style="display:none;">' +
+                    '<label class="cert-field__label">Certificate Text</label>' +
+                    '<textarea id="certBodyText" class="cert-textarea" rows="8" placeholder="Template text will appear here..."></textarea>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="cert-section">' +
+                '<div class="cert-section__header"><span class="cert-step-badge">4</span><h3 class="cert-section__title">Actions</h3></div>' +
+                '<div class="cert-section__body">' +
+                  '<div class="cert-actions">' +
+                    '<button class="cert-btn cert-btn--primary" id="certSaveBtn" type="button">&#10003; Save & Issue Certificate</button>' +
+                    '<button class="cert-btn cert-btn--outline" id="certPrintBtn" type="button">&#128424; Print Certificate</button>' +
+                  '</div>' +
+                  '<p class="form-message" id="certMessage"></p>' +
+                  '<div id="certSuccessMsg" style="display:none;"></div>' +
+                '</div>' +
+              '</div>' +
+
+            '</div>' +
+
+            '<div class="cert-split__preview">' +
+              '<div class="cert-preview-header"><h3>Certificate Preview</h3></div>' +
+              '<div id="certLivePreview" class="cert-preview-container">' +
+                '<div class="cert-preview__paper"><div class="cert-preview__border cert-preview__border--empty">' +
+                  '<div class="cert-preview__placeholder"><p>&#128196;</p><p>Select a student and template to see the preview</p></div>' +
+                '</div></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="cert-section cert-history-section">' +
+            '<div class="cert-section__header"><h3 class="cert-section__title">&#128203; Certificate History</h3></div>' +
+            '<div class="cert-section__body">' +
+              '<div class="cert-history-toolbar">' +
+                '<input id="certHistSearch" type="search" class="cert-input" placeholder="Search by certificate no or student name...">' +
+                '<select id="certHistTypeFilter" class="cert-input cert-input--sm"><option value="all">All Types</option>' + certificateTypes.map(function (t) { return '<option value="' + escapeAttr(t.key) + '">' + escapeHtml(t.label) + '</option>'; }).join("") + '</select>' +
+              '</div>' +
+              '<div class="cert-history-table-wrap">' +
+                '<table class="cert-history-table">' +
+                  '<thead><tr><th>Certificate No</th><th>Student</th><th>Type</th><th>Issue Date</th><th>Status</th><th>Actions</th></tr></thead>' +
+                  '<tbody id="certHistBody">' + historyRowsHtml + '</tbody>' +
+                '</table>' +
+                '<div id="certHistEmpty" class="cert-history-empty" style="' + (issuedCerts.length > 0 ? 'display:none;' : '') + '">' +
+                  '<div class="cert-history-empty__icon">&#128196;</div>' +
+                  '<p>No certificates issued yet.</p>' +
+                  '<p class="cert-history-empty__sub">Generate a certificate to see it here.</p>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+        '</div>';
+
+      moduleGuide.innerHTML = "";
+
+      var certClassSelect = document.getElementById("certClassSelect");
+      var certStudentSearch = document.getElementById("certStudentSearch");
+      var certTemplateSelect = document.getElementById("certTemplateSelect");
+      var certIssueDate = document.getElementById("certIssueDate");
+      var certLeavingDate = document.getElementById("certLeavingDate");
+      var certConduct = document.getElementById("certConduct");
+      var certNumber = document.getElementById("certNumber");
+      var certBodyText = document.getElementById("certBodyText");
+      var certMessage = document.getElementById("certMessage");
+
+      certNumber.value = _certNextNumber();
+
+      initializeStudentProfessionalSearch(
+        "certStudentSearch",
+        "certSearchDropdown",
+        "certSearchContainer",
+        function (student) {
+          _certSelectedStudent = student;
+          certStudentSearch.value = student.name + " (" + (student.admissionNo || "-") + ")";
+          document.getElementById("certStudentProfile").style.display = "";
+          document.getElementById("certNoStudentMsg").style.display = "none";
+          var photoEl = document.getElementById("certProfilePhoto");
+          if (student.photo) {
+            photoEl.innerHTML = '<img src="' + escapeAttr(student.photo) + '" alt="Photo">';
+          } else {
+            photoEl.innerHTML = '<span>' + escapeHtml((student.name || "?").charAt(0).toUpperCase()) + '</span>';
+          }
+          document.getElementById("certProfileName").textContent = student.name || "-";
+          document.getElementById("certProfileRoll").innerHTML = '<strong>Roll No:</strong> ' + escapeHtml(student.rollNo || student.admissionNo || "-");
+          document.getElementById("certProfileFather").innerHTML = '<strong>Father:</strong> ' + escapeHtml(student.fatherName || "-");
+          document.getElementById("certProfileClass").innerHTML = '<strong>Class:</strong> ' + escapeHtml(student.className || "-");
+          document.getElementById("certProfileAdmNo").innerHTML = '<strong>Adm No:</strong> ' + escapeHtml(student.admissionNo || "-");
+          document.getElementById("certProfileStatus").innerHTML = '<strong>Status:</strong> <span class="cert-status-pill cert-status--active">' + escapeHtml(student.status || "Active") + '</span>';
+          _certUpdatePreview();
+        }
+      );
+
+      certClassSelect.addEventListener("change", function () {
+        _certSelectedStudent = null;
+        certStudentSearch.value = "";
+        document.getElementById("certStudentProfile").style.display = "none";
+        document.getElementById("certNoStudentMsg").style.display = "";
+        _certUpdatePreview();
+      });
+
+      document.querySelectorAll("[data-cert-type]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll("[data-cert-type]").forEach(function (b) { b.classList.remove("cert-type-card--active"); });
+          btn.classList.add("cert-type-card--active");
+          _certType = btn.getAttribute("data-cert-type");
+          var slcFields = document.getElementById("certSlcFields");
+          if (slcFields) slcFields.style.display = (_certType === "slc" || _certType === "character") ? "" : "none";
+          _certUpdatePreview();
+        });
+      });
+
+      certTemplateSelect.addEventListener("change", function () {
+        var tpl = templates.find(function (t) { return String(t.id) === String(certTemplateSelect.value); }) || null;
+        if (tpl) {
+          var filled = _certReplaceVars(tpl.body || "", _certSelectedStudent);
+          certBodyText.value = filled;
+        } else {
+          certBodyText.value = "";
+        }
+        _certUpdatePreview();
+      });
+
+      [certIssueDate, certLeavingDate, certConduct].forEach(function (el) {
+        if (!el) return;
+        el.addEventListener("input", function () { _certUpdatePreview(); });
+        el.addEventListener("change", function () { _certUpdatePreview(); });
+      });
+
+      if (certBodyText) {
+        certBodyText.addEventListener("input", function () { _certUpdatePreview(); });
+      }
+
+      var advToggle = document.getElementById("certAdvToggle");
+      var advBody = document.getElementById("certAdvBody");
+      if (advToggle && advBody) {
+        advToggle.addEventListener("click", function () {
+          var isOpen = advBody.style.display !== "none";
+          advBody.style.display = isOpen ? "none" : "";
+          advToggle.innerHTML = isOpen ? '<span>&#9660; Advanced Editing</span>' : '<span>&#9650; Hide Advanced Editing</span>';
+        });
+      }
+
+      safeOn(document.getElementById("certSaveBtn"), "click", function () {
+        var student = _certSelectedStudent;
+        var text = certBodyText.value.trim();
+        if (!student) { certMessage.textContent = "Please select a student."; certMessage.className = "form-message error"; return; }
+        if (!certTemplateSelect.value) { certMessage.textContent = "Please select a template."; certMessage.className = "form-message error"; return; }
+        if (!certIssueDate.value) { certMessage.textContent = "Please select an issue date."; certMessage.className = "form-message error"; return; }
+        var certNo = certNumber.value;
+        var certRecord = {
+          id: "CRT-" + generateId(),
+          certificateNumber: certNo,
+          certificateType: _certType,
+          studentId: student.id || "",
+          studentName: student.name || "-",
+          className: student.className || "-",
+          issueDate: certIssueDate.value,
+          leavingDate: certLeavingDate ? certLeavingDate.value : "",
+          conduct: certConduct ? certConduct.value : "",
+          template: certTemplateSelect.value,
+          templateName: certTemplateSelect.options[certTemplateSelect.selectedIndex] ? certTemplateSelect.options[certTemplateSelect.selectedIndex].text : "",
+          body: text,
+          status: "issued"
+        };
+        issuedCerts.unshift(certRecord);
+        saveDatabase("", [{ table: "school_settings", record: { id: "certificates", source_id: "certificates", data: issuedCerts, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        _certShowSuccess(certNo);
+        certMessage.textContent = "";
+        certNumber.value = _certNextNumber();
+        var histCountEl = document.querySelector(".cert-stat-card__num");
+        if (histCountEl) histCountEl.textContent = issuedCerts.length;
+        _certRenderHistory("", "all");
+      });
+
+      safeOn(document.getElementById("certPrintBtn"), "click", function () {
+        var student = _certSelectedStudent;
+        var text = certBodyText.value.trim();
+        if (!student || !text) {
+          certMessage.textContent = "Please select student and template first.";
+          certMessage.className = "form-message error";
+          return;
+        }
+        var certHtml = _certBuildPrintHtml(student, text);
         openPrintReport({
           title: "Certificate",
-          subtitle: `Issued To: ${student.name || "-"} | Roll: ${student.admissionNo || "-"} | Class: ${student.className || "-"} | Date: ${issueDateInput.value || "-"}`,
-          contentHtml: certificateHtml
+          subtitle: "Issued To: " + (student.name || "-") + " | Roll: " + (student.admissionNo || "-") + " | Class: " + (student.className || "-") + " | Date: " + (certIssueDate.value || "-"),
+          contentHtml: certHtml
         });
-        certificateMessage.textContent = "Certificate prepared successfully.";
-        certificateMessage.className = "form-message success";
+        certMessage.textContent = "Certificate prepared for printing.";
+        certMessage.className = "form-message success";
       });
-      fillTemplatePreview();
+
+      var histSearch = document.getElementById("certHistSearch");
+      var histTypeFilter = document.getElementById("certHistTypeFilter");
+      if (histSearch) histSearch.addEventListener("input", function () { _certRenderHistory(histSearch.value.toLowerCase().trim(), histTypeFilter ? histTypeFilter.value : "all"); });
+      if (histTypeFilter) histTypeFilter.addEventListener("change", function () { _certRenderHistory(histSearch ? histSearch.value.toLowerCase().trim() : "", histTypeFilter.value); });
+
+      var histBody = document.getElementById("certHistBody");
+      if (histBody) {
+        histBody.addEventListener("click", function (ev) {
+          var viewBtn = ev.target.closest("[data-cert-view]");
+          if (!viewBtn) return;
+          var certId = viewBtn.getAttribute("data-cert-view");
+          var cert = issuedCerts.find(function (c) { return String(c.id) === String(certId); });
+          if (!cert) return;
+          _certSelectedStudent = (database.students || []).find(function (s) { return String(s.id) === String(cert.studentId); }) || { name: cert.studentName, className: cert.className };
+          if (cert.body) certBodyText.value = cert.body;
+          if (cert.issueDate) certIssueDate.value = cert.issueDate;
+          if (cert.leavingDate && certLeavingDate) certLeavingDate.value = cert.leavingDate;
+          if (cert.conduct && certConduct) certConduct.value = cert.conduct;
+          if (cert.certificateNumber) certNumber.value = cert.certificateNumber;
+          var typeBtn = document.querySelector('[data-cert-type="' + escapeAttr(cert.certificateType || "character") + '"]');
+          if (typeBtn) typeBtn.click();
+          _certUpdatePreview();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        });
+      }
+
+      _certRenderPreview();
       return;
     }
 
