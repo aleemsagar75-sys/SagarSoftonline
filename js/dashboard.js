@@ -17391,25 +17391,25 @@ ${allContent}
     }
 
     if (route === "student-progress-report") {
-      var _progressStudentId = "";
+      var _sprStudentId = "";
+      var _sprLoading = false;
+      var _sprCurMonth = (function(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); })();
 
-      function getProgressAttend(sid, from, to) {
+      function _sprGetAttend(sid, from, to) {
         return (database.attendance || []).filter(function (a) {
           return (!a.entityType || a.entityType === "student") && String(a.studentId || "") === String(sid) && a.date >= from && a.date <= to;
         });
       }
-
-      function getProgressTests(sid, from, to) {
+      function _sprGetTests(sid, from, to) {
         return (settings.classTestMarks || []).filter(function (t) {
-          return String(t.studentId || "") === String(sid) && (t.testDate || t.date) >= from && (t.testDate || t.date) <= to;
+          return String(t.studentId || "") === String(sid) && (t.testDate || t.date || "") >= from && (t.testDate || t.date || "") <= to;
         }).map(function (t) {
           var ttl = Number(t.total || t.totalMarks || 1);
           var obt = Number(t.obtained || t.obtainedMarks || 0);
           return { test: t, pct: ttl > 0 ? Math.round((obt / ttl) * 100) : 0, ttl: ttl, obt: obt };
         });
       }
-
-      function getProgressExams(sid, cls, from, to) {
+      function _sprGetExams(sid, cls, from, to) {
         return (settings.exams || []).filter(function (ex) {
           var inRange = true;
           if (ex.startDate || ex.endDate) {
@@ -17418,47 +17418,59 @@ ${allContent}
             inRange = !(e < from || s > to);
           }
           if (!inRange) return false;
-          var marks = (settings.examMarks || []).filter(function (m) {
+          return (settings.examMarks || []).some(function (m) {
             return m.examId === ex.id && m.className === cls && m.studentId === sid;
           });
-          return marks.length > 0;
         }).map(function (ex) {
           var result = evaluateExamResult(ex.id, cls, sid);
           return { exam: ex, result: result };
         }).filter(function (item) { return item.result.totalMarks > 0; });
       }
-
-      function gradeCol(g) {
+      function _sprGradeCol(g) {
         var x = String(g || "").trim();
-        if (/^A\+?$/.test(x)) return "#1d9c61";
-        if (/^[AB]\+?$/.test(x)) return "#2e86de";
-        if (/^[BC]\+?$/.test(x)) return "#f39c12";
-        return "#e74c3c";
+        if (/^A\+?$/.test(x)) return "#16a34a";
+        if (/^[AB]\+?$/.test(x)) return "#2563eb";
+        if (/^[BC]\+?$/.test(x)) return "#d97706";
+        return "#dc2626";
       }
-
-      function trendChart(pts, color) {
-        if (!pts || pts.length < 2) return '<p class="empty-state" style="text-align:center;padding:20px;color:#999;">Not enough data for trend chart.</p>';
-        var w = 600, h = 200, pad = 30;
-        var maxV = Math.max(100, Math.ceil(Math.max.apply(null, pts.map(function (p) { return p.value; })) / 10) * 10);
-        var step = (w - pad * 2) / (pts.length - 1);
-        var arr = pts.map(function (p, i) {
-          return { x: pad + i * step, y: h - pad - ((p.value / maxV) * (h - pad * 2)), label: p.label, value: p.value };
+      function _sprPerfStatus(pct) {
+        if (pct >= 90) return { label: "Excellent", color: "#16a34a", bg: "#dcfce7" };
+        if (pct >= 80) return { label: "Very Good", color: "#2563eb", bg: "#dbeafe" };
+        if (pct >= 70) return { label: "Good", color: "#0d9488", bg: "#ccfbf1" };
+        if (pct >= 60) return { label: "Average", color: "#d97706", bg: "#fef3c7" };
+        return { label: "Needs Improvement", color: "#dc2626", bg: "#fee2e2" };
+      }
+      function _sprCalcSubjectAvgs(exams) {
+        var subMap = {};
+        exams.forEach(function (r) {
+          if (!r.result.subjectRows) return;
+          r.result.subjectRows.forEach(function (sr) {
+            if (!subMap[sr.subjectName]) subMap[sr.subjectName] = { total: 0, obtained: 0, count: 0 };
+            subMap[sr.subjectName].total += sr.totalMarks;
+            subMap[sr.subjectName].obtained += sr.obtainedMarks;
+            subMap[sr.subjectName].count++;
+          });
         });
-        var d = arr.map(function (p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" ");
-        var area = d + " L" + arr[arr.length - 1].x.toFixed(1) + " " + (h - pad) + " L" + arr[0].x.toFixed(1) + " " + (h - pad) + " Z";
-        return '<svg width="100%" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="overflow:visible">' +
-          '<defs><linearGradient id="tg"><stop offset="0%" stop-color="' + color + '" stop-opacity="0.15"/><stop offset="100%" stop-color="' + color + '" stop-opacity="0.01"/></linearGradient></defs>' +
-          '<path d="' + area + '" fill="url(#tg)"/>' +
-          '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round"/>' +
-          arr.map(function (p) { return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="' + color + '" stroke="#fff" stroke-width="2"/>'; }).join("") +
-          arr.map(function (p) {
-            return '<text x="' + p.x.toFixed(1) + '" y="' + (h - 5) + '" text-anchor="middle" font-size="10" fill="#6b7a8d">' + escapeHtml(String(p.label).slice(0, 8)) + '</text>' +
-              '<text x="' + p.x.toFixed(1) + '" y="' + (p.y - 10) + '" text-anchor="middle" font-size="11" font-weight="600" fill="' + color + '">' + p.value + '%</text>';
-          }).join("") + '</svg>';
+        return Object.keys(subMap).map(function (name) {
+          var s = subMap[name];
+          var pct = s.total ? Math.round((s.obtained / s.total) * 100) : 0;
+          var grade = _sprCalcGrade(pct);
+          return { name: name, pct: pct, grade: grade, total: s.total, obtained: s.obtained };
+        }).sort(function (a, b) { return b.pct - a.pct; });
       }
-
-      function emptyRow(colspan) {
-        return '<tr><td colspan="' + (colspan || 1) + '" style="text-align:center;padding:20px;color:#999;">No data available</td></tr>';
+      function _sprCalcGrade(pct) {
+        var gradingRows = (settings.marksGrading || []).map(function (row) {
+          return { grade: row.grade || "-", from: Number(row.from || 0), upto: Number(row.upto || 0) };
+        });
+        var match = gradingRows.find(function (r) { return pct >= r.from && pct <= r.upto; });
+        return match ? match.grade : "-";
+      }
+      function _sprTrendData(exams, tests) {
+        var pts = [];
+        exams.forEach(function (r) { pts.push({ label: r.exam.name || "Exam", value: r.result.percentage, date: r.exam.endDate || r.exam.startDate || "" }); });
+        tests.forEach(function (r) { pts.push({ label: r.test.testName || "Test", value: r.pct, date: r.test.testDate || r.test.date || "" }); });
+        pts.sort(function (a, b) { return (a.date || "").localeCompare(b.date || ""); });
+        return pts;
       }
 
       var today = new Date();
@@ -17467,142 +17479,236 @@ ${allContent}
       var defFromStr = defFrom.toISOString().slice(0, 10);
       var todayStr = today.toISOString().slice(0, 10);
 
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">Student Progress Report</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="progressSearchI" type="search" placeholder="Search student by name / roll" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="progressSearchD" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">From</label><input id="progressFrom" type="date" value="${defFromStr}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">To</label><input id="progressTo" type="date" value="${todayStr}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 8px 0;">
-            <button class="primary-button" id="progressShowBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Show Report</button>
-            <button class="primary-button" id="progressPrintBtn" type="button" style="padding:6px 14px;font-size:0.8rem;background:#2e86de;">Print</button>
-          </div>
-          <div id="progressContent" style="margin-top:16px;"></div>
-        </article>
-      `;
+      moduleSummary.innerHTML = '<div class="spr-wrap">' +
+        '<div class="spr-hdr"><div class="spr-hdr__left"><div class="spr-hdr__eyebrow">SagarSoft Analytics</div><h2 class="spr-hdr__title">Student Progress Report</h2><p class="spr-hdr__sub">Comprehensive academic performance, attendance, and progress analysis for any student.</p></div><div class="spr-hdr__btns"><button class="spr-btn spr-btn--ghost" type="button" id="sprRefreshBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh</button><button class="spr-btn spr-btn--accent" type="button" id="sprPrintBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print Report</button></div></div>' +
+        '<div class="spr-bar"><div class="spr-bar__field spr-bar__field--wide"><label class="spr-bar__lbl">Student Search</label><div class="spr-search-wrap" id="sprSearchContainer"><input class="spr-bar__inp" type="search" id="sprSearchI" placeholder="Search by name / roll number..."><div id="sprSearchD" class="spr-search-dd" style="display:none;"></div></div></div>' +
+        '<div class="spr-bar__field"><label class="spr-bar__lbl">From Date</label><input class="spr-bar__inp" type="date" id="sprFrom" value="' + defFromStr + '"></div>' +
+        '<div class="spr-bar__field"><label class="spr-bar__lbl">To Date</label><input class="spr-bar__inp" type="date" id="sprTo" value="' + todayStr + '"></div>' +
+        '<div class="spr-bar__field spr-bar__field--btns"><label class="spr-bar__lbl">&nbsp;</label><div style="display:flex;gap:6px;"><button class="spr-btn spr-btn--accent" type="button" id="sprShowBtn">Show Report</button><button class="spr-btn spr-btn--clear" type="button" id="sprClearBtn">Clear</button></div></div></div>' +
+        '<div id="sprContent"></div></div>';
       moduleGuide.innerHTML = "";
 
-      initializeStudentProfessionalSearch("progressSearchI", "progressSearchD", "progressSearchC", function (student) {
-        document.getElementById("progressSearchI").value = student.name || "";
-        _progressStudentId = student.id || "";
+      var _sprSearchI = document.getElementById("sprSearchI");
+      var _sprSearchD = document.getElementById("sprSearchD");
+      var _sprFrom = document.getElementById("sprFrom");
+      var _sprTo = document.getElementById("sprTo");
+      var _sprContent = document.getElementById("sprContent");
+
+      initializeStudentProfessionalSearch("sprSearchI", "sprSearchD", "sprSearchContainer", function (student) {
+        _sprSearchI.value = student.name || "";
+        _sprStudentId = student.id || "";
       });
 
-      var pc = document.getElementById("progressContent");
+      function _sprRenderEmpty() {
+        _sprContent.innerHTML = '<div class="spr-empty"><svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><h3 class="spr-empty__tt">Select a Student to View Progress</h3><p class="spr-empty__sub">Use the search field above to find a student and click "Show Report" to generate their comprehensive progress report.</p></div>';
+      }
 
-      function renderPR() {
-        var sid = _progressStudentId;
-        if (!sid) {
-          pc.innerHTML = '<p class="empty-state">Search and select a student to view progress report.</p>';
-          return;
-        }
+      function _sprRenderReport() {
+        var sid = _sprStudentId;
+        if (!sid) { _sprRenderEmpty(); return; }
         var stu = database.students.find(function (s) { return String(s.id) === String(sid); });
-        if (!stu) {
-          pc.innerHTML = '<p class="empty-state">Student not found. Please search again.</p>';
-          return;
-        }
-        var from = document.getElementById("progressFrom").value || defFromStr;
-        var to = document.getElementById("progressTo").value || todayStr;
+        if (!stu) { _sprContent.innerHTML = '<div class="spr-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg><h3 class="spr-empty__tt">Student Not Found</h3><p class="spr-empty__sub">The selected student could not be found. Please search again.</p></div>'; return; }
+
+        var from = _sprFrom.value || defFromStr;
+        var to = _sprTo.value || todayStr;
         var cls = stu.className || "";
 
-        var exams = getProgressExams(sid, cls, from, to);
-        var tests = getProgressTests(sid, from, to);
-        var att = getProgressAttend(sid, from, to);
+        var exams = _sprGetExams(sid, cls, from, to);
+        var tests = _sprGetTests(sid, from, to);
+        var att = _sprGetAttend(sid, from, to);
 
         var eAvg = exams.length ? Math.round(exams.reduce(function (s, r) { return s + r.result.percentage; }, 0) / exams.length) : 0;
         var tAvg = tests.length ? Math.round(tests.reduce(function (s, r) { return s + r.pct; }, 0) / tests.length) : 0;
-        var oAvg = (exams.length + tests.length) ? Math.round(((eAvg * exams.length) + (tAvg * tests.length)) / (exams.length + tests.length)) : 0;
-        var pres = att.filter(function (a) { return a.status === "Present"; }).length;
+        var hasExams = exams.length > 0;
+        var hasTests = tests.length > 0;
+        var oAvg = (hasExams || hasTests) ? Math.round(((eAvg * exams.length) + (tAvg * tests.length)) / Math.max(1, exams.length + tests.length)) : 0;
+
+        var pres = att.filter(function (a) { return normalizeAttendanceStatus(a.status) === "Present"; }).length;
+        var abs = att.filter(function (a) { return normalizeAttendanceStatus(a.status) === "Absent"; }).length;
+        var lve = att.filter(function (a) { return normalizeAttendanceStatus(a.status) === "On-leave"; }).length;
         var aPct = att.length ? Math.round((pres / att.length) * 100) : 0;
 
-        var ePts = exams.map(function (r) { return { label: r.exam.name || "E", value: r.result.percentage }; });
-        var tPts = tests.map(function (r) { return { label: r.test.testName || "T", value: r.pct }; });
-
-        var lastPts = [];
-        exams.forEach(function (r) { lastPts.push({ label: r.exam.name || "E", value: r.result.percentage }); });
-        tests.forEach(function (r) { lastPts.push({ label: r.test.testName || "T", value: r.pct }); });
-        var trendDir = "stable", trendIcon = "\u2796", trendColor = "#6b7a8d";
-        if (lastPts.length >= 2) {
-          var first = lastPts[0].value, last = lastPts[lastPts.length - 1].value;
-          trendDir = last > first ? "up" : (last < first ? "down" : "stable");
-          trendIcon = trendDir === "up" ? "\u2B06" : (trendDir === "down" ? "\u2B07" : "\u2796");
-          trendColor = trendDir === "up" ? "#1d9c61" : (trendDir === "down" ? "#e74c3c" : "#6b7a8d");
+        var trendPts = _sprTrendData(exams, tests);
+        var trendDir = "stable", trendDiff = 0;
+        if (trendPts.length >= 2) {
+          var first = trendPts[0].value, last = trendPts[trendPts.length - 1].value;
+          trendDiff = last - first;
+          trendDir = trendDiff > 2 ? "up" : (trendDiff < -2 ? "down" : "stable");
         }
+        var perfSt = _sprPerfStatus(oAvg);
+        var subjAvgs = _sprCalcSubjectAvgs(exams);
+        var strongest = subjAvgs.length ? subjAvgs[0] : null;
+        var weakest = subjAvgs.length > 1 ? subjAvgs[subjAvgs.length - 1] : null;
 
         var months = {};
         att.forEach(function (a) {
           var m = (a.date || "").slice(0, 7);
-          if (!months[m]) months[m] = { total: 0, present: 0 };
+          if (!months[m]) months[m] = { total: 0, present: 0, absent: 0, leave: 0 };
           months[m].total++;
-          if (a.status === "Present") months[m].present++;
+          var st = normalizeAttendanceStatus(a.status);
+          if (st === "Present") months[m].present++;
+          else if (st === "On-leave") months[m].leave++;
+          else months[m].absent++;
         });
         var mKeys = Object.keys(months).sort();
 
-        pc.innerHTML = '<div class="progress-report" style="display:flex;flex-direction:column;gap:16px;">' +
-          '<div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,#f0f4f8,#e8edf4);border-radius:12px;">' +
-          '<div style="width:56px;height:56px;border-radius:50%;background:#1b5f7a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;">' + escapeHtml((stu.name || "?").charAt(0).toUpperCase()) + '</div>' +
-          '<div style="flex:1;"><h3 style="margin:0;font-size:1.1rem;color:#0f2b3f;">' + escapeHtml(stu.name || "-") + '</h3>' +
-          '<p style="margin:2px 0 0;font-size:0.85rem;color:#6b7a8d;">Roll: ' + escapeHtml(stu.admissionNo || "-") + ' | Class: ' + escapeHtml(stu.className || "-") + ' | Father: ' + escapeHtml(stu.fatherName || "-") + '</p></div></div>' +
+        var html = '<div class="spr-report">';
 
-          '<div class="report-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">' +
-          '<article class="stat-card stat-card--sky"><strong style="font-size:0.7rem;color:#6b7a8d;">Exams Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#0ea5e9;">' + eAvg + '%</span></article>' +
-          '<article class="stat-card stat-card--emerald"><strong style="font-size:0.7rem;color:#6b7a8d;">Tests Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#10b981;">' + tAvg + '%</span></article>' +
-          '<article class="stat-card stat-card--indigo"><strong style="font-size:0.7rem;color:#6b7a8d;">Overall</strong><span style="font-size:1.6rem;font-weight:700;color:#6366f1;">' + oAvg + '%</span></article>' +
-          '<article class="stat-card stat-card--amber"><strong style="font-size:0.7rem;color:#6b7a8d;">Attendance</strong><span style="font-size:1.6rem;font-weight:700;color:#f59e0b;">' + aPct + '%</span></article>' +
-          '<article class="stat-card stat-card--rose"><strong style="font-size:0.7rem;color:#6b7a8d;">Trend</strong><span style="font-size:1.6rem;font-weight:700;color:' + trendColor + ';">' + trendIcon + '</span></article></div>' +
+        html += '<div class="spr-profile"><div class="spr-profile__left"><div class="spr-profile__avatar">' + (stu.picture ? '<img src="' + escapeAttr(stu.picture) + '" alt="">' : escapeHtml((stu.name || "?").charAt(0).toUpperCase())) + '</div><div class="spr-profile__info"><h3 class="spr-profile__name">' + escapeHtml(stu.name || "-") + '</h3><div class="spr-profile__meta"><span class="spr-profile__tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Roll: ' + escapeHtml(stu.admissionNo || "-") + '</span><span class="spr-profile__tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>' + escapeHtml(stu.className || "-") + '</span>' + (stu.section ? '<span class="spr-profile__tag">Section: ' + escapeHtml(stu.section) + '</span>' : '') + (stu.fatherName ? '<span class="spr-profile__tag"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>Father: ' + escapeHtml(stu.fatherName) + '</span>' : '') + '<span class="spr-profile__tag spr-profile__tag--' + (String(stu.status || "active").toLowerCase() === "active" ? "active" : "inactive") + '">' + escapeHtml(stu.status || "Active") + '</span></div></div></div>' +
+          '<div class="spr-profile__right"><div class="spr-perf-circle" style="background:conic-gradient(' + perfSt.color + ' ' + oAvg + '%, #e2e8f0 ' + oAvg + '%);"><div class="spr-perf-circle__inner"><div class="spr-perf-circle__pct">' + oAvg + '%</div><div class="spr-perf-circle__lbl">Overall</div></div></div><div class="spr-perf-badge" style="background:' + perfSt.bg + ';color:' + perfSt.color + ';">' + perfSt.label + '</div></div></div>';
 
-          (ePts.length >= 2 || tPts.length >= 2 ? '<div class="split-grid report-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-            (ePts.length >= 2 ? '<article class="panel-card"><strong style="font-size:0.9rem;">Exam Trend</strong><div style="margin-top:8px;">' + trendChart(ePts, "#1e5eff") + '</div></article>' : '') +
-            (tPts.length >= 2 ? '<article class="panel-card"><strong style="font-size:0.9rem;">Test Trend</strong><div style="margin-top:8px;">' + trendChart(tPts, "#1d9c61") + '</div></article>' : '') +
-            '</div>' : '') +
+        html += '<div class="spr-stats">';
+        html += '<div class="spr-st spr-st--indigo"><div class="spr-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div><div class="spr-st__body"><div class="spr-st__lbl">Overall Performance</div><div class="spr-st__val">' + oAvg + '%</div><div class="spr-st__note">' + perfSt.label + '</div></div></div>';
+        html += '<div class="spr-st spr-st--sky"><div class="spr-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="spr-st__body"><div class="spr-st__lbl">Exam Average</div><div class="spr-st__val">' + (hasExams ? eAvg + '%' : '—') + '</div><div class="spr-st__note">' + (hasExams ? exams.length + ' exam' + (exams.length > 1 ? 's' : '') : 'No exams') + '</div></div></div>';
+        html += '<div class="spr-st spr-st--emerald"><div class="spr-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="spr-st__body"><div class="spr-st__lbl">Class Test Average</div><div class="spr-st__val">' + (hasTests ? tAvg + '%' : '—') + '</div><div class="spr-st__note">' + (hasTests ? tests.length + ' test' + (tests.length > 1 ? 's' : '') : 'No tests') + '</div></div></div>';
+        html += '<div class="spr-st spr-st--amber"><div class="spr-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="spr-st__body"><div class="spr-st__lbl">Attendance</div><div class="spr-st__val">' + (att.length ? aPct + '%' : '—') + '</div><div class="spr-st__note">' + (att.length ? pres + ' Present / ' + abs + ' Absent' : 'No records') + '</div></div></div>';
+        html += '<div class="spr-st spr-st--teal"><div class="spr-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div><div class="spr-st__body"><div class="spr-st__lbl">Performance Trend</div><div class="spr-st__val" style="color:' + (trendDir === "up" ? "#16a34a" : trendDir === "down" ? "#dc2626" : "#64748b") + ';">' + (trendPts.length >= 2 ? (trendDir === "up" ? "↗" : trendDir === "down" ? "↘" : "→") + ' ' + (trendDiff > 0 ? "+" : "") + trendDiff : '—') + '</div><div class="spr-st__note">' + (trendPts.length >= 2 ? (trendDir === "up" ? "Improving" : trendDir === "down" ? "Declining" : "Stable") : 'Not enough data') + '</div></div></div>';
+        html += '</div>';
 
-          '<article class="panel-card"><strong style="font-size:0.9rem;">Exam Results</strong>' +
-          '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Exam</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' +
-          (exams.length ? exams.map(function (r) {
-            return '<tr><td>' + escapeHtml(r.exam.name || "-") + '</td><td>' + r.result.totalMarks + '</td><td>' + r.result.obtainedMarks + '</td><td>' + r.result.percentage + '%</td><td><span class="status-pill" style="background:' + gradeCol(r.result.grade) + '20;color:' + gradeCol(r.result.grade) + ';">' + escapeHtml(r.result.grade) + '</span></td><td><span class="status-pill ' + (r.result.status === "Pass" ? "active" : "inactive") + '">' + escapeHtml(r.result.status) + '</span></td></tr>';
-          }).join("") : emptyRow(6)) + '</tbody></table></div></article>' +
+        if (subjAvgs.length) {
+          html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Subject Performance</h3><span class="spr-panel__badge">' + subjAvgs.length + ' subject' + (subjAvgs.length > 1 ? 's' : '') + '</span></div><div class="spr-panel__bd">';
+          subjAvgs.forEach(function (s) {
+            var clr = s.pct >= 90 ? "#16a34a" : s.pct >= 75 ? "#2563eb" : s.pct >= 60 ? "#d97706" : "#dc2626";
+            html += '<div class="spr-sbar"><div class="spr-sbar__nm">' + escapeHtml(s.name) + '</div><div class="spr-sbar__trk"><div class="spr-sbar__fill" style="width:' + s.pct + '%;background:' + clr + ';"></div></div><div class="spr-sbar__info"><span class="spr-sbar__pct" style="color:' + clr + ';">' + s.pct + '%</span><span class="spr-badge" style="background:' + clr + '15;color:' + clr + ';">' + escapeHtml(s.grade) + '</span></div></div>';
+          });
+          html += '</div></div>';
+        }
 
-          '<article class="panel-card"><strong style="font-size:0.9rem;">Class Tests</strong>' +
-          '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Test</th><th>Subject</th><th>Date</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' +
-          (tests.length ? tests.map(function (r) {
-            return '<tr><td>' + escapeHtml(r.test.testName || "-") + '</td><td>' + escapeHtml(r.test.subjectName || "-") + '</td><td>' + escapeHtml(r.test.testDate || r.test.date || "-") + '</td><td>' + r.ttl + '</td><td>' + r.obt + '</td><td>' + r.pct + '%</td><td><span class="status-pill" style="background:' + gradeCol(r.test.grade) + '20;color:' + gradeCol(r.test.grade) + ';">' + escapeHtml(r.test.grade || "-") + '</span></td><td><span class="status-pill ' + (String(r.test.status || "").toLowerCase() === "pass" ? "active" : "inactive") + '">' + escapeHtml(r.test.status || "-") + '</span></td></tr>';
-          }).join("") : emptyRow(8)) + '</tbody></table></div></article>' +
+        if (strongest || weakest) {
+          html += '<div class="spr-grid2">';
+          if (strongest) {
+            html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Top Performing Subject</h3></div><div class="spr-panel__bd"><div class="spr-area spr-area--success"><div class="spr-area__ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div class="spr-area__body"><div class="spr-area__nm">' + escapeHtml(strongest.name) + '</div><div class="spr-area__val" style="color:#16a34a;">' + strongest.pct + '% — ' + escapeHtml(strongest.grade) + '</div></div></div></div></div>';
+          }
+          if (weakest && weakest.name !== (strongest ? strongest.name : "")) {
+            html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Area for Improvement</h3></div><div class="spr-panel__bd"><div class="spr-area spr-area--warning"><div class="spr-area__ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="spr-area__body"><div class="spr-area__nm">' + escapeHtml(weakest.name) + '</div><div class="spr-area__val" style="color:#d97706;">' + weakest.pct + '% — ' + escapeHtml(weakest.grade) + '</div></div></div></div></div>';
+          }
+          html += '</div>';
+        }
 
-          '<article class="panel-card"><strong style="font-size:0.9rem;">Monthly Attendance</strong>' +
-          '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Month</th><th>Present</th><th>Absent</th><th>Leave</th><th>%</th></tr></thead><tbody>' +
-          (mKeys.length ? mKeys.map(function (k) {
-            var m = months[k], abs = m.total - m.present, pct = Math.round((m.present / m.total) * 100);
-            return '<tr><td>' + k + '</td><td>' + m.present + '</td><td>' + abs + '</td><td>0</td><td><span style="color:' + (pct >= 80 ? '#1d9c61' : (pct >= 60 ? '#f39c12' : '#e74c3c')) + ';font-weight:600;">' + pct + '%</span></td></tr>';
-          }).join("") : emptyRow(5)) + '</tbody></table></div></article>' +
+        if (trendPts.length >= 2) {
+          var w = 700, h = 200, pad = 35;
+          var maxV = Math.max(100, Math.ceil(Math.max.apply(null, trendPts.map(function (p) { return p.value; })) / 10) * 10);
+          var step = (w - pad * 2) / (trendPts.length - 1);
+          var arr = trendPts.map(function (p, i) { return { x: pad + i * step, y: h - pad - ((p.value / maxV) * (h - pad * 2)), label: p.label, value: p.value }; });
+          var d = arr.map(function (p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" ");
+          var area = d + " L" + arr[arr.length - 1].x.toFixed(1) + " " + (h - pad) + " L" + arr[0].x.toFixed(1) + " " + (h - pad) + " Z";
+          html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Academic Performance Trend</h3></div><div class="spr-panel__bd"><svg width="100%" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="overflow:visible;"><defs><linearGradient id="sprTg"><stop offset="0%" stop-color="#6366f1" stop-opacity="0.15"/><stop offset="100%" stop-color="#6366f1" stop-opacity="0.01"/></linearGradient></defs><path d="' + area + '" fill="url(#sprTg)"/><path d="' + d + '" fill="none" stroke="#6366f1" stroke-width="2" stroke-linejoin="round"/>' + arr.map(function (p) { return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="#6366f1" stroke="#fff" stroke-width="2"/>'; }).join("") + arr.map(function (p) { return '<text x="' + p.x.toFixed(1) + '" y="' + (h - 8) + '" text-anchor="middle" font-size="10" fill="#64748b">' + escapeHtml(String(p.label).slice(0, 10)) + '</text><text x="' + p.x.toFixed(1) + '" y="' + (p.y - 10) + '" text-anchor="middle" font-size="11" font-weight="600" fill="#6366f1">' + p.value + '%</text>'; }).join("") + '</svg></div></div>';
+        } else if (!hasExams && !hasTests) {
+          html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Academic Performance Trend</h3></div><div class="spr-panel__bd"><div class="spr-nodata"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><div>Not enough historical data for trend chart.</div></div></div></div>';
+        }
 
-          '<article class="panel-card" style="background:#fef9e7;border-left:4px solid #f39c12;">' +
-          '<strong style="font-size:0.9rem;color:#0f2b3f;">Summary & Remarks</strong><p style="margin:8px 0 0;font-size:0.85rem;color:#555;line-height:1.6;">' +
-          (exams.length ? '<span style="display:block;">\uD83D\uDCD8 <strong>Exams</strong>: ' + exams.length + ' exams, Avg ' + eAvg + '%</span>' : '<span style="display:block;">\uD83D\uDCD8 <strong>Exams</strong>: No exams in this period.</span>') +
-          (tests.length ? '<span style="display:block;">\uD83D\uDCDD <strong>Class Tests</strong>: ' + tests.length + ' tests, Avg ' + tAvg + '%</span>' : '<span style="display:block;">\uD83D\uDCDD <strong>Class Tests</strong>: No tests in this period.</span>') +
-          (att.length ? '<span style="display:block;">\uD83D\uDCC5 <strong>Attendance</strong>: ' + pres + '/' + att.length + ' days present (' + aPct + '%)</span>' : '<span style="display:block;">\uD83D\uDCC5 <strong>Attendance</strong>: No attendance records in this period.</span>') +
-          (lastPts.length >= 2 ? '<span style="display:block;margin-top:4px;">' + (trendDir === "up" ? '\u2705 <strong>Improving trend</strong> \u2014 consistent progress.' : (trendDir === "down" ? '\u26A0 <strong>Declining trend</strong> \u2014 needs attention.' : '\u2796 <strong>Stable performance</strong> \u2014 maintaining consistency.')) + '</span>' : '') +
-          '</p></article></div>';
+        html += '<div class="spr-grid2">';
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Examination Results</h3><span class="spr-panel__badge">' + exams.length + '</span></div><div class="spr-panel__bd spr-panel__bd--tbl"><div class="spr-tblwrap"><table class="spr-tbl"><thead><tr><th>Exam</th><th>Date</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' + (exams.length ? exams.map(function (r) {
+          return '<tr><td>' + escapeHtml(r.exam.name || "-") + '</td><td>' + escapeHtml(r.exam.endDate || r.exam.startDate || "-") + '</td><td class="spr-mono">' + r.result.totalMarks + '</td><td class="spr-mono">' + r.result.obtainedMarks + '</td><td class="spr-mono" style="font-weight:700;color:' + (r.result.percentage >= 90 ? "#16a34a" : r.result.percentage >= 75 ? "#2563eb" : r.result.percentage >= 60 ? "#d97706" : "#dc2626") + ';">' + r.result.percentage + '%</td><td><span class="spr-badge" style="background:' + _sprGradeCol(r.result.grade) + '15;color:' + _sprGradeCol(r.result.grade) + ';">' + escapeHtml(r.result.grade) + '</span></td><td><span class="spr-badge ' + (r.result.status === "Pass" ? "spr-badge--pass" : "spr-badge--fail") + '">' + escapeHtml(r.result.status) + '</span></td></tr>';
+        }).join("") : '<tr><td colspan="7" class="spr-nodata-td"><div class="spr-nodata"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg><div>No examination results available for this period.</div></div></td></tr>') + '</tbody></table></div></div></div>';
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Class Test Performance</h3><span class="spr-panel__badge">' + tests.length + '</span></div><div class="spr-panel__bd spr-panel__bd--tbl"><div class="spr-tblwrap"><table class="spr-tbl"><thead><tr><th>Test</th><th>Subject</th><th>Date</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' + (tests.length ? tests.map(function (r) {
+          return '<tr><td>' + escapeHtml(r.test.testName || "-") + '</td><td>' + escapeHtml(r.test.subjectName || "-") + '</td><td>' + escapeHtml(r.test.testDate || r.test.date || "-") + '</td><td class="spr-mono">' + r.ttl + '</td><td class="spr-mono">' + r.obt + '</td><td class="spr-mono" style="font-weight:700;color:' + (r.pct >= 90 ? "#16a34a" : r.pct >= 75 ? "#2563eb" : r.pct >= 60 ? "#d97706" : "#dc2626") + ';">' + r.pct + '%</td><td><span class="spr-badge" style="background:' + _sprGradeCol(r.test.grade || "-") + '15;color:' + _sprGradeCol(r.test.grade || "-") + ';">' + escapeHtml(r.test.grade || "-") + '</span></td><td><span class="spr-badge ' + (String(r.test.status || "").toLowerCase() === "pass" ? "spr-badge--pass" : "spr-badge--fail") + '">' + escapeHtml(r.test.status || "-") + '</span></td></tr>';
+        }).join("") : '<tr><td colspan="8" class="spr-nodata-td"><div class="spr-nodata"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><div>No class test results available for this period.</div></div></td></tr>') + '</tbody></table></div></div></div>';
+        html += '</div>';
+
+        html += '<div class="spr-grid2">';
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Attendance Overview</h3>' + (att.length ? '<span class="spr-panel__badge">' + aPct + '%</span>' : '') + '</div><div class="spr-panel__bd">';
+        if (att.length) {
+          html += '<div class="spr-att-summary">';
+          html += '<div class="spr-att-stat"><div class="spr-att-dot" style="background:#16a34a;"></div><div class="spr-att-stat__body"><div class="spr-att-stat__lbl">Present</div><div class="spr-att-stat__val">' + pres + '</div></div></div>';
+          html += '<div class="spr-att-stat"><div class="spr-att-dot" style="background:#dc2626;"></div><div class="spr-att-stat__body"><div class="spr-att-stat__lbl">Absent</div><div class="spr-att-stat__val">' + abs + '</div></div></div>';
+          html += '<div class="spr-att-stat"><div class="spr-att-dot" style="background:#d97706;"></div><div class="spr-att-stat__body"><div class="spr-att-stat__lbl">Leave</div><div class="spr-att-stat__val">' + lve + '</div></div></div>';
+          html += '<div class="spr-att-stat"><div class="spr-att-dot" style="background:#6366f1;"></div><div class="spr-att-stat__body"><div class="spr-att-stat__lbl">Total Days</div><div class="spr-att-stat__val">' + att.length + '</div></div></div>';
+          html += '<div class="spr-att-stat"><div class="spr-att-dot" style="background:#0d9488;"></div><div class="spr-att-stat__body"><div class="spr-att-stat__lbl">Attendance %</div><div class="spr-att-stat__val" style="color:' + (aPct >= 80 ? "#16a34a" : aPct >= 60 ? "#d97706" : "#dc2626") + ';">' + aPct + '%</div></div></div>';
+          html += '</div>';
+        } else {
+          html += '<div class="spr-nodata"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><div>No attendance records available for this period.</div></div>';
+        }
+        html += '</div></div>';
+
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Monthly Attendance History</h3></div><div class="spr-panel__bd spr-panel__bd--tbl"><div class="spr-tblwrap"><table class="spr-tbl"><thead><tr><th>Month</th><th>Present</th><th>Absent</th><th>Leave</th><th>Attendance %</th></tr></thead><tbody>' + (mKeys.length ? mKeys.map(function (k) {
+          var m = months[k], pct = m.total ? Math.round((m.present / m.total) * 100) : 0;
+          var clr = pct >= 80 ? "#16a34a" : pct >= 60 ? "#d97706" : "#dc2626";
+          return '<tr><td>' + escapeHtml(k) + '</td><td class="spr-mono">' + m.present + '</td><td class="spr-mono">' + m.absent + '</td><td class="spr-mono">' + m.leave + '</td><td class="spr-mono" style="font-weight:700;color:' + clr + ';">' + pct + '%</td></tr>';
+        }).join("") : '<tr><td colspan="5" class="spr-nodata-td"><div class="spr-nodata"><div>No monthly attendance data available.</div></div></td></tr>') + '</tbody></table></div></div></div>';
+        html += '</div>';
+
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Performance Summary</h3></div><div class="spr-panel__bd"><div class="spr-summary">';
+        html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Academic Performance</span><span class="spr-summary__val" style="color:' + perfSt.color + ';">' + (hasExams || hasTests ? oAvg + '% — ' + perfSt.label : 'No academic data') + '</span></div>';
+        html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Attendance Performance</span><span class="spr-summary__val" style="color:' + (att.length ? (aPct >= 80 ? "#16a34a" : aPct >= 60 ? "#d97706" : "#dc2626") : "#94a3b8") + ';">' + (att.length ? aPct + '% — ' + (aPct >= 90 ? "Excellent" : aPct >= 80 ? "Good" : aPct >= 60 ? "Satisfactory" : "Needs Improvement") : 'No attendance data') + '</span></div>';
+        html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Overall Progress</span><span class="spr-summary__val" style="color:' + (trendPts.length >= 2 ? (trendDir === "up" ? "#16a34a" : trendDir === "down" ? "#dc2626" : "#64748b") : "#94a3b8") + ';">' + (trendPts.length >= 2 ? (trendDir === "up" ? "↗ Improving (+" + trendDiff + " pp)" : trendDir === "down" ? "↘ Declining (" + trendDiff + " pp)" : "→ Stable") : 'Not enough data') + '</span></div>';
+        html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Strongest Subject</span><span class="spr-summary__val" style="color:#16a34a;">' + (strongest ? escapeHtml(strongest.name) + ' — ' + strongest.pct + '%' : 'No subject data') + '</span></div>';
+        html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Area for Improvement</span><span class="spr-summary__val" style="color:#d97706;">' + (weakest && weakest.name !== (strongest ? strongest.name : "") ? escapeHtml(weakest.name) + ' — ' + weakest.pct + '%' : 'No subject data') + '</span></div>';
+        html += '</div></div></div>';
+
+        html += '</div>';
+        _sprContent.innerHTML = html;
       }
 
-      safeOn(document.getElementById("progressShowBtn"), "click", renderPR);
-      safeOn(document.getElementById("progressPrintBtn"), "click", function () {
-        var c = document.getElementById("progressContent");
-        if (!c || !c.innerHTML.trim() || c.innerHTML.includes("empty-state")) return;
+      safeOn(document.getElementById("sprShowBtn"), "click", function () { _sprRenderReport(); });
+      safeOn(document.getElementById("sprClearBtn"), "click", function () {
+        _sprStudentId = "";
+        _sprSearchI.value = "";
+        _sprFrom.value = defFromStr;
+        _sprTo.value = todayStr;
+        _sprRenderEmpty();
+      });
+      safeOn(document.getElementById("sprRefreshBtn"), "click", function () { _sprRenderReport(); });
+      safeOn(document.getElementById("sprPrintBtn"), "click", function () {
+        var c = document.getElementById("sprContent");
+        if (!c || !c.innerHTML.trim() || c.innerHTML.includes("spr-empty")) return;
+        var stu = database.students.find(function (s) { return String(s.id) === String(_sprStudentId); });
         var w = window.open("", "_blank", "width=900,height=700");
         if (!w) { alert("Please allow popups for printing."); return; }
-        w.document.write('<!DOCTYPE html><html><head><title>Student Progress Report</title><style>body{font-family:Segoe UI,system-ui,sans-serif;padding:40px;color:#0f2b3f;}table{width:100%;border-collapse:collapse;margin:12px 0;}th{background:#1b5f7a;color:#fff;padding:8px 12px;text-align:left;font-size:13px;}td{padding:8px 12px;border-bottom:1px solid #e9edf2;font-size:13px;}tr:nth-child(even){background:#f8fafc;}h2{color:#0f2b3f;margin:0 0 4px;}</style></head><body>');
-        var hdr = c.querySelector("h3");
-        w.document.write('<h2>Student Progress Report</h2><p style="color:#6b7a8d;">' + (hdr ? escapeHtml(hdr.textContent || "") : "") + '</p>');
-        c.querySelectorAll("table").forEach(function (t) { w.document.write(t.outerHTML); });
-        var rm = c.querySelector('[style*="background:#fef9e7"]');
-        if (rm) w.document.write('<div style="background:#fef9e7;border-left:4px solid #f39c12;padding:16px;border-radius:4px;margin-top:16px;">' + escapeHtml(rm.textContent || "") + '</div>');
+        w.document.write('<!DOCTYPE html><html><head><title>Student Progress Report — SagarSoft</title><style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:Segoe UI,system-ui,-apple-system,sans-serif;padding:30px 40px;color:#0f172a;line-height:1.5;}h1{font-size:20px;color:#0f172a;margin-bottom:2px;}h2{font-size:15px;color:#6366f1;margin-bottom:4px;font-weight:600;}h3{font-size:13px;color:#334155;margin:16px 0 6px;font-weight:700;border-bottom:2px solid #e2e8f0;padding-bottom:4px;}p{font-size:12px;color:#64748b;margin-bottom:2px;}table{width:100%;border-collapse:collapse;margin:6px 0 12px;font-size:11px;}th{background:#f1f5f9;color:#475569;padding:6px 8px;text-align:left;font-weight:700;border-bottom:2px solid #e2e8f0;}td{padding:5px 8px;border-bottom:1px solid #f1f5f9;}.grade{display:inline-block;padding:1px 6px;border-radius:4px;font-weight:700;font-size:10px;}.pass{background:#dcfce7;color:#16a34a;}.fail{background:#fee2e2;color:#dc2626;}.stat-row{display:flex;gap:16px;margin:8px 0;flex-wrap:wrap;}.stat-box{flex:1;min-width:120px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px 10px;}.stat-box strong{display:block;font-size:10px;color:#64748b;text-transform:uppercase;}.stat-box span{display:block;font-size:18px;font-weight:700;color:#0f172a;}.summary-item{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #f1f5f9;font-size:11px;}.summary-item span:first-child{color:#64748b;}.summary-item span:last-child{font-weight:700;}</style></head><body>');
+        w.document.write('<h1>Student Progress Report</h1>');
+        if (stu) {
+          w.document.write('<p><strong>' + escapeHtml(stu.name || "-") + '</strong> — Roll: ' + escapeHtml(stu.admissionNo || "-") + ' | Class: ' + escapeHtml(stu.className || "-") + (stu.fatherName ? ' | Father: ' + escapeHtml(stu.fatherName) : '') + '</p>');
+        }
+        var from = _sprFrom.value || defFromStr, to = _sprTo.value || todayStr;
+        w.document.write('<p style="color:#94a3b8;font-size:11px;margin-top:4px;">Period: ' + from + ' to ' + to + '</p>');
+        var exams = _sprGetExams(_sprStudentId, stu ? stu.className : "", from, to);
+        var tests = _sprGetTests(_sprStudentId, from, to);
+        var att = _sprGetAttend(_sprStudentId, from, to);
+        var eAvg = exams.length ? Math.round(exams.reduce(function (s, r) { return s + r.result.percentage; }, 0) / exams.length) : 0;
+        var tAvg = tests.length ? Math.round(tests.reduce(function (s, r) { return s + r.pct; }, 0) / tests.length) : 0;
+        var oAvg = (exams.length || tests.length) ? Math.round(((eAvg * exams.length) + (tAvg * tests.length)) / Math.max(1, exams.length + tests.length)) : 0;
+        var pres = att.filter(function (a) { return normalizeAttendanceStatus(a.status) === "Present"; }).length;
+        var aPct = att.length ? Math.round((pres / att.length) * 100) : 0;
+        w.document.write('<div class="stat-row"><div class="stat-box"><strong>Overall</strong><span>' + oAvg + '%</span></div><div class="stat-box"><strong>Exam Avg</strong><span>' + eAvg + '%</span></div><div class="stat-box"><strong>Test Avg</strong><span>' + tAvg + '%</span></div><div class="stat-box"><strong>Attendance</strong><span>' + aPct + '%</span></div></div>');
+        if (exams.length) {
+          w.document.write('<h3>Examination Results</h3><table><thead><tr><th>Exam</th><th>Date</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>');
+          exams.forEach(function (r) { w.document.write('<tr><td>' + escapeHtml(r.exam.name || "-") + '</td><td>' + escapeHtml(r.exam.endDate || r.exam.startDate || "-") + '</td><td>' + r.result.totalMarks + '</td><td>' + r.result.obtainedMarks + '</td><td><strong>' + r.result.percentage + '%</strong></td><td><span class="grade">' + escapeHtml(r.result.grade) + '</span></td><td><span class="grade ' + (r.result.status === "Pass" ? "pass" : "fail") + '">' + escapeHtml(r.result.status) + '</span></td></tr>'; });
+          w.document.write('</tbody></table>');
+        }
+        if (tests.length) {
+          w.document.write('<h3>Class Test Performance</h3><table><thead><tr><th>Test</th><th>Subject</th><th>Date</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>');
+          tests.forEach(function (r) { w.document.write('<tr><td>' + escapeHtml(r.test.testName || "-") + '</td><td>' + escapeHtml(r.test.subjectName || "-") + '</td><td>' + escapeHtml(r.test.testDate || r.test.date || "-") + '</td><td>' + r.ttl + '</td><td>' + r.obt + '</td><td><strong>' + r.pct + '%</strong></td><td><span class="grade">' + escapeHtml(r.test.grade || "-") + '</span></td><td><span class="grade ' + (String(r.test.status || "").toLowerCase() === "pass" ? "pass" : "fail") + '">' + escapeHtml(r.test.status || "-") + '</span></td></tr>'; });
+          w.document.write('</tbody></table>');
+        }
+        if (att.length) {
+          w.document.write('<h3>Attendance Summary</h3><p>Present: <strong>' + pres + '</strong> | Absent: <strong>' + (att.length - pres) + '</strong> | Total Days: <strong>' + att.length + '</strong> | Attendance: <strong>' + aPct + '%</strong></p>');
+          var months = {};
+          att.forEach(function (a) { var m = (a.date || "").slice(0, 7); if (!months[m]) months[m] = { t: 0, p: 0 }; months[m].t++; if (normalizeAttendanceStatus(a.status) === "Present") months[m].p++; });
+          var mKeys = Object.keys(months).sort();
+          if (mKeys.length) {
+            w.document.write('<h3>Monthly Attendance</h3><table><thead><tr><th>Month</th><th>Present</th><th>Absent</th><th>%</th></tr></thead><tbody>');
+            mKeys.forEach(function (k) { var m = months[k]; var p = m.t ? Math.round((m.p / m.t) * 100) : 0; w.document.write('<tr><td>' + k + '</td><td>' + m.p + '</td><td>' + (m.t - m.p) + '</td><td><strong>' + p + '%</strong></td></tr>'); });
+            w.document.write('</tbody></table>');
+          }
+        }
+        w.document.write('<h3>Performance Summary</h3>');
+        var perfSt = _sprPerfStatus(oAvg);
+        w.document.write('<div class="summary-item"><span>Academic Performance</span><span>' + oAvg + '% — ' + perfSt.label + '</span></div>');
+        w.document.write('<div class="summary-item"><span>Attendance</span><span>' + (att.length ? aPct + '% — ' + (aPct >= 90 ? "Excellent" : aPct >= 80 ? "Good" : aPct >= 60 ? "Satisfactory" : "Needs Improvement") : 'No data') + '</span></div>');
+        w.document.write('<div class="summary-item"><span>Overall Progress</span><span>' + oAvg + '%</span></div>');
+        var subjAvgs = _sprCalcSubjectAvgs(exams);
+        if (subjAvgs.length) {
+          w.document.write('<div class="summary-item"><span>Strongest Subject</span><span>' + escapeHtml(subjAvgs[0].name) + ' — ' + subjAvgs[0].pct + '%</span></div>');
+          if (subjAvgs.length > 1) w.document.write('<div class="summary-item"><span>Area for Improvement</span><span>' + escapeHtml(subjAvgs[subjAvgs.length - 1].name) + ' — ' + subjAvgs[subjAvgs.length - 1].pct + '%</span></div>');
+        }
+        w.document.write('<p style="margin-top:20px;font-size:10px;color:#94a3b8;text-align:center;">Generated by SagarSoft School Management System</p>');
         w.document.write('</body></html>');
         w.document.close();
-        setTimeout(function () { w.print(); }, 500);
+        setTimeout(function () { w.print(); }, 400);
       });
 
-      renderPR();
+      _sprRenderEmpty();
       return;
     }
 
