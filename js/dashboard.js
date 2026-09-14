@@ -19298,6 +19298,7 @@ ${allContent}
           });
         });
         rows.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+        rows.forEach(function (r, i) { r.txnNo = "TXN-" + String(i + 1).padStart(4, "0"); });
         return rows;
       }
 
@@ -19308,7 +19309,7 @@ ${allContent}
           if (_acrStatusVal !== "all" && r.status.toLowerCase() !== _acrStatusVal.toLowerCase()) return false;
           if (_acrSearchVal) {
             var s = _acrSearchVal.toLowerCase();
-            var haystack = (r.description + " " + r.category + " " + r.note + " " + (r.employeeName || "") + " " + r.id).toLowerCase();
+            var haystack = (r.description + " " + r.category + " " + r.note + " " + (r.employeeName || "") + " " + r.id + " " + (r.txnNo || "")).toLowerCase();
             if (haystack.indexOf(s) === -1) return false;
           }
           return true;
@@ -19403,7 +19404,7 @@ ${allContent}
         var tbody = document.getElementById("acrTransBody");
         if (!tbody) return;
         if (!rows.length) {
-          tbody.innerHTML = '<tr><td colspan="8" class="acr-nodata-td"><div class="acr-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No financial transactions found</p><span>Try changing the date range or transaction filters.</span></div></td></tr>';
+          tbody.innerHTML = '<tr><td colspan="9" class="acr-nodata-td"><div class="acr-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No financial transactions found</p><span>Try changing the date range or transaction filters.</span></div></td></tr>';
           return;
         }
         var balance = 0;
@@ -19411,9 +19412,9 @@ ${allContent}
           balance += r.income - r.expense;
           var statusClass = r.status === "Reversed" ? "acr-badge--reversed" : (r.status === "Voided" ? "acr-badge--voided" : "acr-badge--completed");
           var rowClass = r.status === "Reversed" ? " acr-row--reversed" : "";
-          return '<tr class="acr-row' + rowClass + '"><td>' + escapeHtml(r.date) + '</td><td><div class="acr-desc">' + escapeHtml(r.description) + '</div></td><td><span class="acr-cat-badge">' + escapeHtml(r.category) + '</span></td><td class="acr-mono acr-income">' + (r.income > 0 ? _acrFormatMoney(r.income) : '<span class="acr-dash">-</span>') + '</td><td class="acr-mono acr-expense">' + (r.expense > 0 ? _acrFormatMoney(r.expense) : '<span class="acr-dash">-</span>') + '</td><td class="acr-mono"><strong style="color:' + (balance >= 0 ? "#059669" : "#dc2626") + ';">' + _acrFormatMoney(balance) + '</strong></td><td><span class="acr-badge ' + statusClass + '">' + r.status + '</span></td><td><button class="acr-view-btn" type="button" data-acr-idx="' + i + '">View</button></td></tr>';
+          return '<tr class="acr-row' + rowClass + '"><td class="acr-mono"><strong style="color:#6366f1;">' + escapeHtml(r.txnNo || "-") + '</strong></td><td>' + escapeHtml(r.date) + '</td><td><div class="acr-desc">' + escapeHtml(r.description) + '</div></td><td><span class="acr-cat-badge">' + escapeHtml(r.category) + '</span></td><td class="acr-mono acr-income">' + (r.income > 0 ? _acrFormatMoney(r.income) : '<span class="acr-dash">-</span>') + '</td><td class="acr-mono acr-expense">' + (r.expense > 0 ? _acrFormatMoney(r.expense) : '<span class="acr-dash">-</span>') + '</td><td class="acr-mono"><strong style="color:' + (balance >= 0 ? "#059669" : "#dc2626") + ';">' + _acrFormatMoney(balance) + '</strong></td><td><span class="acr-badge ' + statusClass + '">' + r.status + '</span></td><td><button class="acr-view-btn" type="button" data-acr-idx="' + i + '">View</button></td></tr>';
         }).join("");
-        var totalRow = '<tr class="acr-total-row"><td colspan="3"><strong>Total (' + rows.length + ' transactions)</strong></td><td class="acr-mono acr-income"><strong>' + _acrFormatMoney(rows.reduce(function (s, r) { return s + r.income; }, 0)) + '</strong></td><td class="acr-mono acr-expense"><strong>' + _acrFormatMoney(rows.reduce(function (s, r) { return s + r.expense; }, 0)) + '</strong></td><td class="acr-mono"><strong style="color:' + (balance >= 0 ? "#059669" : "#dc2626") + ';">' + _acrFormatMoney(balance) + '</strong></td><td colspan="2"></td></tr>';
+        var totalRow = '<tr class="acr-total-row"><td colspan="4"><strong>Total (' + rows.length + ' transactions)</strong></td><td class="acr-mono acr-income"><strong>' + _acrFormatMoney(rows.reduce(function (s, r) { return s + r.income; }, 0)) + '</strong></td><td class="acr-mono acr-expense"><strong>' + _acrFormatMoney(rows.reduce(function (s, r) { return s + r.expense; }, 0)) + '</strong></td><td class="acr-mono"><strong style="color:' + (balance >= 0 ? "#059669" : "#dc2626") + ';">' + _acrFormatMoney(balance) + '</strong></td><td colspan="2"></td></tr>';
         tbody.innerHTML += totalRow;
         tbody.querySelectorAll(".acr-view-btn").forEach(function (btn) {
           safeOn(btn, "click", function () {
@@ -19430,7 +19431,8 @@ ${allContent}
         var amount = row.income || row.expense;
         var typeLabel = row.type === "income" ? "Income" : "Expense";
         var typeColor = row.type === "income" ? "#059669" : "#dc2626";
-        body.innerHTML = '<div class="acr-detail-row"><span class="acr-detail-lbl">Transaction ID</span><span class="acr-detail-val">' + escapeHtml(row.id || "-") + '</span></div>' +
+        body.innerHTML = '<div class="acr-detail-row"><span class="acr-detail-lbl">TXN ID</span><span class="acr-detail-val" style="color:#6366f1;font-size:1rem;">' + escapeHtml(row.txnNo || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Internal ID</span><span class="acr-detail-val" style="font-size:0.72rem;color:#94a3b8;">' + escapeHtml(row.id || "-") + '</span></div>' +
           '<div class="acr-detail-row"><span class="acr-detail-lbl">Date</span><span class="acr-detail-val">' + escapeHtml(row.date || "-") + '</span></div>' +
           '<div class="acr-detail-row"><span class="acr-detail-lbl">Description</span><span class="acr-detail-val">' + escapeHtml(row.description || "-") + '</span></div>' +
           '<div class="acr-detail-row"><span class="acr-detail-lbl">Category</span><span class="acr-detail-val">' + escapeHtml(row.category || "-") + '</span></div>' +
@@ -19523,7 +19525,7 @@ ${allContent}
         '<div class="acr-card acr-card--amber"><div class="acr-card__icon" style="background:#f59e0b;"><i class="fas fa-users"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Salaries</div><div class="acr-card__val acr-card__val--negative" id="acrSalaries">Rs 0</div><div class="acr-card__sub">Employee salary payments</div></div></div>' +
         '<div class="acr-card acr-card--purple"><div class="acr-card__icon" style="background:#8b5cf6;"><i class="fas fa-receipt"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Other Expenses</div><div class="acr-card__val acr-card__val--negative" id="acrOtherExpenses">Rs 0</div><div class="acr-card__sub">Utilities, maintenance, etc.</div></div></div></div>' +
         '<div class="acr-toolbar"><input class="acr-search" type="search" id="acrSearchInput" placeholder="Search transactions..."><select class="acr-filter-sel" id="acrCategoryFilter"><option value="all">All Categories</option></select><select class="acr-filter-sel" id="acrStatusFilter"><option value="all">All Status</option><option value="Completed">Completed</option><option value="Reversed">Reversed</option><option value="Voided">Voided</option></select></div>' +
-        '<div class="acr-trans-wrap"><table class="acr-tbl"><thead><tr><th>Date</th><th>Transaction</th><th>Category</th><th>Income</th><th>Expense</th><th>Running Balance</th><th>Status</th><th>Action</th></tr></thead><tbody id="acrTransBody"></tbody></table></div>' +
+        '<div class="acr-trans-wrap"><table class="acr-tbl"><thead><tr><th>TXN ID</th><th>Date</th><th>Transaction</th><th>Category</th><th>Income</th><th>Expense</th><th>Running Balance</th><th>Status</th><th>Action</th></tr></thead><tbody id="acrTransBody"></tbody></table></div>' +
         '<div class="acr-grid2">' +
         '<div class="acr-panel"><div class="acr-panel__hd"><h3 class="acr-panel__tt">Income vs Expenses</h3></div><div class="acr-panel__bd" id="acrIncExpChart"></div></div>' +
         '<div class="acr-panel"><div class="acr-panel__hd"><h3 class="acr-panel__tt">Expense Breakdown</h3></div><div class="acr-panel__bd" id="acrExpBreakdown"></div></div></div>' +
@@ -19557,15 +19559,15 @@ ${allContent}
         pw.document.write("<h1>" + escapeHtml(schoolName) + " - Accounts Report</h1>");
         pw.document.write("<h2>" + _acrFromVal + " to " + _acrToVal + "</h2>");
         pw.document.write('<div class="summary"><div><div class="lbl">Total Income</div><div class="val green">' + _acrFormatMoney(stats.totalIncome) + '</div></div><div><div class="lbl">Total Expenses</div><div class="val red">' + _acrFormatMoney(stats.totalExpenses) + '</div></div><div><div class="lbl">Net Balance</div><div class="val ' + (stats.netBalance >= 0 ? "green" : "red") + '">' + _acrFormatMoney(stats.netBalance) + '</div></div></div>');
-        pw.document.write("<table><thead><tr><th>Date</th><th>Transaction</th><th>Category</th><th>Income</th><th>Expense</th><th>Balance</th><th>Status</th></tr></thead><tbody>");
+        pw.document.write("<table><thead><tr><th>TXN ID</th><th>Date</th><th>Transaction</th><th>Category</th><th>Income</th><th>Expense</th><th>Balance</th><th>Status</th></tr></thead><tbody>");
         var bal = 0;
         rows.forEach(function (r) {
           bal += r.income - r.expense;
           var incCol = r.income > 0 ? _acrFormatMoney(r.income) : "-";
           var expCol = r.expense > 0 ? _acrFormatMoney(r.expense) : "-";
-          pw.document.write("<tr><td>" + escapeHtml(r.date) + "</td><td>" + escapeHtml(r.description) + "</td><td>" + escapeHtml(r.category) + "</td><td>" + incCol + "</td><td>" + expCol + "</td><td><strong>" + _acrFormatMoney(bal) + "</strong></td><td>" + r.status + "</td></tr>");
+          pw.document.write("<tr><td>" + escapeHtml(r.txnNo || "-") + "</td><td>" + escapeHtml(r.date) + "</td><td>" + escapeHtml(r.description) + "</td><td>" + escapeHtml(r.category) + "</td><td>" + incCol + "</td><td>" + expCol + "</td><td><strong>" + _acrFormatMoney(bal) + "</strong></td><td>" + r.status + "</td></tr>");
         });
-        pw.document.write('<tr class="total"><td colspan="3"><strong>Total</strong></td><td><strong>' + _acrFormatMoney(stats.totalIncome) + '</strong></td><td><strong>' + _acrFormatMoney(stats.totalExpenses) + '</strong></td><td><strong>' + _acrFormatMoney(stats.netBalance) + '</strong></td><td></td></tr>');
+        pw.document.write('<tr class="total"><td colspan="4"><strong>Total</strong></td><td><strong>' + _acrFormatMoney(stats.totalIncome) + '</strong></td><td><strong>' + _acrFormatMoney(stats.totalExpenses) + '</strong></td><td><strong>' + _acrFormatMoney(stats.netBalance) + '</strong></td><td></td></tr>');
         pw.document.write("</tbody></table>");
         pw.document.write('<div class="footer">Generated on ' + new Date().toLocaleString() + '</div>');
         pw.document.write("</body></html>");
@@ -19581,9 +19583,9 @@ ${allContent}
         var allRows = _acrGetAllRows();
         var rows = _acrFilterRows(allRows);
         if (!rows.length) return;
-        var csvRows = [["Date", "Transaction", "Category", "Income", "Expense", "Running Balance", "Status", "Reference"].join(",")];
+        var csvRows = [["TXN ID", "Date", "Transaction", "Category", "Income", "Expense", "Running Balance", "Status", "Reference"].join(",")];
         var bal = 0;
-        rows.forEach(function (r) { bal += r.income - r.expense; csvRows.push([r.date, '"' + r.description.replace(/"/g, '""') + '"', '"' + r.category.replace(/"/g, '""') + '"', r.income > 0 ? r.income : "", r.expense > 0 ? r.expense : "", bal, r.status, r.id].join(",")); });
+        rows.forEach(function (r) { bal += r.income - r.expense; csvRows.push([r.txnNo || "", r.date, '"' + r.description.replace(/"/g, '""') + '"', '"' + r.category.replace(/"/g, '""') + '"', r.income > 0 ? r.income : "", r.expense > 0 ? r.expense : "", bal, r.status, r.id].join(",")); });
         var stats = _acrCalcStats(rows);
         csvRows.push(["", "", "Total Income", stats.totalIncome, "", "", "", ""].join(","));
         csvRows.push(["", "", "Total Expenses", "", stats.totalExpenses, "", "", ""].join(","));
