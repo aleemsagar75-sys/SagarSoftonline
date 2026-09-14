@@ -19606,123 +19606,361 @@ ${allContent}
     }
 
     if (route === "customised-reports") {
-      const classOptionsMarkup = classOptions.map(function (name) {
-        return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
-      }).join("");
-      const examOptionsMarkup = getExams().map(function (exam) {
-        return `<option value="${exam.id}">${escapeHtml(exam.name)}</option>`;
-      }).join("");
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">Customised Reports</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Report Type*</label><select id="customReportType" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="students-info">Students Info</option><option value="parents-info">Parents Info</option><option value="student-attendance">Students Attendance (Monthly)</option><option value="staff-attendance">Staff Attendance (Monthly)</option><option value="fee-collection">Fee Collection</option><option value="student-progress">Student Progress</option><option value="accounts">Accounts</option></select></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="customReportClass" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Month</label><input id="customReportMonth" type="month" value="${getCurrentMonthInputValue()}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Exam</label><select id="customReportExam" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
-          </div>
-          <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><div style="position:relative;"><input id="customReportSearch" type="search" placeholder="Search by name / roll no / phone" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="customReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 8px 0;"><button class="primary-button" id="generateCustomReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Generate</button><button class="secondary-button" id="printCustomReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print</button></div>
-          <div class="table-wrap"><table><thead id="customReportHead"></thead><tbody id="customReportBody"></tbody></table></div>
-          <p class="empty-state" id="customReportEmptyState" hidden>No report generated yet.</p>
-        </article>
-      `;
-      moduleGuide.innerHTML = "";
-      const typeSelect = document.getElementById("customReportType");
-      const classSelect = document.getElementById("customReportClass");
-      const monthInput = document.getElementById("customReportMonth");
-      const examSelect = document.getElementById("customReportExam");
-      const searchInput = document.getElementById("customReportSearch");
-      const searchDropdown = document.getElementById("customReportSearchDropdown");
-      const searchContainer = document.getElementById("customReportSearchContainer");
-      const head = document.getElementById("customReportHead");
+      var _crptClassOpts = classOptions.map(function (n) { return '<option value="' + escapeAttr(n) + '">' + escapeHtml(n) + '</option>'; }).join("");
+      var _crptExamOpts = getExams().map(function (e) { return '<option value="' + escapeAttr(e.id) + '">' + escapeHtml(e.name) + '</option>'; }).join("");
+      var _crptReportTypes = [
+        { value: "students-info", label: "Students Information", icon: "fa-user-graduate", cat: "Students" },
+        { value: "parents-info", label: "Parents Information", icon: "fa-users", cat: "Parents" },
+        { value: "student-attendance", label: "Monthly Student Attendance", icon: "fa-calendar-check", cat: "Attendance" },
+        { value: "staff-attendance", label: "Monthly Employee Attendance", icon: "fa-user-clock", cat: "Attendance" },
+        { value: "fee-collection", label: "Fee Collection", icon: "fa-money-bill-wave", cat: "Finance" },
+        { value: "student-progress", label: "Student Progress", icon: "fa-chart-line", cat: "Academic" },
+        { value: "accounts", label: "Account Statement", icon: "fa-book", cat: "Finance" }
+      ];
+      var _crptCats = ["Students", "Academic", "Attendance", "Finance", "Parents"];
+      var _crptCatIcons = { Students: "fa-user-graduate", Academic: "fa-graduation-cap", Attendance: "fa-calendar-check", Finance: "fa-money-bill-wave", Parents: "fa-users" };
+      var _crptCurrentType = "students-info";
+      var _crptPage = 1;
+      var _crptPageSize = 25;
+      var _crptData = [];
+      var _crptHeaders = [];
+      var _crptSummary = {};
+      var _crptReportTitle = "";
+      var _crptReportSubtitle = "";
+      var _crptLoading = false;
 
-      initializeStudentProfessionalSearch(
-        "customReportSearch",
-        "customReportSearchDropdown",
-        "customReportSearchContainer",
-        function(student) {
-          searchInput.value = student.name || "";
-          // User will click generate
-        }
-      );
-      const body = document.getElementById("customReportBody");
-      const emptyState = document.getElementById("customReportEmptyState");
-      let printState = null;
-
-      function setData(title, subtitle, headers, rows) {
-        head.innerHTML = `<tr>${headers.map(function (h) { return `<th>${h}</th>`; }).join("")}</tr>`;
-        body.innerHTML = rows.map(function (row) { return `<tr>${row.map(function (col) { return `<td>${col}</td>`; }).join("")}</tr>`; }).join("");
-        emptyState.hidden = rows.length !== 0;
-        printState = { title: title, subtitle: subtitle, headers: headers, rows: rows };
+      function _crptGetFilterConfig(type) {
+        var configs = {
+          "students-info": { fields: ["class", "gender", "status", "search"], searchPh: "Search by name / roll no / phone" },
+          "parents-info": { fields: ["class", "search"], searchPh: "Search by student or parent name" },
+          "student-attendance": { fields: ["month", "class", "search"], searchPh: "Search by student name" },
+          "staff-attendance": { fields: ["month", "search"], searchPh: "Search by employee name" },
+          "fee-collection": { fields: ["month", "class", "feeStatus", "search"], searchPh: "Search by student name" },
+          "student-progress": { fields: ["exam", "class", "search"], searchPh: "Search by student name" },
+          "accounts": { fields: ["month", "txnType", "search"], searchPh: "Search description / category" }
+        };
+        return configs[type] || { fields: ["search"], searchPh: "Search..." };
       }
 
-      safeOn(document.getElementById("generateCustomReportBtn"), "click", function () {
-        const type = typeSelect.value;
-        const classValue = classSelect.value;
-        const monthValue = monthInput.value;
-        const searchValue = searchInput.value;
-        if (type === "students-info") {
-          const rows = getStudentsByFilter(classValue, searchValue).map(function (student) {
-            return [escapeHtml(student.admissionNo || "-"), escapeHtml(student.name || "-"), escapeHtml(student.className || "-"), escapeHtml(student.gender || "-"), escapeHtml(student.studentPhone || student.phone || "-")];
+      function _crptRenderFilters() {
+        var cfg = _crptGetFilterConfig(_crptCurrentType);
+        var html = "";
+        if (cfg.fields.indexOf("class") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Class</label><select class="crpt-sel" id="crptClass"><option value="all">All Classes</option>' + _crptClassOpts + '</select></div>';
+        if (cfg.fields.indexOf("month") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Month</label><input class="crpt-inp" type="month" id="crptMonth" value="' + getCurrentMonthInputValue() + '"></div>';
+        if (cfg.fields.indexOf("exam") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Exam</label><select class="crpt-sel" id="crptExam"><option value="">Select Exam</option>' + _crptExamOpts + '</select></div>';
+        if (cfg.fields.indexOf("gender") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Gender</label><select class="crpt-sel" id="crptGender"><option value="all">All</option><option value="Male">Male</option><option value="Female">Female</option></select></div>';
+        if (cfg.fields.indexOf("status") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Status</label><select class="crpt-sel" id="crptStatus"><option value="all">All</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>';
+        if (cfg.fields.indexOf("feeStatus") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Fee Status</label><select class="crpt-sel" id="crptFeeStatus"><option value="all">All</option><option value="paid">Paid</option><option value="due">Due</option></select></div>';
+        if (cfg.fields.indexOf("txnType") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Type</label><select class="crpt-sel" id="crptTxnType"><option value="all">All Types</option><option value="Income">Income</option><option value="Expense">Expense</option></select></div>';
+        if (cfg.fields.indexOf("search") !== -1) html += '<div class="crpt-field crpt-field--wide"><label class="crpt-lbl">Search</label><input class="crpt-inp" type="search" id="crptSearch" placeholder="' + (cfg.searchPh || "Search...") + '"></div>';
+        document.getElementById("crptFiltersArea").innerHTML = html;
+      }
+
+      function _crptBuildTypeSelector() {
+        var html = "";
+        _crptCats.forEach(function (cat) {
+          var items = _crptReportTypes.filter(function (t) { return t.cat === cat; });
+          if (!items.length) return;
+          html += '<div class="crpt-cat"><div class="crpt-cat__hd"><i class="fas ' + (_crptCatIcons[cat] || "fa-folder") + '"></i> ' + escapeHtml(cat) + '</div><div class="crpt-cat__items">';
+          items.forEach(function (t) {
+            var active = t.value === _crptCurrentType ? " crpt-type--active" : "";
+            html += '<button class="crpt-type' + active + '" type="button" data-crpt-type="' + t.value + '"><i class="fas ' + t.icon + '"></i> ' + escapeHtml(t.label) + '</button>';
           });
-          setData("Custom Report - Students Info", `Class: ${classValue}`, ["Roll No", "Name", "Class", "Gender", "Phone"], rows);
-          return;
-        }
-        if (type === "parents-info") {
-          const rows = getStudentsByFilter(classValue, searchValue).map(function (student) {
-            return [escapeHtml(student.name || "-"), escapeHtml(student.className || "-"), escapeHtml(student.fatherName || "-"), escapeHtml(student.fatherPhone || "-"), escapeHtml(student.motherName || "-"), escapeHtml(student.motherPhone || "-")];
-          });
-          setData("Custom Report - Parents Info", `Class: ${classValue}`, ["Student", "Class", "Father", "Father Phone", "Mother", "Mother Phone"], rows);
-          return;
-        }
-        if (type === "student-attendance") {
-          const rows = getStudentMonthlyAttendance(monthValue, classValue, searchValue).map(function (row) {
-            return [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), row.present, row.absent, row.leave, row.total, `${row.percent}%`];
-          });
-          setData("Custom Report - Students Attendance", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Roll No", "Student", "Class", "P", "A", "L", "Total", "%"], rows);
-          return;
-        }
-        if (type === "staff-attendance") {
-          const rows = getEmployeeMonthlyAttendance(monthValue, searchValue).map(function (row) {
-            return [escapeHtml(row.employee.name || "-"), escapeHtml(row.employee.role || "-"), row.present, row.absent, row.leave, row.total, `${row.percent}%`];
-          });
-          setData("Custom Report - Staff Attendance", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Employee", "Role", "P", "A", "L", "Total", "%"], rows);
-          return;
-        }
-        if (type === "fee-collection") {
-          const rows = getFeeCollectionReportRows(monthValue, classValue, searchValue, "all").map(function (row) {
-            return [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), row.totalAmount, row.deposit, row.remaining, row.status === "paid" ? "Paid" : "Due"];
-          });
-          setData("Custom Report - Fee Collection", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Roll No", "Student", "Class", "Total", "Deposit", "Remaining", "Status"], rows);
-          return;
-        }
-        if (type === "student-progress") {
-          if (!examSelect.value) {
-            setData("Custom Report - Student Progress", "Select exam first", ["Info"], [["Please select exam first."]]);
-            return;
-          }
-          const exam = getExamById(examSelect.value);
-          const rows = getStudentsByFilter(classValue, searchValue).map(function (student) {
-            const result = evaluateExamResult(examSelect.value, student.className, student.id);
-            return [escapeHtml(student.admissionNo || "-"), escapeHtml(student.name || "-"), escapeHtml(student.className || "-"), result.obtainedMarks, result.totalMarks, `${result.percentage}%`, escapeHtml(result.grade), escapeHtml(result.status)];
-          });
-          setData("Custom Report - Student Progress", `Exam: ${exam ? exam.name : "-"}`, ["Roll No", "Student", "Class", "Obtain", "Total", "%", "Grade", "Status"], rows);
-          return;
-        }
-        const accounts = getAccountsReportRows("monthly", monthValue);
-        const rows = accounts.rows.map(function (row) {
-          return [escapeHtml(row.date || "-"), row.type, escapeHtml(row.source || "-"), escapeHtml(row.ref || "-"), row.amount];
+          html += '</div></div>';
         });
-        setData("Custom Report - Accounts", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Date", "Type", "Source", "Reference", "Amount"], rows);
+        return html;
+      }
+
+      function _crptGenerate() {
+        if (_crptLoading) return;
+        _crptLoading = true;
+        var genBtn = document.getElementById("crptGenBtn");
+        if (genBtn) { genBtn.disabled = true; genBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...'; }
+        var summaryWrap = document.getElementById("crptSummaryCards");
+        var previewWrap = document.getElementById("crptPreview");
+        var exportBar = document.getElementById("crptExportBar");
+
+        setTimeout(function () {
+          try {
+            var type = _crptCurrentType;
+            var classEl = document.getElementById("crptClass");
+            var monthEl = document.getElementById("crptMonth");
+            var examEl = document.getElementById("crptExam");
+            var genderEl = document.getElementById("crptGender");
+            var statusEl = document.getElementById("crptStatus");
+            var feeStatusEl = document.getElementById("crptFeeStatus");
+            var txnTypeEl = document.getElementById("crptTxnType");
+            var searchEl = document.getElementById("crptSearch");
+            var classVal = classEl ? classEl.value : "all";
+            var monthVal = monthEl ? monthEl.value : getCurrentMonthInputValue();
+            var examVal = examEl ? examEl.value : "";
+            var genderVal = genderEl ? genderEl.value : "all";
+            var statusVal = statusEl ? statusEl.value : "all";
+            var feeStatusVal = feeStatusEl ? feeStatusEl.value : "all";
+            var txnTypeVal = txnTypeEl ? txnTypeEl.value : "all";
+            var searchVal = searchEl ? searchEl.value : "";
+
+            if (type === "students-info") {
+              var students = getStudentsByFilter(classVal, searchVal);
+              if (genderVal !== "all") students = students.filter(function (s) { return (s.gender || "").toLowerCase() === genderVal.toLowerCase(); });
+              if (statusVal !== "all") students = students.filter(function (s) { return (s.status || "active").toLowerCase() === statusVal.toLowerCase(); });
+              _crptHeaders = ["Roll No", "Student Name", "Father Name", "Class", "Gender", "Phone", "Status"];
+              _crptData = students.map(function (s) { return [s.admissionNo || "-", s.name || "-", s.fatherName || "-", s.className || "-", s.gender || "-", s.studentPhone || s.phone || "-", s.status || "Active"]; });
+              var active = students.filter(function (s) { return (s.status || "active").toLowerCase() === "active"; }).length;
+              var male = students.filter(function (s) { return (s.gender || "").toLowerCase() === "male"; }).length;
+              var female = students.filter(function (s) { return (s.gender || "").toLowerCase() === "female"; }).length;
+              _crptSummary = { cards: [{ lbl: "Total Students", val: students.length, clr: "#6366f1" }, { lbl: "Active", val: active, clr: "#059669" }, { lbl: "Male", val: male, clr: "#2563eb" }, { lbl: "Female", val: female, clr: "#ec4899" }] };
+              _crptReportTitle = "Students Information Report";
+              _crptReportSubtitle = "Class: " + classVal + (genderVal !== "all" ? " | Gender: " + genderVal : "") + (statusVal !== "all" ? " | Status: " + statusVal : "");
+            } else if (type === "parents-info") {
+              var students = getStudentsByFilter(classVal, searchVal);
+              _crptHeaders = ["Student", "Class", "Father Name", "Father Phone", "Mother Name", "Mother Phone"];
+              _crptData = students.map(function (s) { return [s.name || "-", s.className || "-", s.fatherName || "-", s.fatherPhone || "-", s.motherName || "-", s.motherPhone || "-"]; });
+              _crptSummary = { cards: [{ lbl: "Total Records", val: students.length, clr: "#6366f1" }, { lbl: "With Father Phone", val: students.filter(function (s) { return s.fatherPhone; }).length, clr: "#059669" }] };
+              _crptReportTitle = "Parents Information Report";
+              _crptReportSubtitle = "Class: " + classVal;
+            } else if (type === "student-attendance") {
+              var rows = getStudentMonthlyAttendance(monthVal, classVal, searchVal);
+              _crptHeaders = ["Roll No", "Student", "Class", "Present", "Absent", "Leave", "Total", "Percentage"];
+              _crptData = rows.map(function (r) { return [r.student.admissionNo || "-", r.student.name || "-", r.student.className || "-", r.present, r.absent, r.leave, r.total, r.percent + "%"]; });
+              var totalP = rows.reduce(function (s, r) { return s + r.present; }, 0);
+              var totalA = rows.reduce(function (s, r) { return s + r.absent; }, 0);
+              var totalL = rows.reduce(function (s, r) { return s + r.leave; }, 0);
+              var totalD = totalP + totalA + totalL;
+              var avgPct = totalD ? Math.round((totalP / totalD) * 100) : 0;
+              _crptSummary = { cards: [{ lbl: "Total Students", val: rows.length, clr: "#6366f1" }, { lbl: "Total Present", val: totalP, clr: "#059669" }, { lbl: "Total Absent", val: totalA, clr: "#dc2626" }, { lbl: "Avg Attendance", val: avgPct + "%", clr: "#f59e0b" }] };
+              _crptReportTitle = "Student Attendance Report";
+              _crptReportSubtitle = "Month: " + normalizeFeeMonthLabel(monthVal) + " | Class: " + classVal;
+            } else if (type === "staff-attendance") {
+              var rows = getEmployeeMonthlyAttendance(monthVal, searchVal);
+              _crptHeaders = ["Employee", "Role", "Present", "Absent", "Leave", "Total", "Percentage"];
+              _crptData = rows.map(function (r) { return [r.employee.name || "-", r.employee.role || "-", r.present, r.absent, r.leave, r.total, r.percent + "%"]; });
+              var totalP = rows.reduce(function (s, r) { return s + r.present; }, 0);
+              var totalA = rows.reduce(function (s, r) { return s + r.absent; }, 0);
+              var totalL = rows.reduce(function (s, r) { return s + r.leave; }, 0);
+              var totalD = totalP + totalA + totalL;
+              var avgPct = totalD ? Math.round((totalP / totalD) * 100) : 0;
+              _crptSummary = { cards: [{ lbl: "Total Employees", val: rows.length, clr: "#6366f1" }, { lbl: "Total Present", val: totalP, clr: "#059669" }, { lbl: "Total Absent", val: totalA, clr: "#dc2626" }, { lbl: "Avg Attendance", val: avgPct + "%", clr: "#f59e0b" }] };
+              _crptReportTitle = "Employee Attendance Report";
+              _crptReportSubtitle = "Month: " + normalizeFeeMonthLabel(monthVal);
+            } else if (type === "fee-collection") {
+              var rows = getFeeCollectionReportRows(monthVal, classVal, searchVal, feeStatusVal);
+              var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
+              _crptHeaders = ["Roll No", "Student", "Class", "Total", "Deposit", "Remaining", "Status"];
+              _crptData = rows.map(function (r) { return [r.student.admissionNo || "-", r.student.name || "-", r.student.className || "-", currencySymbol + " " + r.totalAmount, currencySymbol + " " + r.deposit, currencySymbol + " " + r.remaining, r.status === "paid" ? "Paid" : "Due"]; });
+              var paid = rows.filter(function (r) { return r.status === "paid"; }).length;
+              var due = rows.filter(function (r) { return r.status === "due"; }).length;
+              var totalCol = rows.reduce(function (s, r) { return s + r.deposit; }, 0);
+              _crptSummary = { cards: [{ lbl: "Total Collection", val: currencySymbol + " " + totalCol, clr: "#059669" }, { lbl: "Transactions", val: rows.length, clr: "#6366f1" }, { lbl: "Paid Students", val: paid, clr: "#10b981" }, { lbl: "Pending Students", val: due, clr: "#f59e0b" }] };
+              _crptReportTitle = "Fee Collection Report";
+              _crptReportSubtitle = "Month: " + normalizeFeeMonthLabel(monthVal) + " | Class: " + classVal;
+            } else if (type === "student-progress") {
+              if (!examVal) {
+                _crptData = [];
+                _crptHeaders = ["Info"];
+                _crptSummary = { cards: [] };
+                _crptReportTitle = "Student Progress Report";
+                _crptReportSubtitle = "Please select an exam first.";
+                _crptRenderPreview();
+                _crptLoading = false;
+                if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '<i class="fas fa-search"></i> Generate Report'; }
+                return;
+              }
+              var exam = getExamById(examVal);
+              var students = getStudentsByFilter(classVal, searchVal);
+              _crptHeaders = ["Roll No", "Student", "Class", "Obtained", "Total", "Percentage", "Grade", "Status"];
+              _crptData = students.map(function (s) {
+                var result = evaluateExamResult(examVal, s.className, s.id);
+                return [s.admissionNo || "-", s.name || "-", s.className || "-", result.obtainedMarks, result.totalMarks, result.percentage + "%", result.grade || "-", result.status || "-"];
+              });
+              var passed = _crptData.filter(function (r) { return r[7] === "Pass"; }).length;
+              var failed = _crptData.filter(function (r) { return r[7] === "Fail"; }).length;
+              var avgPct = _crptData.length ? Math.round(_crptData.reduce(function (s, r) { return s + parseInt(r[5]) || 0; }, 0) / _crptData.length) : 0;
+              _crptSummary = { cards: [{ lbl: "Total Students", val: students.length, clr: "#6366f1" }, { lbl: "Passed", val: passed, clr: "#059669" }, { lbl: "Failed", val: failed, clr: "#dc2626" }, { lbl: "Average", val: avgPct + "%", clr: "#f59e0b" }] };
+              _crptReportTitle = "Student Progress Report";
+              _crptReportSubtitle = "Exam: " + (exam ? exam.name : "-") + " | Class: " + classVal;
+            } else if (type === "accounts") {
+              var acctData = getAccountsReportRows("monthly", monthVal);
+              var allRows = acctData.rows || [];
+              if (txnTypeVal !== "all") allRows = allRows.filter(function (r) { return r.type === txnTypeVal; });
+              if (searchVal) {
+                var q = searchVal.toLowerCase();
+                allRows = allRows.filter(function (r) { return ((r.date || "") + " " + (r.type || "") + " " + (r.source || "") + " " + (r.ref || "")).toLowerCase().indexOf(q) !== -1; });
+              }
+              var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
+              _crptHeaders = ["Date", "Type", "Category", "Reference", "Amount"];
+              _crptData = allRows.map(function (r) { return [r.date || "-", r.type || "-", r.source || "-", r.ref || "-", currencySymbol + " " + r.amount]; });
+              var inc = allRows.filter(function (r) { return r.type === "Income"; }).reduce(function (s, r) { return s + r.amount; }, 0);
+              var exp = allRows.filter(function (r) { return r.type === "Expense"; }).reduce(function (s, r) { return s + r.amount; }, 0);
+              _crptSummary = { cards: [{ lbl: "Total Income", val: currencySymbol + " " + inc, clr: "#059669" }, { lbl: "Total Expenses", val: currencySymbol + " " + exp, clr: "#dc2626" }, { lbl: "Net Balance", val: currencySymbol + " " + (inc - exp), clr: inc - exp >= 0 ? "#059669" : "#dc2626" }, { lbl: "Transactions", val: allRows.length, clr: "#6366f1" }] };
+              _crptReportTitle = "Account Statement";
+              _crptReportSubtitle = "Month: " + normalizeFeeMonthLabel(monthVal);
+            }
+
+            _crptPage = 1;
+            _crptRenderSummary();
+            _crptRenderPreview();
+            if (exportBar) exportBar.style.display = "flex";
+          } catch (err) {
+            console.error("Report generation error:", err);
+            if (summaryWrap) summaryWrap.innerHTML = '<div class="crpt-empty"><p>Error generating report.</p></div>';
+          }
+          _crptLoading = false;
+          if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '<i class="fas fa-search"></i> Generate Report'; }
+        }, 150);
+      }
+
+      function _crptRenderSummary() {
+        var wrap = document.getElementById("crptSummaryCards");
+        if (!wrap || !_crptSummary.cards || !_crptSummary.cards.length) { if (wrap) wrap.innerHTML = ""; return; }
+        wrap.innerHTML = _crptSummary.cards.map(function (c) {
+          return '<div class="crpt-scard"><div class="crpt-scard__body"><div class="crpt-scard__val" style="color:' + c.clr + ';">' + c.val + '</div><div class="crpt-scard__lbl">' + escapeHtml(c.lbl) + '</div></div></div>';
+        }).join("");
+      }
+
+      function _crptRenderPreview() {
+        var wrap = document.getElementById("crptPreview");
+        if (!wrap) return;
+        if (!_crptData.length && !_crptHeaders.length) {
+          wrap.innerHTML = '<div class="crpt-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No records found</p><span>Try changing your filters or report type.</span><button class="crpt-btn crpt-btn--ghost" type="button" id="crptResetEmpty">Reset Filters</button></div>';
+          var resetBtn = document.getElementById("crptResetEmpty");
+          if (resetBtn) safeOn(resetBtn, "click", function () { _crptResetFilters(); });
+          return;
+        }
+        var schoolName = ((database.generalSettings || {}).instituteProfile || {}).name || (database.school || {}).name || "SagarSoft";
+        var total = _crptData.length;
+        var totalPages = Math.max(1, Math.ceil(total / _crptPageSize));
+        if (_crptPage > totalPages) _crptPage = totalPages;
+        var start = (_crptPage - 1) * _crptPageSize;
+        var pageData = _crptData.slice(start, start + _crptPageSize);
+        var html = '<div class="crpt-preview__hdr"><div class="crpt-preview__school">' + escapeHtml(schoolName) + '</div><div class="crpt-preview__title">' + escapeHtml(_crptReportTitle) + '</div><div class="crpt-preview__sub">' + escapeHtml(_crptReportSubtitle) + '</div></div>';
+        html += '<div class="crpt-tblwrap"><table class="crpt-tbl"><thead><tr>';
+        _crptHeaders.forEach(function (h) { html += '<th>' + escapeHtml(h) + '</th>'; });
+        html += '</tr></thead><tbody>';
+        pageData.forEach(function (row) {
+          html += '<tr>';
+          row.forEach(function (cell, ci) { html += '<td>' + escapeHtml(String(cell)) + '</td>'; });
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        if (total > _crptPageSize) {
+          html += '<div class="crpt-pager"><span class="crpt-pager__info">Showing ' + (start + 1) + '–' + Math.min(start + _crptPageSize, total) + ' of ' + total + '</span><div class="crpt-pager__btns">';
+          html += '<button class="crpt-pager__btn" type="button" data-crpt-page="' + (_crptPage - 1) + '"' + (_crptPage <= 1 ? ' disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
+          for (var p = 1; p <= totalPages; p++) {
+            if (totalPages > 7 && p > 3 && p < totalPages - 2 && Math.abs(p - _crptPage) > 1) { if (p === 4 || p === totalPages - 3) html += '<span class="crpt-pager__dots">...</span>'; continue; }
+            html += '<button class="crpt-pager__btn' + (p === _crptPage ? ' crpt-pager__btn--active' : '') + '" type="button" data-crpt-page="' + p + '">' + p + '</button>';
+          }
+          html += '<button class="crpt-pager__btn" type="button" data-crpt-page="' + (_crptPage + 1) + '"' + (_crptPage >= totalPages ? ' disabled' : '') + '><i class="fas fa-chevron-right"></i></button>';
+          html += '</div></div>';
+        } else if (total > 0) {
+          html += '<div class="crpt-pager"><span class="crpt-pager__info">Showing all ' + total + ' records</span></div>';
+        }
+        wrap.innerHTML = html;
+        wrap.querySelectorAll("[data-crpt-page]").forEach(function (btn) {
+          safeOn(btn, "click", function () {
+            var pg = Number(btn.getAttribute("data-crpt-page"));
+            if (pg >= 1 && pg <= totalPages) { _crptPage = pg; _crptRenderPreview(); }
+          });
+        });
+      }
+
+      function _crptResetFilters() {
+        _crptCurrentType = "students-info";
+        _crptData = [];
+        _crptHeaders = [];
+        _crptSummary = {};
+        document.querySelectorAll("[data-crpt-type]").forEach(function (b) { b.classList.remove("crpt-type--active"); });
+        var firstBtn = document.querySelector('[data-crpt-type="students-info"]');
+        if (firstBtn) firstBtn.classList.add("crpt-type--active");
+        _crptRenderFilters();
+        document.getElementById("crptSummaryCards").innerHTML = "";
+        document.getElementById("crptPreview").innerHTML = "";
+        var exportBar = document.getElementById("crptExportBar");
+        if (exportBar) exportBar.style.display = "none";
+      }
+
+      function _crptOpenPrint(pdfMode) {
+        if (!_crptData.length) return;
+        var schoolName = ((database.generalSettings || {}).instituteProfile || {}).name || (database.school || {}).name || "SagarSoft";
+        var pw = window.open("", "_blank", "width=900,height=700");
+        if (!pw) { alert("Please allow popups."); return; }
+        pw.document.write("<!DOCTYPE html><html><head><title>" + _crptReportTitle + "</title><style>body{font-family:'Segoe UI',sans-serif;margin:20px;color:#1e293b;font-size:12px;}h1{font-size:18px;margin:0 0 2px;}h2{font-size:13px;color:#64748b;margin:0 0 4px;font-weight:500;}h3{font-size:11px;color:#94a3b8;margin:0 0 12px;font-weight:400;}.school{font-size:20px;font-weight:800;color:#4f46e5;margin-bottom:2px;}table{width:100%;border-collapse:collapse;margin-top:8px;}th{background:#f1f5f9;padding:6px 8px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;border-bottom:2px solid #e2e8f0;}td{padding:5px 8px;border-bottom:1px solid #f1f5f9;font-size:11px;}tr:nth-child(even){background:#fafbfc;}.footer{margin-top:16px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:8px;}</style></head><body>");
+        pw.document.write('<div class="school">' + escapeHtml(schoolName) + '</div>');
+        pw.document.write("<h1>" + escapeHtml(_crptReportTitle) + "</h1>");
+        pw.document.write("<h2>" + escapeHtml(_crptReportSubtitle) + "</h2>");
+        pw.document.write("<h3>Generated: " + new Date().toLocaleString() + "</h3>");
+        pw.document.write("<table><thead><tr>");
+        _crptHeaders.forEach(function (h) { pw.document.write("<th>" + escapeHtml(h) + "</th>"); });
+        pw.document.write("</tr></thead><tbody>");
+        _crptData.forEach(function (row) {
+          pw.document.write("<tr>");
+          row.forEach(function (cell) { pw.document.write("<td>" + escapeHtml(String(cell)) + "</td>"); });
+          pw.document.write("</tr>");
+        });
+        pw.document.write("</tbody></table>");
+        pw.document.write('<div class="footer">Generated by SagarSoft Management System</div>');
+        pw.document.write("</body></html>");
+        pw.document.close();
+        if (!pdfMode) setTimeout(function () { pw.print(); }, 400);
+      }
+
+      function _crptExportCSV() {
+        if (!_crptData.length) return;
+        var csvRows = [_crptHeaders.map(function (h) { return '"' + h.replace(/"/g, '""') + '"'; }).join(",")];
+        _crptData.forEach(function (row) {
+          csvRows.push(row.map(function (cell) { return '"' + String(cell).replace(/"/g, '""') + '"'; }).join(","));
+        });
+        var blob = new Blob(["\uFEFF" + csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = _crptReportTitle.replace(/[^a-z0-9]/gi, "_") + "_" + getTodayDateISO() + ".csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      }
+
+      moduleSummary.innerHTML = '<div class="crpt-wrap">' +
+        '<div class="crpt-hdr"><div class="crpt-hdr__left"><div class="crpt-hdr__eyebrow">SagarSoft Analytics</div><h2 class="crpt-hdr__title">Customised Reports</h2><p class="crpt-hdr__sub">Generate, preview and export professional school reports from one place.</p></div></div>' +
+        '<div class="crpt-center">' +
+        '<div class="crpt-panel"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-th-large"></i> Report Center</h3><p class="crpt-panel__sub">Select a report type and apply filters to generate your report.</p></div><div class="crpt-panel__bd" id="crptTypeArea">' + _crptBuildTypeSelector() + '</div></div>' +
+        '<div class="crpt-panel"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-filter"></i> Filters</h3></div><div class="crpt-panel__bd"><div class="crpt-filter-grid" id="crptFiltersArea"></div><div class="crpt-filter-actions"><button class="crpt-btn crpt-btn--accent" type="button" id="crptGenBtn"><i class="fas fa-search"></i> Generate Report</button><button class="crpt-btn crpt-btn--ghost" type="button" id="crptResetBtn"><i class="fas fa-undo"></i> Reset</button></div></div></div>' +
+        '<div id="crptSummaryCards" class="crpt-scards"></div>' +
+        '<div class="crpt-panel crpt-panel--preview" id="crptPreviewPanel" style="display:none;"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-eye"></i> Report Preview</h3></div><div class="crpt-panel__bd" id="crptPreview"></div></div>' +
+        '<div class="crpt-export-bar" id="crptExportBar" style="display:none;"><button class="crpt-btn crpt-btn--accent" type="button" id="crptPrintBtn"><i class="fas fa-print"></i> Print</button><button class="crpt-btn crpt-btn--accent" type="button" id="crptPdfBtn"><i class="fas fa-file-pdf"></i> PDF</button><button class="crpt-btn crpt-btn--accent" type="button" id="crptCsvBtn"><i class="fas fa-file-csv"></i> CSV</button></div>' +
+        '</div></div>';
+      moduleGuide.innerHTML = "";
+
+      _crptRenderFilters();
+
+      document.querySelectorAll("[data-crpt-type]").forEach(function (btn) {
+        safeOn(btn, "click", function () {
+          _crptCurrentType = btn.getAttribute("data-crpt-type");
+          document.querySelectorAll("[data-crpt-type]").forEach(function (b) { b.classList.remove("crpt-type--active"); });
+          btn.classList.add("crpt-type--active");
+          _crptRenderFilters();
+          _crptData = [];
+          _crptHeaders = [];
+          _crptSummary = {};
+          document.getElementById("crptSummaryCards").innerHTML = "";
+          document.getElementById("crptPreview").innerHTML = "";
+          var previewPanel = document.getElementById("crptPreviewPanel");
+          if (previewPanel) previewPanel.style.display = "none";
+          var exportBar = document.getElementById("crptExportBar");
+          if (exportBar) exportBar.style.display = "none";
+        });
       });
 
-      safeOn(document.getElementById("printCustomReportBtn"), "click", function () {
-        if (!printState) {
-          return;
-        }
-        openPrintReport(printState);
+      safeOn(document.getElementById("crptGenBtn"), "click", function () {
+        var previewPanel = document.getElementById("crptPreviewPanel");
+        if (previewPanel) previewPanel.style.display = "block";
+        _crptGenerate();
       });
+      safeOn(document.getElementById("crptResetBtn"), "click", function () { _crptResetFilters(); });
+      safeOn(document.getElementById("crptPrintBtn"), "click", function () { _crptOpenPrint(false); });
+      safeOn(document.getElementById("crptPdfBtn"), "click", function () { _crptOpenPrint(true); });
+      safeOn(document.getElementById("crptCsvBtn"), "click", function () { _crptExportCSV(); });
+
       return;
     }
 

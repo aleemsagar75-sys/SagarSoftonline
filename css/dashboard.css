@@ -15523,3 +15523,114 @@ button.ss-btn-loading {
   .acr-trend-bar{width:12px;}
   .acr-modal__dialog{width:95%;}
 }
+
+/* ============================================================
+   SagarSoft — Customised Reports / Report Center (.crpt-)
+   ============================================================ */
+
+.crpt-wrap{padding:0;max-width:100%;overflow-x:hidden;}
+.crpt-center{display:flex;flex-direction:column;gap:14px;}
+
+/* === Header === */
+.crpt-hdr{margin-bottom:16px;}
+.crpt-hdr__eyebrow{font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366f1;margin-bottom:2px;}
+.crpt-hdr__title{font-size:1.5rem;font-weight:800;color:#1e293b;margin:0 0 2px;}
+.crpt-hdr__sub{font-size:0.82rem;color:#64748b;margin:0;}
+
+/* === Panel === */
+.crpt-panel{background:#fff;border:1px solid #f1f5f9;border-radius:12px;overflow:hidden;}
+.crpt-panel__hd{padding:12px 16px;border-bottom:1px solid #f1f5f9;}
+.crpt-panel__tt{font-size:0.88rem;font-weight:700;color:#1e293b;margin:0;display:flex;align-items:center;gap:8px;}
+.crpt-panel__tt i{color:#6366f1;font-size:0.82rem;}
+.crpt-panel__sub{font-size:0.75rem;color:#94a3b8;margin:2px 0 0;}
+.crpt-panel__bd{padding:14px 16px;}
+
+/* === Report Type Categories === */
+.crpt-cat{margin-bottom:12px;}
+.crpt-cat:last-child{margin-bottom:0;}
+.crpt-cat__hd{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:#64748b;margin-bottom:6px;display:flex;align-items:center;gap:6px;}
+.crpt-cat__hd i{font-size:0.7rem;color:#94a3b8;}
+.crpt-cat__items{display:flex;flex-wrap:wrap;gap:6px;}
+.crpt-type{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;font-size:0.75rem;font-weight:600;font-family:inherit;border:1px solid #e2e8f0;border-radius:8px;background:#fff;color:#475569;cursor:pointer;transition:all 0.15s;}
+.crpt-type:hover{border-color:#6366f1;color:#6366f1;background:#f5f3ff;}
+.crpt-type--active{background:#6366f1;color:#fff;border-color:#6366f1;}
+.crpt-type--active:hover{background:#4f46e5;border-color:#4f46e5;color:#fff;}
+.crpt-type i{font-size:0.72rem;}
+
+/* === Filters === */
+.crpt-filter-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:12px;}
+.crpt-field{display:flex;flex-direction:column;gap:3px;}
+.crpt-field--wide{grid-column:1/-1;}
+.crpt-lbl{font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#64748b;}
+.crpt-inp,.crpt-sel{padding:7px 10px;font-size:0.78rem;border:1px solid #e2e8f0;border-radius:8px;font-family:inherit;background:#fff;transition:border-color 0.15s;}
+.crpt-inp:focus,.crpt-sel:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,0.1);}
+.crpt-filter-actions{display:flex;gap:8px;justify-content:flex-end;}
+
+/* === Buttons === */
+.crpt-btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;font-size:0.78rem;font-weight:600;font-family:inherit;border-radius:8px;cursor:pointer;transition:all 0.15s;border:none;}
+.crpt-btn:disabled{opacity:0.5;cursor:not-allowed;}
+.crpt-btn--accent{background:#6366f1;color:#fff;}
+.crpt-btn--accent:hover:not(:disabled){background:#4f46e5;}
+.crpt-btn--ghost{background:transparent;color:#64748b;border:1px solid #e2e8f0;}
+.crpt-btn--ghost:hover{background:#f8fafc;border-color:#cbd5e1;}
+
+/* === Summary Cards === */
+.crpt-scards{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.crpt-scard{background:#fff;border:1px solid #f1f5f9;border-radius:10px;padding:12px 14px;text-align:center;}
+.crpt-scard__val{font-size:1.2rem;font-weight:800;margin-bottom:2px;}
+.crpt-scard__lbl{font-size:0.66rem;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;color:#94a3b8;}
+
+/* === Preview === */
+.crpt-preview__hdr{text-align:center;padding:12px 0 16px;border-bottom:1px solid #f1f5f9;margin-bottom:12px;}
+.crpt-preview__school{font-size:1rem;font-weight:800;color:#4f46e5;}
+.crpt-preview__title{font-size:0.88rem;font-weight:700;color:#1e293b;margin:2px 0;}
+.crpt-preview__sub{font-size:0.72rem;color:#94a3b8;}
+
+/* === Table === */
+.crpt-tblwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #f1f5f9;border-radius:10px;}
+.crpt-tbl{width:100%;border-collapse:collapse;font-size:0.78rem;}
+.crpt-tbl thead{background:#f8fafc;position:sticky;top:0;}
+.crpt-tbl th{padding:8px 10px;text-align:left;font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#64748b;border-bottom:2px solid #e2e8f0;white-space:nowrap;}
+.crpt-tbl td{padding:7px 10px;border-bottom:1px solid #f8fafc;white-space:nowrap;}
+.crpt-tbl tr:hover{background:#f8fafc;}
+
+/* === Pagination === */
+.crpt-pager{display:flex;align-items:center;justify-content:space-between;padding:10px 0;flex-wrap:wrap;gap:8px;}
+.crpt-pager__info{font-size:0.75rem;color:#64748b;}
+.crpt-pager__btns{display:flex;align-items:center;gap:4px;}
+.crpt-pager__btn{width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:0.72rem;font-weight:600;font-family:inherit;border:1px solid #e2e8f0;border-radius:6px;background:#fff;color:#475569;cursor:pointer;transition:all 0.15s;}
+.crpt-pager__btn:hover:not(:disabled){border-color:#6366f1;color:#6366f1;}
+.crpt-pager__btn--active{background:#6366f1;color:#fff;border-color:#6366f1;}
+.crpt-pager__btn:disabled{opacity:0.3;cursor:not-allowed;}
+.crpt-pager__dots{font-size:0.72rem;color:#94a3b8;padding:0 4px;}
+
+/* === Export Bar === */
+.crpt-export-bar{display:flex;gap:8px;justify-content:center;padding:12px 0;}
+
+/* === Empty State === */
+.crpt-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px 16px;color:#94a3b8;text-align:center;}
+.crpt-empty svg{margin-bottom:8px;opacity:0.5;}
+.crpt-empty p{font-size:0.85rem;font-weight:600;color:#64748b;margin:0 0 2px;}
+.crpt-empty span{font-size:0.75rem;color:#94a3b8;margin-bottom:8px;}
+
+/* === Responsive === */
+@media(max-width:1024px){
+  .crpt-scards{grid-template-columns:repeat(2,1fr);}
+}
+@media(max-width:768px){
+  .crpt-hdr__title{font-size:1.2rem;}
+  .crpt-filter-grid{grid-template-columns:1fr 1fr;}
+  .crpt-scards{grid-template-columns:1fr 1fr;}
+  .crpt-type{padding:5px 10px;font-size:0.72rem;}
+  .crpt-filter-actions{flex-direction:column;}
+  .crpt-filter-actions .crpt-btn{width:100%;}
+  .crpt-export-bar{flex-wrap:wrap;}
+}
+@media(max-width:480px){
+  .crpt-filter-grid{grid-template-columns:1fr;}
+  .crpt-scards{grid-template-columns:1fr;}
+  .crpt-cat__items{flex-direction:column;}
+  .crpt-type{width:100%;}
+  .crpt-pager{flex-direction:column;align-items:stretch;}
+  .crpt-pager__btns{justify-content:center;}
+}
