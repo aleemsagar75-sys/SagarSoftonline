@@ -15864,10 +15864,12 @@ button.ss-btn-loading {
   #moduleSummary .report-content,#moduleSummary article{display:block!important;}
   .cert-preview-container{border:none!important;padding:0!important;background:#fff!important;min-height:auto!important;}
   .cert-preview__paper{box-shadow:none!important;border:none!important;max-width:100%!important;}
-  .cert-preview__border{border:3px double #0f2b3f!important;padding:40px 36px!important;min-height:auto!important;page-break-inside:avoid;}
-  @page{size:A4 landscape;margin:12mm;}
+  .cert-preview__border{border:none!important;padding:0!important;min-height:auto!important;}
+  .report-content{margin:0!important;padding:0!important;}
+  .report-content article{page-break-inside:avoid;break-inside:avoid;max-width:100%!important;margin:0!important;}
+  .report-content article > div{border:2px solid #0f2b3f!important;outline:1px solid #0f2b3f!important;outline-offset:3px!important;padding:28px 26px!important;}
+  @page{size:A4 portrait;margin:10mm;}
 }
 @media print{
   .report-content article[style*="page-break-after:always"]{page-break-after:always;break-after:page;}
-  .report-content article{page-break-inside:avoid;break-inside:avoid;}
 }

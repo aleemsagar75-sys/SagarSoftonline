@@ -24013,6 +24013,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
       const schoolName = profile.name || database.school.name || "School";
       const schoolLogo = profile.logo || "";
       const schoolAddress = profile.address || database.school.address || "";
+      const schoolSlogan = profile.slogan || "";
       const today = new Date().toISOString().slice(0, 10);
       var _certSelectedStudent = null;
       var _certSelectedStudents = [];
@@ -24021,12 +24022,12 @@ classSelect.addEventListener("change", renderSubjectSelect);
       var _certNumberIssued = null;
 
       var _certTypeConfig = {
-        character: { label: "Character Certificate", icon: "★", fields: ["conduct"], bulk: false },
-        slc: { label: "School Leaving Certificate", icon: "✎", fields: ["class","admissionDate","leavingDate","dob","leavingReason","conduct"], bulk: false },
-        bonafide: { label: "Bonafide Certificate", icon: "⚖", fields: ["purpose"], bulk: false },
-        transfer: { label: "Transfer Certificate", icon: "⇄", fields: ["class","admissionDate","leavingDate","leavingReason","conduct"], bulk: false },
-        student: { label: "Student Certificate", icon: "🎓", fields: ["class","purpose"], bulk: true },
-        custom: { label: "Custom Certificate", icon: "✍", fields: [], bulk: false }
+        character: { label: "Character Certificate", icon: "★", fields: ["conduct"], bulk: false, showClass: false, showRoll: false },
+        slc: { label: "School Leaving Certificate", icon: "✎", fields: ["class","admissionDate","leavingDate","dob","leavingReason","conduct"], bulk: false, showClass: true, showRoll: false },
+        bonafide: { label: "Bonafide Certificate", icon: "⚖", fields: ["purpose"], bulk: false, showClass: false, showRoll: false },
+        transfer: { label: "Transfer Certificate", icon: "⇄", fields: ["class","admissionDate","leavingDate","leavingReason","conduct"], bulk: false, showClass: true, showRoll: false },
+        student: { label: "Student Certificate", icon: "🎓", fields: ["class","purpose"], bulk: true, showClass: true, showRoll: false },
+        custom: { label: "Custom Certificate", icon: "✍", fields: [], bulk: false, showClass: false, showRoll: false }
       };
 
       function _certNextNumber() {
@@ -24151,7 +24152,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
           var issueDateEl = document.getElementById("certIssueDate");
           var issueDate = issueDateEl ? issueDateEl.value : today;
           var html = _certBuildBulkPrintHtml(_certSelectedStudents, bodyText, issueDate);
-          openPrintReport({ title: "Certificates", subtitle: "", hideHeader: true, contentHtml: html });
+          openPrintReport({ title: "Certificates", subtitle: "", hideHeader: true, contentHtml: html }, null, "a4");
         });
         overlay.addEventListener("click", function (ev) { if (ev.target === overlay) document.body.removeChild(overlay); });
       }
@@ -24161,6 +24162,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
         if (!previewEl) return;
         var text = document.getElementById("certBodyText") ? document.getElementById("certBodyText").value.trim() : "";
         var student = _certSelectedStudent;
+        var cfg = _certTypeConfig[_certType] || {};
+        var showClass = cfg.showClass;
+        var showRoll = cfg.showRoll;
         var certTextLines = text.split("\n").filter(function (l) { return l.trim().length > 0; });
         var heading = certTextLines[0] || "Certificate";
         var bodyLines = certTextLines.slice(1).filter(function (l) {
@@ -24168,42 +24172,49 @@ classSelect.addEventListener("change", renderSubjectSelect);
           return nl !== "signature: principal" && nl !== "signature principal" && nl !== "school stamp";
         });
         var bodyHtml = escapeHtml(bodyLines.join("\n")).replace(/\n/g, "<br>");
-        var logoHtml = schoolLogo ? '<img src="' + escapeAttr(schoolLogo) + '" alt="Logo" style="max-height:60px;object-fit:contain;">' : '<div style="width:54px;height:54px;border-radius:50%;background:#0f2b3f;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem;font-family:Georgia,serif;">' + escapeHtml((schoolName || "S").charAt(0)) + '</div>';
+        var logoHtml = schoolLogo ? '<img src="' + escapeAttr(schoolLogo) + '" alt="Logo" style="max-height:56px;object-fit:contain;">' : '<div style="width:50px;height:50px;border-radius:50%;background:#0f2b3f;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;font-family:Georgia,serif;">' + escapeHtml((schoolName || "S").charAt(0)) + '</div>';
         var certNo = _certNumberIssued || "(Preview)";
         var issueDateEl = document.getElementById("certIssueDate");
         var issueDate = issueDateEl ? (issueDateEl.value || today) : today;
         var sName = student ? escapeHtml(student.name || "") : "";
         var fName = student ? escapeHtml(student.fatherName || "") : "";
-        var sClass = student ? escapeHtml(student.className || "") : "";
-        var sRoll = student ? escapeHtml(student.rollNo || student.admissionNo || "") : "";
         var certPhone = profile.phone || "";
         var certPsra = profile.psra || "";
         var certInfoLine = [certPhone ? escapeHtml(certPhone) : "", certPsra ? "PSRA: " + escapeHtml(certPsra) : "", schoolAddress ? escapeHtml(schoolAddress) : ""].filter(function (x) { return x; }).join(" | ");
 
+        var classRollHtml = "";
+        if (showClass || showRoll) {
+          var parts = [];
+          if (showClass && student) parts.push("Class: " + escapeHtml(student.className || "-"));
+          if (showRoll && student) parts.push("Roll No: " + escapeHtml(student.rollNo || student.admissionNo || "-"));
+          if (parts.length > 0) classRollHtml = '<p style="text-align:center;font-size:0.78rem;color:#718096;margin:4px 0 14px;">' + parts.join(" | ") + '</p>';
+        }
+
         previewEl.innerHTML =
-          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:28px 24px;background:#fff;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;min-height:400px;display:flex;flex-direction:column;position:relative;">' +
-            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">' +
+          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:24px 22px;background:#fff;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;min-height:380px;display:flex;flex-direction:column;position:relative;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">' +
               '<div></div>' +
-              '<div style="font-size:0.72rem;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Certificate No: ' + escapeHtml(certNo) + '<br><span style="font-weight:400;font-size:0.68rem;">Date: ' + escapeHtml(issueDate) + '</span></div>' +
+              '<div style="font-size:0.7rem;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Certificate No: ' + escapeHtml(certNo) + '<br><span style="font-weight:400;font-size:0.65rem;">Date: ' + escapeHtml(issueDate) + '</span></div>' +
             '</div>' +
-            '<div style="text-align:center;margin-bottom:14px;">' +
-              '<div style="margin-bottom:8px;">' + logoHtml + '</div>' +
-              '<h2 style="margin:0;font-size:1.15rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(schoolName) + '</h2>' +
-              (certInfoLine ? '<p style="margin:3px auto 0;font-size:0.6rem;color:#718096;max-width:400px;letter-spacing:0.3px;">' + certInfoLine + '</p>' : '') +
+            '<div style="text-align:center;margin-bottom:10px;">' +
+              '<div style="margin-bottom:6px;">' + logoHtml + '</div>' +
+              '<h2 style="margin:0;font-size:1.1rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(schoolName) + '</h2>' +
+              (schoolSlogan ? '<p style="margin:2px auto 0;font-size:0.58rem;color:#718096;font-style:italic;">' + escapeHtml(schoolSlogan) + '</p>' : '') +
+              (certInfoLine ? '<p style="margin:2px auto 0;font-size:0.55rem;color:#718096;max-width:400px;letter-spacing:0.3px;">' + certInfoLine + '</p>' : '') +
             '</div>' +
-            '<div style="text-align:center;margin-bottom:14px;"><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div><div style="display:inline-block;width:5px;height:5px;background:#0f2b3f;border-radius:50%;margin:0 8px;vertical-align:middle;"></div><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div></div>' +
-            '<h3 style="text-align:center;margin:0 0 16px;font-size:1.05rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(heading) + '</h3>' +
-            '<p style="text-align:center;font-size:0.82rem;color:#555;margin-bottom:8px;">This is to certify that</p>' +
-            (sName ? '<div style="text-align:center;margin-bottom:4px;"><span style="font-size:1.1rem;font-weight:700;color:#0f2b3f;border-bottom:1.5px solid #0f2b3f;padding-bottom:2px;display:inline-block;">' + sName + '</span></div>' : '<div style="text-align:center;margin-bottom:4px;color:#999;font-style:italic;font-size:0.85rem;">Select a student</div>') +
-            (fName ? '<p style="text-align:center;font-size:0.82rem;color:#555;margin-bottom:4px;">S/O ' + fName + '</p>' : '') +
-            (sClass || sRoll ? '<p style="text-align:center;font-size:0.78rem;color:#718096;margin-bottom:14px;">' + (sClass ? 'Class: ' + sClass : '') + (sClass && sRoll ? ' | ' : '') + (sRoll ? 'Roll No: ' + sRoll : '') + '</p>' : '') +
-            '<div style="text-align:justify;line-height:1.7;font-size:0.82rem;color:#1f2933;flex:1;margin-bottom:20px;">' +
+            '<div style="text-align:center;margin-bottom:10px;"><div style="display:inline-block;width:90px;height:1px;background:#0f2b3f;vertical-align:middle;"></div><div style="display:inline-block;width:5px;height:5px;background:#0f2b3f;border-radius:50%;margin:0 8px;vertical-align:middle;"></div><div style="display:inline-block;width:90px;height:1px;background:#0f2b3f;vertical-align:middle;"></div></div>' +
+            '<h3 style="text-align:center;margin:0 0 14px;font-size:1rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(heading) + '</h3>' +
+            '<p style="text-align:center;font-size:0.8rem;color:#555;margin-bottom:6px;">This is to certify that</p>' +
+            (sName ? '<div style="text-align:center;margin-bottom:4px;"><span style="font-size:1.05rem;font-weight:700;color:#0f2b3f;border-bottom:1.5px solid #0f2b3f;padding-bottom:2px;display:inline-block;">' + sName + '</span></div>' : '<div style="text-align:center;margin-bottom:4px;color:#999;font-style:italic;font-size:0.82rem;">Select a student</div>') +
+            (fName ? '<p style="text-align:center;font-size:0.8rem;color:#555;margin-bottom:2px;">S/O ' + fName + '</p>' : '') +
+            classRollHtml +
+            '<div style="text-align:justify;line-height:1.7;font-size:0.8rem;color:#1f2933;flex:1;margin-bottom:16px;">' +
               (bodyHtml || '<span style="color:#bbb;font-style:italic;">Certificate body text will appear here...</span>') +
             '</div>' +
-            '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:10px;border-top:1px solid #e5e7eb;">' +
-              '<div style="text-align:center;width:42%;"><div style="height:28px;border-bottom:1px solid #0f2b3f;margin-bottom:5px;"></div><p style="margin:0;font-size:0.65rem;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
-              '<div style="text-align:center;width:16%;"><div style="width:50px;height:50px;margin:0 auto;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#718096;font-size:0.5rem;font-weight:600;text-transform:uppercase;">Stamp</div></div>' +
-              '<div style="text-align:center;width:42%;"></div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:8px;border-top:1px solid #e5e7eb;">' +
+              '<div style="text-align:center;width:40%;"><div style="height:24px;border-bottom:1px solid #0f2b3f;margin-bottom:4px;"></div><p style="margin:0;font-size:0.6rem;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
+              '<div style="text-align:right;width:30%;"><div style="width:48px;height:48px;margin-left:auto;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#718096;font-size:0.48rem;font-weight:600;text-transform:uppercase;">Stamp</div></div>' +
+              '<div style="width:30%;"></div>' +
             '</div>' +
           '</div>';
       }
@@ -24214,6 +24225,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
       }
 
       function _certBuildPrintHtml(student, text, certNo, issueDate) {
+        var cfg = _certTypeConfig[_certType] || {};
+        var showClass = cfg.showClass;
+        var showRoll = cfg.showRoll;
         var certTextLines = text.split("\n").filter(function (l) { return l.trim().length > 0; });
         var heading = certTextLines[0] || "Certificate";
         var bodyLines = certTextLines.slice(1).filter(function (l) {
@@ -24226,36 +24240,43 @@ classSelect.addEventListener("change", renderSubjectSelect);
         var resolvedDate = issueDate || today;
         var sName = student ? escapeHtml(student.name || "") : "";
         var fName = student ? escapeHtml(student.fatherName || "") : "";
-        var sClass = student ? escapeHtml(student.className || "") : "";
-        var sRoll = student ? escapeHtml(student.rollNo || student.admissionNo || "") : "";
         var certPhoneP = profile.phone || "";
         var certPsraP = profile.psra || "";
         var certInfoLineP = [certPhoneP ? escapeHtml(certPhoneP) : "", certPsraP ? "PSRA: " + escapeHtml(certPsraP) : "", schoolAddress ? escapeHtml(schoolAddress) : ""].filter(function (x) { return x; }).join(" | ");
 
+        var classRollHtml = "";
+        if (showClass || showRoll) {
+          var parts = [];
+          if (showClass && student) parts.push("Class: " + escapeHtml(student.className || "-"));
+          if (showRoll && student) parts.push("Roll No: " + escapeHtml(student.rollNo || student.admissionNo || "-"));
+          if (parts.length > 0) classRollHtml = '<p style="text-align:center;font-size:13px;color:#718096;margin:4px 0 14px;">' + parts.join(" | ") + '</p>';
+        }
+
         return '<article style="max-width:900px;margin:0 auto;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;page-break-after:always;">' +
-          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:28px 24px;min-height:480px;display:flex;flex-direction:column;">' +
+          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:28px 26px;min-height:500px;display:flex;flex-direction:column;">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">' +
               '<div></div>' +
-              '<div style="font-size:0.72rem;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Certificate No: ' + escapeHtml(resolvedCertNo) + '<br><span style="font-weight:400;font-size:0.68rem;">Date: ' + escapeHtml(resolvedDate) + '</span></div>' +
+              '<div style="font-size:12px;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Certificate No: ' + escapeHtml(resolvedCertNo) + '<br><span style="font-weight:400;font-size:11px;">Date: ' + escapeHtml(resolvedDate) + '</span></div>' +
             '</div>' +
-            '<div style="text-align:center;margin-bottom:14px;">' +
+            '<div style="text-align:center;margin-bottom:12px;">' +
               (logoHtml ? '<div style="margin-bottom:8px;">' + logoHtml + '</div>' : '') +
               '<h1 style="margin:0;font-size:20px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(schoolName) + '</h1>' +
+              (schoolSlogan ? '<p style="margin:3px auto 0;font-size:10px;color:#718096;font-style:italic;">' + escapeHtml(schoolSlogan) + '</p>' : '') +
               (certInfoLineP ? '<p style="margin:3px auto 0;font-size:10px;color:#718096;max-width:400px;letter-spacing:0.3px;">' + certInfoLineP + '</p>' : '') +
             '</div>' +
-            '<div style="text-align:center;margin-bottom:14px;"><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div><div style="display:inline-block;width:5px;height:5px;background:#0f2b3f;border-radius:50%;margin:0 8px;vertical-align:middle;"></div><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div></div>' +
+            '<div style="text-align:center;margin-bottom:12px;"><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div><div style="display:inline-block;width:5px;height:5px;background:#0f2b3f;border-radius:50%;margin:0 8px;vertical-align:middle;"></div><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div></div>' +
             '<h2 style="text-align:center;margin:0 0 16px;font-size:18px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(heading) + '</h2>' +
-            '<p style="text-align:center;font-size:13px;color:#555;margin-bottom:8px;">This is to certify that</p>' +
-            (sName ? '<div style="text-align:center;margin-bottom:4px;"><span style="font-size:18px;font-weight:700;color:#0f2b3f;border-bottom:1.5px solid #0f2b3f;padding-bottom:2px;display:inline-block;">' + sName + '</span></div>' : '<div style="text-align:center;margin-bottom:4px;color:#999;font-style:italic;">Select a student</div>') +
-            (fName ? '<p style="text-align:center;font-size:13px;color:#555;margin-bottom:4px;">S/O ' + fName + '</p>' : '') +
-            (sClass || sRoll ? '<p style="text-align:center;font-size:12px;color:#718096;margin-bottom:14px;">' + (sClass ? 'Class: ' + sClass : '') + (sClass && sRoll ? ' | ' : '') + (sRoll ? 'Roll No: ' + sRoll : '') + '</p>' : '') +
-            '<div style="text-align:justify;line-height:1.7;font-size:13px;color:#1f2933;flex:1;margin-bottom:20px;">' +
-              (bodyHtml || '<span style="color:#bbb;font-style:italic;">Certificate body text will appear here...</span>') +
+            '<p style="text-align:center;font-size:14px;color:#555;margin-bottom:8px;">This is to certify that</p>' +
+            (sName ? '<div style="text-align:center;margin-bottom:4px;"><span style="font-size:18px;font-weight:700;color:#0f2b3f;border-bottom:1.5px solid #0f2b3f;padding-bottom:2px;display:inline-block;">' + sName + '</span></div>' : '') +
+            (fName ? '<p style="text-align:center;font-size:14px;color:#555;margin-bottom:4px;">S/O ' + fName + '</p>' : '') +
+            classRollHtml +
+            '<div style="text-align:justify;line-height:1.7;font-size:13px;color:#1f2933;flex:1;margin-bottom:24px;">' +
+              (bodyHtml || '') +
             '</div>' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:10px;border-top:1px solid #e5e7eb;">' +
-              '<div style="text-align:center;width:42%;"><div style="height:28px;border-bottom:1px solid #0f2b3f;margin-bottom:5px;"></div><p style="margin:0;font-size:9px;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
-              '<div style="text-align:center;width:16%;"><div style="width:50px;height:50px;margin:0 auto;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#718096;font-size:8px;font-weight:600;text-transform:uppercase;">Stamp</div></div>' +
-              '<div style="text-align:center;width:42%;"></div>' +
+              '<div style="text-align:center;width:40%;"><div style="height:28px;border-bottom:1px solid #0f2b3f;margin-bottom:5px;"></div><p style="margin:0;font-size:10px;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
+              '<div style="text-align:right;width:30%;"><div style="width:54px;height:54px;margin-left:auto;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#718096;font-size:8px;font-weight:600;text-transform:uppercase;">Stamp</div></div>' +
+              '<div style="width:30%;"></div>' +
             '</div>' +
           '</div>' +
         '</article>';
@@ -24784,7 +24805,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
             subtitle: "",
             hideHeader: true,
             contentHtml: certHtml
-          });
+          }, null, "a4");
           certMessage.textContent = "Certificate prepared for printing.";
           certMessage.className = "form-message success";
         }
@@ -24862,7 +24883,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
               subtitle: "",
               hideHeader: true,
               contentHtml: certHtmlP
-            });
+            }, null, "a4");
           }
         });
       }
