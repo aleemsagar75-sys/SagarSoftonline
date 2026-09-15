@@ -5716,6 +5716,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "employees-manage-login"
     ];
     const fullWidthModuleRoutes = [
+      "institute-profile",
       "fees-report",
       "delete-fees",
       "salary-sheet",
