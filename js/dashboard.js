@@ -5100,6 +5100,10 @@ document.addEventListener("DOMContentLoaded", function () {
     moduleSectionLabel.textContent = "Selected Module";
     moduleTitle.textContent = title;
     moduleCardTitle.textContent = title;
+    var _mgPanelRestore = moduleGuide.closest(".panel-card");
+    if (_mgPanelRestore) { _mgPanelRestore.style.display = ""; _mgPanelRestore.style.gridColumn = ""; }
+    var _msPanelRestore = moduleSummary.closest(".panel-card");
+    if (_msPanelRestore) _msPanelRestore.style.gridColumn = "";
     if (route === "rules-regulations") {
       var settings = (database && database.generalSettings) ? database.generalSettings : {};
       settings.rulesAndRegulations = settings.rulesAndRegulations || { students: database.school.rulesRegulations || "", employees: "" };
@@ -6311,6 +6315,8 @@ document.addEventListener("DOMContentLoaded", function () {
         '</div>';
 
       moduleGuide.innerHTML = "";
+      var _mgPanel = moduleGuide.closest(".panel-card");
+      if (_mgPanel) _mgPanel.style.display = "none";
 
       var ipLogoInput = document.getElementById("ipLogoInput");
       var ipName = document.getElementById("ipName");
