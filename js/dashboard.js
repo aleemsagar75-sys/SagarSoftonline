@@ -1831,7 +1831,7 @@ document.addEventListener("DOMContentLoaded", function () {
       function(searchTerm) {
         var students = database.students || [];
         var matches = [];
-        for (let index = 0; index < students.length && matches.length < 10; index += 1) {
+        for (let index = 0; index < students.length; index += 1) {
           const student = students[index];
           const name = String(student.name || "").toLowerCase();
           const admissionNo = String(student.admissionNo || "").toLowerCase();
@@ -28532,7 +28532,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
 
       searchTimer = setTimeout(function() {
         if (searchInput.value.toLowerCase().trim() !== searchTerm) return;
-        var results = filterFunction(searchTerm).slice(0, 10);
+        var results = filterFunction(searchTerm).slice(0, 50);
         if (results.length === 0) {
           dropdownContainer.innerHTML = '<div class="gsac-empty">No results found</div>';
           dropdownContainer.style.display = "block";
