@@ -47,7 +47,10 @@ self.addEventListener("activate", function (event) {
       );
     }).then(function () {
       return self.clients.matchAll().then(function (clients) {
-        clients.forEach(function (client) { client.postMessage({ type: "SW_UPDATED", version: CACHE }); });
+        clients.forEach(function (client) {
+          client.postMessage({ type: "SW_UPDATED", version: CACHE });
+          client.reload();
+        });
         return self.clients.claim();
       });
     })
