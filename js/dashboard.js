@@ -24212,9 +24212,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
               (bodyHtml || '<span style="color:#bbb;font-style:italic;">Certificate body text will appear here...</span>') +
             '</div>' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:8px;border-top:1px solid #e5e7eb;">' +
-              '<div style="text-align:center;width:40%;"><div style="height:24px;border-bottom:1px solid #0f2b3f;margin-bottom:4px;"></div><p style="margin:0;font-size:0.6rem;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
-              '<div style="text-align:right;width:30%;"><div style="width:48px;height:48px;margin-left:auto;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#718096;font-size:0.48rem;font-weight:600;text-transform:uppercase;">Stamp</div></div>' +
-              '<div style="width:30%;"></div>' +
+              '<div style="text-align:center;width:38%;"><div style="height:24px;border-bottom:1px solid #0f2b3f;margin-bottom:4px;"></div><p style="margin:0;font-size:0.6rem;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
+              '<div style="flex:1;"></div>' +
+              '<div style="text-align:center;width:38%;"><div style="width:48px;height:48px;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#718096;font-size:0.48rem;font-weight:600;text-transform:uppercase;">Stamp</div><p style="margin:4px 0 0;font-size:0.55rem;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.3px;">School Stamp</p></div>' +
             '</div>' +
           '</div>';
       }
@@ -24274,9 +24274,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
               (bodyHtml || '') +
             '</div>' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:10px;border-top:1px solid #e5e7eb;">' +
-              '<div style="text-align:center;width:40%;"><div style="height:28px;border-bottom:1px solid #0f2b3f;margin-bottom:5px;"></div><p style="margin:0;font-size:10px;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
-              '<div style="text-align:right;width:30%;"><div style="width:54px;height:54px;margin-left:auto;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#718096;font-size:8px;font-weight:600;text-transform:uppercase;">Stamp</div></div>' +
-              '<div style="width:30%;"></div>' +
+              '<div style="text-align:center;width:38%;"><div style="height:28px;border-bottom:1px solid #0f2b3f;margin-bottom:5px;"></div><p style="margin:0;font-size:10px;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
+              '<div style="flex:1;"></div>' +
+              '<div style="text-align:center;width:38%;"><div style="width:54px;height:54px;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#718096;font-size:8px;font-weight:600;text-transform:uppercase;">Stamp</div><p style="margin:4px 0 0;font-size:9px;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.3px;">School Stamp</p></div>' +
             '</div>' +
           '</div>' +
         '</article>';
