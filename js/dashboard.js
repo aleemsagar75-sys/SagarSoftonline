@@ -24176,9 +24176,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
         var fName = student ? escapeHtml(student.fatherName || "") : "";
         var sClass = student ? escapeHtml(student.className || "") : "";
         var sRoll = student ? escapeHtml(student.rollNo || student.admissionNo || "") : "";
-        var schoolPhoneLine = schoolPhone ? escapeHtml(schoolPhone) : "";
-        var schoolPsraLine = profile.psra ? "PSRA: " + escapeHtml(profile.psra) : "";
-        var schoolInfoLine = [schoolPhoneLine, schoolPsraLine, schoolAddress ? escapeHtml(schoolAddress) : ""].filter(function (x) { return x; }).join(" | ");
+        var certPhone = profile.phone || "";
+        var certPsra = profile.psra || "";
+        var certInfoLine = [certPhone ? escapeHtml(certPhone) : "", certPsra ? "PSRA: " + escapeHtml(certPsra) : "", schoolAddress ? escapeHtml(schoolAddress) : ""].filter(function (x) { return x; }).join(" | ");
 
         previewEl.innerHTML =
           '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:28px 24px;background:#fff;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;min-height:400px;display:flex;flex-direction:column;position:relative;">' +
@@ -24189,7 +24189,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
             '<div style="text-align:center;margin-bottom:14px;">' +
               '<div style="margin-bottom:8px;">' + logoHtml + '</div>' +
               '<h2 style="margin:0;font-size:1.15rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(schoolName) + '</h2>' +
-              (schoolInfoLine ? '<p style="margin:3px auto 0;font-size:0.6rem;color:#718096;max-width:400px;letter-spacing:0.3px;">' + schoolInfoLine + '</p>' : '') +
+              (certInfoLine ? '<p style="margin:3px auto 0;font-size:0.6rem;color:#718096;max-width:400px;letter-spacing:0.3px;">' + certInfoLine + '</p>' : '') +
             '</div>' +
             '<div style="text-align:center;margin-bottom:14px;"><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div><div style="display:inline-block;width:5px;height:5px;background:#0f2b3f;border-radius:50%;margin:0 8px;vertical-align:middle;"></div><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div></div>' +
             '<h3 style="text-align:center;margin:0 0 16px;font-size:1.05rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(heading) + '</h3>' +
@@ -24228,9 +24228,9 @@ classSelect.addEventListener("change", renderSubjectSelect);
         var fName = student ? escapeHtml(student.fatherName || "") : "";
         var sClass = student ? escapeHtml(student.className || "") : "";
         var sRoll = student ? escapeHtml(student.rollNo || student.admissionNo || "") : "";
-        var schoolPhoneLine = schoolPhone ? escapeHtml(schoolPhone) : "";
-        var schoolPsraLine = profile.psra ? "PSRA: " + escapeHtml(profile.psra) : "";
-        var schoolInfoLine = [schoolPhoneLine, schoolPsraLine, schoolAddress ? escapeHtml(schoolAddress) : ""].filter(function (x) { return x; }).join(" | ");
+        var certPhoneP = profile.phone || "";
+        var certPsraP = profile.psra || "";
+        var certInfoLineP = [certPhoneP ? escapeHtml(certPhoneP) : "", certPsraP ? "PSRA: " + escapeHtml(certPsraP) : "", schoolAddress ? escapeHtml(schoolAddress) : ""].filter(function (x) { return x; }).join(" | ");
 
         return '<article style="max-width:900px;margin:0 auto;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;page-break-after:always;">' +
           '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:28px 24px;min-height:480px;display:flex;flex-direction:column;">' +
@@ -24241,7 +24241,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
             '<div style="text-align:center;margin-bottom:14px;">' +
               (logoHtml ? '<div style="margin-bottom:8px;">' + logoHtml + '</div>' : '') +
               '<h1 style="margin:0;font-size:20px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(schoolName) + '</h1>' +
-              (schoolInfoLine ? '<p style="margin:3px auto 0;font-size:10px;color:#718096;max-width:400px;letter-spacing:0.3px;">' + schoolInfoLine + '</p>' : '') +
+              (certInfoLineP ? '<p style="margin:3px auto 0;font-size:10px;color:#718096;max-width:400px;letter-spacing:0.3px;">' + certInfoLineP + '</p>' : '') +
             '</div>' +
             '<div style="text-align:center;margin-bottom:14px;"><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div><div style="display:inline-block;width:5px;height:5px;background:#0f2b3f;border-radius:50%;margin:0 8px;vertical-align:middle;"></div><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div></div>' +
             '<h2 style="text-align:center;margin:0 0 16px;font-size:18px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(heading) + '</h2>' +
@@ -24403,8 +24403,8 @@ classSelect.addEventListener("change", renderSubjectSelect);
                 '</div>' +
               '</div>' +
               '<div id="certSingleStudentArea">' +
-                '<div class="cert-field-row">' +
-                  '<div class="cert-field cert-field--lg" id="certSearchContainer"><label class="cert-field__label">Search Student</label><input id="certStudentSearch" type="search" class="cert-input" placeholder="Search by name, roll no, admission no..."><div id="certSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>' +
+                '<div class="cert-field-row" style="justify-content:center;">' +
+                  '<div class="cert-field" id="certSearchContainer" style="flex:0 1 420px;max-width:420px;position:relative;"><label class="cert-field__label">Search Student</label><input id="certStudentSearch" type="search" class="cert-input" placeholder="Search by name, roll no, admission no..."><div id="certSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>' +
                 '</div>' +
                 '<div id="certStudentProfile" class="cert-student-profile" style="display:none;">' +
                   '<div class="cert-student-profile__photo" id="certProfilePhoto"></div>' +
