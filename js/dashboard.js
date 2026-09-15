@@ -24191,10 +24191,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
         }
 
         previewEl.innerHTML =
-          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:24px 22px;background:#fff;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;min-height:380px;display:flex;flex-direction:column;position:relative;">' +
+          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:20px 20px;background:#fff;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;display:flex;flex-direction:column;position:relative;">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">' +
-              '<div></div>' +
-              '<div style="font-size:0.7rem;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Certificate No: ' + escapeHtml(certNo) + '<br><span style="font-weight:400;font-size:0.65rem;">Date: ' + escapeHtml(issueDate) + '</span></div>' +
+              '<div style="font-size:0.7rem;color:#5b6777;letter-spacing:0.3px;font-weight:600;">Certificate No: ' + escapeHtml(certNo) + '</div>' +
+              '<div style="font-size:0.7rem;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Date: ' + escapeHtml(issueDate) + '</div>' +
             '</div>' +
             '<div style="text-align:center;margin-bottom:10px;">' +
               '<div style="margin-bottom:6px;">' + logoHtml + '</div>' +
@@ -24253,10 +24253,10 @@ classSelect.addEventListener("change", renderSubjectSelect);
         }
 
         return '<article style="max-width:900px;margin:0 auto;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;page-break-after:always;">' +
-          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:28px 26px;min-height:500px;display:flex;flex-direction:column;">' +
+          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:24px 26px;display:flex;flex-direction:column;">' +
             '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">' +
-              '<div></div>' +
-              '<div style="font-size:12px;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Certificate No: ' + escapeHtml(resolvedCertNo) + '<br><span style="font-weight:400;font-size:11px;">Date: ' + escapeHtml(resolvedDate) + '</span></div>' +
+              '<div style="font-size:12px;color:#5b6777;letter-spacing:0.3px;font-weight:600;">Certificate No: ' + escapeHtml(resolvedCertNo) + '</div>' +
+              '<div style="font-size:12px;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Date: ' + escapeHtml(resolvedDate) + '</div>' +
             '</div>' +
             '<div style="text-align:center;margin-bottom:12px;">' +
               (logoHtml ? '<div style="margin-bottom:8px;">' + logoHtml + '</div>' : '') +
