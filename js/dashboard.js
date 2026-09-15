@@ -6347,24 +6347,20 @@ document.addEventListener("DOMContentLoaded", function () {
         var logoHtml = ipLogoData
           ? '<img src="' + escapeAttr(ipLogoData) + '" alt="Logo" style="max-height:64px;object-fit:contain;">'
           : '<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#1b5f7a,#2fb08a);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.4rem;font-family:Georgia,serif;">' + escapeHtml((pName || "S").charAt(0).toUpperCase()) + '</div>';
-        var contactParts = [];
-        if (pPhone) contactParts.push(escapeHtml(pPhone));
-        if (pPsra) contactParts.push("PSRA: " + escapeHtml(pPsra));
-        var contactLine = contactParts.length > 0 ? '<p style="margin:3px 0 0;font-size:0.72rem;color:#5b6777;">' + contactParts.join(" &middot; ") + '</p>' : '';
-        var emailLine = pEmail ? '<p style="margin:2px 0 0;font-size:0.68rem;color:#718096;">' + escapeHtml(pEmail) + '</p>' : '';
-        var locationParts = [];
-        if (pAddress) locationParts.push(escapeHtml(pAddress));
-        if (pCountry) locationParts.push(escapeHtml(pCountry));
-        var locationLine = locationParts.length > 0 ? '<p style="margin:4px 0 0;font-size:0.68rem;color:#718096;">' + locationParts.join(", ") + '</p>' : '';
 
         ipLivePreview.innerHTML =
-          '<div style="text-align:center;padding:20px 16px;border:1px solid #e2e8f0;border-radius:10px;background:#fafbfc;">' +
-            '<div style="margin-bottom:10px;">' + logoHtml + '</div>' +
-            (pName ? '<h3 style="margin:0;font-size:1rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(pName) + '</h3>' : '<h3 style="margin:0;font-size:1rem;color:#a0aec0;">School Name</h3>') +
-            (pSlogan ? '<p style="margin:3px 0 0;font-size:0.72rem;color:#718096;font-style:italic;">' + escapeHtml(pSlogan) + '</p>' : '') +
-            contactLine +
-            emailLine +
-            locationLine +
+          '<div class="ip-preview-card__inner">' +
+            '<div class="ip-preview-card__logo">' + logoHtml + '</div>' +
+            (pName ? '<h3 class="ip-preview-card__school-name">' + escapeHtml(pName) + '</h3>' : '<h3 class="ip-preview-card__school-name ip-preview-card__school-name--empty">School Name</h3>') +
+            (pSlogan ? '<p class="ip-preview-card__slogan">' + escapeHtml(pSlogan) + '</p>' : '') +
+            '<div class="ip-preview-card__divider"></div>' +
+            '<div class="ip-preview-card__info">' +
+              (pPhone ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Phone</span><span class="ip-preview-card__value">' + escapeHtml(pPhone) + '</span></div>' : '') +
+              (pEmail ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Email</span><span class="ip-preview-card__value">' + escapeHtml(pEmail) + '</span></div>' : '') +
+              (pPsra ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">PSRA</span><span class="ip-preview-card__value">' + escapeHtml(pPsra) + '</span></div>' : '') +
+              (pAddress ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Address</span><span class="ip-preview-card__value">' + escapeHtml(pAddress) + '</span></div>' : '') +
+              (pCountry ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Country</span><span class="ip-preview-card__value">' + escapeHtml(pCountry) + '</span></div>' : '') +
+            '</div>' +
           '</div>';
       }
 
