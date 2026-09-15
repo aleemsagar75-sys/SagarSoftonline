@@ -6282,7 +6282,10 @@ document.addEventListener("DOMContentLoaded", function () {
                 '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--location">&#9906;</div><div><p class="ip-section__title">Location</p><p class="ip-section__subtitle">School address and country</p></div></div>' +
                 '<div class="ip-section__body">' +
                   '<div class="ip-field"><label class="ip-field__label">Address <span class="ip-required">*</span></label><input class="ip-field__input" id="ipAddress" type="text" value="' + escapeAttr(profile.address) + '" placeholder="e.g., Online Campus, Education City"></div>' +
-                  '<div class="ip-field"><label class="ip-field__label">Country <span class="ip-required">*</span></label><input class="ip-field__input" id="ipCountry" type="text" value="' + escapeAttr(profile.country) + '" placeholder="e.g., Pakistan"></div>' +
+                  '<div class="ip-field-row ip-field-row--location">' +
+                    '<div class="ip-field"><label class="ip-field__label">Country <span class="ip-required">*</span></label><input class="ip-field__input" id="ipCountry" type="text" value="' + escapeAttr(profile.country) + '" placeholder="e.g., Pakistan"></div>' +
+                    '<div></div>' +
+                  '</div>' +
                 '</div>' +
               '</div>' +
 
@@ -6353,18 +6356,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
         ipLivePreview.innerHTML =
           '<div class="ip-preview-card__inner">' +
-            '<div class="ip-preview-card__logo">' + logoHtml + '</div>' +
-            (pName ? '<h3 class="ip-preview-card__school-name">' + escapeHtml(pName) + '</h3>' : '<h3 class="ip-preview-card__school-name ip-preview-card__school-name--empty">School Name</h3>') +
-            (pSlogan ? '<p class="ip-preview-card__slogan">' + escapeHtml(pSlogan) + '</p>' : '') +
-            '<div class="ip-preview-card__divider"></div>' +
-            '<div class="ip-preview-card__info">' +
-              (pPhone ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Phone</span><span class="ip-preview-card__value">' + escapeHtml(pPhone) + '</span></div>' : '') +
-              (pEmail ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Email</span><span class="ip-preview-card__value">' + escapeHtml(pEmail) + '</span></div>' : '') +
-              (pPsra ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">PSRA</span><span class="ip-preview-card__value">' + escapeHtml(pPsra) + '</span></div>' : '') +
-              (pAddress ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Address</span><span class="ip-preview-card__value">' + escapeHtml(pAddress) + '</span></div>' : '') +
-              (pCountry ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Country</span><span class="ip-preview-card__value">' + escapeHtml(pCountry) + '</span></div>' : '') +
+            '<div class="ip-preview-doc">' +
+              '<div class="ip-preview-doc__logo">' + logoHtml + '</div>' +
+              (pName ? '<h3 class="ip-preview-doc__name">' + escapeHtml(pName) + '</h3>' : '<h3 class="ip-preview-doc__name ip-preview-doc__name--empty">School Name</h3>') +
+              (pSlogan ? '<p class="ip-preview-doc__slogan">' + escapeHtml(pSlogan) + '</p>' : '') +
             '</div>' +
-            '<div class="ip-preview-card__footer"><p class="ip-preview-card__footer-text">Document Identity Preview</p></div>' +
+            '<div class="ip-preview-info">' +
+              '<div class="ip-preview-info__divider"></div>' +
+              (pPhone ? '<div class="ip-preview-info__row"><span class="ip-preview-info__label">Phone</span><span class="ip-preview-info__value">' + escapeHtml(pPhone) + '</span></div>' : '') +
+              (pEmail ? '<div class="ip-preview-info__row"><span class="ip-preview-info__label">Email</span><span class="ip-preview-info__value">' + escapeHtml(pEmail) + '</span></div>' : '') +
+              (pPsra ? '<div class="ip-preview-info__row"><span class="ip-preview-info__label">PSRA</span><span class="ip-preview-info__value">' + escapeHtml(pPsra) + '</span></div>' : '') +
+              (pAddress ? '<div class="ip-preview-info__row"><span class="ip-preview-info__label">Address</span><span class="ip-preview-info__value">' + escapeHtml(pAddress) + '</span></div>' : '') +
+              (pCountry ? '<div class="ip-preview-info__row"><span class="ip-preview-info__label">Country</span><span class="ip-preview-info__value">' + escapeHtml(pCountry) + '</span></div>' : '') +
+            '</div>' +
+            '<div class="ip-preview-footer"><p class="ip-preview-footer__text">Document Identity Preview</p></div>' +
           '</div>';
       }
 
