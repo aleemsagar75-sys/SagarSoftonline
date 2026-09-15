@@ -10,7 +10,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <meta name="app-version" content="v182">
+  <meta name="app-version" content="v183">
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/x-icon" href="./assets/app-icon.ico">
   <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
@@ -1337,7 +1337,7 @@
     if ('serviceWorker' in navigator) {
       var _swReg = null;
       window.addEventListener('load', function () {
-        navigator.serviceWorker.register('./sw.js?v=v182').then(function (reg) {
+        navigator.serviceWorker.register('./sw.js?v=v183').then(function (reg) {
           _swReg = reg;
           if (reg.installing) {
             reg.installing.addEventListener('statechange', function (sw) {
