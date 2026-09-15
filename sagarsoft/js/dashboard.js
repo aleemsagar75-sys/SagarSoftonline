@@ -1,4 +1,4 @@
-﻿/* Major section: Dashboard shell, routing, and student management module */
+/* Major section: Dashboard shell, routing, and student management module */
 
 // -- Null-safe event binding utility ---------------------------
 function safeOn(el, evt, fn) { if (el) el.addEventListener(evt, fn); }
@@ -1831,7 +1831,7 @@ document.addEventListener("DOMContentLoaded", function () {
       function(searchTerm) {
         var students = database.students || [];
         var matches = [];
-        for (let index = 0; index < students.length && matches.length < 10; index += 1) {
+        for (let index = 0; index < students.length; index += 1) {
           const student = students[index];
           const name = String(student.name || "").toLowerCase();
           const admissionNo = String(student.admissionNo || "").toLowerCase();
@@ -4932,6 +4932,10 @@ document.addEventListener("DOMContentLoaded", function () {
       changed = true;
     }
 
+    if (!settings.__reversedEntriesCleanedV1) {
+      settings.__reversedEntriesCleanedV1 = true;
+    }
+
     return changed;
   }
 
@@ -4973,7 +4977,7 @@ document.addEventListener("DOMContentLoaded", function () {
     });
     var grossIncome = incomeEntries.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
     var totalReversals = reversalEntries.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
-    var revenue = grossIncome - totalReversals;
+    var revenue = grossIncome > 0 ? Math.max(0, grossIncome - totalReversals) : 0;
     var expenses = expenseEntries.reduce(function (sum, item) { return sum + Number(item.amount || 0); }, 0);
     var salaries = salaryEntries.reduce(function (sum, item) { return sum + Number(item.netSalary || item.salaryAmount || 0); }, 0);
     var profit = revenue - expenses - salaries;
@@ -5096,6 +5100,10 @@ document.addEventListener("DOMContentLoaded", function () {
     moduleSectionLabel.textContent = "Selected Module";
     moduleTitle.textContent = title;
     moduleCardTitle.textContent = title;
+    var _mgPanelRestore = moduleGuide.closest(".panel-card");
+    if (_mgPanelRestore) { _mgPanelRestore.style.display = ""; _mgPanelRestore.style.gridColumn = ""; }
+    var _msPanelRestore = moduleSummary.closest(".panel-card");
+    if (_msPanelRestore) _msPanelRestore.style.gridColumn = "";
     if (route === "rules-regulations") {
       var settings = (database && database.generalSettings) ? database.generalSettings : {};
       settings.rulesAndRegulations = settings.rulesAndRegulations || { students: database.school.rulesRegulations || "", employees: "" };
@@ -5708,6 +5716,7 @@ document.addEventListener("DOMContentLoaded", function () {
       "employees-manage-login"
     ];
     const fullWidthModuleRoutes = [
+      "institute-profile",
       "fees-report",
       "delete-fees",
       "salary-sheet",
@@ -5855,6 +5864,7 @@ document.addEventListener("DOMContentLoaded", function () {
         name: database.school.name || "",
         slogan: "",
         phone: database.school.phone || "",
+        email: "",
         psra: "",
         address: database.school.address || "",
         country: "Pakistan"
@@ -6227,86 +6237,211 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (route === "institute-profile") {
       const profile = settings.instituteProfile;
-      moduleSummary.innerHTML = `
-        <article class="gs-form-section">
-          <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">??</div>
-            <div><p class="gs-form-section__title">Institute Profile</p><p class="gs-form-section__subtitle">Update school information</p></div>
-          </div>
-          <div class="gs-form-grid">
-            <div class="gs-field gs-field--full"><label class="gs-field__label">Institute Logo*</label><input class="gs-field__input" id="instituteLogoInput" type="file" accept="image/*" style="padding:0.5rem;"></div>
-            <div class="gs-field"><label class="gs-field__label">Name of Institute*</label><input class="gs-field__input" id="instituteNameInput" type="text" value="${escapeAttr(profile.name)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Slogan*</label><input class="gs-field__input" id="instituteSloganInput" type="text" value="${escapeAttr(profile.slogan)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Phone Number*</label><input class="gs-field__input" id="institutePhoneInput" type="text" inputmode="numeric" value="${escapeAttr(profile.phone)}"></div>
-            <div class="gs-field"><label class="gs-field__label">PSRA</label><input class="gs-field__input" id="institutePsraInput" type="text" value="${escapeAttr(profile.psra)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Address*</label><input class="gs-field__input" id="instituteAddressInput" type="text" value="${escapeAttr(profile.address)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Country*</label><input class="gs-field__input" id="instituteCountryInput" type="text" value="${escapeAttr(profile.country)}"></div>
-          </div>
-          <div class="gs-button-row"><button class="gs-btn-primary" id="saveInstituteProfileBtn" type="button">Update Profile</button></div>
-          <div class="gs-message" id="instituteProfileMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
-        </article>
-      `;
+      var _ipDirty = false;
+      moduleSummary.innerHTML = '' +
+        '<div class="ip-page">' +
+          '<div class="ip-page__header">' +
+            '<div><h2 class="ip-page__title">Institute Profile</h2><p class="ip-page__subtitle">Manage your school identity, official information and branding.</p></div>' +
+          '</div>' +
+          '<div class="ip-layout">' +
+            '<div class="ip-layout__form">' +
 
-      moduleGuide.innerHTML = `
-        <article>
-          <strong>Preview</strong>
-          <div id="instituteProfilePreview" class="module-preview-card"></div>
-        </article>
-      `;
+              '<div class="ip-section">' +
+                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--identity">&#9733;</div><div><p class="ip-section__title">Institute Identity</p><p class="ip-section__subtitle">School name, logo and tagline</p></div></div>' +
+                '<div class="ip-section__body">' +
+                  '<div class="ip-logo-area" id="ipLogoArea">' +
+                    '<div class="ip-logo-preview" id="ipLogoPreview">' +
+                      (profile.logo ? '<img src="' + escapeAttr(profile.logo) + '" alt="Logo" id="ipLogoImg">' : '<div class="ip-logo-placeholder" id="ipLogoPlaceholder"><span>' + escapeHtml((profile.name || "S").charAt(0).toUpperCase()) + '</span></div>') +
+                    '</div>' +
+                    '<div class="ip-logo-actions">' +
+                      '<label class="ip-btn ip-btn--sm ip-btn--primary" for="ipLogoInput">&#128247; Upload Logo</label>' +
+                      '<input type="file" id="ipLogoInput" accept="image/*" style="display:none;">' +
+                      (profile.logo ? '<button type="button" class="ip-btn ip-btn--sm ip-btn--danger" id="ipLogoRemove">Remove</button>' : '') +
+                      '<p class="ip-logo-hint">JPG, PNG or SVG. Max 2MB.</p>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="ip-field"><label class="ip-field__label">Institute Name <span class="ip-required">*</span></label><input class="ip-field__input" id="ipName" type="text" value="' + escapeAttr(profile.name) + '" placeholder="e.g., SagarSoft Public School"></div>' +
+                  '<div class="ip-field"><label class="ip-field__label">Slogan / Tagline</label><input class="ip-field__input" id="ipSlogan" type="text" value="' + escapeAttr(profile.slogan) + '" placeholder="e.g., Learning Today, Leading Tomorrow"></div>' +
+                '</div>' +
+              '</div>' +
 
-      const logoInput = document.getElementById("instituteLogoInput");
-      const nameInput = document.getElementById("instituteNameInput");
-      const sloganInput = document.getElementById("instituteSloganInput");
-      const phoneInput = document.getElementById("institutePhoneInput");
-      const psraInput = document.getElementById("institutePsraInput");
-      const addressInput = document.getElementById("instituteAddressInput");
-      const countryInput = document.getElementById("instituteCountryInput");
-      const message = document.getElementById("instituteProfileMessage");
-      const preview = document.getElementById("instituteProfilePreview");
-      let logoData = profile.logo || "";
+              '<div class="ip-section">' +
+                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--contact">&#9743;</div><div><p class="ip-section__title">Contact & Registration</p><p class="ip-section__subtitle">Official contact details and registration</p></div></div>' +
+                '<div class="ip-section__body">' +
+                  '<div class="ip-field-row">' +
+                    '<div class="ip-field"><label class="ip-field__label">Phone Number <span class="ip-required">*</span></label><input class="ip-field__input" id="ipPhone" type="text" inputmode="numeric" value="' + escapeAttr(profile.phone) + '" placeholder="e.g., 03001234567"></div>' +
+                    '<div class="ip-field"><label class="ip-field__label">Official Email</label><input class="ip-field__input" id="ipEmail" type="email" value="' + escapeAttr(profile.email || "") + '" placeholder="e.g., info@school.edu.pk"></div>' +
+                  '</div>' +
+                  '<div class="ip-field"><label class="ip-field__label">PSRA / Registration Number</label><input class="ip-field__input" id="ipPsra" type="text" value="' + escapeAttr(profile.psra) + '" placeholder="e.g., PSRA-12345"></div>' +
+                '</div>' +
+              '</div>' +
 
-      function renderProfilePreview() {
-        preview.innerHTML = `
-          <div class="module-preview-head">
-            ${logoData ? `<img src="${logoData}" alt="Institute logo" class="module-preview-logo">` : `<span class="module-preview-logo-placeholder">SS</span>`}
-            <div>
-              <h4>${escapeHtml(nameInput.value || "-")}</h4>
-              <p>${escapeHtml(sloganInput.value || "-")}</p>
-            </div>
-          </div>
-          <p><strong>Phone:</strong> ${escapeHtml(phoneInput.value || "-")}</p>
-          <p><strong>PSRA:</strong> ${escapeHtml(psraInput.value || "-")}</p>
-          <p><strong>Address:</strong> ${escapeHtml(addressInput.value || "-")}</p>
-          <p><strong>Country:</strong> ${escapeHtml(countryInput.value || "-")}</p>
-        `;
+              '<div class="ip-section">' +
+                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--location">&#9906;</div><div><p class="ip-section__title">Location</p><p class="ip-section__subtitle">School address and country</p></div></div>' +
+                '<div class="ip-section__body">' +
+                  '<div class="ip-field"><label class="ip-field__label">Address <span class="ip-required">*</span></label><input class="ip-field__input" id="ipAddress" type="text" value="' + escapeAttr(profile.address) + '" placeholder="e.g., Online Campus, Education City"></div>' +
+                  '<div class="ip-field"><label class="ip-field__label">Country <span class="ip-required">*</span></label><input class="ip-field__input" id="ipCountry" type="text" value="' + escapeAttr(profile.country) + '" placeholder="e.g., Pakistan"></div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="ip-section">' +
+                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--info">&#8505;</div><div><p class="ip-section__title">Used Across SagarSoft</p><p class="ip-section__subtitle">Where this information appears</p></div></div>' +
+                '<div class="ip-section__body">' +
+                  '<div class="ip-usage-grid">' +
+                    '<div class="ip-usage-item">&#128196; Fee Invoices</div>' +
+                    '<div class="ip-usage-item">&#127891; Certificates</div>' +
+                    '<div class="ip-usage-item">&#128203; Student Reports</div>' +
+                    '<div class="ip-usage-item">&#128101; Employee Reports</div>' +
+                    '<div class="ip-usage-item">&#128197; Attendance Reports</div>' +
+                    '<div class="ip-usage-item">&#128176; Account Statements</div>' +
+                    '<div class="ip-usage-item">&#128424; Printable Documents</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="ip-save-bar">' +
+                '<div class="ip-save-bar__left"><span class="ip-unsaved-dot" id="ipUnsavedDot" style="display:none;"></span><span class="ip-unsaved-text" id="ipUnsavedText" style="display:none;">Unsaved changes</span></div>' +
+                '<button class="ip-btn ip-btn--primary ip-btn--save" id="ipSaveBtn" type="button">&#10003; Save Changes</button>' +
+              '</div>' +
+              '<div class="ip-toast" id="ipToast"></div>' +
+            '</div>' +
+
+            '<div class="ip-layout__preview">' +
+              '<div class="ip-preview-card">' +
+                '<div class="ip-preview-card__header"><p class="ip-preview-card__title">Live Preview</p><p class="ip-preview-card__subtitle">How your school identity appears in documents</p></div>' +
+                '<div class="ip-preview-card__body" id="ipLivePreview"></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      moduleGuide.innerHTML = "";
+      var _mgPanel = moduleGuide.closest(".panel-card");
+      if (_mgPanel) _mgPanel.style.display = "none";
+
+      var ipLogoInput = document.getElementById("ipLogoInput");
+      var ipName = document.getElementById("ipName");
+      var ipSlogan = document.getElementById("ipSlogan");
+      var ipPhone = document.getElementById("ipPhone");
+      var ipEmail = document.getElementById("ipEmail");
+      var ipPsra = document.getElementById("ipPsra");
+      var ipAddress = document.getElementById("ipAddress");
+      var ipCountry = document.getElementById("ipCountry");
+      var ipSaveBtn = document.getElementById("ipSaveBtn");
+      var ipToast = document.getElementById("ipToast");
+      var ipUnsavedDot = document.getElementById("ipUnsavedDot");
+      var ipUnsavedText = document.getElementById("ipUnsavedText");
+      var ipLivePreview = document.getElementById("ipLivePreview");
+      var ipLogoPreview = document.getElementById("ipLogoPreview");
+      var ipLogoRemove = document.getElementById("ipLogoRemove");
+      var ipLogoArea = document.getElementById("ipLogoArea");
+      var ipLogoData = profile.logo || "";
+
+      function ipRenderPreview() {
+        var pName = ipName.value.trim();
+        var pSlogan = ipSlogan.value.trim();
+        var pPhone = ipPhone.value.trim();
+        var pEmail = ipEmail.value.trim();
+        var pPsra = ipPsra.value.trim();
+        var pAddress = ipAddress.value.trim();
+        var pCountry = ipCountry.value.trim();
+        var logoHtml = ipLogoData
+          ? '<img src="' + escapeAttr(ipLogoData) + '" alt="Logo" style="max-height:64px;object-fit:contain;">'
+          : '<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#1b5f7a,#2fb08a);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.4rem;font-family:Georgia,serif;">' + escapeHtml((pName || "S").charAt(0).toUpperCase()) + '</div>';
+
+        ipLivePreview.innerHTML =
+          '<div class="ip-preview-card__inner">' +
+            '<div class="ip-preview-card__logo">' + logoHtml + '</div>' +
+            (pName ? '<h3 class="ip-preview-card__school-name">' + escapeHtml(pName) + '</h3>' : '<h3 class="ip-preview-card__school-name ip-preview-card__school-name--empty">School Name</h3>') +
+            (pSlogan ? '<p class="ip-preview-card__slogan">' + escapeHtml(pSlogan) + '</p>' : '') +
+            '<div class="ip-preview-card__divider"></div>' +
+            '<div class="ip-preview-card__info">' +
+              (pPhone ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Phone</span><span class="ip-preview-card__value">' + escapeHtml(pPhone) + '</span></div>' : '') +
+              (pEmail ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Email</span><span class="ip-preview-card__value">' + escapeHtml(pEmail) + '</span></div>' : '') +
+              (pPsra ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">PSRA</span><span class="ip-preview-card__value">' + escapeHtml(pPsra) + '</span></div>' : '') +
+              (pAddress ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Address</span><span class="ip-preview-card__value">' + escapeHtml(pAddress) + '</span></div>' : '') +
+              (pCountry ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Country</span><span class="ip-preview-card__value">' + escapeHtml(pCountry) + '</span></div>' : '') +
+            '</div>' +
+          '</div>';
       }
 
-      [nameInput, sloganInput, phoneInput, psraInput, addressInput, countryInput].forEach(function (input) {
-        input.addEventListener("input", renderProfilePreview);
+      function ipMarkDirty() {
+        _ipDirty = true;
+        if (ipUnsavedDot) ipUnsavedDot.style.display = "";
+        if (ipUnsavedText) ipUnsavedText.style.display = "";
+      }
+
+      [ipName, ipSlogan, ipPhone, ipEmail, ipPsra, ipAddress, ipCountry].forEach(function (el) {
+        if (el) el.addEventListener("input", function () { ipRenderPreview(); ipMarkDirty(); });
       });
 
-      logoInput.addEventListener("change", function () {
-        const file = logoInput.files && logoInput.files[0];
-        if (!file) {
+      if (ipLogoInput) {
+        ipLogoInput.addEventListener("change", function () {
+          var file = ipLogoInput.files && ipLogoInput.files[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) {
+            ipShowToast("Image must be under 2MB.", "error");
+            return;
+          }
+          if (!file.type.match(/^image\/(jpeg|png|gif|webp|svg\+xml)/)) {
+            ipShowToast("Please upload a JPG, PNG, GIF, WebP or SVG image.", "error");
+            return;
+          }
+          var reader = new FileReader();
+          reader.onload = function () {
+            ipLogoData = reader.result;
+            ipLogoPreview.innerHTML = '<img src="' + escapeAttr(ipLogoData) + '" alt="Logo" id="ipLogoImg">';
+            if (!ipLogoRemove) {
+              var rmBtn = document.createElement("button");
+              rmBtn.type = "button";
+              rmBtn.className = "ip-btn ip-btn--sm ip-btn--danger";
+              rmBtn.id = "ipLogoRemove";
+              rmBtn.textContent = "Remove";
+              ipLogoArea.querySelector(".ip-logo-actions").insertBefore(rmBtn, ipLogoArea.querySelector(".ip-logo-hint"));
+              ipLogoRemove = rmBtn;
+              ipLogoRemove.addEventListener("click", ipRemoveLogo);
+            }
+            ipRenderPreview();
+            ipMarkDirty();
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function ipRemoveLogo() {
+        ipLogoData = "";
+        ipLogoPreview.innerHTML = '<div class="ip-logo-placeholder" id="ipLogoPlaceholder"><span>' + escapeHtml((ipName.value || "S").charAt(0).toUpperCase()) + '</span></div>';
+        ipLogoInput.value = "";
+        ipRenderPreview();
+        ipMarkDirty();
+      }
+      if (ipLogoRemove) ipLogoRemove.addEventListener("click", ipRemoveLogo);
+
+      function ipShowToast(msg, type) {
+        if (!ipToast) return;
+        ipToast.textContent = msg;
+        ipToast.className = "ip-toast ip-toast--" + (type || "success") + " ip-toast--visible";
+        setTimeout(function () { ipToast.className = "ip-toast"; }, 3000);
+      }
+
+      if (ipSaveBtn) ipSaveBtn.addEventListener("click", async function () {
+        var pName = ipName.value.trim();
+        if (!pName) {
+          ipShowToast("Institute name is required.", "error");
+          ipName.focus();
           return;
         }
-        const reader = new FileReader();
-        reader.onload = function () {
-          logoData = reader.result;
-          renderProfilePreview();
-        };
-        reader.readAsDataURL(file);
-      });
-
-      var _el = document.getElementById("saveInstituteProfileBtn"); if (_el) _el.addEventListener("click", async function () {
+        ipSaveBtn.disabled = true;
+        ipSaveBtn.innerHTML = '<span class="ip-spinner"></span> Saving...';
         var newProfile = {
-          logo: logoData,
-          name: nameInput.value.trim(),
-          slogan: sloganInput.value.trim(),
-          phone: phoneInput.value.trim(),
-          psra: psraInput.value.trim(),
-          address: addressInput.value.trim(),
-          country: countryInput.value.trim()
+          logo: ipLogoData,
+          name: pName,
+          slogan: ipSlogan.value.trim(),
+          phone: ipPhone.value.trim(),
+          email: ipEmail.value.trim(),
+          psra: ipPsra.value.trim(),
+          address: ipAddress.value.trim(),
+          country: ipCountry.value.trim()
         };
         settings.instituteProfile = newProfile;
         database.school.name = newProfile.name;
@@ -6326,20 +6461,23 @@ document.addEventListener("DOMContentLoaded", function () {
         if (_pa) _pa.textContent = getInitials(newProfile.name || "Admin");
         updateTopProfileIdentity();
         renderProfileDropdownMenu();
-        if (typeof logoData !== "undefined") {
-          var _logoEl = document.getElementById("instituteLogoPreview");
-          if (_logoEl && logoData) { _logoEl.src = logoData; _logoEl.style.display = "block"; }
-        }
+        ipSaveBtn.disabled = false;
+        ipSaveBtn.innerHTML = "&#10003; Save Changes";
+        _ipDirty = false;
+        if (ipUnsavedDot) ipUnsavedDot.style.display = "none";
+        if (ipUnsavedText) ipUnsavedText.style.display = "none";
         if (_saved) {
-          message.textContent = "Institute profile updated successfully.";
-          message.className = "form-message success";
+          ipShowToast("Institute profile updated successfully.", "success");
         } else {
-          message.textContent = "Save failed. Please check your connection and try again.";
-          message.className = "form-message error";
+          ipShowToast("Save failed. Please check your connection and try again.", "error");
         }
       });
 
-      renderProfilePreview();
+      window.addEventListener("beforeunload", function (e) {
+        if (_ipDirty) { e.preventDefault(); e.returnValue = ""; }
+      });
+
+      ipRenderPreview();
       return;
     }
 
@@ -6352,7 +6490,7 @@ document.addEventListener("DOMContentLoaded", function () {
         <article class="gs-form-section">
           <div class="gs-form-section__header">
             <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff;">??</div>
-            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view ï¿½ edits are managed in Fee Structure</p></div>
+            <div><p class="gs-form-section__title">Fee Particulars</p><p class="gs-form-section__subtitle">Live view � edits are managed in Fee Structure</p></div>
           </div>
           <div class="gs-field" style="max-width:300px;"><label class="gs-field__label">Fee Particulars for*</label><select class="gs-field__input" id="feeParticularClassSelect">${optionsMarkup || '<option value="">No Class</option>'}</select></div>
           <div id="feeParticularRows" class="gs-row-list" style="margin-top:1rem;"></div>
@@ -6752,7 +6890,7 @@ document.addEventListener("DOMContentLoaded", function () {
             var assignedCount = database.students.filter(function (s) { return s.discountTypeId === dt.id; }).length;
             if (assignedCount > 0) {
               var msg = document.getElementById("dtMessage");
-              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" ï¿½ it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
+              msg.querySelector(".gs-message__text").textContent = "Cannot delete \"" + dt.name + "\" � it is assigned to " + assignedCount + " student(s). Remove the discount from all students first.";
               msg.querySelector(".gs-message__icon").textContent = "?";
               msg.className = "gs-message gs-message--error gs-message--visible";
               return;
@@ -6990,7 +7128,7 @@ document.addEventListener("DOMContentLoaded", function () {
           var percent = dt ? dt.percentage : (student.discountInFee || "-");
           return '<article style="padding:8px 10px;border:1px solid #dde4ea;border-radius:8px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">' +
             '<div><strong>' + escapeHtml(student.name) + '</strong> <small style="color:#888;">(' + escapeHtml(student.admissionNo || "-") + ')</small>' +
-            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' ï¿½ <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
+            '<p style="font-size:0.82rem;color:#666;margin:2px 0;">' + escapeHtml(typeName) + ' � <strong>' + escapeHtml(String(percent)) + '%</strong></p></div>' +
             '</article>';
         }).join("");
       }
@@ -8484,9 +8622,9 @@ ${allContent}
           name: student.name || "-",
           status: status === "paid" ? "Paid" : "Due",
           feeMonth: feeMonth,
-          totalAmount: `â‚¨ ${totalAmount}`,
-          deposit: `â‚¨ ${deposit}`,
-          remaining: `â‚¨ ${remaining}`
+          totalAmount: `₨ ${totalAmount}`,
+          deposit: `₨ ${deposit}`,
+          remaining: `₨ ${remaining}`
         };
         latestReceiptData.totalAmount = `${currencySymbol} ${totalAmount}`;
         latestReceiptData.deposit = `${currencySymbol} ${deposit}`;
@@ -8910,10 +9048,9 @@ ${allContent}
       return;
     }
 
-        if (route === "fees-report") {
+                                                if (route === "fees-report") {
+      console.log("[FEES-REPORT] v145 loaded - quick actions + drill scroll fixed");
       try {
-      function _frSecs(cn) { var ss = new Set(); (database.students || []).forEach(function (s) { if (cn && s.className !== cn) return; var p = String(s.className || "").split("|"); if (p.length > 1) ss.add(p[1].trim()); }); return Array.from(ss).sort(); }
-      function _frTypes() { var t = new Set(); (database.fees || []).forEach(function (f) { if (Array.isArray(f.particulars)) f.particulars.forEach(function (p) { if (p.label) t.add(p.label); }); }); return Array.from(t).sort(); }
       function _frBuildClassList() {
         var classSet = new Set();
         (database.classes || []).forEach(function (c) { if (c.name) classSet.add(c.name); });
@@ -8921,8 +9058,14 @@ ${allContent}
         (database.fees || []).forEach(function (f) { if (f.className) classSet.add(f.className); });
         return Array.from(classSet).sort();
       }
-      function _frRows(fl) {
-        var sr = (fl.search || "").toLowerCase();
+      function _frGetStudentsForClass(clsName) {
+        return (database.students || []).filter(function (s) { return s.className === clsName; });
+      }
+      function _frGetClassFee(clsName) {
+        var cls = (database.classes || []).find(function (c) { return c.name === clsName; });
+        return cls ? Number(cls.monthlyTuitionFees || 0) : 0;
+      }
+      function _frRows(filters) {
         return (database.fees || []).map(function (fi) {
           var st = (database.students || []).find(function (s) { return s.id === fi.studentId; }) || {};
           var rc = fi.className || st.className || "-"; var pp = String(rc).split("|");
@@ -8930,217 +9073,208 @@ ${allContent}
           if (!st.id && fi.studentId) { stName = fi.studentName || "-"; rollNo = fi.studentRollNo || "-"; }
           return { id: fi.id, studentId: fi.studentId || "", rollNo: rollNo, studentName: stName, fatherName: fName, className: rc, baseClass: pp[0].trim(), section: pp.length > 1 ? pp[1].trim() : "", feeMonth: fi.feeMonth || fi.month || "-", status: fi.status || "unpaid", totalAmount: Number(fi.totalAmount || fi.amount || 0), deposit: Number(fi.deposit || 0), remaining: Number(fi.remaining || 0), date: fi.date || "", paymentDate: fi.paymentDate || "", particulars: fi.particulars || [], studentStatus: stStatus, hasStudent: Boolean(st.id) };
         }).filter(function (r) {
-          if (fl.className !== "all" && r.baseClass !== fl.className) return false;
-          if (fl.section !== "all" && r.section !== fl.section) return false;
-          var _calcStatus = (r.status === "paid" && r.remaining === 0) ? "paid" : (r.deposit > 0 && r.remaining > 0 ? "partial" : "unpaid");
-          if (fl.status !== "all" && _calcStatus !== fl.status) return false;
-          if (fl.studentStatus !== "all" && r.studentStatus !== fl.studentStatus) return false;
-          if (fl.month !== "all-time" && r.feeMonth !== fl.month) return false;
-          if (fl.fromDate || fl.toDate) {
-            var _feeDate = r.date || r.paymentDate || "";
-            if (fl.fromDate && _feeDate && _feeDate < fl.fromDate) return false;
-            if (fl.toDate && _feeDate && _feeDate > fl.toDate) return false;
-          }
-          if (fl.feeType !== "all") { if (!r.particulars.some(function (p) { return p.label === fl.feeType && Number(p.amount || 0) > 0; })) return false; }
-          if (sr) { if (!String(r.studentName).toLowerCase().includes(sr) && !String(r.rollNo).toLowerCase().includes(sr) && !String(r.fatherName).toLowerCase().includes(sr)) return false; }
+          if (filters.fromDate) { var rd = r.date || r.paymentDate || ""; if (rd && rd < filters.fromDate) return false; }
+          if (filters.toDate) { var rd2 = r.date || r.paymentDate || ""; if (rd2 && rd2 > filters.toDate) return false; }
           return true;
         });
       }
-      function _frCls(rows) {
-        var m = {}; rows.forEach(function (r) {
-          var k = r.className; if (!m[k]) m[k] = { className: k, baseClass: r.baseClass, section: r.section, students: new Set(), tp: 0, tc: 0, to: 0, pc: 0, parc: 0, uc: 0 };
-          m[k].students.add(r.studentId || r.id); m[k].tp += r.totalAmount; m[k].tc += r.deposit; m[k].to += r.remaining;
-          var _cs = (r.status === "paid" && r.remaining === 0) ? "paid" : (r.deposit > 0 && r.remaining > 0 ? "partial" : "unpaid");
-          if (_cs === "paid") m[k].pc++; else if (_cs === "partial") m[k].parc++; else m[k].uc++;
-        }); return Object.values(m).sort(function (a, b) { return a.className.localeCompare(b.className); });
+      function _frBuildAllClassCards(rows, searchTerm) {
+        var sr = (searchTerm || "").toLowerCase();
+        var feeByStudent = {};
+        rows.forEach(function (r) {
+          var key = r.studentId || r.id;
+          if (key) feeByStudent[key] = r;
+        });
+        var result = _classList.map(function (clsName) {
+          var pp = String(clsName).split("|");
+          var baseName = pp[0].trim();
+          var secName = pp.length > 1 ? pp[1].trim() : "";
+          var classStudents = _frGetStudentsForClass(clsName);
+          var classFee = _frGetClassFee(clsName);
+          var tp = classStudents.length * classFee;
+          var tc = 0, pc = 0, parc = 0, uc = 0;
+          var studentIds = new Set(classStudents.map(function (s) { return s.id; }));
+          classStudents.forEach(function (stu) {
+            var feeRec = feeByStudent[stu.id];
+            if (feeRec) {
+              tc += feeRec.deposit;
+              var isPaid = feeRec.status === "paid" && feeRec.remaining === 0;
+              var isPartial = feeRec.deposit > 0 && feeRec.remaining > 0;
+              if (isPaid) pc++; else if (isPartial) parc++; else uc++;
+            } else {
+              uc++;
+            }
+          });
+          var to = Math.max(0, tp - tc);
+          if (sr) {
+            if (!baseName.toLowerCase().includes(sr) && !secName.toLowerCase().includes(sr) && !clsName.toLowerCase().includes(sr)) return null;
+          }
+          return { className: clsName, baseClass: baseName, section: secName, students: studentIds, tp: tp, tc: tc, to: to, pc: pc, parc: parc, uc: uc };
+        }).filter(Boolean).sort(function (a, b) { return a.className.localeCompare(b.className); });
+        return result;
       }
-      function _frAll(cs) { var r = { ts: 0, tp: 0, tc: 0, to: 0, pc: 0, parc: 0, uc: 0 }; cs.forEach(function (c) { r.ts += c.students.size; r.tp += c.tp; r.tc += c.tc; r.to += c.to; r.pc += c.pc; r.parc += c.parc; r.uc += c.uc; }); return r; }
+      function _frAllStats(cs) {
+        var allStudents = database.students || [];
+        var totalStudentCount = allStudents.length;
+        var totalPayable = 0;
+        (database.classes || []).forEach(function (cls) {
+          var stuCount = allStudents.filter(function (s) { return s.className === cls.name; }).length;
+          totalPayable += stuCount * Number(cls.monthlyTuitionFees || 0);
+        });
+        var totalCollected = 0, totalPc = 0, totalParc = 0, totalUc = 0;
+        cs.forEach(function (c) { totalCollected += c.tc; totalPc += c.pc; totalParc += c.parc; totalUc += c.uc; });
+        var outstanding = Math.max(0, totalPayable - totalCollected);
+        return { ts: totalStudentCount, tp: totalPayable, tc: totalCollected, to: outstanding, pc: totalPc, parc: totalParc, uc: totalUc };
+      }
       function _fc(v) { return "PKR " + Number(v || 0).toLocaleString(); }
       function _pctColor(p) { return p >= 75 ? "#16a34a" : p >= 40 ? "#d97706" : "#dc2626"; }
-      var _fl = { search: "", className: "all", section: "all", status: "all", month: "all-time", feeType: "all", studentStatus: "all", fromDate: "", toDate: "" };
-      var _view = "cards", _viewCls = "";
+      var _searchTerm = "";
+      var _viewCls = "";
+      var _dateFrom = "";
+      var _dateTo = "";
       var _classList = _frBuildClassList();
-      var _mv = Array.from(new Set((database.fees || []).map(function (f) { return f.feeMonth || f.month; }).filter(Boolean))).sort();
-      var _co = _classList.map(function (c) { return '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>'; }).join("");
-      var _mo = _mv.map(function (m) { return '<option value="' + escapeAttr(m) + '">' + escapeHtml(m) + '</option>'; }).join("");
-      var _ft = _frTypes().map(function (t) { return '<option value="' + escapeAttr(t) + '">' + escapeHtml(t) + '</option>'; }).join("");
       moduleSummary.innerHTML = '<article class="fr-container">' +
-        '<div class="fr-topbar"><div class="fr-topbar__left"><p class="fr-topbar__eyebrow">FEES MANAGEMENT</p><h2 class="fr-topbar__title">Fees Report</h2><p class="fr-topbar__subtitle">Monitor student fee status, payments and outstanding balances class-wise.</p></div><div class="fr-topbar__actions"><button class="fr-btn fr-btn--o" id="frExportBtn" type="button"><i class="fas fa-download"></i> Export</button><button class="fr-btn fr-btn--o" id="frPrintBtn" type="button"><i class="fas fa-print"></i> Print</button><button class="fr-btn fr-btn--p" id="frRefreshBtn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div></div>' +
+        '<div class="fr-topbar"><div class="fr-topbar__left"><p class="fr-topbar__eyebrow">FEES MANAGEMENT</p><h2 class="fr-topbar__title">Fees Report</h2><p class="fr-topbar__subtitle">Class-wise overview of student fee status and collection.</p></div><div class="fr-topbar__actions"><button class="fr-btn fr-btn--o" id="frExportBtn" type="button"><i class="fas fa-download"></i> Export</button><button class="fr-btn fr-btn--o" id="frPrintBtn" type="button"><i class="fas fa-print"></i> Print</button><button class="fr-btn fr-btn--p" id="frRefreshBtn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div></div>' +
         '<div class="fr-stats" id="frStats"></div>' +
-        '<div class="fr-filters"><div class="fr-filters__head"><div class="fr-filters__title" id="frFilterToggle"><i class="fas fa-filter"></i> Filters <i class="fas fa-chevron-down fr-chevron" id="frChevron"></i></div><button class="fr-btn fr-btn--g fr-btn--s" id="frClearBtn" type="button"><i class="fas fa-times"></i> Reset</button></div><div class="fr-filters__grid" id="frFiltersGrid">' +
-        '<div class="fr-fg"><label>Class</label><select id="frClassF" class="fr-fs"><option value="all">All Classes</option>' + _co + '</select></div>' +
-        '<div class="fr-fg"><label>Section</label><select id="frSectionF" class="fr-fs"><option value="all">All Sections</option></select></div>' +
-        '<div class="fr-fg"><label>Student Status</label><select id="frStuStatF" class="fr-fs"><option value="all">All Students</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>' +
-        '<div class="fr-fg"><label>Payment Status</label><select id="frPayStatF" class="fr-fs"><option value="all">All Status</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="unpaid">Unpaid / Due</option></select></div>' +
-        '<div class="fr-fg"><label>Fee Type</label><select id="frFeeTypeF" class="fr-fs"><option value="all">All Fee Types</option>' + _ft + '</select></div>' +
-        '<div class="fr-fg"><label>Fee Month</label><select id="frMonthF" class="fr-fs"><option value="all-time">All Time</option>' + _mo + '</select></div>' +
-        '<div class="fr-fg"><label>From Date</label><input type="date" id="frFromD" class="fr-fi"></div>' +
-        '<div class="fr-fg"><label>To Date</label><input type="date" id="frToD" class="fr-fi"></div>' +
-        '<div class="fr-fg fr-fg--search"><label>Search</label><div style="position:relative"><input type="search" id="frSearchI" class="fr-fi" placeholder="Student name, roll no, or father name" aria-label="Search fees report"><div id="frSearchDD" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>' +
-        '</div><div class="fr-filters__actions"><span id="frDateErr" style="color:#dc2626;font-size:0.72rem;font-weight:600;margin-right:0.5rem;display:none"></span><button class="fr-btn fr-btn--p" id="frApplyBtn" type="button"><i class="fas fa-check"></i> Apply Filters</button></div></div>' +
-        '<div class="fr-filtersummary" id="frFilterSummary"></div>' +
-        '<div id="frContent">' +
-        '<div class="fr-thead"><div class="fr-thead__left"><h3 id="frTblTitle" class="fr-thead__title">Class-wise Fee Overview</h3><p id="frTblSub" class="fr-thead__sub">Select a class to view detailed student fee status.</p></div></div>' +
+        '<div class="fr-datefilter"><div class="fr-datefilter__inner"><div class="fr-datefilter__field"><label><i class="fas fa-calendar-alt"></i> From</label><input type="date" id="frDateFrom" class="fr-datefilter__input"></div><div class="fr-datefilter__sep"><i class="fas fa-arrow-right"></i></div><div class="fr-datefilter__field"><label><i class="fas fa-calendar-alt"></i> To</label><input type="date" id="frDateTo" class="fr-datefilter__input"></div><button class="fr-btn fr-btn--g fr-btn--s" id="frClearDates" type="button"><i class="fas fa-times"></i> Clear</button></div></div>' +
+        '<div class="fr-thead"><div class="fr-thead__left"><h3 id="frTblTitle" class="fr-thead__title">Class-wise Fee Overview</h3><p id="frTblSub" class="fr-thead__sub">All classes with student count and fee collection status.</p></div><div class="fr-thead__right"><div class="fr-search-box"><i class="fas fa-search"></i><input type="search" id="frClassSearch" class="fr-search-input" placeholder="Search class..." aria-label="Search classes"></div></div></div>' +
         '<div class="fr-cards" id="frClassCards"></div>' +
-        '<div class="fr-empty" id="frEmpty" style="display:none"><div class="fr-empty__icon"><i class="fas fa-receipt"></i></div><h4 class="fr-empty__title">No Fee Records Found</h4><p class="fr-empty__desc">No fee records match your current filters. Try adjusting your filters or date range.</p><button class="fr-btn fr-btn--p" id="frEmptyClear" type="button"><i class="fas fa-times"></i> Clear Filters</button></div></div>' +
-        '<div id="frSummary" class="fr-summary" style="display:none"></div>' +
-        '<div class="fr-qactions"><h4 class="fr-qactions__title">Quick Actions</h4><div class="fr-qa-grid">' +
-        '<a class="fr-qa" href="#fee-collection-report" onclick="event.preventDefault();router(\'fee-collection-report\')"><i class="fas fa-chart-bar"></i> Fee Collection Report</a>' +
-        '<button class="fr-qa" data-filter-status="unpaid" type="button"><i class="fas fa-exclamation-triangle"></i> Outstanding Fees</button>' +
-        '<button class="fr-qa" data-filter-status="paid" type="button"><i class="fas fa-check-circle"></i> Paid Fees</button>' +
-        '<button class="fr-qa" id="frPrintRcptBtn" type="button"><i class="fas fa-print"></i> Print Fee Receipts</button>' +
+        '<div class="fr-empty" id="frEmpty" style="display:none"><div class="fr-empty__icon"><i class="fas fa-school"></i></div><h4 class="fr-empty__title">No Classes Found</h4><p class="fr-empty__desc">No classes match your search.</p></div>' +
+        '<div class="fr-insights" id="frInsights"></div>' +
+        '<div class="fr-qactions" id="frQuickActions"><h4 class="fr-qactions__title">Quick Actions</h4><div class="fr-qa-grid">' +
+        '<button class="fr-qa" id="frQaReport" type="button"><i class="fas fa-chart-bar"></i> Fee Collection Report</button>' +
+        '<button class="fr-qa" id="frQaCollect" type="button"><i class="fas fa-money-bill"></i> Collect Fees</button>' +
+        '<button class="fr-qa" id="frQaInvoice" type="button"><i class="fas fa-file-invoice"></i> Generate Invoice</button>' +
+        '<button class="fr-qa" id="frQaDefaulters" type="button"><i class="fas fa-exclamation-triangle"></i> View Defaulters</button>' +
         '<button class="fr-qa fr-qa--danger" id="clearAllFeesDataBtn" type="button"><i class="fas fa-trash"></i> Clear All Fees Data</button>' +
         '</div></div>' +
-        '<div class="fr-drill-overlay" id="frDrillOverlay"></div>' +
-        '<div class="fr-drill" id="frDrill"><div class="fr-drill__header"><button class="fr-drill__back" id="frDrillBack" type="button"><i class="fas fa-arrow-left"></i></button><div style="flex:1;min-width:0"><h3 class="fr-drill__title" id="frDrillTitle">Students</h3><p class="fr-drill__subtitle" id="frDrillSub">Student-level fee details</p></div><button class="fr-drill__close" id="frDrillClose" type="button"><i class="fas fa-times"></i></button></div><div class="fr-drill__body" id="frDrillBody"></div></div>' +
         '</article>';
       if (moduleGuideHeader) moduleGuideHeader.style.display = "none";
       moduleGuide.innerHTML = "";
+      var _existingDrill = document.getElementById("frDrill");
+      if (_existingDrill) _existingDrill.remove();
+      var _existingOverlay = document.getElementById("frDrillOverlay");
+      if (_existingOverlay) _existingOverlay.remove();
+      var _drillHtml = '<div class="fr-drill-overlay" id="frDrillOverlay"></div><div class="fr-drill" id="frDrill"><div class="fr-drill__header"><button class="fr-drill__back" id="frDrillBack" type="button"><i class="fas fa-arrow-left"></i></button><div style="flex:1;min-width:0"><h3 class="fr-drill__title" id="frDrillTitle">Students</h3><p class="fr-drill__subtitle" id="frDrillSub">Student-level fee details</p></div><button class="fr-drill__close" id="frDrillClose" type="button"><i class="fas fa-times"></i></button></div><div class="fr-drill__body" id="frDrillBody"></div></div>';
+      document.body.insertAdjacentHTML("beforeend", _drillHtml);
       var _e = function (id) { return document.getElementById(id); };
-      var _statsEl = _e("frStats"), _classEl = _e("frClassF"), _sectEl = _e("frSectionF"), _stuStatEl = _e("frStuStatF"), _feeTypeEl = _e("frFeeTypeF"), _payStatEl = _e("frPayStatF"), _monthEl = _e("frMonthF"), _fromEl = _e("frFromD"), _toEl = _e("frToD"), _searchEl = _e("frSearchI"), _searchDD = _e("frSearchDD"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _summaryEl = _e("frSummary"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _filtersGrid = _e("frFiltersGrid"), _filterChevron = _e("frChevron"), _dateErrEl = _e("frDateErr");
-      initializeStudentProfessionalSearch("frSearchI", "frSearchDD", null, function (st) { _searchEl.value = st.name || ""; _doApply(); });
-      _classEl.addEventListener("change", function () { var secs = _frSecs(_classEl.value === "all" ? "" : _classEl.value); _sectEl.innerHTML = '<option value="all">All Sections</option>' + secs.map(function (s) { return '<option value="' + escapeAttr(s) + '">' + escapeHtml(s) + '</option>'; }).join(""); });
-      function _readFl() { _fl.className = _classEl.value; _fl.section = _sectEl.value; _fl.studentStatus = _stuStatEl.value; _fl.feeType = _feeTypeEl.value; _fl.status = _payStatEl.value; _fl.month = _monthEl.value; _fl.fromDate = _fromEl.value; _fl.toDate = _toEl.value; _fl.search = _searchEl.value.trim(); }
-      function _validateDates() {
-        var f = _fromEl.value, t = _toEl.value;
-        if (f && t && f > t) { _dateErrEl.textContent = "From Date cannot be later than To Date."; _dateErrEl.style.display = ""; return false; }
-        _dateErrEl.style.display = "none"; return true;
-      }
-      _fromEl.addEventListener("change", _validateDates);
-      _toEl.addEventListener("change", _validateDates);
-      function _doApply() { if (!_validateDates()) return; _readFl(); _view = "cards"; _closeDrill(); _renderAll(); }
-      function _hasActiveFilters() { return _fl.className !== "all" || _fl.section !== "all" || _fl.studentStatus !== "all" || _fl.feeType !== "all" || _fl.status !== "all" || _fl.month !== "all-time" || _fl.fromDate || _fl.toDate || _fl.search; }
+      var _statsEl = _e("frStats"), _emptyEl = _e("frEmpty"), _titleEl = _e("frTblTitle"), _titleSubEl = _e("frTblSub"), _cardsEl = _e("frClassCards"), _insightsEl = _e("frInsights"), _drillEl = _e("frDrill"), _drillOverlay = _e("frDrillOverlay"), _drillBody = _e("frDrillBody"), _drillTitle = _e("frDrillTitle"), _drillSub = _e("frDrillSub"), _searchEl = _e("frClassSearch"), _dateFromEl = _e("frDateFrom"), _dateToEl = _e("frDateTo"), _clearDatesBtn = _e("frClearDates");
+      var _contentArea = document.querySelector(".content-area");
+      var _savedScrollY = 0;
       function _closeDrill() { _drillEl.classList.remove("fr-drill--open"); _drillOverlay.classList.remove("fr-drill-overlay--open"); document.body.style.overflow = ""; }
-      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); document.body.style.overflow = "hidden"; }
-      function _renderFilterSummary() {
-        var chips = [];
-        if (_fl.className !== "all") chips.push({ label: "Class: " + _fl.className, clear: function () { _classEl.value = "all"; } });
-        if (_fl.section !== "all") chips.push({ label: "Section: " + _fl.section, clear: function () { _sectEl.value = "all"; } });
-        if (_fl.studentStatus !== "all") chips.push({ label: "Status: " + _fl.studentStatus, clear: function () { _stuStatEl.value = "all"; } });
-        if (_fl.feeType !== "all") chips.push({ label: "Fee Type: " + _fl.feeType, clear: function () { _feeTypeEl.value = "all"; } });
-        if (_fl.status !== "all") chips.push({ label: "Payment: " + _fl.status, clear: function () { _payStatEl.value = "all"; } });
-        if (_fl.month !== "all-time") chips.push({ label: "Month: " + _fl.month, clear: function () { _monthEl.value = "all-time"; } });
-        if (_fl.fromDate) chips.push({ label: "From: " + _fl.fromDate, clear: function () { _fromEl.value = ""; } });
-        if (_fl.toDate) chips.push({ label: "To: " + _fl.toDate, clear: function () { _toEl.value = ""; } });
-        if (_fl.search) chips.push({ label: "Search: \"" + _fl.search + "\"", clear: function () { _searchEl.value = ""; } });
-        if (chips.length === 0) { _summaryEl.innerHTML = ""; _summaryEl.style.display = "none"; return; }
-        var rows = _frRows(_fl); _summaryEl.style.display = "";
-        _summaryEl.innerHTML = '<span class="fr-fsum__text">Showing <strong>' + rows.length + '</strong> records</span>' + chips.map(function (c, i) { return '<span class="fr-chip" data-fr-chip="' + i + '">' + escapeHtml(c.label) + ' <i class="fas fa-times" data-fr-chip-x="' + i + '"></i></span>'; }).join("");
-        _summaryEl.querySelectorAll("[data-fr-chip-x]").forEach(function (x) {
-          x.addEventListener("click", function () {
-            var idx = Number(x.getAttribute("data-fr-chip-x")); if (chips[idx]) { chips[idx].clear(); _doApply(); }
-          });
-        });
-      }
-      function _renderStats() {
-        var rows = _frRows(_fl); var cs = _frCls(rows); var a = _frAll(cs);
-        var pct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
+      function _openDrill() { _drillEl.classList.add("fr-drill--open"); _drillOverlay.classList.add("fr-drill-overlay--open"); }
+      function _renderAll() {
+        var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
+        var cs = _frBuildAllClassCards(rows, _searchTerm);
+        var a = _frAllStats(cs);
         var classCount = _classList.length;
-        var stuCount = (database.students || []).length;
         if (a.ts === 0 && classCount === 0) {
           _statsEl.innerHTML = '<div class="fr-stat fr-stat--empty"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-info-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">No Data</div><div class="fr-stat__value" style="font-size:0.82rem;font-weight:600;color:#94a3b8;">Add classes and students to get started with fee tracking.</div></div></div>';
+          _cardsEl.innerHTML = ""; _emptyEl.style.display = ""; _insightsEl.innerHTML = ""; _insightsEl.style.display = "none";
           return;
         }
-        var dispTs = a.ts > 0 ? a.ts : stuCount;
         _statsEl.innerHTML =
-          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-school"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Classes</div><div class="fr-stat__value">' + classCount + '</div></div></div>' +
-          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-users"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Students</div><div class="fr-stat__value">' + dispTs + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-school"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Classes</div><div class="fr-stat__value">' + classCount + '</div></div></div>' +
+          '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-users"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Students</div><div class="fr-stat__value">' + a.ts + '</div></div></div>' +
           '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--blue"><i class="fas fa-coins"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Payable</div><div class="fr-stat__value">' + _fc(a.tp) + '</div></div></div>' +
           '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--green"><i class="fas fa-check-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Total Collected</div><div class="fr-stat__value fr-stat__value--green">' + _fc(a.tc) + '</div></div></div>' +
           '<div class="fr-stat"><div class="fr-stat__icon fr-stat__icon--red"><i class="fas fa-exclamation-circle"></i></div><div class="fr-stat__body"><div class="fr-stat__label">Outstanding</div><div class="fr-stat__value fr-stat__value--red">' + _fc(a.to) + '</div></div></div>';
-      }
-      function _renderClassCards() {
-        var rows = _frRows(_fl); var cs = _frCls(rows);
         _titleEl.textContent = "Class-wise Fee Overview";
-        _titleSubEl.textContent = "Select a class to view detailed student fee status.";
-        if (cs.length === 0 && _classList.length > 0) {
-          var emptyCards = _classList.map(function (clsName) {
-            var pp = String(clsName).split("|");
-            var baseName = pp[0].trim();
-            var secName = pp.length > 1 ? pp[1].trim() : "";
-            var stuCount = (database.students || []).filter(function (s) { return s.className === clsName; }).length;
+        _titleSubEl.textContent = cs.length + " class" + (cs.length !== 1 ? "es" : "") + " \u2022 " + a.ts + " student" + (a.ts !== 1 ? "s" : "");
+        if (cs.length === 0) { _cardsEl.innerHTML = ""; _emptyEl.style.display = ""; } else {
+          _emptyEl.style.display = "none";
+          _cardsEl.innerHTML = cs.map(function (c) {
+            var cp = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0;
+            var barColor = _pctColor(cp);
             return '<div class="fr-cc">' +
-              '<div class="fr-cc__head"><div><span class="fr-cc__name">' + escapeHtml(baseName) + '</span>' + (secName ? '<span class="fr-cc__sec">' + escapeHtml(secName) + '</span>' : '') + '</div><span class="fr-cc__students"><i class="fas fa-users"></i> ' + stuCount + ' Students</span></div>' +
+              '<div class="fr-cc__head"><div><span class="fr-cc__name">' + escapeHtml(c.baseClass) + '</span>' + (c.section ? '<span class="fr-cc__sec">' + escapeHtml(c.section) + '</span>' : '') + '</div><span class="fr-cc__students"><i class="fas fa-users"></i> ' + c.students.size + ' Students</span></div>' +
               '<div class="fr-cc__body">' +
               '<div class="fr-cc__metrics">' +
-              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Payable</div><div class="fr-cc__metric-value">' + _fc(0) + '</div></div>' +
-              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Collected</div><div class="fr-cc__metric-value fr-cc__metric-value--green">' + _fc(0) + '</div></div>' +
-              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Outstanding</div><div class="fr-cc__metric-value fr-cc__metric-value--red">' + _fc(0) + '</div></div>' +
+              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Payable</div><div class="fr-cc__metric-value">' + _fc(c.tp) + '</div></div>' +
+              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Collected</div><div class="fr-cc__metric-value fr-cc__metric-value--green">' + _fc(c.tc) + '</div></div>' +
+              '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Outstanding</div><div class="fr-cc__metric-value fr-cc__metric-value--red">' + _fc(c.to) + '</div></div>' +
               '</div>' +
-              '<div class="fr-cc__progress"><div class="fr-cc__progress-head"><span>Collection Progress</span><span>0% Collected</span></div><div class="fr-cc__progress-bar"><div class="fr-cc__progress-fill" style="width:0%;background:#e2e8f0"></div></div></div>' +
-              '<div class="fr-cc__badges"><span class="fr-cc__badge fr-cc__badge--green"><span class="fr-cc__badge-dot"></span> Paid: 0</span><span class="fr-cc__badge fr-cc__badge--amber"><span class="fr-cc__badge-dot"></span> Partial: 0</span><span class="fr-cc__badge fr-cc__badge--red"><span class="fr-cc__badge-dot"></span> Unpaid: 0</span></div>' +
+              '<div class="fr-cc__progress"><div class="fr-cc__progress-head"><span>Collection Progress</span><span>' + cp + '% Collected</span></div><div class="fr-cc__progress-bar"><div class="fr-cc__progress-fill" style="width:' + cp + '%;background:' + barColor + '"></div></div></div>' +
+              '<div class="fr-cc__badges"><span class="fr-cc__badge fr-cc__badge--green"><span class="fr-cc__badge-dot"></span> Paid: ' + c.pc + '</span><span class="fr-cc__badge fr-cc__badge--amber"><span class="fr-cc__badge-dot"></span> Partial: ' + c.parc + '</span><span class="fr-cc__badge fr-cc__badge--red"><span class="fr-cc__badge-dot"></span> Unpaid: ' + c.uc + '</span></div>' +
               '</div>' +
-              '<div class="fr-cc__foot" style="text-align:center;color:var(--text-muted);font-size:0.72rem;font-weight:600;padding:0.5rem">No fee records yet</div>' +
+              '<div class="fr-cc__foot"><button class="fr-cc__view" data-fr-cls="' + escapeAttr(c.className) + '" type="button"><i class="fas fa-eye"></i> View Details <i class="fas fa-arrow-right" style="font-size:0.65rem"></i></button></div>' +
               '</div>';
           }).join("");
-          _cardsEl.innerHTML = emptyCards;
-          _emptyEl.style.display = "none";
-          return;
+          _cardsEl.querySelectorAll(".fr-cc__view").forEach(function (btn) {
+            btn.addEventListener("click", function () { _viewCls = btn.getAttribute("data-fr-cls"); _renderDrilldown(); _openDrill(); });
+          });
         }
-        if (cs.length === 0) { _cardsEl.innerHTML = ""; _emptyEl.style.display = ""; return; }
-        _emptyEl.style.display = "none";
-        _cardsEl.innerHTML = cs.map(function (c) {
-          var cp = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0;
-          var barColor = _pctColor(cp);
-          return '<div class="fr-cc">' +
-            '<div class="fr-cc__head"><div><span class="fr-cc__name">' + escapeHtml(c.baseClass) + '</span>' + (c.section ? '<span class="fr-cc__sec">' + escapeHtml(c.section) + '</span>' : '') + '</div><span class="fr-cc__students"><i class="fas fa-users"></i> ' + c.students.size + ' Students</span></div>' +
-            '<div class="fr-cc__body">' +
-            '<div class="fr-cc__metrics">' +
-            '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Payable</div><div class="fr-cc__metric-value">' + _fc(c.tp) + '</div></div>' +
-            '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Collected</div><div class="fr-cc__metric-value fr-cc__metric-value--green">' + _fc(c.tc) + '</div></div>' +
-            '<div class="fr-cc__metric"><div class="fr-cc__metric-label">Outstanding</div><div class="fr-cc__metric-value fr-cc__metric-value--red">' + _fc(c.to) + '</div></div>' +
-            '</div>' +
-            '<div class="fr-cc__progress"><div class="fr-cc__progress-head"><span>Collection Progress</span><span>' + cp + '% Collected</span></div><div class="fr-cc__progress-bar"><div class="fr-cc__progress-fill" style="width:' + cp + '%;background:' + barColor + '"></div></div></div>' +
-            '<div class="fr-cc__badges"><span class="fr-cc__badge fr-cc__badge--green"><span class="fr-cc__badge-dot"></span> Paid: ' + c.pc + '</span><span class="fr-cc__badge fr-cc__badge--amber"><span class="fr-cc__badge-dot"></span> Partial: ' + c.parc + '</span><span class="fr-cc__badge fr-cc__badge--red"><span class="fr-cc__badge-dot"></span> Unpaid: ' + c.uc + '</span></div>' +
-            '</div>' +
-            '<div class="fr-cc__foot"><button class="fr-cc__view" data-fr-cls="' + escapeAttr(c.className) + '" type="button"><i class="fas fa-eye"></i> View Details <i class="fas fa-arrow-right" style="font-size:0.65rem"></i></button></div>' +
-            '</div>';
-        }).join("");
-        _cardsEl.querySelectorAll(".fr-cc__view").forEach(function (btn) {
-          btn.addEventListener("click", function () { _viewCls = btn.getAttribute("data-fr-cls"); _renderDrilldown(); _openDrill(); });
-        });
+        var insights = [];
+        var classesWithFees = cs.filter(function (c) { return c.tp > 0; });
+        var classesWithDue = cs.filter(function (c) { return c.uc > 0; });
+        if (classesWithFees.length > 0) {
+          var bestClass = classesWithFees.reduce(function (best, c) { var p = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0; return p > (best.pct !== undefined ? best.pct : -1) ? { cls: c.baseClass || c.className, pct: p, fullCls: c.className } : best; }, { pct: -1 });
+          if (bestClass.pct >= 0) insights.push({ icon: "fas fa-trophy", color: "#16a34a", label: "Best Collection", value: escapeHtml(bestClass.cls) + " (" + bestClass.pct + "%)", action: "search", searchVal: bestClass.cls });
+          var worstClass = classesWithFees.reduce(function (worst, c) { var p = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0; return p < worst.pct ? { cls: c.baseClass || c.className, pct: p, fullCls: c.className } : worst; }, { pct: 101 });
+          if (worstClass.pct <= 100 && worstClass.cls) insights.push({ icon: "fas fa-exclamation-triangle", color: "#d97706", label: "Needs Attention", value: escapeHtml(worstClass.cls) + " (" + worstClass.pct + "%)", action: "search", searchVal: worstClass.cls });
+        }
+        if (a.ts > 0) insights.push({ icon: "fas fa-users", color: "#6366f1", label: "Total Students", value: a.ts + " in " + classCount + " classes", action: null });
+        if (a.uc > 0) insights.push({ icon: "fas fa-user-clock", color: "#dc2626", label: "Students with Dues", value: a.uc + " of " + a.ts, action: null });
+        if (classesWithDue.length > 0) insights.push({ icon: "fas fa-school", color: "#d97706", label: "Classes with Pending", value: classesWithDue.length + " class" + (classesWithDue.length !== 1 ? "es" : ""), action: null });
+        if (a.tp > 0) { var overallPct = Math.round((a.tc / a.tp) * 100); insights.push({ icon: "fas fa-chart-pie", color: "#16a34a", label: "Overall Collection", value: overallPct + "%", action: null }); }
+        if (insights.length === 0) { _insightsEl.innerHTML = ""; _insightsEl.style.display = "none"; } else {
+          _insightsEl.style.display = "";
+          _insightsEl.innerHTML = '<h4 class="fr-insights__title">Fee Insights</h4><div class="fr-insights__grid">' + insights.map(function (ins, idx) {
+            var clickable = ins.action ? ' style="cursor:pointer"' : '';
+            return '<div class="fr-insight" data-fr-insight-idx="' + idx + '"' + clickable + '><div class="fr-insight__icon" style="color:' + ins.color + '"><i class="' + ins.icon + '"></i></div><div class="fr-insight__body"><div class="fr-insight__label">' + ins.label + '</div><div class="fr-insight__value">' + ins.value + '</div></div></div>';
+          }).join("") + '</div>';
+          _insightsEl.querySelectorAll(".fr-insight[data-fr-insight-idx]").forEach(function (el) {
+            var idx = parseInt(el.getAttribute("data-fr-insight-idx"));
+            var ins = insights[idx];
+            if (ins && ins.action === "search") {
+              el.addEventListener("click", function () {
+                _searchEl.value = ins.searchVal;
+                _searchTerm = ins.searchVal;
+                _renderAll();
+                requestAnimationFrame(function() { requestAnimationFrame(function() { _cardsEl.scrollIntoView({ behavior: "smooth", block: "start" }); }); });
+              });
+            }
+          });
+        }
       }
       function _renderDrilldown() {
-        var rows = _frRows(_fl).filter(function (r) { return r.className === _viewCls; });
+        var allRows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
+        var feeByStudent = {};
+        allRows.forEach(function (r) { if (r.studentId || r.id) feeByStudent[r.studentId || r.id] = r; });
+        var classStudents = _frGetStudentsForClass(_viewCls);
+        var classFee = _frGetClassFee(_viewCls);
         _drillTitle.textContent = _viewCls;
-        _drillSub.textContent = rows.length + " student record" + (rows.length !== 1 ? "s" : "") + " found";
-        if (rows.length === 0) { _drillBody.innerHTML = '<div class="fr-drill__empty"><i class="fas fa-inbox"></i><p>No fee records found for this class.</p></div>'; return; }
-        var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="fr-stbl"><thead><tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Class</th><th>Fee Month</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Last Payment</th></tr></thead><tbody>';
-        rows.forEach(function (r) {
-          var _cs = (r.status === "paid" && r.remaining === 0) ? "fr-status--paid" : (r.deposit > 0 && r.remaining > 0 ? "fr-status--partial" : "fr-status--unpaid");
-          var _st = (r.status === "paid" && r.remaining === 0) ? "Paid" : (r.deposit > 0 && r.remaining > 0 ? "Partial" : "Unpaid");
-          html += '<tr><td>' + escapeHtml(r.rollNo) + '</td><td>' + escapeHtml(r.studentName) + '</td><td>' + escapeHtml(r.fatherName) + '</td><td>' + escapeHtml(r.className) + '</td><td>' + escapeHtml(r.feeMonth) + '</td><td>' + _fc(r.totalAmount) + '</td><td>' + _fc(r.deposit) + '</td><td>' + _fc(r.remaining) + '</td><td><span class="fr-status ' + _cs + '">' + _st + '</span></td><td>' + escapeHtml(r.paymentDate || r.date || "-") + '</td></tr>';
+        _drillSub.textContent = classStudents.length + " student" + (classStudents.length !== 1 ? "s" : "") + " in class";
+        if (classStudents.length === 0) {
+          _drillBody.innerHTML = '<div class="fr-drill__empty"><i class="fas fa-inbox"></i><p>No students found in this class.</p></div>';
+          return;
+        }
+        var html = '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;"><table class="fr-stbl"><thead><tr><th>Roll No</th><th>Name</th><th>Father Name</th><th>Fee Month</th><th>Total</th><th>Paid</th><th>Outstanding</th><th>Status</th><th>Last Payment</th></tr></thead><tbody>';
+        classStudents.forEach(function (stu) {
+          var feeRec = feeByStudent[stu.id];
+          if (feeRec) {
+            var _cs = (feeRec.status === "paid" && feeRec.remaining === 0) ? "fr-status--paid" : (feeRec.deposit > 0 && feeRec.remaining > 0 ? "fr-status--partial" : "fr-status--unpaid");
+            var _st = (feeRec.status === "paid" && feeRec.remaining === 0) ? "Paid" : (feeRec.deposit > 0 && feeRec.remaining > 0 ? "Partial" : "Unpaid");
+            html += '<tr><td>' + escapeHtml(feeRec.rollNo) + '</td><td>' + escapeHtml(feeRec.studentName) + '</td><td>' + escapeHtml(feeRec.fatherName) + '</td><td>' + escapeHtml(feeRec.feeMonth) + '</td><td>' + _fc(feeRec.totalAmount) + '</td><td>' + _fc(feeRec.deposit) + '</td><td>' + _fc(feeRec.remaining) + '</td><td><span class="fr-status ' + _cs + '">' + _st + '</span></td><td>' + escapeHtml(feeRec.paymentDate || feeRec.date || "-") + '</td></tr>';
+          } else {
+            html += '<tr><td>' + escapeHtml(stu.admissionNo || "-") + '</td><td>' + escapeHtml(stu.name || "-") + '</td><td>' + escapeHtml(stu.fatherName || "-") + '</td><td>-</td><td>' + _fc(classFee) + '</td><td>' + _fc(0) + '</td><td>' + _fc(classFee) + '</td><td><span class="fr-status fr-status--unpaid">Unpaid</span></td><td>-</td></tr>';
+          }
         });
         html += '</tbody></table></div>';
         _drillBody.innerHTML = html;
       }
-      function _renderSummary() {
-        var rows = _frRows(_fl); var cs = _frCls(rows); var a = _frAll(cs);
-        if (a.ts === 0) { _summaryEl.style.display = "none"; return; }
-        var pct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
-        _summaryEl.style.display = "";
-        _summaryEl.innerHTML = '<div class="fr-summary__item"><span class="fr-summary__label">Total Students</span><span class="fr-summary__value">' + a.ts + '</span></div>' +
-          '<div class="fr-summary__item"><span class="fr-summary__label">Total Payable</span><span class="fr-summary__value">' + _fc(a.tp) + '</span></div>' +
-          '<div class="fr-summary__item"><span class="fr-summary__label">Total Collected</span><span class="fr-summary__value fr-summary__value--green">' + _fc(a.tc) + '</span></div>' +
-          '<div class="fr-summary__item"><span class="fr-summary__label">Outstanding</span><span class="fr-summary__value fr-summary__value--red">' + _fc(a.to) + '</span></div>' +
-          '<div class="fr-summary__item"><span class="fr-summary__label">Collection Rate</span><span class="fr-summary__value">' + pct + '%</span></div>' +
-          '<div class="fr-summary__item"><span class="fr-summary__label">Paid in Full</span><span class="fr-summary__value fr-summary__value--green">' + a.pc + '</span></div>' +
-          '<div class="fr-summary__item"><span class="fr-summary__label">Partially Paid</span><span class="fr-summary__value fr-summary__value--amber">' + a.parc + '</span></div>' +
-          '<div class="fr-summary__item"><span class="fr-summary__label">Not Paid</span><span class="fr-summary__value fr-summary__value--red">' + a.uc + '</span></div>';
-      }
-      function _renderAll() { _renderStats(); _renderFilterSummary(); _renderClassCards(); _renderSummary(); }
       safeOn(_e("frDrillOverlay"), "click", _closeDrill);
       safeOn(_e("frDrillBack"), "click", _closeDrill);
       safeOn(_e("frDrillClose"), "click", _closeDrill);
-      safeOn(_e("frFilterToggle"), "click", function () { _filtersGrid.classList.toggle("fr-filters__grid--collapsed"); _filterChevron.classList.toggle("fr-chevron--open"); });
-      safeOn(_e("frApplyBtn"), "click", _doApply);
-      safeOn(_e("frClearBtn"), "click", function () {
-        _classEl.value = "all"; _sectEl.innerHTML = '<option value="all">All Sections</option>'; _stuStatEl.value = "all"; _feeTypeEl.value = "all"; _payStatEl.value = "all"; _monthEl.value = "all-time"; _fromEl.value = ""; _toEl.value = ""; _searchEl.value = "";
-        _fl = { search: "", className: "all", section: "all", status: "all", month: "all-time", feeType: "all", studentStatus: "all", fromDate: "", toDate: "" };
-        _view = "cards"; _closeDrill(); _dateErrEl.style.display = "none"; _renderAll();
-      });
-      safeOn(_e("frEmptyClear"), "click", function () { _e("frClearBtn").click(); });
-      safeOn(_e("frRefreshBtn"), "click", function () { refreshDatabase(); router("fees-report"); });
+      safeOn(_searchEl, "input", function () { _searchTerm = _searchEl.value.trim(); _renderAll(); });
+      safeOn(_dateFromEl, "change", function () { _dateFrom = _dateFromEl.value; _renderAll(); });
+      safeOn(_dateToEl, "change", function () { _dateTo = _dateToEl.value; _renderAll(); });
+      safeOn(_clearDatesBtn, "click", function () { _dateFrom = ""; _dateTo = ""; _dateFromEl.value = ""; _dateToEl.value = ""; _renderAll(); });
+      safeOn(_e("frRefreshBtn"), "click", function () { refreshDatabase(); setRoute("fees-report"); });
+      safeOn(_e("frQaReport"), "click", function () { setRoute("fee-collection-report"); });
+      safeOn(_e("frQaCollect"), "click", function () { setRoute("collect-fees"); });
+      safeOn(_e("frQaInvoice"), "click", function () { setRoute("generate-fees-invoice"); });
+      safeOn(_e("frQaDefaulters"), "click", function () { setRoute("fees-defaulters"); });
       safeOn(_e("clearAllFeesDataBtn"), "click", async function () {
         var confirmed = await openAppConfirm("Delete All Fee Records", "This will PERMANENTLY DELETE ALL fee records from the system. This action cannot be undone. Are you absolutely sure?", "error");
         if (confirmed) {
@@ -9155,17 +9289,13 @@ ${allContent}
           window.SagarSoftDB.LoadingManager.update("All fee records cleared");
           setTimeout(function() { window.SagarSoftDB.LoadingManager.hide(); }, 600);
           openAppMessageBox("Success", "All fee records have been cleared.", "success");
-          router("fees-report");
+          setRoute("fees-report");
         }
       });
       safeOn(_e("frPrintBtn"), "click", function () {
-        var rows = _frRows(_fl);
-        if (!rows.length) { openAppMessageBox("No Data", "No fee records to print.", "warning"); return; }
-        var title = "Fees Report";
-        if (_fl.className !== "all") title += " \u2014 " + _fl.className;
-        if (_fl.section !== "all") title += " | " + _fl.section;
-        if (_fl.month !== "all-time") title += " \u2014 " + _fl.month;
-        var cs = _frCls(rows); var a = _frAll(cs);
+        var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
+        var cs = _frBuildAllClassCards(rows, ""); var a = _frAllStats(cs);
+        if (a.ts === 0) { openAppMessageBox("No Data", "No data to print.", "warning"); return; }
         var allPct = a.tp > 0 ? Math.round((a.tc / a.tp) * 100) : 0;
         var summaryHtml = '<div style="margin-bottom:12px;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;">' +
           '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Total Students</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + a.ts + '</span></div>' +
@@ -9174,19 +9304,12 @@ ${allContent}
           '<div style="padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;text-align:center;"><strong style="font-size:0.75rem;color:#dc2626;display:block;">Outstanding</strong><span style="font-size:1.1rem;font-weight:700;color:#dc2626;">' + _fc(a.to) + '</span></div>' +
           '<div style="padding:8px 12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;text-align:center;"><strong style="font-size:0.75rem;color:#64748b;display:block;">Collection %</strong><span style="font-size:1.1rem;font-weight:700;color:#102A43;">' + allPct + '%</span></div>' +
           '</div>';
-        openPrintReport({
-          subtitle: title,
-          contentHtml: summaryHtml,
-          headers: ["Class", "Students", "Total Payable", "Collected", "Outstanding", "Collection %", "Paid", "Partial", "Unpaid"],
-          rows: cs.map(function (c) {
-            var cp = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0;
-            return [escapeHtml(c.className), c.students.size, _fc(c.tp), _fc(c.tc), _fc(c.to), cp + "%", c.pc, c.parc, c.uc];
-          })
-        });
+        openPrintReport({ subtitle: "Fees Report", contentHtml: summaryHtml, headers: ["Class", "Students", "Total Payable", "Collected", "Outstanding", "Collection %", "Paid", "Partial", "Unpaid"], rows: cs.map(function (c) { var cp = c.tp > 0 ? Math.round((c.tc / c.tp) * 100) : 0; return [escapeHtml(c.className), c.students.size, _fc(c.tp), _fc(c.tc), _fc(c.to), cp + "%", c.pc, c.parc, c.uc]; }) });
       });
       safeOn(_e("frExportBtn"), "click", function () {
-        var rows = _frRows(_fl);
-        if (!rows.length) { openAppMessageBox("No Data", "No fee records to export.", "warning"); return; }
+        var rows = _frRows({ fromDate: _dateFrom, toDate: _dateTo });
+        var cs = _frBuildAllClassCards(rows, ""); var a = _frAllStats(cs);
+        if (a.ts === 0) { openAppMessageBox("No Data", "No data to export.", "warning"); return; }
         var csv = "Roll No,Name,Father Name,Class,Section,Fee Month,Total,Paid,Outstanding,Status,Last Payment\n";
         rows.forEach(function (r) {
           var _cs = (r.status === "paid" && r.remaining === 0) ? "Paid" : (r.deposit > 0 && r.remaining > 0 ? "Partial" : "Unpaid");
@@ -9194,19 +9317,14 @@ ${allContent}
         });
         var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
         var url = URL.createObjectURL(blob);
-        var a = document.createElement("a"); a.href = url; a.download = "fees-report-" + new Date().toISOString().slice(0, 10) + ".csv";
-        document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-      });
-      document.querySelectorAll(".fr-qa[data-filter-status]").forEach(function (btn) {
-        btn.addEventListener("click", function () {
-          _payStatEl.value = btn.getAttribute("data-filter-status");
-          _doApply();
-        });
+        var a2 = document.createElement("a"); a2.href = url; a2.download = "fees-report-" + new Date().toISOString().slice(0, 10) + ".csv";
+        document.body.appendChild(a2); a2.click(); document.body.removeChild(a2); URL.revokeObjectURL(url);
       });
       _renderAll();
-      } catch (_frErr) { console.error("Fees Report Error:", _frErr); moduleSummary.innerHTML = '<div class="fr-empty"><div class="fr-empty__icon"><i class="fas fa-exclamation-triangle"></i></div><h4 class="fr-empty__title">Unable to Load Fees Report</h4><p class="fr-empty__desc">An error occurred while loading the fees report. Please try again.</p><button class="fr-btn fr-btn--p" onclick="router(\'fees-report\')" type="button"><i class="fas fa-sync-alt"></i> Retry</button></div>'; }
+      } catch (_frErr) { console.error("Fees Report Error:", _frErr); moduleSummary.innerHTML = '<div class="fr-empty"><div class="fr-empty__icon"><i class="fas fa-exclamation-triangle"></i></div><h4 class="fr-empty__title">Unable to Load Fees Report</h4><p class="fr-empty__desc">An error occurred while loading the fees report. Please try again.</p><button class="fr-btn fr-btn--p" id="frRetryBtn" type="button"><i class="fas fa-sync-alt"></i> Retry</button></div>'; safeOn(_e("frRetryBtn"), "click", function() { setRoute("fees-report"); }); }
       return;
     }
+
     if (route === "delete-fees") {
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -9341,7 +9459,7 @@ ${allContent}
         emptyState.hidden = rows.length !== 0;
       }
 
-      tableBody.addEventListener("click", function (event) {
+      tableBody.addEventListener("click", async function (event) {
         const actionButton = event.target.closest("[data-fee-action='delete-fee-record']");
         if (!actionButton) {
           return;
@@ -9355,16 +9473,26 @@ ${allContent}
         const depositAmount = Number(actionButton.dataset.deposit || 0);
         
         settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
-        settings.accountsLedger.unshift({
-          id: "LEDGER-" + generateId(),
-          date: getTodayDateISO(),
-          type: "Expense",
-          category: "Fee Collection Reversed",
-          description: "Fee Collection Reversed - " + (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ") for " + feeMonth,
-          amount: depositAmount,
-          note: "Fee collection reversed for " + feeMonth,
-          createdAt: new Date().toISOString()
+        var _studentDesc = (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ")";
+        var _existingReversal = settings.accountsLedger.find(function (entry) {
+          var cat = String(entry.category || "").toLowerCase();
+          if (cat.indexOf("reversed") === -1 && cat.indexOf("reversal") === -1) return false;
+          if (String(entry.description || "").indexOf(_studentDesc) === -1) return false;
+          if (String(entry.note || "").indexOf(feeMonth) === -1) return false;
+          return true;
         });
+        if (!_existingReversal && depositAmount > 0) {
+          settings.accountsLedger.unshift({
+            id: "LEDGER-" + generateId(),
+            date: getTodayDateISO(),
+            type: "Expense",
+            category: "Fee Collection Reversed",
+            description: "Fee Collection Reversed - " + (studentName || studentId || "-") + " (" + (studentRoll || studentId || "-") + ") for " + feeMonth,
+            amount: depositAmount,
+            note: "Fee collection reversed for " + feeMonth,
+            createdAt: new Date().toISOString()
+          });
+        }
         trackDeletion(collectionId);
         trackDeletion(feeId);
         
@@ -9413,7 +9541,7 @@ ${allContent}
         });
         
         addActivity("Fee deleted", "A submitted fee record was deleted.");
-        saveDatabase("Deleting fee...", [
+        await saveDatabase("Deleting fee...", [
           { table: "fees", record: _removedFee, operation: "delete" },
           { table: "fee_collections", record: _removedFeeCollection, operation: "delete" },
           { table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }
@@ -10180,15 +10308,20 @@ ${allContent}
           });
           if (totalDeleted > 0) {
             settings.accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
-            settings.accountsLedger.unshift({
-          id: "LEDGER-" + generateId(),
-              date: getTodayDateISO(),
-              type: "Income",
-              category: "Salary Deletion",
-              description: "Salary deletion for " + (deletedNames.join(", ") || "Employee"),
-              amount: totalDeleted,
-              note: "Salary record(s) deleted",
-              createdAt: new Date().toISOString()
+            settings.accountsLedger = settings.accountsLedger.filter(function (entry) {
+              if (String(entry.type || "").toLowerCase() !== "expense") return true;
+              if (String(entry.category || "").toLowerCase() !== "salary") return true;
+              for (var di = 0; di < deletedPayments.length; di++) {
+                var dp = deletedPayments[di];
+                var dpName = dp.employeeName || dp.employeeId || "";
+                if (dpName && String(entry.description || "").indexOf(dpName) !== -1) {
+                  var dpDate = String(dp.paymentDate || dp.date || dp.salaryMonth || "").substring(0, 10);
+                  var eDate = String(entry.date || "").substring(0, 10);
+                  if (dpDate && eDate && dpDate === eDate) return false;
+                  if (dpDate && !eDate) return false;
+                }
+              }
+              return true;
             });
           }
           saveDatabase("Deleting salary record...", [{ table: "school_settings", record: { id: "salaryPayments", source_id: "salaryPayments", data: settings.salaryPayments, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }, { table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
@@ -14635,7 +14768,7 @@ ${allContent}
               <td>${index + 1}</td>
               <td class="att-info">
                 <span class="att-info__name">${escapeHtml(employee.name || "-")}</span>
-                <span class="att-info__meta">${escapeHtml(employee.fatherOrHusbandName || "-")} • ${escapeHtml(employee.role || employee.designation || "-")}</span>
+                <span class="att-info__meta">${escapeHtml(employee.fatherOrHusbandName || "-")} � ${escapeHtml(employee.role || employee.designation || "-")}</span>
               </td>
               <td>${statusButtonsMarkup(employee.id, employee.currentStatus)}</td>
               <td><button class="table-action-btn" type="button" data-attendance-wa-employee="${employee.id}">WhatsApp</button></td>
@@ -16812,151 +16945,605 @@ ${allContent}
       return { rows: rows, income: summary.revenue, expense: summary.totalExpenses, net: summary.profit };
     }
 
+    async function openReportCardPrint(rows, examName, className) {
+      const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+      const printableLogo = await normalizeImageForPrintShared(profile.logo || "");
+      const schoolName = profile.name || database.school.name || "School Name";
+      const schoolSlogan = profile.slogan || "Knowledge \u2022 Character \u2022 Success";
+      const schoolAddress = profile.address || database.school.address || "";
+      const schoolPhone = profile.phone || database.school.phone || "";
+      const todayStr = new Date().toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
+      const nowYear = new Date().getFullYear();
+
+      function getStudentAttendance(studentId, examStartDate, examEndDate) {
+        var att = (database.attendance || []).filter(function(a){
+          if (a.entityType && a.entityType !== "student") return false;
+          if (String(a.studentId || "") !== String(studentId)) return false;
+          if (examStartDate && examEndDate && a.date) {
+            if (a.date < examStartDate || a.date > examEndDate) return false;
+          }
+          return true;
+        });
+        var total = att.length;
+        var present = att.filter(function(a){ var s = String(a.status||"").toLowerCase(); return s === "present" || s === "p" || s === "late"; }).length;
+        var absent = att.filter(function(a){ var s = String(a.status||"").toLowerCase(); return s === "absent" || s === "a"; }).length;
+        var leave = att.filter(function(a){ var s = String(a.status||"").toLowerCase(); return s === "leave" || s === "l" || s === "half day"; }).length;
+        var pct = total > 0 ? Math.round((present / total) * 100) : -1;
+        return { total: total, present: present, absent: absent, leave: leave, pct: pct };
+      }
+
+      function getSubjectGrade(obtained, total, gradingRows) {
+        var pct = total > 0 ? Math.round((obtained / total) * 100) : 0;
+        var g = gradingRows.find(function(r){ return pct >= r.from && pct <= r.upto; });
+        return g ? g.grade : "-";
+      }
+
+      var gradingRows = (settings.marksGrading || []).map(function(r){
+        return { grade: r.grade || "-", from: Number(r.from || 0), upto: Number(r.upto || 0) };
+      }).sort(function(a,b){ return b.from - a.from; });
+
+      var pageCards = rows.map(function(row, idx){
+        var student = row.student;
+        var result = row.result;
+        var exam = typeof getExamById === "function" ? getExamById(rows._examId || "") : null;
+        var examStartDate = exam ? (exam.startDate || "") : "";
+        var examEndDate = exam ? (exam.endDate || "") : "";
+        var att = getStudentAttendance(student.id, examStartDate, examEndDate);
+        var cls = student.className || "-";
+        var pp = cls.split("|");
+        var baseClass = pp[0] ? pp[0].trim() : cls;
+        var section = pp[1] ? pp[1].trim() : "-";
+        var photoHtml = student.photo ? '<img src="' + student.photo + '" style="width:70px;height:70px;border-radius:50%;object-fit:cover;border:2px solid #1b5f7a;">' : '<div style="width:70px;height:70px;border-radius:50%;background:#e8f4f8;border:2px solid #1b5f7a;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#1b5f7a;">' + escapeHtml((student.name || "?").charAt(0).toUpperCase()) + '</div>';
+
+        var subjectRows = result.subjectRows || [];
+        var subjectTableHtml = "";
+        if (subjectRows.length > 0) {
+          var subjectRowsHtml = subjectRows.map(function(sr){
+            var subPct = sr.totalMarks > 0 ? Math.round((sr.obtainedMarks / sr.totalMarks) * 100) : 0;
+            var subGrade = getSubjectGrade(sr.obtainedMarks, sr.totalMarks, gradingRows);
+            var subStatus = subPct <= 33 ? "FAIL" : "PASS";
+            var statusColor = subStatus === "PASS" ? "#16a34a" : "#dc2626";
+            return '<tr><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">' + escapeHtml(sr.subjectName) + '</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;">' + sr.totalMarks + '</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:600;">' + sr.obtainedMarks + '</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;">' + subPct + '%</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:600;">' + escapeHtml(subGrade) + '</td><td style="padding:6px 8px;border-bottom:1px solid #e5e7eb;text-align:center;font-weight:700;color:' + statusColor + ';">' + subStatus + '</td></tr>';
+          }).join("");
+          subjectTableHtml = '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;margin-top:6px;"><thead><tr style="background:#f0f4f8;"><th style="padding:7px 8px;text-align:left;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Subject</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Total</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Obtained</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">%</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Grade</th><th style="padding:7px 8px;text-align:center;border-bottom:2px solid #1b5f7a;font-weight:700;color:#1b5f7a;">Status</th></tr></thead><tbody>' + subjectRowsHtml + '</tbody></table>';
+        } else {
+          subjectTableHtml = '<div style="text-align:center;padding:16px;color:#888;font-style:italic;">No examination result available.</div>';
+        }
+
+        var attHtml = "";
+        if (att.total > 0) {
+          var attPct = att.pct >= 0 ? att.pct : 0;
+          attHtml = '<div style="margin-top:10px;"><div style="font-weight:700;font-size:0.85rem;color:#1b5f7a;margin-bottom:6px;border-bottom:1px solid #dde4ea;padding-bottom:4px;">ATTENDANCE RECORD</div><table style="width:100%;font-size:0.82rem;border-collapse:collapse;"><tr style="background:#f8fafc;"><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">Total Working Days</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;">' + att.total + '</td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">Present</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:#16a34a;">' + att.present + '</td></tr><tr style="background:#f8fafc;"><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">Absent</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:#dc2626;">' + att.absent + '</td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;font-weight:500;">Leave</td><td style="padding:5px 8px;border-bottom:1px solid #e5e7eb;text-align:right;font-weight:600;color:#f59e0b;">' + att.leave + '</td></tr><tr style="background:#f0f7ff;font-weight:700;"><td style="padding:6px 8px;">Attendance</td><td style="padding:6px 8px;text-align:right;font-size:0.9rem;">' + attPct + '%</td></tr></table><div style="margin-top:6px;background:#e5e7eb;border-radius:6px;height:8px;overflow:hidden;"><div style="width:' + attPct + '%;height:100%;background:' + (attPct >= 75 ? "#16a34a" : attPct >= 50 ? "#f59e0b" : "#dc2626") + ';border-radius:6px;"></div></div></div>';
+        } else {
+          attHtml = '<div style="margin-top:10px;"><div style="font-weight:700;font-size:0.85rem;color:#1b5f7a;margin-bottom:6px;border-bottom:1px solid #dde4ea;padding-bottom:4px;">ATTENDANCE RECORD</div><div style="text-align:center;padding:12px;color:#888;font-style:italic;">No attendance record available.</div></div>';
+        }
+
+        var resultStatusColor = result.status === "Pass" ? "#16a34a" : "#dc2626";
+
+        var pageHtml = '<div class="rc-page" style="page-break-after:always;break-after:always;padding:12mm 10mm;font-family:\'Segoe UI\',Arial,Helvetica,sans-serif;color:#102542;background:#fff;position:relative;min-height:260mm;">' +
+          '<div style="text-align:center;border-bottom:3px double #1b5f7a;padding-bottom:8px;margin-bottom:10px;">' +
+            (printableLogo ? '<img src="' + printableLogo + '" style="height:50px;margin-bottom:4px;">' : '') +
+            '<div style="font-size:1.15rem;font-weight:800;letter-spacing:0.08em;color:#0f2b3f;text-transform:uppercase;">' + escapeHtml(schoolName) + '</div>' +
+            '<div style="font-size:0.7rem;color:#666;letter-spacing:0.05em;margin-top:2px;">' + escapeHtml(schoolSlogan) + '</div>' +
+            (schoolAddress || schoolPhone ? '<div style="font-size:0.65rem;color:#888;margin-top:2px;">' + escapeHtml(schoolAddress) + (schoolAddress && schoolPhone ? ' | ' : '') + escapeHtml(schoolPhone) + '</div>' : '') +
+            '<div style="margin-top:8px;font-size:1rem;font-weight:700;color:#1b5f7a;letter-spacing:0.06em;border-top:1px solid #ccc;border-bottom:1px solid #ccc;padding:4px 0;">STUDENT REPORT CARD</div>' +
+            '<div style="font-size:0.75rem;color:#555;margin-top:4px;">Academic Year: ' + escapeHtml(String(nowYear)) + ' &nbsp;&nbsp;|&nbsp;&nbsp; Examination: ' + escapeHtml(examName || "-") + '</div>' +
+          '</div>' +
+          '<div style="display:flex;gap:12px;margin-bottom:10px;align-items:flex-start;">' +
+            '<div style="flex:0 0 auto;">' + photoHtml + '</div>' +
+            '<div style="flex:1;"><table style="width:100%;font-size:0.8rem;border-collapse:collapse;">' +
+              '<tr><td style="padding:3px 6px;font-weight:600;color:#555;width:110px;">Student Name</td><td style="padding:3px 6px;font-weight:700;border-bottom:1px solid #eee;">' + escapeHtml(student.name || "-") + '</td></tr>' +
+              (student.fatherName ? '<tr><td style="padding:3px 6px;font-weight:600;color:#555;">Father Name</td><td style="padding:3px 6px;border-bottom:1px solid #eee;">' + escapeHtml(student.fatherName) + '</td></tr>' : '') +
+              '<tr><td style="padding:3px 6px;font-weight:600;color:#555;">Roll No</td><td style="padding:3px 6px;border-bottom:1px solid #eee;">' + escapeHtml(student.admissionNo || "-") + '</td></tr>' +
+              '<tr><td style="padding:3px 6px;font-weight:600;color:#555;">Class</td><td style="padding:3px 6px;border-bottom:1px solid #eee;">' + escapeHtml(baseClass) + (section !== "-" ? ' - ' + escapeHtml(section) : '') + '</td></tr>' +
+              (student.id ? '<tr><td style="padding:3px 6px;font-weight:600;color:#555;">Student ID</td><td style="padding:3px 6px;border-bottom:1px solid #eee;">' + escapeHtml(student.id) + '</td></tr>' : '') +
+            '</table></div>' +
+          '</div>' +
+          '<div style="margin-bottom:10px;"><div style="font-weight:700;font-size:0.85rem;color:#1b5f7a;margin-bottom:4px;border-bottom:1px solid #dde4ea;padding-bottom:4px;">ACADEMIC RESULTS</div>' +
+            subjectTableHtml +
+          '</div>';
+
+        if (subjectRows.length > 0) {
+          pageHtml += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px;">' +
+            '<div style="background:#f0f7ff;border:1px solid #c7d9ef;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Total Marks</div><div style="font-size:1.05rem;font-weight:800;color:#1b5f7a;margin-top:2px;">' + result.totalMarks + '</div></div>' +
+            '<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Obtained</div><div style="font-size:1.05rem;font-weight:800;color:#16a34a;margin-top:2px;">' + result.obtainedMarks + '</div></div>' +
+            '<div style="background:#fefce8;border:1px solid #fde68a;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Percentage</div><div style="font-size:1.05rem;font-weight:800;color:#92400e;margin-top:2px;">' + result.percentage + '%</div></div>' +
+          '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">' +
+            '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Grade</div><div style="font-size:1.1rem;font-weight:800;color:#1b5f7a;margin-top:2px;">' + escapeHtml(result.grade) + '</div></div>' +
+            '<div style="background:' + (result.status === "Pass" ? "#f0fdf4" : "#fef2f2") + ';border:1px solid ' + (result.status === "Pass" ? "#bbf7d0" : "#fecaca") + ';border-radius:6px;padding:8px;text-align:center;"><div style="font-size:0.65rem;color:#666;text-transform:uppercase;letter-spacing:0.04em;">Result</div><div style="font-size:1.1rem;font-weight:800;color:' + resultStatusColor + ';margin-top:2px;">' + escapeHtml(result.status) + '</div></div>' +
+          '</div>';
+        }
+
+        pageHtml += attHtml;
+
+        pageHtml += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;">' +
+          '<div><div style="font-weight:600;font-size:0.78rem;color:#333;margin-bottom:2px;">Teacher\'s Remarks</div><div style="border:1px solid #ddd;border-radius:4px;min-height:40px;padding:6px;font-size:0.78rem;color:#555;background:#fafbfc;">' + escapeHtml(student.remarks || "") + '</div></div>' +
+          '<div><div style="font-weight:600;font-size:0.78rem;color:#333;margin-bottom:2px;">Principal\'s Remarks</div><div style="border:1px solid #ddd;border-radius:4px;min-height:40px;padding:6px;font-size:0.78rem;color:#555;background:#fafbfc;">' + escapeHtml(student.principalRemarks || "") + '</div></div>' +
+        '</div>';
+
+        pageHtml += '<div style="display:flex;justify-content:space-between;margin-top:22px;padding-top:8px;">' +
+          '<div style="text-align:center;width:30%;"><div style="border-top:1px solid #333;margin-top:30px;padding-top:4px;font-size:0.75rem;font-weight:600;">Class Teacher</div></div>' +
+          '<div style="text-align:center;width:30%;"><div style="border-top:1px solid #333;margin-top:30px;padding-top:4px;font-size:0.75rem;font-weight:600;">Principal</div></div>' +
+          '<div style="text-align:center;width:30%;"><div style="border-top:1px solid #333;margin-top:30px;padding-top:4px;font-size:0.75rem;font-weight:600;">Parent / Guardian</div></div>' +
+        '</div>';
+
+        pageHtml += '<div style="position:absolute;bottom:8mm;left:10mm;right:10mm;text-align:center;border-top:1px solid #ccc;padding-top:4px;font-size:0.6rem;color:#999;">' +
+          escapeHtml(schoolName) + ' &bull; Student Report Card &bull; ' + escapeHtml(String(nowYear)) + ' &bull; Generated on: ' + todayStr +
+        '</div>';
+
+        pageHtml += '</div>';
+        return pageHtml;
+      }).join("");
+
+      var fullHtml = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Student Report Card</title><style>' +
+        '@page{size:A4 portrait;margin:0;}' +
+        '*,*::before,*::after{box-sizing:border-box;}' +
+        'body{margin:0;padding:0;font-family:"Segoe UI",Arial,Helvetica,sans-serif;color:#102542;background:#f1f5f9;-webkit-print-color-adjust:exact;print-color-adjust:exact;}' +
+        '.rc-toolbar{position:sticky;top:0;z-index:100;background:#fff;border-bottom:1px solid #e2e8f0;padding:10px 20px;display:flex;gap:8px;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);}' +
+        '.rc-toolbar button{padding:8px 20px;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;transition:all 0.2s;}' +
+        '.rc-toolbar .rc-print{background:#1b5f7a;color:#fff;}.rc-toolbar .rc-print:hover{background:#144a60;}' +
+        '.rc-toolbar .rc-close{background:#e2e8f0;color:#333;}.rc-toolbar .rc-close:hover{background:#cbd5e1;}' +
+        '.rc-container{max-width:210mm;margin:10px auto;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,0.1);}' +
+        '@media print{' +
+          'body{background:#fff;}' +
+          '.rc-toolbar{display:none!important;}' +
+          '.rc-container{box-shadow:none;margin:0;max-width:none;width:100%;}' +
+          '.rc-page{padding:10mm 10mm 14mm 10mm!important;page-break-after:always;break-after:always;}' +
+          '.rc-page:last-child{page-break-after:auto;break-after:auto;}' +
+        '}' +
+      '</style></head><body>' +
+        '<div class="rc-toolbar"><button class="rc-print" onclick="window.print();">Print Report Card</button><button class="rc-close" onclick="window.close();">Close / Back</button></div>' +
+        '<div class="rc-container">' + pageCards + '</div>' +
+      '</body></html>';
+
+      var printWin = window.open("", "_blank", "width=900,height=700");
+      if (printWin) {
+        printWin.document.write(fullHtml);
+        printWin.document.close();
+      } else {
+        alert("Please allow pop-ups to print the report card.");
+      }
+    }
+
     if (route === "students-report-card") {
-      const examOptionsMarkup = getExams().map(function (exam) {
-        return `<option value="${exam.id}">${escapeHtml(exam.name)}</option>`;
+      var _rcExamOpts = getExams().map(function (e) {
+        return '<option value="' + escapeAttr(e.id) + '">' + escapeHtml(e.name) + '</option>';
       }).join("");
-      const classOptionsMarkup = classOptions.map(function (name) {
-        return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
+      var _rcClassOpts = classOptions.map(function (n) {
+        return '<option value="' + escapeAttr(n) + '">' + escapeHtml(n) + '</option>';
       }).join("");
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">Students Report Card</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Exam</label><select id="reportExamSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="reportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="reportSearchInput" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="reportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-          </div>
-          <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printExamReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
-          <div class="report-cards" id="examReportStats"></div>
-          <div class="split-grid report-grid">
-            <article class="panel-card"><strong>Result Ratio</strong><div id="examReportChart" class="report-chart-box"></div></article>
-            <article class="panel-card"><strong>Top Students</strong><div id="examReportBars" class="report-bar-list"></div></article>
-          </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:600px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Name</th><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Total</th><th style="white-space:nowrap;">Obtain</th><th style="white-space:nowrap;">%</th><th style="white-space:nowrap;">Grade</th><th style="white-space:nowrap;">Status</th><th style="white-space:nowrap;">WhatsApp</th></tr></thead><tbody id="examReportTableBody"></tbody></table></div>
-        </article>
-      `;
+
+      moduleSummary.innerHTML =
+        '<div class="rc-wrap">' +
+          '<div class="rc-hdr">' +
+            '<div class="rc-hdr__left">' +
+              '<div class="rc-eyebrow">GENERAL SETTINGS</div>' +
+              '<h1 class="rc-hdr__title">Students Report Card</h1>' +
+              '<p class="rc-hdr__sub">View student academic performance, examination results, grades, rankings and overall class performance.</p>' +
+            '</div>' +
+            '<div class="rc-hdr__btns">' +
+              '<button class="rc-btn rc-btn--ghost" type="button" id="rcRefreshBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh</button>' +
+              '<button class="rc-btn rc-btn--ghost" type="button" id="rcExportBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export PDF</button>' +
+              '<button class="rc-btn rc-btn--accent" type="button" id="rcPrintBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print Report</button>' +
+            '</div>' +
+          '</div>' +
+          '<div class="rc-toggle-wrap">' +
+            '<button class="rc-toggle rc-toggle--active" type="button" id="rcModeStudent"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Student-wise</button>' +
+            '<button class="rc-toggle" type="button" id="rcModeClass"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg> Class-wise</button>' +
+          '</div>' +
+          '<div class="rc-bar">' +
+            '<div class="rc-bar__field"><label class="rc-bar__lbl">Exam</label><select class="rc-bar__sel" id="rcExam"><option value="">Select Examination</option>' + _rcExamOpts + '</select></div>' +
+            '<div class="rc-bar__field"><label class="rc-bar__lbl">Class</label><select class="rc-bar__sel" id="rcClass"><option value="all">All Classes</option>' + _rcClassOpts + '</select></div>' +
+            '<div class="rc-bar__field rc-bar__field--wide" id="rcSearchWrap"><label class="rc-bar__lbl">Student Search</label><div style="position:relative;"><input class="rc-bar__inp" id="rcSearch" type="search" placeholder="Search by roll no / student name"><div id="rcSearchDrop" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>' +
+            '<div class="rc-bar__field rc-bar__field--clr"><button class="rc-btn rc-btn--clear" type="button" id="rcClearBtn"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</button></div>' +
+          '</div>' +
+          '<div class="rc-empty" id="rcEmpty1">' +
+            '<div class="rc-empty__icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>' +
+            '<h3 class="rc-empty__title">Select an Examination</h3>' +
+            '<p class="rc-empty__sub">Choose an examination above to view student results, class performance and academic statistics.</p>' +
+          '</div>' +
+          '<div class="rc-empty" id="rcEmpty2" style="display:none;">' +
+            '<div class="rc-empty__icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>' +
+            '<h3 class="rc-empty__title">No Results Available</h3>' +
+            '<p class="rc-empty__sub">There are no student results recorded for this examination yet.</p>' +
+          '</div>' +
+          '<div class="rc-dash" id="rcDash" style="display:none;">' +
+            '<div class="rc-stats" id="rcStats"></div>' +
+            '<div class="rc-panels">' +
+              '<div class="rc-panel" id="rcClassPanel"><div class="rc-panel__hd"><h3 class="rc-panel__tt">Class Performance Overview</h3></div><div class="rc-panel__bd" id="rcClassPerf"></div></div>' +
+              '<div class="rc-panel" id="rcTopPanel"><div class="rc-panel__hd"><h3 class="rc-panel__tt">Top Performers</h3></div><div class="rc-panel__bd" id="rcTopPerformers"></div></div>' +
+            '</div>' +
+            '<div class="rc-panel" style="margin-top:0.75rem;"><div class="rc-panel__hd"><h3 class="rc-panel__tt">Student Results</h3><span class="rc-panel__badge" id="rcCount">0 students</span></div><div class="rc-panel__bd rc-panel__bd--tbl"><div class="rc-tblwrap"><table class="rc-tbl"><thead><tr><th>Rank</th><th>Roll No</th><th>Student</th><th>Class</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th><th>Action</th></tr></thead><tbody id="rcTBody"></tbody></table></div></div></div>' +
+          '</div>' +
+          '<div class="rc-dash" id="rcClassDash" style="display:none;">' +
+            '<div class="rc-stats" id="rcClassStats"></div>' +
+            '<div class="rc-panel" style="margin-top:0.75rem;"><div class="rc-panel__hd"><h3 class="rc-panel__tt">Class-wise Results</h3><span class="rc-panel__badge" id="rcClassCount">0 classes</span></div><div class="rc-panel__bd rc-panel__bd--tbl"><div class="rc-tblwrap"><table class="rc-tbl"><thead><tr><th>#</th><th>Class</th><th>Students</th><th>Passed</th><th>Failed</th><th>Avg %</th><th>Highest</th><th>Pass Rate</th><th>Action</th></tr></thead><tbody id="rcClassTBody"></tbody></table></div></div></div>' +
+          '</div>' +
+          '<div class="rc-modal-mask" id="rcClassDrillMask" style="display:none;"><div class="rc-modal" id="rcClassDrillModal"><div class="rc-modal__hd"><h3 class="rc-modal__tt" id="rcClassDrillTitle">Class Students</h3><button class="rc-modal__x" id="rcClassDrillX" type="button">&times;</button></div><div class="rc-modal__bd" id="rcClassDrillBody"></div></div></div>' +
+          '<div class="rc-modal-mask" id="rcMask" style="display:none;"><div class="rc-modal" id="rcModal"><div class="rc-modal__hd"><h3 class="rc-modal__tt" id="rcModalTitle">Student Result</h3><button class="rc-modal__x" id="rcModalX" type="button">&times;</button></div><div class="rc-modal__bd" id="rcModalBody"></div></div></div>' +
+        '</div>';
       moduleGuide.innerHTML = "";
-      const examSelect = document.getElementById("reportExamSelect");
-      const classSelect = document.getElementById("reportClassSelect");
-      const searchInput = document.getElementById("reportSearchInput");
-      const searchDropdown = document.getElementById("reportSearchDropdown");
-      const searchContainer = document.getElementById("reportSearchContainer");
-      const statsWrap = document.getElementById("examReportStats");
-      const chartWrap = document.getElementById("examReportChart");
-      const barsWrap = document.getElementById("examReportBars");
-      const tableBody = document.getElementById("examReportTableBody");
 
-      initializeStudentProfessionalSearch(
-        "reportSearchInput",
-        "reportSearchDropdown",
-        "reportSearchContainer",
-        function(student) {
-          searchInput.value = student.name || "";
-          renderRows();
-        }
-      );
-      const activeExam = getExams().find(function (exam) { return exam.status === "active"; }) || getExams()[0] || null;
-      if (activeExam) {
-        examSelect.value = activeExam.id;
-      }
+      var _rcE = document.getElementById("rcExam");
+      var _rcC = document.getElementById("rcClass");
+      var _rcS = document.getElementById("rcSearch");
+      var _rcE1 = document.getElementById("rcEmpty1");
+      var _rcE2 = document.getElementById("rcEmpty2");
+      var _rcD = document.getElementById("rcDash");
+      var _rcClassDash = document.getElementById("rcClassDash");
+      var _rcStats = document.getElementById("rcStats");
+      var _rcClassPerf = document.getElementById("rcClassPerf");
+      var _rcClassPanel = document.getElementById("rcClassPanel");
+      var _rcTopP = document.getElementById("rcTopPerformers");
+      var _rcTopPanel = document.getElementById("rcTopPanel");
+      var _rcTB = document.getElementById("rcTBody");
+      var _rcCount = document.getElementById("rcCount");
+      var _rcMask = document.getElementById("rcMask");
+      var _rcModalTitle = document.getElementById("rcModalTitle");
+      var _rcModalBody = document.getElementById("rcModalBody");
+      var _rcClassStats = document.getElementById("rcClassStats");
+      var _rcClassTB = document.getElementById("rcClassTBody");
+      var _rcClassCount = document.getElementById("rcClassCount");
+      var _rcClassDrillMask = document.getElementById("rcClassDrillMask");
+      var _rcClassDrillTitle = document.getElementById("rcClassDrillTitle");
+      var _rcClassDrillBody = document.getElementById("rcClassDrillBody");
+      var _rcSearchWrap = document.getElementById("rcSearchWrap");
+      var _rcMode = "student";
+      var _rcClassField = _rcC.closest(".rc-bar__field");
+      if (_rcClassField) _rcClassField.style.display = "none";
 
-      function getRows() {
-        if (!examSelect.value) {
-          return [];
-        }
-        return getStudentsByFilter(classSelect.value, searchInput.value).map(function (student) {
-          return { student: student, result: evaluateExamResult(examSelect.value, student.className, student.id) };
+      var _activeExam = getExams().find(function (e) { return e.status === "active"; }) || getExams()[0] || null;
+      if (_activeExam) _rcE.value = _activeExam.id;
+
+      initializeStudentProfessionalSearch("rcSearch", "rcSearchDrop", null, function (st) {
+        _rcS.value = st.name || "";
+        _rcRender();
+      });
+
+      function _rcRows() {
+        if (!_rcE.value) return [];
+        return getStudentsByFilter(_rcC.value, _rcS.value).map(function (s) {
+          return { student: s, result: evaluateExamResult(_rcE.value, s.className, s.id) };
         });
       }
 
-      function renderRows() {
-        const rows = getRows();
-        const pass = rows.filter(function (row) { return row.result.status === "Pass"; }).length;
-        const fail = rows.length - pass;
-        const avg = rows.length ? Math.round(rows.reduce(function (sum, row) { return sum + row.result.percentage; }, 0) / rows.length) : 0;
-        const passPercent = rows.length ? Math.round((pass / rows.length) * 100) : 0;
-        statsWrap.innerHTML = `
-          <article class="stat-card stat-card--indigo"><strong>Total</strong><span>${rows.length}</span></article>
-          <article class="stat-card stat-card--emerald"><strong>Pass</strong><span>${pass}</span></article>
-          <article class="stat-card stat-card--rose"><strong>Fail</strong><span>${fail}</span></article>
-          <article class="stat-card stat-card--amber"><strong>Average %</strong><span>${avg}%</span></article>
-        `;
-        chartWrap.innerHTML = rows.length ? buildCircleChart(passPercent, `Pass ${pass} | Fail ${fail}`, "#6366f1", "#e2e8f0") : `<p class="empty-state">No data found.</p>`;
-        const top = rows.slice().sort(function (a, b) { return b.result.percentage - a.result.percentage; }).slice(0, 8).map(function (row) {
-          return { label: `${row.student.name}`, value: row.result.percentage };
+      function _rcAllRowsForExam() {
+        if (!_rcE.value) return [];
+        return getStudentsByFilter("all", "").map(function (s) {
+          return { student: s, result: evaluateExamResult(_rcE.value, s.className, s.id) };
         });
-        barsWrap.innerHTML = top.length ? buildBarChart(top, 100) : `<p class="empty-state">No chart data.</p>`;
-        tableBody.innerHTML = rows.map(function (row) {
-          return `<tr><td>${escapeHtml(row.student.admissionNo || "-")}</td><td>${escapeHtml(row.student.name || "-")}</td><td>${escapeHtml(row.student.className || "-")}</td><td>${row.result.totalMarks}</td><td>${row.result.obtainedMarks}</td><td>${row.result.percentage}%</td><td>${escapeHtml(row.result.grade)}</td><td><span class="status-pill ${row.result.status === "Pass" ? "active" : "inactive"}">${escapeHtml(row.result.status)}</span></td><td><button class="table-action-btn" type="button" data-report-wa-student="${row.student.id}">WhatsApp</button></td></tr>`;
+      }
+
+      function _gc(g) {
+        var x = String(g || "").trim();
+        if (/^A\+?$/.test(x)) return { bg: "#dcfce7", fg: "#166534" };
+        if (/^[AB]\+?$/.test(x)) return { bg: "#dbeafe", fg: "#1e40af" };
+        if (/^[BC]\+?$/.test(x)) return { bg: "#fef3c7", fg: "#92400e" };
+        return { bg: "#fee2e2", fg: "#991b1b" };
+      }
+
+      function _rankBadge(i) {
+        if (i === 0) return '<span class="rc-rank rc-rank--g">1</span>';
+        if (i === 1) return '<span class="rc-rank rc-rank--s">2</span>';
+        if (i === 2) return '<span class="rc-rank rc-rank--b">3</span>';
+        return '<span class="rc-rank">' + (i + 1) + '</span>';
+      }
+
+      function _posStr(i) {
+        if (i === 0) return "1st";
+        if (i === 1) return "2nd";
+        if (i === 2) return "3rd";
+        return (i + 1) + "th";
+      }
+
+      function _rcRender() {
+        if (_rcMode === "class") { _rcClassRender(); return; }
+        var rows = _rcRows();
+        var allRows = _rcAllRowsForExam();
+        _rcClassDash.style.display = "none";
+
+        if (!_rcE.value) { _rcE1.style.display = ""; _rcE2.style.display = "none"; _rcD.style.display = "none"; return; }
+        if (!rows.length) { _rcE1.style.display = "none"; _rcE2.style.display = ""; _rcD.style.display = "none"; return; }
+        _rcE1.style.display = "none"; _rcE2.style.display = "none"; _rcD.style.display = "";
+
+        var pass = rows.filter(function (r) { return r.result.status === "Pass"; }).length;
+        var fail = rows.length - pass;
+        var avg = rows.length ? Math.round(rows.reduce(function (s, r) { return s + r.result.percentage; }, 0) / rows.length) : 0;
+        var passRate = rows.length ? Math.round((pass / rows.length) * 1000) / 10 : 0;
+        var highest = rows.length ? Math.max.apply(null, rows.filter(function (r) { return r.result.totalMarks > 0; }).map(function (r) { return r.result.percentage; })) : 0;
+
+        _rcStats.innerHTML =
+          '<div class="rc-st rc-st--purple"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Total Students</span><span class="rc-st__val">' + rows.length + '</span><span class="rc-st__note">Included in report</span></div></div>' +
+          '<div class="rc-st rc-st--green"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Passed</span><span class="rc-st__val">' + pass + '</span><span class="rc-st__note">Students passed</span></div></div>' +
+          '<div class="rc-st rc-st--red"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Failed</span><span class="rc-st__val">' + fail + '</span><span class="rc-st__note">Students failed</span></div></div>' +
+          '<div class="rc-st rc-st--blue"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Pass Rate</span><span class="rc-st__val">' + passRate + '%</span><span class="rc-st__note">Overall pass rate</span></div></div>' +
+          '<div class="rc-st rc-st--amber"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Class Average</span><span class="rc-st__val">' + avg + '%</span><span class="rc-st__note">Mean percentage</span></div></div>' +
+          '<div class="rc-st rc-st--teal"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Highest</span><span class="rc-st__val">' + highest + '%</span><span class="rc-st__note">Top score</span></div></div>';
+
+        var showClassPerf = _rcC.value === "all" || _rcC.value === "";
+        if (showClassPerf && allRows.length) {
+          var classMap = {};
+          allRows.forEach(function (r) {
+            var cn = String(r.student.className || "").split("|")[0].trim() || "Unknown";
+            if (!classMap[cn]) classMap[cn] = [];
+            classMap[cn].push(r);
+          });
+          var classKeys = Object.keys(classMap).sort();
+          if (classKeys.length > 1) {
+            _rcClassPanel.style.display = "";
+            _rcClassPerf.innerHTML = '<div class="rc-cgrid">' + classKeys.map(function (cn) {
+              var cr = classMap[cn];
+              var cPass = cr.filter(function (r) { return r.result.status === "Pass"; }).length;
+              var cAvg = cr.length ? Math.round(cr.reduce(function (s, r) { return s + r.result.percentage; }, 0) / cr.length) : 0;
+              var cPassRate = cr.length ? Math.round((cPass / cr.length) * 1000) / 10 : 0;
+              var cHigh = cr.length ? Math.max.apply(null, cr.filter(function (r) { return r.result.totalMarks > 0; }).map(function (r) { return r.result.percentage; })) : 0;
+              return '<div class="rc-ccard"><div class="rc-ccard__hd"><span class="rc-ccard__name">' + escapeHtml(cn) + '</span><span class="rc-ccard__cnt">' + cr.length + ' students</span></div><div class="rc-ccard__body"><div class="rc-ccard__row"><span class="rc-ccard__lbl">Average</span><span class="rc-ccard__v">' + cAvg + '%</span></div><div class="rc-ccard__row"><span class="rc-ccard__lbl">Pass Rate</span><span class="rc-ccard__v">' + cPassRate + '%</span></div><div class="rc-ccard__row"><span class="rc-ccard__lbl">Highest</span><span class="rc-ccard__v">' + cHigh + '%</span></div></div><button class="rc-ccard__btn" type="button" data-rc-setclass="' + escapeAttr(cn) + '">View Students &rarr;</button></div>';
+            }).join("") + '</div>';
+          } else {
+            _rcClassPanel.style.display = "none";
+          }
+        } else {
+          _rcClassPanel.style.display = "none";
+        }
+
+        var sorted = rows.slice().sort(function (a, b) { return b.result.percentage - a.result.percentage; });
+        var topRows = sorted.filter(function (r) { return r.result.totalMarks > 0; }).slice(0, 3);
+        if (topRows.length) {
+          var medals = [
+            { bg: "linear-gradient(135deg,#fbbf24,#f59e0b)", fg: "#78350f", icon: "\uD83E\uDD47" },
+            { bg: "linear-gradient(135deg,#d1d5db,#9ca3af)", fg: "#1f2937", icon: "\uD83E\uDD48" },
+            { bg: "linear-gradient(135deg,#f59e0b,#d97706)", fg: "#7c2d12", icon: "\uD83E\uDD49" }
+          ];
+          _rcTopP.innerHTML = '<div class="rc-podium">' + topRows.map(function (r, i) {
+            var cls = String(r.student.className || "").split("|");
+            return '<div class="rc-pod"><div class="rc-pod__medal" style="background:' + medals[i].bg + ';color:' + medals[i].fg + ';">' + medals[i].icon + '</div><div class="rc-pod__info"><div class="rc-pod__rank">Rank ' + _posStr(i) + '</div><div class="rc-pod__name">' + escapeHtml(r.student.name || "-") + '</div><div class="rc-pod__meta">' + escapeHtml(cls[0] || "-") + (cls[1] ? " - " + escapeHtml(cls[1]) : "") + '</div></div><div class="rc-pod__pct">' + r.result.percentage + '%</div></div>';
+          }).join("") + '</div>';
+        } else {
+          _rcTopP.innerHTML = '<div class="rc-nodata"><span>No student performance data available.</span></div>';
+        }
+
+        _rcCount.textContent = rows.length + " student" + (rows.length !== 1 ? "s" : "");
+        _rcTB.innerHTML = sorted.map(function (r, idx) {
+          var gc2 = _gc(r.result.grade);
+          var cls = String(r.student.className || "").split("|");
+          var sc = r.result.status === "Pass" ? "active" : "inactive";
+          return '<tr>' +
+            '<td>' + _rankBadge(idx) + '</td>' +
+            '<td class="rc-mono">' + escapeHtml(r.student.admissionNo || "-") + '</td>' +
+            '<td><div class="rc-tname"><span class="rc-tname__av">' + escapeHtml((r.student.name || "?").charAt(0).toUpperCase()) + '</span><div><div class="rc-tname__n">' + escapeHtml(r.student.name || "-") + '</div>' + (r.student.fatherName ? '<div class="rc-tname__f">' + escapeHtml(r.student.fatherName) + '</div>' : '') + '</div></div></td>' +
+            '<td>' + escapeHtml(cls[0] || "-") + (cls[1] ? " - " + escapeHtml(cls[1]) : "") + '</td>' +
+            '<td class="rc-mono">' + r.result.totalMarks + '</td>' +
+            '<td class="rc-mono"><strong>' + r.result.obtainedMarks + '</strong></td>' +
+            '<td><span class="rc-pctpill" style="background:' + (r.result.percentage >= 50 ? "#dcfce7" : "#fee2e2") + ';color:' + (r.result.percentage >= 50 ? "#166534" : "#991b1b") + ';">' + r.result.percentage + '%</span></td>' +
+            '<td><span class="rc-gbadge" style="background:' + gc2.bg + ';color:' + gc2.fg + ';">' + escapeHtml(r.result.grade) + '</span></td>' +
+            '<td><span class="status-pill ' + sc + '">' + escapeHtml(r.result.status) + '</span></td>' +
+            '<td><button class="rc-viewbtn" type="button" data-rc-view="' + r.student.id + '" title="View Result"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View</button></td>' +
+          '</tr>';
         }).join("");
       }
 
-      safeOn(document.getElementById("printExamReportBtn"), "click", function () {
-        const rows = getRows();
-        const exam = getExamById(examSelect.value);
-        if (!rows.length) {
-          return;
-        }
-        openPrintReport({
-          title: "Students Report Card",
-          subtitle: `Exam: ${exam ? exam.name : "-"} | Class: ${classSelect.value}`,
-          headers: ["Roll No", "Name", "Class", "Total", "Obtain", "%", "Grade", "Status"],
-          rows: rows.map(function (row) {
-            return [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), row.result.totalMarks, row.result.obtainedMarks, `${row.result.percentage}%`, escapeHtml(row.result.grade), escapeHtml(row.result.status)];
-          })
+      function _rcClassRender() {
+        var allRows = _rcAllRowsForExam();
+        if (!_rcE.value) { _rcE1.style.display = ""; _rcE2.style.display = "none"; _rcD.style.display = "none"; _rcClassDash.style.display = "none"; return; }
+        if (!allRows.length) { _rcE1.style.display = "none"; _rcE2.style.display = ""; _rcD.style.display = "none"; _rcClassDash.style.display = "none"; return; }
+        _rcE1.style.display = "none"; _rcE2.style.display = "none"; _rcD.style.display = "none"; _rcClassDash.style.display = "";
+
+        var classMap = {};
+        allRows.forEach(function (r) {
+          var cn = String(r.student.className || "").split("|")[0].trim() || "Unknown";
+          if (!classMap[cn]) classMap[cn] = [];
+          classMap[cn].push(r);
         });
+        var classKeys = Object.keys(classMap).sort();
+
+        var totalStudents = allRows.length;
+        var totalPassed = allRows.filter(function (r) { return r.result.status === "Pass"; }).length;
+        var totalAvg = allRows.length ? Math.round(allRows.reduce(function (s, r) { return s + r.result.percentage; }, 0) / allRows.length) : 0;
+        var totalPassRate = allRows.length ? Math.round((totalPassed / allRows.length) * 1000) / 10 : 0;
+
+        _rcClassStats.innerHTML =
+          '<div class="rc-st rc-st--purple"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Total Classes</span><span class="rc-st__val">' + classKeys.length + '</span><span class="rc-st__note">Active classes</span></div></div>' +
+          '<div class="rc-st rc-st--blue"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Total Students</span><span class="rc-st__val">' + totalStudents + '</span><span class="rc-st__note">All classes combined</span></div></div>' +
+          '<div class="rc-st rc-st--green"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Overall Pass</span><span class="rc-st__val">' + totalPassRate + '%</span><span class="rc-st__note">' + totalPassed + ' passed</span></div></div>' +
+          '<div class="rc-st rc-st--amber"><div class="rc-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg></div><div class="rc-st__body"><span class="rc-st__lbl">Average %</span><span class="rc-st__val">' + totalAvg + '%</span><span class="rc-st__note">Overall average</span></div></div>';
+
+        _rcClassCount.textContent = classKeys.length + " class" + (classKeys.length !== 1 ? "es" : "");
+        _rcClassTB.innerHTML = classKeys.map(function (cn, idx) {
+          var cr = classMap[cn];
+          var cPass = cr.filter(function (r) { return r.result.status === "Pass"; }).length;
+          var cFail = cr.length - cPass;
+          var cAvg = cr.length ? Math.round(cr.reduce(function (s, r) { return s + r.result.percentage; }, 0) / cr.length) : 0;
+          var cPassRate = cr.length ? Math.round((cPass / cr.length) * 1000) / 10 : 0;
+          var cHigh = cr.length ? Math.max.apply(null, cr.filter(function (r) { return r.result.totalMarks > 0; }).map(function (r) { return r.result.percentage; })) : 0;
+          return '<tr>' +
+            '<td class="rc-mono">' + (idx + 1) + '</td>' +
+            '<td><strong>' + escapeHtml(cn) + '</strong></td>' +
+            '<td class="rc-mono">' + cr.length + '</td>' +
+            '<td><span class="rc-pctpill" style="background:#dcfce7;color:#166534;">' + cPass + '</span></td>' +
+            '<td><span class="rc-pctpill" style="background:#fee2e2;color:#991b1b;">' + cFail + '</span></td>' +
+            '<td><span class="rc-pctpill" style="background:' + (cAvg >= 50 ? "#dcfce7" : "#fee2e2") + ';color:' + (cAvg >= 50 ? "#166534" : "#991b1b") + ';">' + cAvg + '%</span></td>' +
+            '<td class="rc-mono"><strong>' + cHigh + '%</strong></td>' +
+            '<td><span class="rc-pctpill" style="background:' + (cPassRate >= 50 ? "#dbeafe" : "#fef3c7") + ';color:' + (cPassRate >= 50 ? "#1e40af" : "#92400e") + ';">' + cPassRate + '%</span></td>' +
+            '<td><button class="rc-viewbtn" type="button" data-rc-class-view="' + escapeAttr(cn) + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View Students</button></td>' +
+          '</tr>';
+        }).join("");
+      }
+
+      function _rcOpenClassDrill(className) {
+        var allRows = _rcAllRowsForExam();
+        var classStudents = allRows.filter(function (r) {
+          return String(r.student.className || "").split("|")[0].trim() === className;
+        });
+        if (!classStudents.length) return;
+        var sorted = classStudents.sort(function (a, b) { return b.result.percentage - a.result.percentage; });
+        var exam = getExamById(_rcE.value);
+
+        _rcClassDrillTitle.textContent = className + " — Student Results" + (exam ? " (" + exam.name + ")" : "");
+        _rcClassDrillBody.innerHTML = '<div class="rc-tblwrap"><table class="rc-tbl"><thead><tr><th>Rank</th><th>Roll No</th><th>Student</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th><th>Action</th></tr></thead><tbody>' +
+          sorted.map(function (r, idx) {
+            var gc2 = _gc(r.result.grade);
+            var sc = r.result.status === "Pass" ? "active" : "inactive";
+            return '<tr>' +
+              '<td>' + _rankBadge(idx) + '</td>' +
+              '<td class="rc-mono">' + escapeHtml(r.student.admissionNo || "-") + '</td>' +
+              '<td><div class="rc-tname"><span class="rc-tname__av">' + escapeHtml((r.student.name || "?").charAt(0).toUpperCase()) + '</span><div><div class="rc-tname__n">' + escapeHtml(r.student.name || "-") + '</div>' + (r.student.fatherName ? '<div class="rc-tname__f">' + escapeHtml(r.student.fatherName) + '</div>' : '') + '</div></div></td>' +
+              '<td class="rc-mono">' + r.result.totalMarks + '</td>' +
+              '<td class="rc-mono"><strong>' + r.result.obtainedMarks + '</strong></td>' +
+              '<td><span class="rc-pctpill" style="background:' + (r.result.percentage >= 50 ? "#dcfce7" : "#fee2e2") + ';color:' + (r.result.percentage >= 50 ? "#166534" : "#991b1b") + ';">' + r.result.percentage + '%</span></td>' +
+              '<td><span class="rc-gbadge" style="background:' + gc2.bg + ';color:' + gc2.fg + ';">' + escapeHtml(r.result.grade) + '</span></td>' +
+              '<td><span class="status-pill ' + sc + '">' + escapeHtml(r.result.status) + '</span></td>' +
+              '<td><button class="rc-viewbtn" type="button" data-rc-view="' + r.student.id + '"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View</button></td>' +
+            '</tr>';
+          }).join("") + '</tbody></table></div>';
+        _rcClassDrillMask.style.display = "";
+      }
+
+      function _rcSwitchMode(mode) {
+        _rcMode = mode;
+        document.getElementById("rcModeStudent").className = "rc-toggle" + (mode === "student" ? " rc-toggle--active" : "");
+        document.getElementById("rcModeClass").className = "rc-toggle" + (mode === "class" ? " rc-toggle--active" : "");
+        _rcSearchWrap.style.display = mode === "student" ? "" : "none";
+        var classField = _rcC.closest(".rc-bar__field");
+        if (classField) classField.style.display = mode === "class" ? "" : "none";
+        _rcRender();
+      }
+
+      function _rcOpenModal(studentId) {
+        var exam = getExamById(_rcE.value);
+        var student = database.students.find(function (s) { return s.id === studentId; }) || null;
+        if (!student || !exam) return;
+        var result = evaluateExamResult(_rcE.value, student.className, student.id);
+        var cls = String(student.className || "").split("|");
+        _rcModalTitle.textContent = "Result — " + (student.name || "-");
+
+        var sorted = _rcRows().filter(function (r) { return r.result.totalMarks > 0; }).sort(function (a, b) { return b.result.percentage - a.result.percentage; });
+        var pos = sorted.findIndex(function (r) { return r.student.id === studentId; });
+        var posLabel = pos >= 0 ? _posStr(pos) : "-";
+
+        var subjectHtml = "";
+        var barsHtml = "";
+        if (result.subjectRows && result.subjectRows.length) {
+          subjectHtml = '<table class="rc-dtbl"><thead><tr><th>Subject</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' +
+            result.subjectRows.map(function (sr) {
+              var pct = sr.totalMarks > 0 ? Math.round((sr.obtainedMarks / sr.totalMarks) * 100) : 0;
+              var g = _gc(sr.grade);
+              var st = pct <= 33 ? "Fail" : "Pass";
+              var stc = st === "Pass" ? "active" : "inactive";
+              return '<tr><td><strong>' + escapeHtml(sr.subjectName) + '</strong></td><td>' + sr.totalMarks + '</td><td><strong>' + sr.obtainedMarks + '</strong></td><td>' + pct + '%</td><td><span class="rc-gbadge" style="background:' + g.bg + ';color:' + g.fg + ';">' + escapeHtml(sr.grade) + '</span></td><td><span class="status-pill ' + stc + '">' + st + '</span></td></tr>';
+            }).join("") + '</tbody></table>';
+
+          barsHtml = '<div class="rc-subject-bars">' + result.subjectRows.map(function (sr) {
+            var pct = sr.totalMarks > 0 ? Math.round((sr.obtainedMarks / sr.totalMarks) * 100) : 0;
+            var barColor = pct >= 80 ? "#16a34a" : pct >= 60 ? "#2563eb" : pct >= 40 ? "#f59e0b" : "#dc2626";
+            return '<div class="rc-sbar"><div class="rc-sbar__name">' + escapeHtml(sr.subjectName) + '</div><div class="rc-sbar__track"><div class="rc-sbar__fill" style="width:' + pct + '%;background:' + barColor + ';"></div></div><div class="rc-sbar__pct">' + pct + '%</div></div>';
+          }).join("") + '</div>';
+        } else {
+          subjectHtml = '<div class="rc-nodata" style="padding:12px;"><span>No examination marks recorded for this student.</span></div>';
+        }
+
+        var gc2 = _gc(result.grade);
+        var sc = result.status === "Pass" ? "active" : "inactive";
+
+        _rcModalBody.innerHTML =
+          '<div class="rc-dinfo"><table class="rc-dinfo__tbl">' +
+            '<tr><td>Student Name</td><td><strong>' + escapeHtml(student.name || "-") + '</strong></td></tr>' +
+            (student.fatherName ? '<tr><td>Father/Guardian</td><td>' + escapeHtml(student.fatherName) + '</td></tr>' : '') +
+            '<tr><td>Roll No</td><td>' + escapeHtml(student.admissionNo || "-") + '</td></tr>' +
+            '<tr><td>Class</td><td>' + escapeHtml(cls[0] || "-") + (cls[1] ? " - " + escapeHtml(cls[1]) : "") + '</td></tr>' +
+            '<tr><td>Exam</td><td>' + escapeHtml(exam.name || "-") + '</td></tr>' +
+            '<tr><td>Position</td><td><strong>' + posLabel + '</strong></td></tr>' +
+          '</table></div>' +
+          (barsHtml ? '<div class="rc-dsection"><h4 class="rc-dsection__tt">Subject Performance</h4>' + barsHtml + '</div>' : '') +
+          '<div class="rc-dsection"><h4 class="rc-dsection__tt">Subject-wise Result</h4>' + subjectHtml + '</div>' +
+          '<div class="rc-dsummary">' +
+            '<div class="rc-dcard"><span class="rc-dcard__lbl">Total Marks</span><span class="rc-dcard__val">' + result.totalMarks + '</span></div>' +
+            '<div class="rc-dcard"><span class="rc-dcard__lbl">Obtained</span><span class="rc-dcard__val rc-dcard__val--g">' + result.obtainedMarks + '</span></div>' +
+            '<div class="rc-dcard"><span class="rc-dcard__lbl">Percentage</span><span class="rc-dcard__val">' + result.percentage + '%</span></div>' +
+            '<div class="rc-dcard"><span class="rc-dcard__lbl">Grade</span><span class="rc-dcard__val" style="background:' + gc2.bg + ';color:' + gc2.fg + ';padding:4px 14px;border-radius:6px;">' + escapeHtml(result.grade) + '</span></div>' +
+            '<div class="rc-dcard"><span class="rc-dcard__lbl">Position</span><span class="rc-dcard__val">' + posLabel + '</span></div>' +
+            '<div class="rc-dcard"><span class="rc-dcard__lbl">Result</span><span class="status-pill ' + sc + '" style="font-size:0.85rem;">' + escapeHtml(result.status) + '</span></div>' +
+          '</div>';
+        _rcMask.style.display = "";
+      }
+
+      function _rcPrintStudent(studentId) {
+        var exam = getExamById(_rcE.value);
+        var student = database.students.find(function (s) { return s.id === studentId; }) || null;
+        if (!student || !exam) return;
+        var result = evaluateExamResult(_rcE.value, student.className, student.id);
+        var row = [{ student: student, result: result }];
+        row._examId = _rcE.value;
+        openReportCardPrint(row, exam.name || "-", _rcC.value);
+      }
+
+      _rcE.addEventListener("change", _rcRender);
+      _rcC.addEventListener("change", _rcRender);
+      _rcS.addEventListener("input", _rcRender);
+
+      safeOn(document.getElementById("rcModeStudent"), "click", function () { _rcSwitchMode("student"); });
+      safeOn(document.getElementById("rcModeClass"), "click", function () { _rcSwitchMode("class"); });
+
+      safeOn(document.getElementById("rcClearBtn"), "click", function () {
+        _rcE.value = ""; _rcC.value = "all"; _rcS.value = "";
+        _rcE1.style.display = ""; _rcE2.style.display = "none"; _rcD.style.display = "none"; _rcClassDash.style.display = "none";
+      });
+      safeOn(document.getElementById("rcRefreshBtn"), "click", function () { _rcRender(); });
+      safeOn(document.getElementById("rcPrintBtn"), "click", function () {
+        var rows = _rcRows();
+        if (!rows.length) return;
+        var exam = getExamById(_rcE.value);
+        rows._examId = _rcE.value;
+        openReportCardPrint(rows, exam ? exam.name : "-", _rcC.value);
+      });
+      safeOn(document.getElementById("rcExportBtn"), "click", function () {
+        var rows = _rcRows();
+        if (!rows.length) return;
+        var exam = getExamById(_rcE.value);
+        rows._examId = _rcE.value;
+        openReportCardPrint(rows, exam ? exam.name : "-", _rcC.value);
       });
 
-      [examSelect, classSelect].forEach(function (input) {
-        input.addEventListener("change", renderRows);
+      safeOn(_rcTB, "click", function (e) {
+        var v = e.target.closest("[data-rc-view]");
+        if (v) _rcOpenModal(v.getAttribute("data-rc-view"));
       });
-      searchInput.addEventListener("input", renderRows);
-      tableBody.addEventListener("click", function (event) {
-        const waButton = event.target.closest("[data-report-wa-student]");
-        if (!waButton) {
-          return;
-        }
-        const studentId = waButton.getAttribute("data-report-wa-student");
-        const student = database.students.find(function (item) { return item.id === studentId; }) || null;
-        if (!student || !examSelect.value) {
-          return;
-        }
-        const result = evaluateExamResult(examSelect.value, student.className, student.id);
-        const exam = getExamById(examSelect.value);
-        const template = getSavedMessageTemplate("studentReportWhatsapp", "Dear student/parent {prefix} {roll},\nResult ({exam}): {obtained}/{total} ({percent}%), Grade {grade}, Status {status}.\nBest regards,\n{school}.");
-        const text = interpolateTemplate(template, {
-          name: student.name || "-",
-          roll: student.admissionNo || "-",
-          class: student.className || "-",
-          prefix: getGenderPrefix(student.gender),
-          exam: exam ? exam.name : "Exam",
-          obtained: result.obtainedMarks,
-          total: result.totalMarks,
-          percent: result.percentage,
-          grade: result.grade,
-          status: result.status,
-          school: database.school.name || "School"
-        });
-        sendDirectWhatsappToStudent(student, student.name || "student", text);
+      safeOn(document.getElementById("rcClassPerf"), "click", function (e) {
+        var b = e.target.closest("[data-rc-setclass]");
+        if (b) { _rcC.value = b.getAttribute("data-rc-setclass"); _rcRender(); }
+      });
+      safeOn(document.getElementById("rcModalX"), "click", function () { _rcMask.style.display = "none"; });
+      safeOn(_rcMask, "click", function (e) { if (e.target === _rcMask) _rcMask.style.display = "none"; });
+
+      safeOn(_rcClassTB, "click", function (e) {
+        var v = e.target.closest("[data-rc-class-view]");
+        if (v) _rcOpenClassDrill(v.getAttribute("data-rc-class-view"));
+      });
+      safeOn(document.getElementById("rcClassDrillX"), "click", function () { _rcClassDrillMask.style.display = "none"; });
+      safeOn(_rcClassDrillMask, "click", function (e) { if (e.target === _rcClassDrillMask) _rcClassDrillMask.style.display = "none"; });
+      safeOn(_rcClassDrillBody, "click", function (e) {
+        var v = e.target.closest("[data-rc-view]");
+        if (v) { _rcClassDrillMask.style.display = "none"; _rcOpenModal(v.getAttribute("data-rc-view")); }
       });
 
-      renderRows();
+      _rcRender();
       return;
     }
 
     if (route === "student-progress-report") {
-      var _progressStudentId = "";
+      var _sprStudentId = "";
+      var _sprLoading = false;
+      var _sprCurMonth = (function(){ var d=new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"); })();
 
-      function getProgressAttend(sid, from, to) {
+      function _sprGetAttend(sid, from, to) {
         return (database.attendance || []).filter(function (a) {
           return (!a.entityType || a.entityType === "student") && String(a.studentId || "") === String(sid) && a.date >= from && a.date <= to;
         });
       }
 
-      function getProgressTests(sid, from, to) {
+      function _sprGetTests(sid, from, to) {
         return (settings.classTestMarks || []).filter(function (t) {
-          return String(t.studentId || "") === String(sid) && (t.testDate || t.date) >= from && (t.testDate || t.date) <= to;
+          return String(t.studentId || "") === String(sid) && (t.testDate || t.date || "") >= from && (t.testDate || t.date || "") <= to;
         }).map(function (t) {
           var ttl = Number(t.total || t.totalMarks || 1);
           var obt = Number(t.obtained || t.obtainedMarks || 0);
@@ -16964,7 +17551,7 @@ ${allContent}
         });
       }
 
-      function getProgressExams(sid, cls, from, to) {
+      function _sprGetExams(sid, cls, from, to) {
         return (settings.exams || []).filter(function (ex) {
           var inRange = true;
           if (ex.startDate || ex.endDate) {
@@ -16973,47 +17560,68 @@ ${allContent}
             inRange = !(e < from || s > to);
           }
           if (!inRange) return false;
-          var marks = (settings.examMarks || []).filter(function (m) {
+          return (settings.examMarks || []).some(function (m) {
             return m.examId === ex.id && m.className === cls && m.studentId === sid;
           });
-          return marks.length > 0;
         }).map(function (ex) {
           var result = evaluateExamResult(ex.id, cls, sid);
           return { exam: ex, result: result };
         }).filter(function (item) { return item.result.totalMarks > 0; });
       }
 
-      function gradeCol(g) {
+      function _sprGradeCol(g) {
         var x = String(g || "").trim();
-        if (/^A\+?$/.test(x)) return "#1d9c61";
-        if (/^[AB]\+?$/.test(x)) return "#2e86de";
-        if (/^[BC]\+?$/.test(x)) return "#f39c12";
-        return "#e74c3c";
+        if (/^A\+?$/.test(x)) return "#16a34a";
+        if (/^[AB]\+?$/.test(x)) return "#2563eb";
+        if (/^[BC]\+?$/.test(x)) return "#d97706";
+        return "#dc2626";
       }
 
-      function trendChart(pts, color) {
-        if (!pts || pts.length < 2) return '<p class="empty-state" style="text-align:center;padding:20px;color:#999;">Not enough data for trend chart.</p>';
-        var w = 600, h = 200, pad = 30;
-        var maxV = Math.max(100, Math.ceil(Math.max.apply(null, pts.map(function (p) { return p.value; })) / 10) * 10);
-        var step = (w - pad * 2) / (pts.length - 1);
-        var arr = pts.map(function (p, i) {
-          return { x: pad + i * step, y: h - pad - ((p.value / maxV) * (h - pad * 2)), label: p.label, value: p.value };
+      function _sprPerfStatus(pct) {
+        if (pct >= 90) return { label: "Excellent", color: "#16a34a", bg: "#dcfce7" };
+        if (pct >= 80) return { label: "Very Good", color: "#2563eb", bg: "#dbeafe" };
+        if (pct >= 70) return { label: "Good", color: "#0d9488", bg: "#ccfbf1" };
+        if (pct >= 60) return { label: "Average", color: "#d97706", bg: "#fef3c7" };
+        return { label: "Needs Improvement", color: "#dc2626", bg: "#fee2e2" };
+      }
+
+      function _sprCalcGrade(pct) {
+        var gradingRows = (settings.marksGrading || []).map(function (row) {
+          return { grade: row.grade || "-", from: Number(row.from || 0), upto: Number(row.upto || 0) };
         });
-        var d = arr.map(function (p, i) { return (i === 0 ? "M" : "L") + p.x.toFixed(1) + " " + p.y.toFixed(1); }).join(" ");
-        var area = d + " L" + arr[arr.length - 1].x.toFixed(1) + " " + (h - pad) + " L" + arr[0].x.toFixed(1) + " " + (h - pad) + " Z";
-        return '<svg width="100%" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" style="overflow:visible">' +
-          '<defs><linearGradient id="tg"><stop offset="0%" stop-color="' + color + '" stop-opacity="0.15"/><stop offset="100%" stop-color="' + color + '" stop-opacity="0.01"/></linearGradient></defs>' +
-          '<path d="' + area + '" fill="url(#tg)"/>' +
-          '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2" stroke-linejoin="round"/>' +
-          arr.map(function (p) { return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="4" fill="' + color + '" stroke="#fff" stroke-width="2"/>'; }).join("") +
-          arr.map(function (p) {
-            return '<text x="' + p.x.toFixed(1) + '" y="' + (h - 5) + '" text-anchor="middle" font-size="10" fill="#6b7a8d">' + escapeHtml(String(p.label).slice(0, 8)) + '</text>' +
-              '<text x="' + p.x.toFixed(1) + '" y="' + (p.y - 10) + '" text-anchor="middle" font-size="11" font-weight="600" fill="' + color + '">' + p.value + '%</text>';
-          }).join("") + '</svg>';
+        var match = gradingRows.find(function (r) { return pct >= r.from && pct <= r.upto; });
+        return match ? match.grade : "-";
       }
 
-      function emptyRow(colspan) {
-        return '<tr><td colspan="' + (colspan || 1) + '" style="text-align:center;padding:20px;color:#999;">No data available</td></tr>';
+      function _sprCalcSubjectAvgs(exams) {
+        var subMap = {};
+        exams.forEach(function (r) {
+          if (!r.result.subjectRows) return;
+          r.result.subjectRows.forEach(function (sr) {
+            if (!subMap[sr.subjectName]) subMap[sr.subjectName] = { total: 0, obtained: 0, count: 0 };
+            subMap[sr.subjectName].total += sr.totalMarks;
+            subMap[sr.subjectName].obtained += sr.obtainedMarks;
+            subMap[sr.subjectName].count++;
+          });
+        });
+        return Object.keys(subMap).map(function (name) {
+          var s = subMap[name];
+          var pct = s.total ? Math.round((s.obtained / s.total) * 100) : 0;
+          var grade = _sprCalcGrade(pct);
+          return { name: name, pct: pct, grade: grade, total: s.total, obtained: s.obtained };
+        }).sort(function (a, b) { return b.pct - a.pct; });
+      }
+
+      function _sprTrendData(exams, tests) {
+        var pts = [];
+        exams.forEach(function (r) {
+          pts.push({ label: r.exam.name || "Exam", value: r.result.percentage, date: r.exam.endDate || r.exam.startDate || "" });
+        });
+        tests.forEach(function (r) {
+          pts.push({ label: r.test.testName || "Test", value: r.pct, date: r.test.testDate || r.test.date || "" });
+        });
+        pts.sort(function (a, b) { return (a.date || "").localeCompare(b.date || ""); });
+        return pts;
       }
 
       var today = new Date();
@@ -17022,767 +17630,2467 @@ ${allContent}
       var defFromStr = defFrom.toISOString().slice(0, 10);
       var todayStr = today.toISOString().slice(0, 10);
 
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">Student Progress Report</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="progressSearchI" type="search" placeholder="Search student by name / roll" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="progressSearchD" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">From</label><input id="progressFrom" type="date" value="${defFromStr}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 120px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">To</label><input id="progressTo" type="date" value="${todayStr}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 8px 0;">
-            <button class="primary-button" id="progressShowBtn" type="button" style="padding:6px 14px;font-size:0.8rem;">Show Report</button>
-            <button class="primary-button" id="progressPrintBtn" type="button" style="padding:6px 14px;font-size:0.8rem;background:#2e86de;">Print</button>
-          </div>
-          <div id="progressContent" style="margin-top:16px;"></div>
-        </article>
-      `;
+      moduleSummary.innerHTML = '<div class="spr-wrap">' +
+        '<div class="spr-hdr"><div class="spr-hdr__left"><div class="spr-hdr__eyebrow">SagarSoft Analytics</div>' +
+        '<h2 class="spr-hdr__title">Student Progress Report</h2>' +
+        '<p class="spr-hdr__sub">Comprehensive academic performance, attendance, and progress analysis.</p></div>' +
+        '<div class="spr-hdr__btns">' +
+        '<button class="spr-btn spr-btn--ghost" type="button" id="sprRefreshBtn">Refresh</button>' +
+        '<button class="spr-btn spr-btn--accent" type="button" id="sprPrintBtn">Print Report</button>' +
+        '</div></div>' +
+        '<div class="spr-bar">' +
+        '<div class="spr-bar__field spr-bar__field--wide"><label class="spr-bar__lbl">Student Search</label>' +
+        '<div class="spr-search-wrap" id="sprSearchContainer"><input class="spr-bar__inp" type="search" id="sprSearchI" placeholder="Search by name or roll number...">' +
+        '<div id="sprSearchD" class="spr-search-dd" style="display:none;"></div></div></div>' +
+        '<div class="spr-bar__field"><label class="spr-bar__lbl">From Date</label><input class="spr-bar__inp" type="date" id="sprFrom" value="' + defFromStr + '"></div>' +
+        '<div class="spr-bar__field"><label class="spr-bar__lbl">To Date</label><input class="spr-bar__inp" type="date" id="sprTo" value="' + todayStr + '"></div>' +
+        '<div class="spr-bar__field spr-bar__field--btns"><label class="spr-bar__lbl">&nbsp;</label>' +
+        '<div style="display:flex;gap:6px;">' +
+        '<button class="spr-btn spr-btn--accent" type="button" id="sprShowBtn">Show Report</button>' +
+        '<button class="spr-btn spr-btn--clear" type="button" id="sprClearBtn">Clear</button>' +
+        '</div></div></div>' +
+        '<div id="sprContent"></div></div>';
       moduleGuide.innerHTML = "";
 
-      initializeStudentProfessionalSearch("progressSearchI", "progressSearchD", "progressSearchC", function (student) {
-        document.getElementById("progressSearchI").value = student.name || "";
-        _progressStudentId = student.id || "";
+      var _sprSearchI = document.getElementById("sprSearchI");
+      var _sprSearchD = document.getElementById("sprSearchD");
+      var _sprFrom = document.getElementById("sprFrom");
+      var _sprTo = document.getElementById("sprTo");
+      var _sprContent = document.getElementById("sprContent");
+
+      initializeStudentProfessionalSearch("sprSearchI", "sprSearchD", "sprSearchContainer", function (student) {
+        _sprSearchI.value = student.name || "";
+        _sprStudentId = student.id || "";
       });
 
-      var pc = document.getElementById("progressContent");
+      function _sprRenderEmpty() {
+        _sprContent.innerHTML = '<div class="spr-empty">' +
+          '<svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>' +
+          '<h3 class="spr-empty__tt">Select a Student to View Progress</h3>' +
+          '<p class="spr-empty__sub">Use the search field above to find a student and click Show Report.</p></div>';
+      }
 
-      function renderPR() {
-        var sid = _progressStudentId;
-        if (!sid) {
-          pc.innerHTML = '<p class="empty-state">Search and select a student to view progress report.</p>';
-          return;
-        }
+      function _sprRenderReport() {
+        var sid = _sprStudentId;
+        if (!sid) { _sprRenderEmpty(); return; }
         var stu = database.students.find(function (s) { return String(s.id) === String(sid); });
-        if (!stu) {
-          pc.innerHTML = '<p class="empty-state">Student not found. Please search again.</p>';
-          return;
-        }
-        var from = document.getElementById("progressFrom").value || defFromStr;
-        var to = document.getElementById("progressTo").value || todayStr;
+        if (!stu) { _sprContent.innerHTML = '<div class="spr-empty"><h3 class="spr-empty__tt">Student Not Found</h3></div>'; return; }
+
+        var from = _sprFrom.value || defFromStr;
+        var to = _sprTo.value || todayStr;
         var cls = stu.className || "";
-
-        var exams = getProgressExams(sid, cls, from, to);
-        var tests = getProgressTests(sid, from, to);
-        var att = getProgressAttend(sid, from, to);
-
+        var exams = _sprGetExams(sid, cls, from, to);
+        var tests = _sprGetTests(sid, from, to);
+        var att = _sprGetAttend(sid, from, to);
         var eAvg = exams.length ? Math.round(exams.reduce(function (s, r) { return s + r.result.percentage; }, 0) / exams.length) : 0;
         var tAvg = tests.length ? Math.round(tests.reduce(function (s, r) { return s + r.pct; }, 0) / tests.length) : 0;
-        var oAvg = (exams.length + tests.length) ? Math.round(((eAvg * exams.length) + (tAvg * tests.length)) / (exams.length + tests.length)) : 0;
-        var pres = att.filter(function (a) { return a.status === "Present"; }).length;
+        var hasExams = exams.length > 0;
+        var hasTests = tests.length > 0;
+        var oAvg = (hasExams || hasTests) ? Math.round(((eAvg * exams.length) + (tAvg * tests.length)) / Math.max(1, exams.length + tests.length)) : 0;
+        var pres = att.filter(function (a) { return normalizeAttendanceStatus(a.status) === "Present"; }).length;
+        var abs = att.filter(function (a) { return normalizeAttendanceStatus(a.status) === "Absent"; }).length;
+        var lve = att.filter(function (a) { return normalizeAttendanceStatus(a.status) === "On-leave"; }).length;
         var aPct = att.length ? Math.round((pres / att.length) * 100) : 0;
-
-        var ePts = exams.map(function (r) { return { label: r.exam.name || "E", value: r.result.percentage }; });
-        var tPts = tests.map(function (r) { return { label: r.test.testName || "T", value: r.pct }; });
-
-        var lastPts = [];
-        exams.forEach(function (r) { lastPts.push({ label: r.exam.name || "E", value: r.result.percentage }); });
-        tests.forEach(function (r) { lastPts.push({ label: r.test.testName || "T", value: r.pct }); });
-        var trendDir = "stable", trendIcon = "\u2796", trendColor = "#6b7a8d";
-        if (lastPts.length >= 2) {
-          var first = lastPts[0].value, last = lastPts[lastPts.length - 1].value;
-          trendDir = last > first ? "up" : (last < first ? "down" : "stable");
-          trendIcon = trendDir === "up" ? "\u2B06" : (trendDir === "down" ? "\u2B07" : "\u2796");
-          trendColor = trendDir === "up" ? "#1d9c61" : (trendDir === "down" ? "#e74c3c" : "#6b7a8d");
+        var trendPts = _sprTrendData(exams, tests);
+        var trendDir = "stable", trendDiff = 0;
+        if (trendPts.length >= 2) {
+          trendDiff = trendPts[trendPts.length - 1].value - trendPts[0].value;
+          trendDir = trendDiff > 2 ? "up" : (trendDiff < -2 ? "down" : "stable");
         }
-
+        var perfSt = _sprPerfStatus(oAvg);
+        var subjAvgs = _sprCalcSubjectAvgs(exams);
+        var strongest = subjAvgs.length ? subjAvgs[0] : null;
+        var weakest = subjAvgs.length > 1 ? subjAvgs[subjAvgs.length - 1] : null;
         var months = {};
         att.forEach(function (a) {
           var m = (a.date || "").slice(0, 7);
-          if (!months[m]) months[m] = { total: 0, present: 0 };
+          if (!months[m]) months[m] = { total: 0, present: 0, absent: 0, leave: 0 };
           months[m].total++;
-          if (a.status === "Present") months[m].present++;
+          var st = normalizeAttendanceStatus(a.status);
+          if (st === "Present") months[m].present++;
+          else if (st === "On-leave") months[m].leave++;
+          else months[m].absent++;
         });
         var mKeys = Object.keys(months).sort();
 
-        pc.innerHTML = '<div class="progress-report" style="display:flex;flex-direction:column;gap:16px;">' +
-          '<div style="display:flex;align-items:center;gap:16px;padding:16px;background:linear-gradient(135deg,#f0f4f8,#e8edf4);border-radius:12px;">' +
-          '<div style="width:56px;height:56px;border-radius:50%;background:#1b5f7a;color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:700;">' + escapeHtml((stu.name || "?").charAt(0).toUpperCase()) + '</div>' +
-          '<div style="flex:1;"><h3 style="margin:0;font-size:1.1rem;color:#0f2b3f;">' + escapeHtml(stu.name || "-") + '</h3>' +
-          '<p style="margin:2px 0 0;font-size:0.85rem;color:#6b7a8d;">Roll: ' + escapeHtml(stu.admissionNo || "-") + ' | Class: ' + escapeHtml(stu.className || "-") + ' | Father: ' + escapeHtml(stu.fatherName || "-") + '</p></div></div>' +
+        var html = '<div class="spr-report">';
 
-          '<div class="report-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;">' +
-          '<article class="stat-card stat-card--sky"><strong style="font-size:0.7rem;color:#6b7a8d;">Exams Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#0ea5e9;">' + eAvg + '%</span></article>' +
-          '<article class="stat-card stat-card--emerald"><strong style="font-size:0.7rem;color:#6b7a8d;">Tests Avg</strong><span style="font-size:1.6rem;font-weight:700;color:#10b981;">' + tAvg + '%</span></article>' +
-          '<article class="stat-card stat-card--indigo"><strong style="font-size:0.7rem;color:#6b7a8d;">Overall</strong><span style="font-size:1.6rem;font-weight:700;color:#6366f1;">' + oAvg + '%</span></article>' +
-          '<article class="stat-card stat-card--amber"><strong style="font-size:0.7rem;color:#6b7a8d;">Attendance</strong><span style="font-size:1.6rem;font-weight:700;color:#f59e0b;">' + aPct + '%</span></article>' +
-          '<article class="stat-card stat-card--rose"><strong style="font-size:0.7rem;color:#6b7a8d;">Trend</strong><span style="font-size:1.6rem;font-weight:700;color:' + trendColor + ';">' + trendIcon + '</span></article></div>' +
+        html += '<div class="spr-profile"><div class="spr-profile__left">';
+        html += '<div class="spr-profile__avatar">' + escapeHtml((stu.name || "?").charAt(0).toUpperCase()) + '</div>';
+        html += '<div class="spr-profile__info"><h3 class="spr-profile__name">' + escapeHtml(stu.name || "-") + '</h3>';
+        html += '<div class="spr-profile__meta">';
+        html += '<span class="spr-profile__tag">Roll: ' + escapeHtml(stu.admissionNo || "-") + '</span>';
+        html += '<span class="spr-profile__tag">' + escapeHtml(stu.className || "-") + '</span>';
+        if (stu.section) html += '<span class="spr-profile__tag">Section: ' + escapeHtml(stu.section) + '</span>';
+        if (stu.fatherName) html += '<span class="spr-profile__tag">Father: ' + escapeHtml(stu.fatherName) + '</span>';
+        html += '<span class="spr-profile__tag spr-profile__tag--active">' + escapeHtml(stu.status || "Active") + '</span>';
+        html += '</div></div></div>';
+        html += '<div class="spr-profile__right">';
+        html += '<div class="spr-perf-badge" style="background:' + perfSt.bg + ';color:' + perfSt.color + ';">' + oAvg + '% ' + perfSt.label + '</div>';
+        html += '</div></div>';
 
-          (ePts.length >= 2 || tPts.length >= 2 ? '<div class="split-grid report-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">' +
-            (ePts.length >= 2 ? '<article class="panel-card"><strong style="font-size:0.9rem;">Exam Trend</strong><div style="margin-top:8px;">' + trendChart(ePts, "#1e5eff") + '</div></article>' : '') +
-            (tPts.length >= 2 ? '<article class="panel-card"><strong style="font-size:0.9rem;">Test Trend</strong><div style="margin-top:8px;">' + trendChart(tPts, "#1d9c61") + '</div></article>' : '') +
-            '</div>' : '') +
+        html += '<div class="spr-stats">';
+        html += '<div class="spr-st spr-st--indigo"><div class="spr-st__body"><div class="spr-st__lbl">Overall</div><div class="spr-st__val">' + oAvg + '%</div><div class="spr-st__note">' + perfSt.label + '</div></div></div>';
+        html += '<div class="spr-st spr-st--sky"><div class="spr-st__body"><div class="spr-st__lbl">Exam Avg</div><div class="spr-st__val">' + (hasExams ? eAvg + "%" : "-") + '</div><div class="spr-st__note">' + exams.length + ' exams</div></div></div>';
+        html += '<div class="spr-st spr-st--emerald"><div class="spr-st__body"><div class="spr-st__lbl">Test Avg</div><div class="spr-st__val">' + (hasTests ? tAvg + "%" : "-") + '</div><div class="spr-st__note">' + tests.length + ' tests</div></div></div>';
+        html += '<div class="spr-st spr-st--amber"><div class="spr-st__body"><div class="spr-st__lbl">Attendance</div><div class="spr-st__val">' + (att.length ? aPct + "%" : "-") + '</div><div class="spr-st__note">' + pres + 'P / ' + abs + 'A</div></div></div>';
+        var trendLabel = trendPts.length >= 2 ? (trendDir === "up" ? "Improving" : trendDir === "down" ? "Declining" : "Stable") : "No data";
+        html += '<div class="spr-st spr-st--teal"><div class="spr-st__body"><div class="spr-st__lbl">Trend</div><div class="spr-st__val">' + (trendPts.length >= 2 ? (trendDiff > 0 ? "+" : "") + trendDiff : "-") + '</div><div class="spr-st__note">' + trendLabel + '</div></div></div>';
+        html += '</div>';
 
-          '<article class="panel-card"><strong style="font-size:0.9rem;">Exam Results</strong>' +
-          '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Exam</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' +
-          (exams.length ? exams.map(function (r) {
-            return '<tr><td>' + escapeHtml(r.exam.name || "-") + '</td><td>' + r.result.totalMarks + '</td><td>' + r.result.obtainedMarks + '</td><td>' + r.result.percentage + '%</td><td><span class="status-pill" style="background:' + gradeCol(r.result.grade) + '20;color:' + gradeCol(r.result.grade) + ';">' + escapeHtml(r.result.grade) + '</span></td><td><span class="status-pill ' + (r.result.status === "Pass" ? "active" : "inactive") + '">' + escapeHtml(r.result.status) + '</span></td></tr>';
-          }).join("") : emptyRow(6)) + '</tbody></table></div></article>' +
+        if (subjAvgs.length) {
+          html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Subject Performance</h3></div><div class="spr-panel__bd">';
+          subjAvgs.forEach(function (s) {
+            var clr = s.pct >= 90 ? "#16a34a" : s.pct >= 75 ? "#2563eb" : s.pct >= 60 ? "#d97706" : "#dc2626";
+            html += '<div class="spr-sbar"><div class="spr-sbar__nm">' + escapeHtml(s.name) + '</div>';
+            html += '<div class="spr-sbar__trk"><div class="spr-sbar__fill" style="width:' + s.pct + '%;background:' + clr + ';"></div></div>';
+            html += '<div class="spr-sbar__info"><span class="spr-sbar__pct" style="color:' + clr + ';">' + s.pct + '%</span>';
+            html += '<span class="spr-badge" style="background:' + clr + '15;color:' + clr + ';">' + escapeHtml(s.grade) + '</span></div></div>';
+          });
+          html += '</div></div>';
+        }
 
-          '<article class="panel-card"><strong style="font-size:0.9rem;">Class Tests</strong>' +
-          '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Test</th><th>Subject</th><th>Date</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>' +
-          (tests.length ? tests.map(function (r) {
-            return '<tr><td>' + escapeHtml(r.test.testName || "-") + '</td><td>' + escapeHtml(r.test.subjectName || "-") + '</td><td>' + escapeHtml(r.test.testDate || r.test.date || "-") + '</td><td>' + r.ttl + '</td><td>' + r.obt + '</td><td>' + r.pct + '%</td><td><span class="status-pill" style="background:' + gradeCol(r.test.grade) + '20;color:' + gradeCol(r.test.grade) + ';">' + escapeHtml(r.test.grade || "-") + '</span></td><td><span class="status-pill ' + (String(r.test.status || "").toLowerCase() === "pass" ? "active" : "inactive") + '">' + escapeHtml(r.test.status || "-") + '</span></td></tr>';
-          }).join("") : emptyRow(8)) + '</tbody></table></div></article>' +
+        if (strongest) {
+          html += '<div class="spr-grid2">';
+          html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Strongest Subject</h3></div><div class="spr-panel__bd">';
+          html += '<div class="spr-area spr-area--success"><div class="spr-area__body">';
+          html += '<div class="spr-area__nm">' + escapeHtml(strongest.name) + '</div>';
+          html += '<div class="spr-area__val" style="color:#16a34a;">' + strongest.pct + '% - ' + escapeHtml(strongest.grade) + '</div>';
+          html += '</div></div></div></div>';
+          if (weakest && weakest.name !== strongest.name) {
+            html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Needs Improvement</h3></div><div class="spr-panel__bd">';
+            html += '<div class="spr-area spr-area--warning"><div class="spr-area__body">';
+            html += '<div class="spr-area__nm">' + escapeHtml(weakest.name) + '</div>';
+            html += '<div class="spr-area__val" style="color:#d97706;">' + weakest.pct + '% - ' + escapeHtml(weakest.grade) + '</div>';
+            html += '</div></div></div></div>';
+          }
+          html += '</div>';
+        }
 
-          '<article class="panel-card"><strong style="font-size:0.9rem;">Monthly Attendance</strong>' +
-          '<div class="table-wrap" style="margin-top:8px;"><table><thead><tr><th>Month</th><th>Present</th><th>Absent</th><th>Leave</th><th>%</th></tr></thead><tbody>' +
-          (mKeys.length ? mKeys.map(function (k) {
-            var m = months[k], abs = m.total - m.present, pct = Math.round((m.present / m.total) * 100);
-            return '<tr><td>' + k + '</td><td>' + m.present + '</td><td>' + abs + '</td><td>0</td><td><span style="color:' + (pct >= 80 ? '#1d9c61' : (pct >= 60 ? '#f39c12' : '#e74c3c')) + ';font-weight:600;">' + pct + '%</span></td></tr>';
-          }).join("") : emptyRow(5)) + '</tbody></table></div></article>' +
+        html += '<div class="spr-grid2">';
 
-          '<article class="panel-card" style="background:#fef9e7;border-left:4px solid #f39c12;">' +
-          '<strong style="font-size:0.9rem;color:#0f2b3f;">Summary & Remarks</strong><p style="margin:8px 0 0;font-size:0.85rem;color:#555;line-height:1.6;">' +
-          (exams.length ? '<span style="display:block;">\uD83D\uDCD8 <strong>Exams</strong>: ' + exams.length + ' exams, Avg ' + eAvg + '%</span>' : '<span style="display:block;">\uD83D\uDCD8 <strong>Exams</strong>: No exams in this period.</span>') +
-          (tests.length ? '<span style="display:block;">\uD83D\uDCDD <strong>Class Tests</strong>: ' + tests.length + ' tests, Avg ' + tAvg + '%</span>' : '<span style="display:block;">\uD83D\uDCDD <strong>Class Tests</strong>: No tests in this period.</span>') +
-          (att.length ? '<span style="display:block;">\uD83D\uDCC5 <strong>Attendance</strong>: ' + pres + '/' + att.length + ' days present (' + aPct + '%)</span>' : '<span style="display:block;">\uD83D\uDCC5 <strong>Attendance</strong>: No attendance records in this period.</span>') +
-          (lastPts.length >= 2 ? '<span style="display:block;margin-top:4px;">' + (trendDir === "up" ? '\u2705 <strong>Improving trend</strong> \u2014 consistent progress.' : (trendDir === "down" ? '\u26A0 <strong>Declining trend</strong> \u2014 needs attention.' : '\u2796 <strong>Stable performance</strong> \u2014 maintaining consistency.')) + '</span>' : '') +
-          '</p></article></div>';
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Examination Results</h3><span class="spr-panel__badge">' + exams.length + '</span></div><div class="spr-panel__bd spr-panel__bd--tbl"><div class="spr-tblwrap"><table class="spr-tbl"><thead><tr><th>Exam</th><th>Date</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>';
+        if (exams.length) {
+          exams.forEach(function (r) {
+            var pctColor = r.result.percentage >= 90 ? "#16a34a" : r.result.percentage >= 75 ? "#2563eb" : r.result.percentage >= 60 ? "#d97706" : "#dc2626";
+            var gradeClass = r.result.status === "Pass" ? "spr-badge--pass" : "spr-badge--fail";
+            html += '<tr><td>' + escapeHtml(r.exam.name || "-") + '</td><td>' + escapeHtml(r.exam.endDate || r.exam.startDate || "-") + '</td>';
+            html += '<td class="spr-mono">' + r.result.totalMarks + '</td><td class="spr-mono">' + r.result.obtainedMarks + '</td>';
+            html += '<td class="spr-mono" style="font-weight:700;color:' + pctColor + ';">' + r.result.percentage + '%</td>';
+            html += '<td><span class="spr-badge" style="background:' + _sprGradeCol(r.result.grade) + '15;color:' + _sprGradeCol(r.result.grade) + ';">' + escapeHtml(r.result.grade) + '</span></td>';
+            html += '<td><span class="spr-badge ' + gradeClass + '">' + escapeHtml(r.result.status) + '</span></td></tr>';
+          });
+        } else {
+          html += '<tr><td colspan="7" class="spr-nodata-td"><div class="spr-nodata">No examination results available.</div></td></tr>';
+        }
+        html += '</tbody></table></div></div></div>';
+
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Class Test Performance</h3><span class="spr-panel__badge">' + tests.length + '</span></div><div class="spr-panel__bd spr-panel__bd--tbl"><div class="spr-tblwrap"><table class="spr-tbl"><thead><tr><th>Test</th><th>Subject</th><th>Date</th><th>Total</th><th>Obtained</th><th>%</th><th>Grade</th><th>Status</th></tr></thead><tbody>';
+        if (tests.length) {
+          tests.forEach(function (r) {
+            var pctColor = r.pct >= 90 ? "#16a34a" : r.pct >= 75 ? "#2563eb" : r.pct >= 60 ? "#d97706" : "#dc2626";
+            var gradeClass = String(r.test.status || "").toLowerCase() === "pass" ? "spr-badge--pass" : "spr-badge--fail";
+            html += '<tr><td>' + escapeHtml(r.test.testName || "-") + '</td><td>' + escapeHtml(r.test.subjectName || "-") + '</td>';
+            html += '<td>' + escapeHtml(r.test.testDate || r.test.date || "-") + '</td>';
+            html += '<td class="spr-mono">' + r.ttl + '</td><td class="spr-mono">' + r.obt + '</td>';
+            html += '<td class="spr-mono" style="font-weight:700;color:' + pctColor + ';">' + r.pct + '%</td>';
+            html += '<td><span class="spr-badge" style="background:' + _sprGradeCol(r.test.grade || "-") + '15;color:' + _sprGradeCol(r.test.grade || "-") + ';">' + escapeHtml(r.test.grade || "-") + '</span></td>';
+            html += '<td><span class="spr-badge ' + gradeClass + '">' + escapeHtml(r.test.status || "-") + '</span></td></tr>';
+          });
+        } else {
+          html += '<tr><td colspan="8" class="spr-nodata-td"><div class="spr-nodata">No class test results available.</div></td></tr>';
+        }
+        html += '</tbody></table></div></div></div>';
+        html += '</div>';
+
+        html += '<div class="spr-grid2">';
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Attendance Overview</h3></div><div class="spr-panel__bd">';
+        if (att.length) {
+          html += '<div class="spr-att-summary">';
+          html += '<div class="spr-att-stat"><div class="spr-att-dot" style="background:#16a34a;"></div><div class="spr-att-stat__body"><div class="spr-att-stat__lbl">Present</div><div class="spr-att-stat__val">' + pres + '</div></div></div>';
+          html += '<div class="spr-att-stat"><div class="spr-att-dot" style="background:#dc2626;"></div><div class="spr-att-stat__body"><div class="spr-att-stat__lbl">Absent</div><div class="spr-att-stat__val">' + abs + '</div></div></div>';
+          html += '<div class="spr-att-stat"><div class="spr-att-dot" style="background:#d97706;"></div><div class="spr-att-stat__body"><div class="spr-att-stat__lbl">Leave</div><div class="spr-att-stat__val">' + lve + '</div></div></div>';
+          html += '<div class="spr-att-stat"><div class="spr-att-dot" style="background:#0d9488;"></div><div class="spr-att-stat__body"><div class="spr-att-stat__lbl">Attendance %</div><div class="spr-att-stat__val">' + aPct + '%</div></div></div>';
+          html += '</div>';
+        } else {
+          html += '<div class="spr-nodata">No attendance records available.</div>';
+        }
+        html += '</div></div>';
+
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Monthly Attendance</h3></div><div class="spr-panel__bd spr-panel__bd--tbl"><div class="spr-tblwrap"><table class="spr-tbl"><thead><tr><th>Month</th><th>Present</th><th>Absent</th><th>Leave</th><th>%</th></tr></thead><tbody>';
+        if (mKeys.length) {
+          mKeys.forEach(function (k) {
+            var m = months[k], pct = m.total ? Math.round((m.present / m.total) * 100) : 0;
+            var clr = pct >= 80 ? "#16a34a" : pct >= 60 ? "#d97706" : "#dc2626";
+            html += '<tr><td>' + escapeHtml(k) + '</td><td class="spr-mono">' + m.present + '</td><td class="spr-mono">' + m.absent + '</td><td class="spr-mono">' + m.leave + '</td><td class="spr-mono" style="font-weight:700;color:' + clr + ';">' + pct + '%</td></tr>';
+          });
+        } else {
+          html += '<tr><td colspan="5" class="spr-nodata-td"><div class="spr-nodata">No monthly data.</div></td></tr>';
+        }
+        html += '</tbody></table></div></div></div>';
+        html += '</div>';
+
+        html += '<div class="spr-panel"><div class="spr-panel__hd"><h3 class="spr-panel__tt">Performance Summary</h3></div><div class="spr-panel__bd"><div class="spr-summary">';
+        html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Academic Performance</span><span class="spr-summary__val" style="color:' + perfSt.color + ';">' + (hasExams || hasTests ? oAvg + '% - ' + perfSt.label : 'No academic data') + '</span></div>';
+        html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Attendance</span><span class="spr-summary__val" style="color:' + (att.length ? "#16a34a" : "#94a3b8") + ';">' + (att.length ? aPct + '% - ' + (aPct >= 90 ? "Excellent" : aPct >= 80 ? "Good" : aPct >= 60 ? "Satisfactory" : "Needs Improvement") : 'No data') + '</span></div>';
+        html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Overall Progress</span><span class="spr-summary__val">' + oAvg + '%</span></div>';
+        if (strongest) html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Strongest Subject</span><span class="spr-summary__val" style="color:#16a34a;">' + escapeHtml(strongest.name) + ' - ' + strongest.pct + '%</span></div>';
+        if (weakest && (!strongest || weakest.name !== strongest.name)) html += '<div class="spr-summary__row"><span class="spr-summary__lbl">Area for Improvement</span><span class="spr-summary__val" style="color:#d97706;">' + escapeHtml(weakest.name) + ' - ' + weakest.pct + '%</span></div>';
+        html += '</div></div></div>';
+
+        html += '</div>';
+        _sprContent.innerHTML = html;
       }
 
-      safeOn(document.getElementById("progressShowBtn"), "click", renderPR);
-      safeOn(document.getElementById("progressPrintBtn"), "click", function () {
-        var c = document.getElementById("progressContent");
-        if (!c || !c.innerHTML.trim() || c.innerHTML.includes("empty-state")) return;
-        var w = window.open("", "_blank", "width=900,height=700");
-        if (!w) { alert("Please allow popups for printing."); return; }
-        w.document.write('<!DOCTYPE html><html><head><title>Student Progress Report</title><style>body{font-family:Segoe UI,system-ui,sans-serif;padding:40px;color:#0f2b3f;}table{width:100%;border-collapse:collapse;margin:12px 0;}th{background:#1b5f7a;color:#fff;padding:8px 12px;text-align:left;font-size:13px;}td{padding:8px 12px;border-bottom:1px solid #e9edf2;font-size:13px;}tr:nth-child(even){background:#f8fafc;}h2{color:#0f2b3f;margin:0 0 4px;}</style></head><body>');
-        var hdr = c.querySelector("h3");
-        w.document.write('<h2>Student Progress Report</h2><p style="color:#6b7a8d;">' + (hdr ? escapeHtml(hdr.textContent || "") : "") + '</p>');
-        c.querySelectorAll("table").forEach(function (t) { w.document.write(t.outerHTML); });
-        var rm = c.querySelector('[style*="background:#fef9e7"]');
-        if (rm) w.document.write('<div style="background:#fef9e7;border-left:4px solid #f39c12;padding:16px;border-radius:4px;margin-top:16px;">' + escapeHtml(rm.textContent || "") + '</div>');
-        w.document.write('</body></html>');
-        w.document.close();
-        setTimeout(function () { w.print(); }, 500);
+      safeOn(document.getElementById("sprShowBtn"), "click", function () { _sprRenderReport(); });
+      safeOn(document.getElementById("sprClearBtn"), "click", function () {
+        _sprStudentId = "";
+        _sprSearchI.value = "";
+        _sprFrom.value = defFromStr;
+        _sprTo.value = todayStr;
+        _sprRenderEmpty();
+      });
+      safeOn(document.getElementById("sprRefreshBtn"), "click", function () { _sprRenderReport(); });
+      safeOn(document.getElementById("sprPrintBtn"), "click", function () {
+        var c = document.getElementById("sprContent");
+        if (!c || !c.innerHTML.trim() || c.innerHTML.indexOf("spr-empty") >= 0) return;
+        var stu = database.students.find(function (s) { return String(s.id) === String(_sprStudentId); });
+        var pw = window.open("", "_blank", "width=900,height=700");
+        if (!pw) { alert("Please allow popups for printing."); return; }
+        pw.document.write("<!DOCTYPE html><html><head><title>Student Progress Report</title></head><body>");
+        pw.document.write("<h1>Student Progress Report</h1>");
+        if (stu) {
+          pw.document.write("<p><strong>" + escapeHtml(stu.name || "-") + "</strong> - Roll: " + escapeHtml(stu.admissionNo || "-") + " | Class: " + escapeHtml(stu.className || "-") + "</p>");
+        }
+        pw.document.write(c.innerHTML);
+        pw.document.write("</body></html>");
+        pw.document.close();
+        setTimeout(function () { pw.print(); }, 400);
       });
 
-      renderPR();
+      _sprRenderEmpty();
       return;
     }
 
+
     if (route === "students-info-report" || route === "parents-info-report") {
-      const classOptionsMarkup = classOptions.map(function (name) {
-        return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
-      }).join("");
       const isParents = route === "parents-info-report";
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">${isParents ? "Parents Info Report" : "Students Info Report"}</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="infoReportSearchInput" type="search" placeholder="${isParents ? "Search by student / father / phone" : "Search by roll no / name / phone"}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="infoReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="infoReportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-          </div>
-          <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printInfoReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
-          ${isParents ? "" : `<div class="report-cards" id="studentsInfoStats"></div><div class="split-grid report-grid"><article class="panel-card"><strong>Gender Distribution</strong><div id="studentsInfoChart" class="report-chart-box"></div></article><article class="panel-card"><strong>Class Strength</strong><div id="studentsInfoBars" class="report-bar-list"></div></article></div>`}
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead>
-            ${isParents ? "<tr><th style='white-space:nowrap;'>Student</th><th style='white-space:nowrap;'>Roll No</th><th style='white-space:nowrap;'>Class</th><th style='white-space:nowrap;'>Father Name</th><th style='white-space:nowrap;'>Father Phone</th><th style='white-space:nowrap;'>Mother Name</th><th style='white-space:nowrap;'>Mother Phone</th><th style='white-space:nowrap;'>Address</th></tr>" : "<tr><th style='white-space:nowrap;'>Roll No</th><th style='white-space:nowrap;'>Name</th><th style='white-space:nowrap;'>Father Name</th><th style='white-space:nowrap;'>Class</th><th style='white-space:nowrap;'>Gender</th><th style='white-space:nowrap;'>Phone</th><th style='white-space:nowrap;'>Status</th></tr>"}
-          </thead><tbody id="infoReportTableBody"></tbody></table></div>
-        </article>
-      `;
+      const _sirClassOpts = classOptions.map(function (n) {
+        return '<option value="' + escapeAttr(n) + '">' + escapeHtml(n) + '</option>';
+      }).join("");
+      const _sirGenderOpts = ["Male", "Female", "Other", "Not specified"].map(function (g) {
+        return '<option value="' + escapeAttr(g) + '">' + escapeHtml(g) + '</option>';
+      }).join("");
+      const _sirStatusOpts = ["active", "inactive", "left", "transferred"].map(function (s) {
+        return '<option value="' + escapeAttr(s) + '">' + escapeHtml(s.charAt(0).toUpperCase() + s.slice(1)) + '</option>';
+      }).join("");
+
+      moduleSummary.innerHTML =
+        '<div class="sir-wrap">' +
+          '<div class="sir-hdr"><div class="sir-hdr__left"><div class="sir-hdr__eyebrow">REPORTS</div><h1 class="sir-hdr__title">' + (isParents ? "Parents Information Report" : "Students Information Report") + '</h1><p class="sir-hdr__sub">' + (isParents ? "Complete parent and guardian contact overview for all enrolled students." : "Complete student enrollment, demographic and contact overview.") + '</p></div><div class="sir-hdr__btns"><button class="sir-btn sir-btn--ghost" type="button" id="sirRefresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh</button><button class="sir-btn sir-btn--ghost" type="button" id="sirExport"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button><button class="sir-btn sir-btn--accent" type="button" id="sirPrint"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print Report</button></div></div>' +
+          '<div class="sir-stats" id="sirStats"></div>' +
+          '<div class="sir-grid2">' +
+            '<div class="sir-panel"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Gender Distribution</h3></div><div class="sir-panel__bd" id="sirGender"></div></div>' +
+            '<div class="sir-panel"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Enrollment Status</h3></div><div class="sir-panel__bd" id="sirStatus"></div></div>' +
+          '</div>' +
+          '<div class="sir-panel" style="margin-top:14px;"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Class-wise Enrollment</h3><span class="sir-panel__badge" id="sirClassCount">0 classes</span></div><div class="sir-panel__bd" id="sirClassEnroll"></div></div>' +
+          (isParents ? "" :
+          '<div class="sir-panel" style="margin-top:14px;"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Contact Information</h3></div><div class="sir-panel__bd" id="sirContact"></div></div>') +
+          '<div class="sir-bar">' +
+            '<div class="sir-bar__field sir-bar__field--wide"><label class="sir-bar__lbl">Search</label><div style="position:relative;"><input class="sir-bar__inp" id="sirSearch" type="search" placeholder="' + (isParents ? "Search by student / father / phone" : "Search by name, roll no, father name or phone") + '"><div id="sirSearchDrop" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>' +
+            '<div class="sir-bar__field"><label class="sir-bar__lbl">Class</label><select class="sir-bar__sel" id="sirClass"><option value="all">All Classes</option>' + _sirClassOpts + '</select></div>' +
+            (isParents ? "" :
+            '<div class="sir-bar__field"><label class="sir-bar__lbl">Gender</label><select class="sir-bar__sel" id="sirGenderF"><option value="all">All</option>' + _sirGenderOpts + '</select></div>' +
+            '<div class="sir-bar__field"><label class="sir-bar__lbl">Status</label><select class="sir-bar__sel" id="sirStatusF"><option value="all">All</option>' + _sirStatusOpts + '</select></div>') +
+            '<div class="sir-bar__field sir-bar__field--clr"><button class="sir-btn sir-btn--clear" type="button" id="sirClear"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Clear</button></div>' +
+          '</div>' +
+          '<div class="sir-panel" style="margin-top:14px;"><div class="sir-panel__hd"><h3 class="sir-panel__tt">Student Directory</h3><span class="sir-panel__badge" id="sirDirCount">0 students</span></div><div class="sir-panel__bd sir-panel__bd--tbl" id="sirTableWrap">' +
+            '<div class="sir-empty" id="sirEmpty"><div class="sir-empty__ico"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><h3 class="sir-empty__tt">No students found</h3><p class="sir-empty__sub">There are no students enrolled in the system yet.</p></div>' +
+            '<div class="sir-empty" id="sirEmptyF" style="display:none;"><div class="sir-empty__ico"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><h3 class="sir-empty__tt">No students match your current filters</h3><p class="sir-empty__sub">Try adjusting your search or filter criteria.</p></div>' +
+            '<div id="sirTableArea" style="display:none;"><div class="sir-tblwrap"><table class="sir-tbl"><thead><tr>' +
+              (isParents ?
+              '<th>Student</th><th>Roll No</th><th>Class</th><th>Father Name</th><th>Father Phone</th><th>Mother Name</th><th>Mother Phone</th><th>Address</th><th>Action</th>' :
+              '<th class="sir-sort" data-sir-sort="name">Student <span class="sir-sort-ico" id="sirSortName"></span></th><th class="sir-sort" data-sir-sort="admissionNo">Roll No <span class="sir-sort-ico" id="sirSortRoll"></span></th><th>Father Name</th><th class="sir-sort" data-sir-sort="className">Class <span class="sir-sort-ico" id="sirSortClass"></span></th><th>Gender</th><th>Phone</th><th class="sir-sort" data-sir-sort="status">Status <span class="sir-sort-ico" id="sirSortStatus"></span></th><th>Action</th>') +
+            '</tr></thead><tbody id="sirTB"></tbody></table></div>' +
+            '<div class="sir-pagebar"><span class="sir-pagebar__info" id="sirPageInfo">Showing 1-20 of 0</span><div class="sir-pagebar__btns" id="sirPageBtns"></div></div>' +
+          '</div></div>' +
+          '<div class="sir-modal-mask" id="sirMask" style="display:none;"><div class="sir-modal"><div class="sir-modal__hd"><h3 class="sir-modal__tt" id="sirMTitle">Student Profile</h3><button class="sir-modal__x" id="sirMX" type="button">&times;</button></div><div class="sir-modal__bd" id="sirMBody"></div></div></div>' +
+        '</div>';
       moduleGuide.innerHTML = "";
-      const searchInput = document.getElementById("infoReportSearchInput");
-      const searchDropdown = document.getElementById("infoReportSearchDropdown");
-      const searchContainer = document.getElementById("infoReportSearchContainer");
-      const classSelect = document.getElementById("infoReportClassSelect");
-      const tableBody = document.getElementById("infoReportTableBody");
-      const statsWrap = document.getElementById("studentsInfoStats");
-      const chartWrap = document.getElementById("studentsInfoChart");
-      const barsWrap = document.getElementById("studentsInfoBars");
 
-      initializeStudentProfessionalSearch(
-        "infoReportSearchInput",
-        "infoReportSearchDropdown",
-        "infoReportSearchContainer",
-        function(student) {
-          searchInput.value = student.name || "";
-          renderRows();
-        }
-      );
+      var _sirE = document.getElementById("sirSearch");
+      var _sirED = document.getElementById("sirSearchDrop");
+      var _sirC = document.getElementById("sirClass");
+      var _sirG = isParents ? null : document.getElementById("sirGenderF");
+      var _sirS = isParents ? null : document.getElementById("sirStatusF");
+      var _sirStats = document.getElementById("sirStats");
+      var _sirGenderEl = isParents ? null : document.getElementById("sirGender");
+      var _sirStatusEl = isParents ? null : document.getElementById("sirStatus");
+      var _sirClassEnroll = document.getElementById("sirClassEnroll");
+      var _sirClassCountEl = document.getElementById("sirClassCount");
+      var _sirContactEl = isParents ? null : document.getElementById("sirContact");
+      var _sirTB = document.getElementById("sirTB");
+      var _sirDirCount = document.getElementById("sirDirCount");
+      var _sirEmpty = document.getElementById("sirEmpty");
+      var _sirEmptyF = document.getElementById("sirEmptyF");
+      var _sirTableArea = document.getElementById("sirTableArea");
+      var _sirPageInfo = document.getElementById("sirPageInfo");
+      var _sirPageBtns = document.getElementById("sirPageBtns");
+      var _sirMask = document.getElementById("sirMask");
+      var _sirMTitle = document.getElementById("sirMTitle");
+      var _sirMBody = document.getElementById("sirMBody");
+      var _sirPage = 1;
+      var _sirPerPage = 20;
+      var _sirSortCol = "";
+      var _sirSortDir = "asc";
+      var _sirFiltered = [];
 
-      function getRows() {
-        return getStudentsByFilter(classSelect.value, searchInput.value);
+      initializeStudentProfessionalSearch("sirSearch", "sirSearchDrop", null, function (st) {
+        _sirE.value = st.name || "";
+        _sirRender();
+      });
+
+      function _sirGetAll() {
+        return database.students || [];
       }
 
-      function renderRows() {
-        const rows = getRows();
-        if (!isParents) {
-          const male = rows.filter(function (row) { return row.gender === "Male"; }).length;
-          const female = rows.filter(function (row) { return row.gender === "Female"; }).length;
-          const active = rows.filter(function (row) { return String(row.status || "").toLowerCase() === "active"; }).length;
-          const malePercent = rows.length ? Math.round((male / rows.length) * 100) : 0;
-          statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>Total</strong><span>${rows.length}</span></article><article class="stat-card stat-card--emerald"><strong>Active</strong><span>${active}</span></article><article class="stat-card stat-card--sky"><strong>Male</strong><span>${male}</span></article><article class="stat-card stat-card--rose"><strong>Female</strong><span>${female}</span></article>`;
-          chartWrap.innerHTML = rows.length ? buildCircleChart(malePercent, `Male ${male} | Female ${female}`, "#6366f1", "#e2e8f0") : `<p class="empty-state">No data found.</p>`;
-          const classStats = rows.reduce(function (map, student) { map.set(student.className || "-", (map.get(student.className || "-") || 0) + 1); return map; }, new Map());
-          const barRows = Array.from(classStats.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
-          const max = barRows.length ? Math.max.apply(null, barRows.map(function (item) { return item.value; })) : 1;
-          barsWrap.innerHTML = barRows.length ? buildBarChart(barRows, max) : `<p class="empty-state">No class data.</p>`;
-        }
+      function _sirFilter() {
+        var q = String(_sirE.value || "").trim().toLowerCase();
+        var cv = _sirC.value;
+        var gv = _sirG ? _sirG.value : "all";
+        var sv = _sirS ? _sirS.value : "all";
+        return _sirGetAll().filter(function (s) {
+          var cm = !cv || cv === "all" || s.className === cv;
+          var gm = gv === "all" || String(s.gender || "").toLowerCase() === gv.toLowerCase();
+          var sm = sv === "all" || String(s.status || "").toLowerCase() === sv.toLowerCase();
+          var tm = !q ||
+            String(s.name || "").toLowerCase().includes(q) ||
+            String(s.admissionNo || "").toLowerCase().includes(q) ||
+            String(s.fatherName || "").toLowerCase().includes(q) ||
+            String(s.phone || s.studentPhone || "").toLowerCase().includes(q) ||
+            String(s.fatherPhone || "").toLowerCase().includes(q);
+          return cm && gm && sm && tm;
+        });
+      }
 
-        tableBody.innerHTML = rows.map(function (student) {
-          if (isParents) {
-            return `<tr><td>${escapeHtml(student.name || "-")}</td><td>${escapeHtml(student.admissionNo || "-")}</td><td>${escapeHtml(student.className || "-")}</td><td>${escapeHtml(student.fatherName || "-")}</td><td>${escapeHtml(student.fatherPhone || "-")}</td><td>${escapeHtml(student.motherName || "-")}</td><td>${escapeHtml(student.motherPhone || "-")}</td><td>${escapeHtml(student.address || "-")}</td></tr>`;
+      function _sirPct(a, b) { return b > 0 ? Math.round((a / b) * 100) : 0; }
+
+      function _sirStatusColor(st) {
+        var x = String(st || "").toLowerCase();
+        if (x === "active") return { bg: "#dcfce7", fg: "#166534" };
+        if (x === "inactive") return { bg: "#fef3c7", fg: "#92400e" };
+        if (x === "left") return { bg: "#fee2e2", fg: "#991b1b" };
+        if (x === "transferred") return { bg: "#dbeafe", fg: "#1e40af" };
+        return { bg: "#f1f5f9", fg: "#475569" };
+      }
+
+      function _sirGenderColor(g) {
+        var x = String(g || "").toLowerCase();
+        if (x === "male") return "#6366f1";
+        if (x === "female") return "#ec4899";
+        return "#94a3b8";
+      }
+
+      function _sirRenderStats(rows) {
+        var total = rows.length;
+        var active = rows.filter(function (s) { return String(s.status || "").toLowerCase() === "active"; }).length;
+        var inactive = total - active;
+        var male = rows.filter(function (s) { return String(s.gender || "").toLowerCase() === "male"; }).length;
+        var female = rows.filter(function (s) { return String(s.gender || "").toLowerCase() === "female"; }).length;
+        var classSet = new Set(rows.map(function (s) { return s.className; }).filter(Boolean));
+        _sirStats.innerHTML =
+          '<div class="sir-st sir-st--purple"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Total Students</span><span class="sir-st__val">' + total + '</span><span class="sir-st__note">All enrolled records</span></div></div>' +
+          '<div class="sir-st sir-st--green"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Active</span><span class="sir-st__val">' + active + '</span><span class="sir-st__note">' + _sirPct(active, total) + '% of total</span></div></div>' +
+          '<div class="sir-st sir-st--amber"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Inactive</span><span class="sir-st__val">' + inactive + '</span><span class="sir-st__note">' + _sirPct(inactive, total) + '% of total</span></div></div>' +
+          '<div class="sir-st sir-st--blue"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Male</span><span class="sir-st__val">' + male + '</span><span class="sir-st__note">' + _sirPct(male, total) + '% of total</span></div></div>' +
+          '<div class="sir-st sir-st--pink"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Female</span><span class="sir-st__val">' + female + '</span><span class="sir-st__note">' + _sirPct(female, total) + '% of total</span></div></div>' +
+          '<div class="sir-st sir-st--teal"><div class="sir-st__ico"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div><div class="sir-st__body"><span class="sir-st__lbl">Classes</span><span class="sir-st__val">' + classSet.size + '</span><span class="sir-st__note">Active classes</span></div></div>';
+      }
+
+      function _sirRenderGender(rows) {
+        if (isParents) return;
+        var total = rows.length;
+        var male = rows.filter(function (s) { return String(s.gender || "").toLowerCase() === "male"; }).length;
+        var female = rows.filter(function (s) { return String(s.gender || "").toLowerCase() === "female"; }).length;
+        var other = rows.filter(function (s) { var g = String(s.gender || "").toLowerCase(); return g && g !== "male" && g !== "female"; }).length;
+        var unspecified = total - male - female - other;
+        if (total === 0) { _sirGenderEl.innerHTML = '<div class="sir-nodata">No students to analyze.</div>'; return; }
+        var hasData = male > 0 || female > 0 || other > 0;
+        if (!hasData) { _sirGenderEl.innerHTML = '<div class="sir-nodata">No gender data available.</div>'; return; }
+        var malePct = _sirPct(male, total);
+        var femalePct = _sirPct(female, total);
+        var otherPct = _sirPct(other, total);
+        var unPct = _sirPct(unspecified, total);
+        _sirGenderEl.innerHTML =
+          '<div class="sir-donut-wrap">' +
+            '<div class="sir-donut" style="background:conic-gradient(#6366f1 0% ' + malePct + '%,#ec4899 ' + malePct + '% ' + (malePct + femalePct) + '%,#a78bfa ' + (malePct + femalePct) + '% ' + (malePct + femalePct + otherPct) + '%,#e2e8f0 ' + (malePct + femalePct + otherPct) + '% 100%);"><div class="sir-donut__hole"><span class="sir-donut__pct">' + total + '</span><span class="sir-donut__lbl">Total</span></div></div>' +
+          '</div>' +
+          '<div class="sir-donut-legend">' +
+            '<div class="sir-donut-legend__item"><span class="sir-donut-legend__dot" style="background:#6366f1;"></span><span class="sir-donut-legend__lbl">Male</span><span class="sir-donut-legend__val">' + male + ' (' + malePct + '%)</span></div>' +
+            '<div class="sir-donut-legend__item"><span class="sir-donut-legend__dot" style="background:#ec4899;"></span><span class="sir-donut-legend__lbl">Female</span><span class="sir-donut-legend__val">' + female + ' (' + femalePct + '%)</span></div>' +
+            (other > 0 ? '<div class="sir-donut-legend__item"><span class="sir-donut-legend__dot" style="background:#a78bfa;"></span><span class="sir-donut-legend__lbl">Other</span><span class="sir-donut-legend__val">' + other + ' (' + otherPct + '%)</span></div>' : '') +
+            (unspecified > 0 ? '<div class="sir-donut-legend__item"><span class="sir-donut-legend__dot" style="background:#e2e8f0;"></span><span class="sir-donut-legend__lbl">Not specified</span><span class="sir-donut-legend__val">' + unspecified + ' (' + unPct + '%)</span></div>' : '') +
+          '</div>';
+      }
+
+      function _sirRenderStatus(rows) {
+        if (isParents) return;
+        var total = rows.length;
+        if (total === 0) { _sirStatusEl.innerHTML = '<div class="sir-nodata">No students to analyze.</div>'; return; }
+        var statusMap = {};
+        rows.forEach(function (s) {
+          var st = String(s.status || "active").toLowerCase() || "active";
+          statusMap[st] = (statusMap[st] || 0) + 1;
+        });
+        var colors = { active: { bg: "#dcfce7", fg: "#166534", bar: "#16a34a" }, inactive: { bg: "#fef3c7", fg: "#92400e", bar: "#f59e0b" }, left: { bg: "#fee2e2", fg: "#991b1b", bar: "#dc2626" }, transferred: { bg: "#dbeafe", fg: "#1e40af", bar: "#2563eb" } };
+        var items = Object.keys(statusMap).sort();
+        _sirStatusEl.innerHTML = '<div class="sir-status-list">' + items.map(function (st) {
+          var cnt = statusMap[st];
+          var pct = _sirPct(cnt, total);
+          var c = colors[st] || { bg: "#f1f5f9", fg: "#475569", bar: "#94a3b8" };
+          return '<div class="sir-status-item"><div class="sir-status-item__hd"><span class="sir-status-item__dot" style="background:' + c.bar + ';"></span><span class="sir-status-item__lbl">' + escapeHtml(st.charAt(0).toUpperCase() + st.slice(1)) + '</span><span class="sir-status-item__val">' + cnt + ' (' + pct + '%)</span></div><div class="sir-status-item__bar"><div class="sir-status-item__fill" style="width:' + pct + '%;background:' + c.bar + ';"></div></div></div>';
+        }).join("") + '</div>';
+      }
+
+      function _sirRenderClassEnroll(rows) {
+        var total = rows.length;
+        var classMap = {};
+        rows.forEach(function (s) {
+          var cn = s.className || "Unknown";
+          if (!classMap[cn]) classMap[cn] = 0;
+          classMap[cn]++;
+        });
+        var classKeys = Object.keys(classMap);
+        _sirClassCountEl.textContent = classKeys.length + " class" + (classKeys.length !== 1 ? "es" : "");
+        if (classKeys.length === 0) { _sirClassEnroll.innerHTML = '<div class="sir-nodata">No class data available.</div>'; return; }
+        var sorted = classKeys.sort(function (a, b) { return classMap[b] - classMap[a]; });
+        var maxVal = Math.max.apply(null, sorted.map(function (k) { return classMap[k]; }));
+        _sirClassEnroll.innerHTML = '<div class="sir-class-bars">' + sorted.map(function (cn) {
+          var cnt = classMap[cn];
+          var pct = _sirPct(cnt, total);
+          var w = maxVal > 0 ? Math.round((cnt / maxVal) * 100) : 0;
+          return '<div class="sir-class-bar"><div class="sir-class-bar__nm">' + escapeHtml(cn) + '</div><div class="sir-class-bar__trk"><div class="sir-class-bar__fill" style="width:' + w + '%;"></div></div><div class="sir-class-bar__info"><span class="sir-class-bar__cnt">' + cnt + ' students</span><span class="sir-class-bar__pct">' + pct + '%</span></div></div>';
+        }).join("") + '</div>';
+      }
+
+      function _sirRenderContact(rows) {
+        if (isParents || !_sirContactEl) return;
+        var total = rows.length;
+        if (total === 0) { _sirContactEl.innerHTML = ''; return; }
+        var withPhone = rows.filter(function (s) { return String(s.phone || s.studentPhone || "").trim().length > 0; }).length;
+        var withFather = rows.filter(function (s) { return String(s.fatherPhone || "").trim().length > 0; }).length;
+        var without = total - withPhone;
+        _sirContactEl.innerHTML =
+          '<div class="sir-contact-grid">' +
+            '<div class="sir-contact-card"><div class="sir-contact-card__ico" style="background:#dcfce7;color:#16a34a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div><div class="sir-contact-card__body"><span class="sir-contact-card__val">' + withPhone + '</span><span class="sir-contact-card__lbl">Students with phone</span></div></div>' +
+            '<div class="sir-contact-card"><div class="sir-contact-card__ico" style="background:#dcfce7;color:#16a34a;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg></div><div class="sir-contact-card__body"><span class="sir-contact-card__val">' + withFather + '</span><span class="sir-contact-card__lbl">Father phone available</span></div></div>' +
+            '<div class="sir-contact-card"><div class="sir-contact-card__ico" style="background:#fee2e2;color:#dc2626;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="sir-contact-card__body"><span class="sir-contact-card__val">' + without + '</span><span class="sir-contact-card__lbl">Students without phone</span></div></div>' +
+          '</div>';
+      }
+
+      function _sirSortData(rows) {
+        if (!_sirSortCol) return rows;
+        var dir = _sirSortDir === "asc" ? 1 : -1;
+        return rows.slice().sort(function (a, b) {
+          var va = String(a[_sirSortCol] || "").toLowerCase();
+          var vb = String(b[_sirSortCol] || "").toLowerCase();
+          if (va < vb) return -1 * dir;
+          if (va > vb) return 1 * dir;
+          return 0;
+        });
+      }
+
+      function _sirRenderTable(rows) {
+        var total = rows.length;
+        var pages = Math.max(1, Math.ceil(total / _sirPerPage));
+        if (_sirPage > pages) _sirPage = pages;
+        var start = (_sirPage - 1) * _sirPerPage;
+        var end = Math.min(start + _sirPerPage, total);
+        var pageRows = rows.slice(start, end);
+
+        if (total === 0) {
+          _sirEmpty.style.display = _sirGetAll().length === 0 ? "" : "none";
+          _sirEmptyF.style.display = _sirGetAll().length > 0 ? "" : "none";
+          _sirTableArea.style.display = "none";
+          _sirDirCount.textContent = "0 students";
+          return;
+        }
+        _sirEmpty.style.display = "none";
+        _sirEmptyF.style.display = "none";
+        _sirTableArea.style.display = "";
+        _sirDirCount.textContent = total + " student" + (total !== 1 ? "s" : "");
+
+        _sirPageInfo.textContent = "Showing " + (start + 1) + "-" + end + " of " + total + " students";
+
+        var pgHtml = '<button class="sir-pg-btn" data-sir-pg="prev" ' + (_sirPage <= 1 ? 'disabled' : '') + '>&laquo; Prev</button>';
+        for (var p = 1; p <= pages; p++) {
+          if (pages > 7 && p > 3 && p < pages - 1 && Math.abs(p - _sirPage) > 1) {
+            if (p === 4 || p === pages - 2) pgHtml += '<span class="sir-pg-dots">...</span>';
+            continue;
           }
-          return `<tr><td>${escapeHtml(student.admissionNo || "-")}</td><td>${escapeHtml(student.name || "-")}</td><td>${escapeHtml(student.fatherName || "-")}</td><td>${escapeHtml(student.className || "-")}</td><td>${escapeHtml(student.gender || "-")}</td><td>${escapeHtml(student.studentPhone || student.phone || "-")}</td><td><span class="status-pill ${String(student.status || "").toLowerCase() === "active" ? "active" : "inactive"}">${escapeHtml(student.status || "-")}</span></td></tr>`;
+          pgHtml += '<button class="sir-pg-btn' + (p === _sirPage ? ' sir-pg-btn--active' : '') + '" data-sir-pg="' + p + '">' + p + '</button>';
+        }
+        pgHtml += '<button class="sir-pg-btn" data-sir-pg="next" ' + (_sirPage >= pages ? 'disabled' : '') + '>Next &raquo;</button>';
+        _sirPageBtns.innerHTML = pgHtml;
+
+        _sirTB.innerHTML = pageRows.map(function (s) {
+          var cls = String(s.className || "").split("|");
+          var sect = cls[1] ? cls[1].trim() : "";
+          var sc = _sirStatusColor(s.status);
+          var genderLabel = s.gender || "Not specified";
+          if (isParents) {
+            return '<tr><td><div class="sir-tname"><span class="sir-tname__av">' + escapeHtml((s.name || "?").charAt(0).toUpperCase()) + '</span><div><div class="sir-tname__n">' + escapeHtml(s.name || "-") + '</div></div></div></td><td class="sir-mono">' + escapeHtml(s.admissionNo || "-") + '</td><td>' + escapeHtml(cls[0] || "-") + '</td><td>' + escapeHtml(s.fatherName || "-") + '</td><td>' + escapeHtml(s.fatherPhone || "-") + '</td><td>' + escapeHtml(s.motherName || "-") + '</td><td>' + escapeHtml(s.motherPhone || "-") + '</td><td>' + escapeHtml(s.address || "-") + '</td><td><button class="sir-viewbtn" type="button" data-sir-view="' + s.id + '">View</button></td></tr>';
+          }
+          return '<tr><td><div class="sir-tname"><span class="sir-tname__av">' + escapeHtml((s.name || "?").charAt(0).toUpperCase()) + '</span><div><div class="sir-tname__n">' + escapeHtml(s.name || "-") + '</div>' + (s.fatherName ? '<div class="sir-tname__f">' + escapeHtml(s.fatherName) + '</div>' : '') + '</div></div></td><td class="sir-mono">' + escapeHtml(s.admissionNo || "-") + '</td><td>' + escapeHtml(s.fatherName || "-") + '</td><td>' + escapeHtml(cls[0] || "-") + (sect ? ' / ' + escapeHtml(sect) : '') + '</td><td>' + escapeHtml(genderLabel) + '</td><td>' + escapeHtml(s.phone || s.studentPhone || "\u2014") + '</td><td><span class="sir-badge" style="background:' + sc.bg + ';color:' + sc.fg + ';">' + escapeHtml(String(s.status || "active").charAt(0).toUpperCase() + String(s.status || "active").slice(1)) + '</span></td><td><button class="sir-viewbtn" type="button" data-sir-view="' + s.id + '"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> View</button></td></tr>';
         }).join("");
       }
 
-      safeOn(document.getElementById("printInfoReportBtn"), "click", function () {
-        const rows = getRows();
-        if (!rows.length) {
-          return;
-        }
-        const headers = isParents
-          ? ["Student", "Roll No", "Class", "Father Name", "Father Phone", "Mother Name", "Mother Phone", "Address"]
-          : ["Roll No", "Name", "Father Name", "Class", "Gender", "Phone", "Status"];
-        const printRows = rows.map(function (student) {
-          return isParents
-            ? [escapeHtml(student.name || "-"), escapeHtml(student.admissionNo || "-"), escapeHtml(student.className || "-"), escapeHtml(student.fatherName || "-"), escapeHtml(student.fatherPhone || "-"), escapeHtml(student.motherName || "-"), escapeHtml(student.motherPhone || "-"), escapeHtml(student.address || "-")]
-            : [escapeHtml(student.admissionNo || "-"), escapeHtml(student.name || "-"), escapeHtml(student.fatherName || "-"), escapeHtml(student.className || "-"), escapeHtml(student.gender || "-"), escapeHtml(student.studentPhone || student.phone || "-"), escapeHtml(student.status || "-")];
+      function _sirRender() {
+        var rows = _sirFilter();
+        _sirFiltered = _sirSortData(rows);
+        _sirRenderStats(rows);
+        _sirRenderGender(rows);
+        _sirRenderStatus(rows);
+        _sirRenderClassEnroll(rows);
+        _sirRenderContact(rows);
+        _sirRenderTable(_sirFiltered);
+      }
+
+      function _sirOpenModal(sid) {
+        var s = _sirGetAll().find(function (x) { return x.id === sid; }) || null;
+        if (!s) return;
+        var cls = String(s.className || "").split("|");
+        var sect = cls[1] ? cls[1].trim() : "";
+        var sc = _sirStatusColor(s.status);
+        _sirMTitle.textContent = "Student Profile \u2014 " + (s.name || "-");
+        var rows = [
+          ["Student Name", s.name || "-"],
+          ["Roll No", s.admissionNo || "-"],
+          ["Father Name", s.fatherName || "\u2014"],
+          ["Class", cls[0] || "-"],
+          sect ? ["Section", sect] : null,
+          ["Gender", s.gender || "Not specified"],
+          ["Date of Birth", s.dateOfBirth || "\u2014"],
+          ["Phone", s.phone || s.studentPhone || "\u2014"],
+          ["Father Phone", s.fatherPhone || "\u2014"],
+          ["Mother Name", s.motherName || "\u2014"],
+          ["Address", s.address || "\u2014"],
+          ["Admission Date", s.dateOfAdmission || "\u2014"],
+          ["Religion", s.religion || "\u2014"],
+          ["Blood Group", s.bloodGroup || "\u2014"],
+          ["Status", s.status || "active"]
+        ].filter(Boolean);
+        _sirMBody.innerHTML =
+          '<div class="sir-dinfo"><div class="sir-dinfo__av"><div class="sir-dinfo__avcircle">' + escapeHtml((s.name || "?").charAt(0).toUpperCase()) + '</div></div><table class="sir-dinfo__tbl">' +
+          rows.map(function (r) {
+            if (r[0] === "Status") {
+              var sc2 = _sirStatusColor(r[1]);
+              return '<tr><td>' + r[0] + '</td><td><span class="sir-badge" style="background:' + sc2.bg + ';color:' + sc2.fg + ';">' + escapeHtml(String(r[1]).charAt(0).toUpperCase() + String(r[1]).slice(1)) + '</span></td></tr>';
+            }
+            return '<tr><td>' + r[0] + '</td><td><strong>' + escapeHtml(r[1]) + '</strong></td></tr>';
+          }).join("") + '</table></div>' +
+          '<div class="sir-modal-actions"><button class="sir-btn sir-btn--accent" type="button" id="sirMProfile">View Student Profile</button><button class="sir-btn sir-btn--ghost" type="button" id="sirMPrint">Print Student Information</button></div>';
+        _sirMask.style.display = "";
+
+        safeOn(document.getElementById("sirMProfile"), "click", function () {
+          _sirMask.style.display = "none";
+          setRoute("all-students");
+          setTimeout(function () { sessionStorage.setItem("sagarsoft_prefill_student_search", s.name + " (" + (s.admissionNo || "-") + ")"); }, 300);
         });
-        openPrintReport({
-          title: isParents ? "Parents Info Report" : "Students Info Report",
-          subtitle: `Class: ${classSelect.value}`,
-          headers: headers,
-          rows: printRows
+        safeOn(document.getElementById("sirMPrint"), "click", function () {
+          openPrintReport({
+            title: "Student Information",
+            subtitle: s.name + " (" + (s.admissionNo || "-") + ")",
+            headers: ["Field", "Value"],
+            rows: rows.map(function (r) { return ['<strong>' + escapeHtml(r[0]) + '</strong>', escapeHtml(r[1])]; })
+          });
+        });
+      }
+
+      function _sirExportCSV(rows) {
+        if (!rows.length) return;
+        var headers = isParents ?
+          ["Student", "Roll No", "Class", "Father Name", "Father Phone", "Mother Name", "Mother Phone", "Address"] :
+          ["Student", "Roll No", "Father Name", "Class", "Gender", "Phone", "Status"];
+        var csvRows = [headers.join(",")];
+        rows.forEach(function (s) {
+          var cls = String(s.className || "").split("|");
+          var row = isParents ?
+            [s.name, s.admissionNo, cls[0], s.fatherName, s.fatherPhone, s.motherName, s.motherPhone, s.address] :
+            [s.name, s.admissionNo, s.fatherName, cls[0], s.gender, s.phone || s.studentPhone, s.status];
+          csvRows.push(row.map(function (c) { return '"' + String(c || "").replace(/"/g, '""') + '"'; }).join(","));
+        });
+        var blob = new Blob(["\uFEFF" + csvRows.join("\n")], { type: "text/csv;charset=utf-8;" });
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = (isParents ? "parents-info-report" : "students-info-report") + ".csv";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+
+      safeOn(document.getElementById("sirRefresh"), "click", function () { _sirRender(); });
+      safeOn(document.getElementById("sirExport"), "click", function () { _sirExportCSV(_sirFiltered); });
+      safeOn(document.getElementById("sirPrint"), "click", function () {
+        if (!_sirFiltered.length) return;
+        var hdrs = isParents ?
+          ["Student", "Roll No", "Class", "Father Name", "Father Phone", "Mother Name", "Mother Phone", "Address"] :
+          ["Student", "Roll No", "Father Name", "Class", "Gender", "Phone", "Status"];
+        var pr = _sirFiltered.map(function (s) {
+          var cls = String(s.className || "").split("|");
+          return isParents ?
+            [escapeHtml(s.name || "-"), escapeHtml(s.admissionNo || "-"), escapeHtml(cls[0] || "-"), escapeHtml(s.fatherName || "-"), escapeHtml(s.fatherPhone || "-"), escapeHtml(s.motherName || "-"), escapeHtml(s.motherPhone || "-"), escapeHtml(s.address || "-")] :
+            [escapeHtml(s.name || "-"), escapeHtml(s.admissionNo || "-"), escapeHtml(s.fatherName || "-"), escapeHtml(cls[0] || "-"), escapeHtml(s.gender || "-"), escapeHtml(s.phone || s.studentPhone || "-"), escapeHtml(s.status || "-")];
+        });
+        openPrintReport({ title: isParents ? "Parents Information Report" : "Students Information Report", subtitle: "Class: " + _sirC.value, headers: hdrs, rows: pr });
+      });
+      safeOn(document.getElementById("sirClear"), "click", function () {
+        _sirE.value = ""; _sirC.value = "all";
+        if (_sirG) _sirG.value = "all";
+        if (_sirS) _sirS.value = "all";
+        _sirPage = 1; _sirSortCol = ""; _sirSortDir = "asc";
+        _sirRender();
+      });
+      safeOn(_sirE, "input", function () { _sirPage = 1; _sirRender(); });
+      safeOn(_sirC, "change", function () { _sirPage = 1; _sirRender(); });
+      if (_sirG) safeOn(_sirG, "change", function () { _sirPage = 1; _sirRender(); });
+      if (_sirS) safeOn(_sirS, "change", function () { _sirPage = 1; _sirRender(); });
+
+      safeOn(_sirPageBtns, "click", function (e) {
+        var btn = e.target.closest("[data-sir-pg]");
+        if (!btn || btn.disabled) return;
+        var v = btn.getAttribute("data-sir-pg");
+        if (v === "prev") _sirPage--;
+        else if (v === "next") _sirPage++;
+        else _sirPage = parseInt(v) || 1;
+        _sirRenderTable(_sirFiltered);
+      });
+
+      document.querySelectorAll("[data-sir-sort]").forEach(function (th) {
+        safeOn(th, "click", function () {
+          var col = th.getAttribute("data-sir-sort");
+          if (_sirSortCol === col) { _sirSortDir = _sirSortDir === "asc" ? "desc" : "asc"; }
+          else { _sirSortCol = col; _sirSortDir = "asc"; }
+          document.querySelectorAll(".sir-sort-ico").forEach(function (el) { el.textContent = ""; });
+          var ico = th.querySelector(".sir-sort-ico");
+          if (ico) ico.textContent = _sirSortDir === "asc" ? " \u25B2" : " \u25BC";
+          _sirFiltered = _sirSortData(_sirFiltered);
+          _sirRenderTable(_sirFiltered);
         });
       });
 
-      [searchInput, classSelect].forEach(function (input) {
-        input.addEventListener("input", renderRows);
-        input.addEventListener("change", renderRows);
+      safeOn(_sirTB, "click", function (e) {
+        var v = e.target.closest("[data-sir-view]");
+        if (v) _sirOpenModal(v.getAttribute("data-sir-view"));
       });
-      renderRows();
+      safeOn(document.getElementById("sirMX"), "click", function () { _sirMask.style.display = "none"; });
+      safeOn(_sirMask, "click", function (e) { if (e.target === _sirMask) _sirMask.style.display = "none"; });
+
+      _sirRender();
       return;
     }
 
     if (route === "students-monthly-attendance-report" || route === "staff-monthly-attendance-report") {
-      const classOptionsMarkup = classOptions.map(function (name) {
-        return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
-      }).join("");
-      const isStaff = route === "staff-monthly-attendance-report";
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">${isStaff ? "Staff Monthly Attendance Report" : "Students Monthly Attendance Report"}</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Month</label><input id="attendanceReportMonthInput" type="month" value="${getCurrentMonthInputValue()}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            ${isStaff ? "" : `<div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="attendanceReportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>`}
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="attendanceReportSearchInput" type="search" placeholder="${isStaff ? "Search employee by name / phone" : "Search by roll no / name"}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="attendanceReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-          </div>
-          <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printAttendanceReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
-          <div class="report-cards" id="attendanceReportStats"></div>
-          <div class="split-grid report-grid">
-            <article class="panel-card"><strong>Attendance Ratio</strong><div id="attendanceReportChart" class="report-chart-box"></div></article>
-            <article class="panel-card"><strong>Attendance % (Bar)</strong><div id="attendanceReportBars" class="report-bar-list"></div></article>
-          </div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:500px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead>
-            ${isStaff ? "<tr><th style='white-space:nowrap;'>Employee</th><th style='white-space:nowrap;'>Role</th><th style='white-space:nowrap;'>P</th><th style='white-space:nowrap;'>A</th><th style='white-space:nowrap;'>L</th><th style='white-space:nowrap;'>Total</th><th style='white-space:nowrap;'>%</th><th style='white-space:nowrap;'>WhatsApp</th></tr>" : "<tr><th style='white-space:nowrap;'>Roll No</th><th style='white-space:nowrap;'>Student</th><th style='white-space:nowrap;'>Class</th><th style='white-space:nowrap;'>P</th><th style='white-space:nowrap;'>A</th><th style='white-space:nowrap;'>L</th><th style='white-space:nowrap;'>Total</th><th style='white-space:nowrap;'>%</th></tr>"}
-          </thead><tbody id="attendanceReportBody"></tbody></table></div>
-        </article>
-      `;
+      var _matIsStaff = route === "staff-monthly-attendance-report";
+      var _matCurMonth = getCurrentMonthInputValue();
+      var _matPage = 1;
+      var _matPerPage = 15;
+      var _matSortCol = "name";
+      var _matSortDir = "asc";
+      var _matClassOpts = classOptions.map(function(n){ return '<option value="'+escapeAttr(n)+'">'+escapeHtml(n)+'</option>'; }).join("");
+      moduleSummary.innerHTML = '<div class="mat-wrap">' +
+        '<div class="mat-hdr"><div class="mat-hdr__left"><div class="mat-hdr__eyebrow">SagarSoft Analytics</div><h2 class="mat-hdr__title">' + (_matIsStaff ? "Staff Monthly Attendance Report" : "Students Monthly Attendance Report") + '</h2><p class="mat-hdr__sub">Track attendance patterns, identify trends, and monitor performance across ' + (_matIsStaff ? "staff members" : "classes") + '.</p></div><div class="mat-hdr__btns"><button class="mat-btn mat-btn--ghost" type="button" id="matRefreshBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>Refresh</button><button class="mat-btn mat-btn--ghost" type="button" id="matExportBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export CSV</button><button class="mat-btn mat-btn--accent" type="button" id="matPrintBtn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Print Report</button></div></div>' +
+        '<div class="mat-bar"><div class="mat-bar__field"><label class="mat-bar__lbl">Month</label><input class="mat-bar__inp" type="month" id="matMonth" value="' + _matCurMonth + '"></div>' +
+        (_matIsStaff ? '' : '<div class="mat-bar__field"><label class="mat-bar__lbl">Class</label><select class="mat-bar__sel" id="matClass"><option value="all">All Classes</option>' + _matClassOpts + '</select></div>') +
+        '<div class="mat-bar__field mat-bar__field--wide"><label class="mat-bar__lbl">Search</label><div class="mat-search-wrap" id="matSearchContainer"><input class="mat-bar__inp" type="search" id="matSearch" placeholder="' + (_matIsStaff ? "Search by name / phone / department" : "Search by roll no / name") + '"><div id="matSearchDropdown" class="mat-search-dd" style="display:none;"></div></div></div>' +
+        '<div class="mat-bar__field mat-bar__field--clr"><label class="mat-bar__lbl">&nbsp;</label><button class="mat-btn mat-btn--clear" type="button" id="matClearBtn">Clear Filters</button></div></div>' +
+        '<div class="mat-stats" id="matStats"></div>' +
+        '<div class="mat-grid2">' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">Attendance Distribution</h3><span class="mat-panel__badge" id="matDonutBadge"></span></div><div class="mat-panel__bd"><div class="mat-donut-wrap" id="matDonut"></div></div></div>' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">' + (_matIsStaff ? "Department" : "Class") + ' Performance</h3><span class="mat-panel__badge" id="matClassBadge"></span></div><div class="mat-panel__bd"><div class="mat-class-bars" id="matClassBars"></div></div></div></div>' +
+        '<div class="mat-grid3">' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">Performance Categories</h3></div><div class="mat-panel__bd"><div class="mat-cat-list" id="matCategories"></div></div></div>' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">Attendance Trend</h3></div><div class="mat-panel__bd"><div class="mat-trend" id="matTrend"></div></div></div>' +
+        '<div class="mat-panel"><div class="mat-panel__hd"><h3 class="mat-panel__tt">Alerts & Insights</h3></div><div class="mat-panel__bd"><div class="mat-alerts" id="matAlerts"></div></div></div></div>' +
+        '<div class="mat-panel" style="margin-top:14px;"><div class="mat-panel__hd"><h3 class="mat-panel__tt">' + (_matIsStaff ? "Staff" : "Student") + ' Performance Details</h3><span class="mat-panel__badge" id="matTableBadge"></span></div><div class="mat-panel__bd mat-panel__bd--tbl"><div class="mat-tblwrap"><table class="mat-tbl" id="matTable"><thead><tr>' +
+        (_matIsStaff ? '<th class="mat-th mat-sort" data-col="name">Employee <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="department">Department <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="designation">Designation <span class="mat-sort-ico">↕</span></th>' : '<th class="mat-th mat-sort" data-col="name">Student <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="className">Class <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="rollNo">Roll No <span class="mat-sort-ico">↕</span></th>') +
+        '<th class="mat-th mat-sort" data-col="present">Present <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="absent">Absent <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="leave">Leave <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="total">Total <span class="mat-sort-ico">↕</span></th><th class="mat-th mat-sort" data-col="percent">Attendance % <span class="mat-sort-ico">↕</span></th><th class="mat-th">Status</th><th class="mat-th">Actions</th></tr></thead><tbody id="matTbody"></tbody></table></div>' +
+        '<div class="mat-pagebar"><span class="mat-pagebar__info" id="matPageInfo"></span><div class="mat-pagebar__btns" id="matPageBtns"></div></div></div></div>' +
+        '</div>';
       moduleGuide.innerHTML = "";
-      const monthInput = document.getElementById("attendanceReportMonthInput");
-      const classSelect = document.getElementById("attendanceReportClassSelect");
-      const searchInput = document.getElementById("attendanceReportSearchInput");
-      const searchDropdown = document.getElementById("attendanceReportSearchDropdown");
-      const searchContainer = document.getElementById("attendanceReportSearchContainer");
-      const statsWrap = document.getElementById("attendanceReportStats");
-      const chartWrap = document.getElementById("attendanceReportChart");
-      const barsWrap = document.getElementById("attendanceReportBars");
-      const tableBody = document.getElementById("attendanceReportBody");
 
-      if (isStaff) {
-        initializeEmployeeProfessionalSearch(
-          "attendanceReportSearchInput",
-          "attendanceReportSearchDropdown",
-          "attendanceReportSearchContainer",
-          function(employee) {
-            searchInput.value = employee.name || "";
-            renderRows();
-          }
-        );
-      } else {
-        initializeStudentProfessionalSearch(
-          "attendanceReportSearchInput",
-          "attendanceReportSearchDropdown",
-          "attendanceReportSearchContainer",
-          function(student) {
-            searchInput.value = student.name || "";
-            renderRows();
-          }
-        );
-      }
+      var _matMonth = document.getElementById("matMonth");
+      var _matClass = document.getElementById("matClass");
+      var _matSearch = document.getElementById("matSearch");
+      var _matStats = document.getElementById("matStats");
+      var _matDonut = document.getElementById("matDonut");
+      var _matDonutBadge = document.getElementById("matDonutBadge");
+      var _matClassBars = document.getElementById("matClassBars");
+      var _matClassBadge = document.getElementById("matClassBadge");
+      var _matCategories = document.getElementById("matCategories");
+      var _matTrend = document.getElementById("matTrend");
+      var _matAlerts = document.getElementById("matAlerts");
+      var _matTbody = document.getElementById("matTbody");
+      var _matTableBadge = document.getElementById("matTableBadge");
+      var _matPageInfo = document.getElementById("matPageInfo");
+      var _matPageBtns = document.getElementById("matPageBtns");
 
-      function getRows() {
-        return isStaff
-          ? getEmployeeMonthlyAttendance(monthInput.value, searchInput.value)
-          : getStudentMonthlyAttendance(monthInput.value, classSelect ? classSelect.value : "all", searchInput.value);
-      }
-
-      function renderRows() {
-        const rows = getRows();
-        const totalPresent = rows.reduce(function (sum, row) { return sum + row.present; }, 0);
-        const totalAbsent = rows.reduce(function (sum, row) { return sum + row.absent; }, 0);
-        const totalLeave = rows.reduce(function (sum, row) { return sum + row.leave; }, 0);
-        const totalDays = totalPresent + totalAbsent + totalLeave;
-        const presentPercent = totalDays ? Math.round((totalPresent / totalDays) * 100) : 0;
-        statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>${isStaff ? "Employees" : "Students"}</strong><span>${rows.length}</span></article><article class="stat-card stat-card--emerald"><strong>Present</strong><span>${totalPresent}</span></article><article class="stat-card stat-card--rose"><strong>Absent</strong><span>${totalAbsent}</span></article><article class="stat-card stat-card--amber"><strong>Leave</strong><span>${totalLeave}</span></article>`;
-        chartWrap.innerHTML = totalDays ? buildCircleChart(presentPercent, `Present ${totalPresent} | Absent ${totalAbsent} | Leave ${totalLeave}`, "#10b981", "#e2e8f0") : `<p class="empty-state">No attendance data.</p>`;
-        const barsData = rows.slice().sort(function (a, b) { return b.percent - a.percent; }).slice(0, 10).map(function (row) {
-          return { label: isStaff ? row.employee.name : row.student.name, value: row.percent };
+      if (_matIsStaff) {
+        initializeEmployeeProfessionalSearch("matSearch", "matSearchDropdown", "matSearchContainer", function(emp) {
+          _matSearch.value = emp.name || "";
+          _matPage = 1;
+          _matRender();
         });
-        barsWrap.innerHTML = barsData.length ? buildBarChart(barsData, 100) : `<p class="empty-state">No bar data.</p>`;
-        tableBody.innerHTML = rows.map(function (row) {
-          return isStaff
-            ? `<tr><td>${escapeHtml(row.employee.name || "-")}</td><td>${escapeHtml(row.employee.role || "-")}</td><td>${row.present}</td><td>${row.absent}</td><td>${row.leave}</td><td>${row.total}</td><td>${row.percent}%</td><td><button class="table-action-btn" type="button" data-employee-report-wa="${escapeAttr(row.employee.id || "")}">WhatsApp</button></td></tr>`
-            : `<tr><td>${escapeHtml(row.student.admissionNo || "-")}</td><td>${escapeHtml(row.student.name || "-")}</td><td>${escapeHtml(row.student.className || "-")}</td><td>${row.present}</td><td>${row.absent}</td><td>${row.leave}</td><td>${row.total}</td><td>${row.percent}%</td></tr>`;
-        }).join("");
+      } else {
+        initializeStudentProfessionalSearch("matSearch", "matSearchDropdown", "matSearchContainer", function(stu) {
+          _matSearch.value = stu.name || "";
+          _matPage = 1;
+          _matRender();
+        });
       }
 
-      safeOn(document.getElementById("printAttendanceReportBtn"), "click", function () {
-        const rows = getRows();
-        if (!rows.length) {
-          return;
+      function _matGetRows() {
+        return _matIsStaff
+          ? getEmployeeMonthlyAttendance(_matMonth.value, _matSearch.value)
+          : getStudentMonthlyAttendance(_matMonth.value, _matClass ? _matClass.value : "all", _matSearch.value);
+      }
+
+      function _matClassify(pct) {
+        if (pct >= 90) return { label: "Excellent", color: "#16a34a", bg: "#dcfce7" };
+        if (pct >= 75) return { label: "Good", color: "#2563eb", bg: "#dbeafe" };
+        if (pct >= 60) return { label: "Average", color: "#d97706", bg: "#fef3c7" };
+        return { label: "Poor", color: "#dc2626", bg: "#fee2e2" };
+      }
+
+      function _matStatusBadge(pct) {
+        var c = _matClassify(pct);
+        return '<span class="mat-badge" style="background:' + c.bg + ';color:' + c.color + ';">' + c.label + '</span>';
+      }
+
+      function _matRender() {
+        var rows = _matGetRows();
+        var totalPresent = rows.reduce(function(s, r) { return s + r.present; }, 0);
+        var totalAbsent = rows.reduce(function(s, r) { return s + r.absent; }, 0);
+        var totalLeave = rows.reduce(function(s, r) { return s + r.leave; }, 0);
+        var totalDays = totalPresent + totalAbsent + totalLeave;
+        var presentPct = totalDays ? Math.round((totalPresent / totalDays) * 100) : 0;
+        var absentPct = totalDays ? Math.round((totalAbsent / totalDays) * 100) : 0;
+        var leavePct = totalDays ? Math.round((totalLeave / totalDays) * 100) : 0;
+        var workingDays = totalDays > 0 ? Math.max.apply(null, rows.map(function(r) { return r.total; })) : 0;
+        var highPerf = rows.filter(function(r) { return r.percent >= 90; }).length;
+        var lowPerf = rows.filter(function(r) { return r.percent < 60; }).length;
+        var monthLabel = normalizeFeeMonthLabel(_matMonth.value);
+
+        _matStats.innerHTML =
+          '<div class="mat-st mat-st--indigo"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">' + (_matIsStaff ? "Employees" : "Students") + '</div><div class="mat-st__val">' + rows.length + '</div><div class="mat-st__note">Total enrolled</div></div></div>' +
+          '<div class="mat-st mat-st--green"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Present</div><div class="mat-st__val">' + totalPresent + '</div><div class="mat-st__note">' + presentPct + '% of total</div></div></div>' +
+          '<div class="mat-st mat-st--rose"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Absent</div><div class="mat-st__val">' + totalAbsent + '</div><div class="mat-st__note">' + absentPct + '% of total</div></div></div>' +
+          '<div class="mat-st mat-st--amber"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><rect x="9" y="7" width="6" height="6"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Leave</div><div class="mat-st__val">' + totalLeave + '</div><div class="mat-st__note">' + leavePct + '% of total</div></div></div>' +
+          '<div class="mat-st mat-st--teal"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Attendance Rate</div><div class="mat-st__val">' + presentPct + '%</div><div class="mat-st__note">Overall</div></div></div>' +
+          '<div class="mat-st mat-st--blue"><div class="mat-st__ico"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="mat-st__body"><div class="mat-st__lbl">Working Days</div><div class="mat-st__val">' + workingDays + '</div><div class="mat-st__note">Days tracked</div></div></div>';
+
+        _matDonutBadge.textContent = presentPct + '% Present';
+        if (totalDays) {
+          var donutSegments = [
+            { pct: presentPct, color: "#16a34a", label: "Present (" + totalPresent + ")" },
+            { pct: absentPct, color: "#dc2626", label: "Absent (" + totalAbsent + ")" },
+            { pct: leavePct, color: "#d97706", label: "Leave (" + totalLeave + ")" }
+          ].filter(function(seg) { return seg.pct > 0; });
+          var gradientParts = [];
+          var accumulated = 0;
+          donutSegments.forEach(function(seg) {
+            gradientParts.push(seg.color + " " + accumulated + "% " + (accumulated + seg.pct) + "%");
+            accumulated += seg.pct;
+          });
+          _matDonut.innerHTML = '<div class="mat-donut" style="background:conic-gradient(' + gradientParts.join(", ") + ');"><div class="mat-donut__hole"><div class="mat-donut__pct">' + presentPct + '%</div><div class="mat-donut__lbl">Present</div></div></div>' +
+            '<div class="mat-donut-legend">' + donutSegments.map(function(seg) {
+              return '<div class="mat-donut-legend__item"><div class="mat-donut-legend__dot" style="background:' + seg.color + ';"></div><span class="mat-donut-legend__lbl">' + seg.label + '</span><span class="mat-donut-legend__val">' + seg.pct + '%</span></div>';
+            }).join("") + '</div>';
+        } else {
+          _matDonut.innerHTML = '<div class="mat-nodata"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M16 16s-1.5-2-4-2-4 2-4 2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg><div>No attendance data for this month.</div></div>';
         }
-        const headers = isStaff ? ["Employee", "Role", "P", "A", "L", "Total", "%"] : ["Roll No", "Student", "Class", "P", "A", "L", "Total", "%"];
-        const printRows = rows.map(function (row) {
-          return isStaff
-            ? [escapeHtml(row.employee.name || "-"), escapeHtml(row.employee.role || "-"), row.present, row.absent, row.leave, row.total, `${row.percent}%`]
-            : [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), row.present, row.absent, row.leave, row.total, `${row.percent}%`];
+
+        var groupMap = {};
+        rows.forEach(function(r) {
+          var key = _matIsStaff ? (r.employee.department || "Unknown") : (r.student.className || "Unknown");
+          if (!groupMap[key]) groupMap[key] = { name: key, present: 0, absent: 0, leave: 0, total: 0, count: 0 };
+          groupMap[key].present += r.present;
+          groupMap[key].absent += r.absent;
+          groupMap[key].leave += r.leave;
+          groupMap[key].total += r.total;
+          groupMap[key].count++;
+        });
+        var groups = Object.keys(groupMap).map(function(k) {
+          var g = groupMap[k];
+          g.percent = g.total ? Math.round((g.present / g.total) * 100) : 0;
+          return g;
+        }).sort(function(a, b) { return b.percent - a.percent; });
+        _matClassBadge.textContent = groups.length + " " + (_matIsStaff ? "departments" : "classes");
+        if (groups.length) {
+          _matClassBars.innerHTML = groups.map(function(g) {
+            var clr = g.percent >= 90 ? "#16a34a" : g.percent >= 75 ? "#2563eb" : g.percent >= 60 ? "#d97706" : "#dc2626";
+            return '<div class="mat-cbar"><div class="mat-cbar__nm">' + escapeHtml(g.name) + '</div><div class="mat-cbar__trk"><div class="mat-cbar__fill" style="width:' + g.percent + '%;background:' + clr + ';"></div></div><div class="mat-cbar__info"><span class="mat-cbar__pct" style="color:' + clr + ';">' + g.percent + '%</span><span class="mat-cbar__cnt">' + g.count + ' ' + (_matIsStaff ? "staff" : "students") + '</span></div></div>';
+          }).join("");
+        } else {
+          _matClassBars.innerHTML = '<div class="mat-nodata"><div>No group data available.</div></div>';
+        }
+
+        var cats = { excellent: 0, good: 0, average: 0, poor: 0 };
+        rows.forEach(function(r) {
+          if (r.percent >= 90) cats.excellent++;
+          else if (r.percent >= 75) cats.good++;
+          else if (r.percent >= 60) cats.average++;
+          else cats.poor++;
+        });
+        var catData = [
+          { label: "Excellent (≥90%)", count: cats.excellent, color: "#16a34a", bg: "#dcfce7" },
+          { label: "Good (75-89%)", count: cats.good, color: "#2563eb", bg: "#dbeafe" },
+          { label: "Average (60-74%)", count: cats.average, color: "#d97706", bg: "#fef3c7" },
+          { label: "Poor (<60%)", count: cats.poor, color: "#dc2626", bg: "#fee2e2" }
+        ];
+        _matCategories.innerHTML = catData.map(function(c) {
+          var pctVal = rows.length ? Math.round((c.count / rows.length) * 100) : 0;
+          return '<div class="mat-cat"><div class="mat-cat__hd"><div class="mat-cat__dot" style="background:' + c.color + ';"></div><span class="mat-cat__lbl">' + c.label + '</span><span class="mat-cat__val">' + c.count + ' (' + pctVal + '%)</span></div><div class="mat-cat__bar"><div class="mat-cat__fill" style="width:' + pctVal + '%;background:' + c.color + ';"></div></div></div>';
+        }).join("");
+
+        var trendMonths = [];
+        var now = new Date();
+        for (var ti = 5; ti >= 0; ti--) {
+          var td = new Date(now.getFullYear(), now.getMonth() - ti, 1);
+          var tmVal = td.getFullYear() + "-" + String(td.getMonth() + 1).padStart(2, "0");
+          var tmLabel = td.toLocaleString("default", { month: "short" }) + " " + td.getFullYear();
+          var tmRows = _matIsStaff
+            ? getEmployeeMonthlyAttendance(tmVal, "")
+            : getStudentMonthlyAttendance(tmVal, "all", "");
+          var tp = tmRows.reduce(function(s, r) { return s + r.present; }, 0);
+          var tt = tmRows.reduce(function(s, r) { return s + r.total; }, 0);
+          var tpct = tt ? Math.round((tp / tt) * 100) : 0;
+          var isCur = tmVal === _matMonth.value;
+          trendMonths.push({ label: tmLabel, pct: tpct, current: isCur });
+        }
+        var maxPct = Math.max.apply(null, trendMonths.map(function(t) { return t.pct; }).concat([1]));
+        _matTrend.innerHTML = '<div class="mat-trend-bars">' + trendMonths.map(function(t) {
+          var h = Math.max(4, Math.round((t.pct / maxPct) * 100));
+          var clr = t.current ? "#6366f1" : t.pct >= 90 ? "#16a34a" : t.pct >= 75 ? "#2563eb" : t.pct >= 60 ? "#d97706" : "#dc2626";
+          return '<div class="mat-trend-col' + (t.current ? ' mat-trend-col--cur' : '') + '"><div class="mat-trend-val">' + t.pct + '%</div><div class="mat-trend-bar" style="height:' + h + '%;background:' + clr + ';"></div><div class="mat-trend-lbl">' + t.label + '</div></div>';
+        }).join("") + '</div>';
+
+        var alertsHtml = "";
+        var lowRows = rows.filter(function(r) { return r.percent < 60; }).sort(function(a, b) { return a.percent - b.percent; });
+        if (lowRows.length > 0) {
+          alertsHtml += '<div class="mat-alert mat-alert--danger"><div class="mat-alert__ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="mat-alert__body"><div class="mat-alert__tt">' + lowRows.length + ' ' + (_matIsStaff ? "staff" : "student") + (lowRows.length > 1 ? "s" : "") + ' with critical attendance</div><div class="mat-alert__sub">Below 60% attendance: ' + lowRows.slice(0, 5).map(function(r) { return escapeHtml(_matIsStaff ? r.employee.name : r.student.name) + " (" + r.percent + "%)"; }).join(", ") + (lowRows.length > 5 ? " and " + (lowRows.length - 5) + " more" : "") + '</div></div></div>';
+        }
+        var highRows = rows.filter(function(r) { return r.percent >= 90; });
+        if (highRows.length > 0) {
+          alertsHtml += '<div class="mat-alert mat-alert--success"><div class="mat-alert__ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="mat-alert__body"><div class="mat-alert__tt">' + highRows.length + ' ' + (_matIsStaff ? "staff" : "student") + (highRows.length > 1 ? "s" : "") + ' with excellent attendance</div><div class="mat-alert__sub">90% or above attendance rate</div></div></div>';
+        }
+        var leaveRows = rows.filter(function(r) { return r.leave > 0; }).sort(function(a, b) { return b.leave - a.leave; });
+        if (leaveRows.length > 0) {
+          alertsHtml += '<div class="mat-alert mat-alert--warning"><div class="mat-alert__ico"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="mat-alert__body"><div class="mat-alert__tt">' + leaveRows.length + ' ' + (_matIsStaff ? "staff" : "student") + (leaveRows.length > 1 ? "s" : "") + ' with multiple leaves</div><div class="mat-alert__sub">' + leaveRows.slice(0, 5).map(function(r) { return escapeHtml(_matIsStaff ? r.employee.name : r.student.name) + " (" + r.leave + " days)"; }).join(", ") + (leaveRows.length > 5 ? " and " + (leaveRows.length - 5) + " more" : "") + '</div></div></div>';
+        }
+        if (!alertsHtml) {
+          alertsHtml = '<div class="mat-nodata"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><div>No alerts. All attendance is within normal range.</div></div>';
+        }
+        _matAlerts.innerHTML = alertsHtml;
+
+        var sorted = rows.slice();
+        sorted.sort(function(a, b) {
+          var av = _matSortCol === "name" ? (_matIsStaff ? a.employee.name : a.student.name)
+            : _matSortCol === "className" ? (a.student.className || "")
+            : _matSortCol === "rollNo" ? (a.student.admissionNo || "")
+            : _matSortCol === "department" ? (a.employee.department || "")
+            : _matSortCol === "designation" ? (a.employee.designation || "")
+            : a[_matSortCol];
+          var bv = _matSortCol === "name" ? (_matIsStaff ? b.employee.name : b.student.name)
+            : _matSortCol === "className" ? (b.student.className || "")
+            : _matSortCol === "rollNo" ? (b.student.admissionNo || "")
+            : _matSortCol === "department" ? (b.employee.department || "")
+            : _matSortCol === "designation" ? (b.employee.designation || "")
+            : b[_matSortCol];
+          if (typeof av === "string") { av = av.toLowerCase(); bv = (bv || "").toLowerCase(); }
+          if (av < bv) return _matSortDir === "asc" ? -1 : 1;
+          if (av > bv) return _matSortDir === "asc" ? 1 : -1;
+          return 0;
+        });
+
+        var totalItems = sorted.length;
+        var totalPages = Math.max(1, Math.ceil(totalItems / _matPerPage));
+        if (_matPage > totalPages) _matPage = totalPages;
+        var startIdx = (_matPage - 1) * _matPerPage;
+        var pageRows = sorted.slice(startIdx, startIdx + _matPerPage);
+
+        _matTableBadge.textContent = totalItems + " " + (_matIsStaff ? "staff" : "students");
+        _matTbody.innerHTML = pageRows.map(function(r, idx) {
+          var name, details;
+          if (_matIsStaff) {
+            name = escapeHtml(r.employee.name || "-");
+            details = '<div class="mat-tname__sub">' + escapeHtml(r.employee.department || "-") + '</div>';
+          } else {
+            var initials = (r.student.name || "?").split(" ").map(function(w) { return w.charAt(0); }).join("").substring(0, 2).toUpperCase();
+            name = '<div class="mat-tname"><div class="mat-tname__av">' + escapeHtml(initials) + '</div><div><div class="mat-tname__n">' + escapeHtml(r.student.name || "-") + '</div><div class="mat-tname__f">' + escapeHtml(r.student.admissionNo || "") + '</div></div></div>';
+            details = escapeHtml(r.student.className || "-");
+          }
+          return '<tr>' +
+            '<td>' + (_matIsStaff ? escapeHtml(r.employee.name || "-") : name) + '</td>' +
+            '<td>' + (_matIsStaff ? escapeHtml(r.employee.department || "-") : details) + '</td>' +
+            (_matIsStaff ? '<td>' + escapeHtml(r.employee.designation || "-") + '</td>' : '<td>' + escapeHtml(r.student.admissionNo || "-") + '</td>') +
+            '<td class="mat-mono">' + r.present + '</td><td class="mat-mono">' + r.absent + '</td><td class="mat-mono">' + r.leave + '</td><td class="mat-mono">' + r.total + '</td><td class="mat-mono" style="font-weight:700;color:' + (r.percent >= 90 ? "#16a34a" : r.percent >= 75 ? "#2563eb" : r.percent >= 60 ? "#d97706" : "#dc2626") + ';">' + r.percent + '%</td>' +
+            '<td>' + _matStatusBadge(r.percent) + '</td>' +
+            '<td><button class="mat-viewbtn" type="button" data-mat-detail="' + escapeAttr(_matIsStaff ? r.employee.id : r.student.id) + '">View</button>' +
+            (_matIsStaff ? '<button class="mat-wabtn" type="button" data-mat-wa="' + escapeAttr(r.employee.id) + '" title="Send via WhatsApp"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg></button>' : '') +
+            '</td></tr>';
+        }).join("");
+
+        _matPageInfo.textContent = "Showing " + (totalItems ? startIdx + 1 : 0) + "–" + Math.min(startIdx + _matPerPage, totalItems) + " of " + totalItems;
+        var pgBtnsHtml = '<button class="mat-pg-btn" data-mat-page="prev" ' + (_matPage <= 1 ? 'disabled' : '') + '>‹</button>';
+        for (var pi = 1; pi <= totalPages; pi++) {
+          if (totalPages > 7 && pi > 3 && pi < totalPages - 1 && Math.abs(pi - _matPage) > 1) {
+            if (pgBtnsHtml.indexOf("mat-pg-dots") === -1) pgBtnsHtml += '<span class="mat-pg-dots">…</span>';
+            continue;
+          }
+          pgBtnsHtml += '<button class="mat-pg-btn' + (pi === _matPage ? ' mat-pg-btn--active' : '') + '" data-mat-page="' + pi + '">' + pi + '</button>';
+        }
+        pgBtnsHtml += '<button class="mat-pg-btn" data-mat-page="next" ' + (_matPage >= totalPages ? 'disabled' : '') + '>›</button>';
+        _matPageBtns.innerHTML = pgBtnsHtml;
+      }
+
+      _matMonth.addEventListener("change", function() { _matPage = 1; _matRender(); });
+      _matMonth.addEventListener("input", function() { _matPage = 1; _matRender(); });
+      _matSearch.addEventListener("input", function() { _matPage = 1; _matRender(); });
+      if (_matClass) _matClass.addEventListener("change", function() { _matPage = 1; _matRender(); });
+
+      safeOn(document.getElementById("matClearBtn"), "click", function() {
+        _matMonth.value = _matCurMonth;
+        if (_matClass) _matClass.value = "all";
+        _matSearch.value = "";
+        _matPage = 1;
+        _matRender();
+      });
+
+      safeOn(document.getElementById("matRefreshBtn"), "click", function() { _matRender(); });
+
+      safeOn(document.getElementById("matExportBtn"), "click", function() {
+        var rows = _matGetRows();
+        if (!rows.length) return;
+        var csv = (_matIsStaff ? "Employee,Department,Designation,Present,Absent,Leave,Total,Percentage,Status" : "Roll No,Student,Class,Present,Absent,Leave,Total,Percentage,Status") + "\n";
+        rows.forEach(function(r) {
+          if (_matIsStaff) {
+            csv += '"' + (r.employee.name||"").replace(/"/g,'""') + '","' + (r.employee.department||"").replace(/"/g,'""') + '","' + (r.employee.designation||"").replace(/"/g,'""') + '",' + r.present + ',' + r.absent + ',' + r.leave + ',' + r.total + ',' + r.percent + '%,' + _matClassify(r.percent).label + '\n';
+          } else {
+            csv += '"' + (r.student.admissionNo||"").replace(/"/g,'""') + '","' + (r.student.name||"").replace(/"/g,'""') + '","' + (r.student.className||"").replace(/"/g,'""') + '",' + r.present + ',' + r.absent + ',' + r.leave + ',' + r.total + ',' + r.percent + '%,' + _matClassify(r.percent).label + '\n';
+          }
+        });
+        var blob = new Blob([csv], { type: "text/csv" });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = (_matIsStaff ? "staff-monthly-attendance" : "students-monthly-attendance") + "-" + _matMonth.value + ".csv";
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+
+      safeOn(document.getElementById("matPrintBtn"), "click", function() {
+        var rows = _matGetRows();
+        if (!rows.length) return;
+        var headers = _matIsStaff ? ["Employee", "Department", "Designation", "Present", "Absent", "Leave", "Total", "%", "Status"] : ["Roll No", "Student", "Class", "Present", "Absent", "Leave", "Total", "%", "Status"];
+        var printRows = rows.map(function(r) {
+          if (_matIsStaff) {
+            return [escapeHtml(r.employee.name||"-"), escapeHtml(r.employee.department||"-"), escapeHtml(r.employee.designation||"-"), r.present, r.absent, r.leave, r.total, r.percent+"%", _matClassify(r.percent).label];
+          }
+          return [escapeHtml(r.student.admissionNo||"-"), escapeHtml(r.student.name||"-"), escapeHtml(r.student.className||"-"), r.present, r.absent, r.leave, r.total, r.percent+"%", _matClassify(r.percent).label];
         });
         openPrintReport({
-          title: isStaff ? "Staff Monthly Attendance Report" : "Students Monthly Attendance Report",
-          subtitle: `Month: ${normalizeFeeMonthLabel(monthInput.value)}${isStaff ? "" : ` | Class: ${classSelect.value}`}`,
+          title: _matIsStaff ? "Staff Monthly Attendance Report" : "Students Monthly Attendance Report",
+          subtitle: "Month: " + normalizeFeeMonthLabel(_matMonth.value),
           headers: headers,
           rows: printRows
         });
       });
 
-      [monthInput, searchInput].forEach(function (input) {
-        input.addEventListener("change", renderRows);
-        input.addEventListener("input", renderRows);
-      });
-      if (classSelect) {
-        classSelect.addEventListener("change", renderRows);
-      }
-      tableBody.addEventListener("click", function (event) {
-        const waBtn = event.target.closest("[data-employee-report-wa]");
-        if (!waBtn || !isStaff) {
-          return;
-        }
-        const employeeId = waBtn.getAttribute("data-employee-report-wa");
-        const employee = database.teachers.find(function (item) { return String(item.id) === String(employeeId); }) || null;
-        if (!employee) {
-          return;
-        }
-        if (!isEmployeeWhatsappActive(employee)) {
-          openAppMessageBox("Error", "The employee is not active account on whatsapp with this number.", "error");
-          return;
-        }
-        const rows = getRows();
-        const match = rows.find(function (row) { return String(row.employee && row.employee.id) === String(employeeId); }) || null;
-        if (!match) {
-          return;
-        }
-        const template = getSavedMessageTemplate("employeeReportWhatsapp", "Dear {prefix} {name},\nAttendance report for {month}: Present {present}, Absent {absent}, Leave {leave}, Attendance {percent}%.\nBest regards,\n{school}.");
-        const messageText = interpolateTemplate(template, {
-          prefix: getGenderPrefix(employee.gender),
-          name: employee.name || "-",
-          month: normalizeFeeMonthLabel(monthInput.value),
-          present: match.present,
-          absent: match.absent,
-          leave: match.leave,
-          percent: match.percent,
-          school: database.school.name || "School"
-        });
-        sendDirectWhatsappToEmployee(employee, employee.name || "employee", messageText);
+      _matPageBtns.addEventListener("click", function(e) {
+        var btn = e.target.closest("[data-mat-page]");
+        if (!btn) return;
+        var val = btn.getAttribute("data-mat-page");
+        if (val === "prev") _matPage = Math.max(1, _matPage - 1);
+        else if (val === "next") _matPage++;
+        else _matPage = parseInt(val) || 1;
+        _matRender();
       });
 
-      renderRows();
+      document.querySelectorAll(".mat-sort").forEach(function(th) {
+        th.addEventListener("click", function() {
+          var col = th.getAttribute("data-col");
+          if (_matSortCol === col) _matSortDir = _matSortDir === "asc" ? "desc" : "asc";
+          else { _matSortCol = col; _matSortDir = "asc"; }
+          _matRender();
+        });
+      });
+
+      _matTbody.addEventListener("click", function(e) {
+        var detailBtn = e.target.closest("[data-mat-detail]");
+        var waBtn = e.target.closest("[data-mat-wa]");
+        if (detailBtn) {
+          var id = detailBtn.getAttribute("data-mat-detail");
+          var rows = _matGetRows();
+          var match = rows.find(function(r) { return String(_matIsStaff ? r.employee.id : r.student.id) === String(id); });
+          if (!match) return;
+          _matShowDetail(match);
+          return;
+        }
+        if (waBtn && _matIsStaff) {
+          var empId = waBtn.getAttribute("data-mat-wa");
+          var emp = database.teachers.find(function(t) { return String(t.id) === String(empId); });
+          if (!emp) return;
+          if (!isEmployeeWhatsappActive(emp)) {
+            openAppMessageBox("Error", "The employee is not active on WhatsApp.", "error");
+            return;
+          }
+          var rows2 = _matGetRows();
+          var m = rows2.find(function(r) { return String(r.employee.id) === String(empId); });
+          if (!m) return;
+          var tpl = getSavedMessageTemplate("employeeReportWhatsapp", "Dear {prefix} {name},\nAttendance report for {month}: Present {present}, Absent {absent}, Leave {leave}, Attendance {percent}%.\nBest regards,\n{school}.");
+          var msg = interpolateTemplate(tpl, { prefix: getGenderPrefix(emp.gender), name: emp.name||"-", month: normalizeFeeMonthLabel(_matMonth.value), present: m.present, absent: m.absent, leave: m.leave, percent: m.percent, school: database.school.name||"School" });
+          sendDirectWhatsappToEmployee(emp, emp.name||"employee", msg);
+        }
+      });
+
+      function _matShowDetail(row) {
+        var entity = _matIsStaff ? row.employee : row.student;
+        var cat = _matClassify(row.percent);
+        var mask = document.createElement("div");
+        mask.className = "mat-modal-mask";
+        mask.innerHTML = '<div class="mat-modal"><div class="mat-modal__hd"><h3 class="mat-modal__tt">' + escapeHtml(entity.name || "-") + ' — Attendance Detail</h3><button class="mat-modal__x" type="button">×</button></div><div class="mat-modal__bd">' +
+          '<div class="mat-detail"><div class="mat-detail__avatar">' + ((_matIsStaff ? "" : ((entity.name||"?").split(" ").map(function(w){return w.charAt(0);}).join("").substring(0,2).toUpperCase())) || (entity.name||"?").charAt(0).toUpperCase()) + '</div>' +
+          '<table class="mat-detail__tbl"><tbody>' +
+          '<tr><td>' + (_matIsStaff ? "Department" : "Class") + '</td><td>' + escapeHtml(_matIsStaff ? (entity.department||"-") : (entity.className||"-")) + '</td></tr>' +
+          (_matIsStaff ? '<tr><td>Designation</td><td>' + escapeHtml(entity.designation||"-") + '</td></tr>' : '<tr><td>Roll No</td><td>' + escapeHtml(entity.admissionNo||"-") + '</td></tr>') +
+          '<tr><td>Present</td><td><strong style="color:#16a34a;">' + row.present + ' days</strong></td></tr>' +
+          '<tr><td>Absent</td><td><strong style="color:#dc2626;">' + row.absent + ' days</strong></td></tr>' +
+          '<tr><td>Leave</td><td><strong style="color:#d97706;">' + row.leave + ' days</strong></td></tr>' +
+          '<tr><td>Total Working Days</td><td><strong>' + row.total + '</strong></td></tr>' +
+          '<tr><td>Attendance Rate</td><td><strong style="color:' + cat.color + ';">' + row.percent + '%</strong></td></tr>' +
+          '<tr><td>Status</td><td>' + _matStatusBadge(row.percent) + '</td></tr>' +
+          '</tbody></table></div></div></div>';
+        document.body.appendChild(mask);
+        mask.querySelector(".mat-modal__x").addEventListener("click", function() { mask.remove(); });
+        mask.addEventListener("click", function(e) { if (e.target === mask) mask.remove(); });
+      }
+
+      _matRender();
       return;
     }
 
     if (route === "fee-collection-report" || route === "accounts-report") {
       if (route === "fee-collection-report") {
-        const classOptionsMarkup = classOptions.map(function (name) {
-          return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
-        }).join("");
-        moduleSummary.innerHTML = `
-          <article style="max-width:100%;overflow-x:hidden;">
-            <strong class="module-center-title">Fee Collection Report</strong>
-            <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Month</label><input id="feeReportMonthInput" type="month" value="${getCurrentMonthInputValue()}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-              <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="feeReportClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-              <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Status</label><select id="feeReportStatusSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Status</option><option value="paid">Paid</option><option value="due">Due</option></select></div>
-              <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><input id="feeReportSearchInput" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="feeReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            </div>
-            <div style="text-align:center;margin:6px 0 8px 0;"><button class="primary-button" id="printFeeReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print Report</button></div>
-            <div class="report-cards" id="feeReportStats"></div>
-            <div class="split-grid report-grid"><article class="panel-card"><strong>Paid vs Due</strong><div id="feeReportChart" class="report-chart-box"></div></article><article class="panel-card"><strong>Class Collection</strong><div id="feeReportBars" class="report-bar-list"></div></article></div>
-            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:550px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Roll No</th><th style="white-space:nowrap;">Student</th><th style="white-space:nowrap;">Class</th><th style="white-space:nowrap;">Month</th><th style="white-space:nowrap;">Total</th><th style="white-space:nowrap;">Deposit</th><th style="white-space:nowrap;">Remaining</th><th style="white-space:nowrap;">Status</th></tr></thead><tbody id="feeReportTableBody"></tbody></table></div>
-          </article>
-        `;
+        var _fcrE = function(id){ return document.getElementById(id); };
+        var _fcrEsc = function(v){ return escapeHtml(String(v == null ? "-" : v)); };
+        var _fcrFc = function(v){ return "PKR " + Number(v || 0).toLocaleString(); };
+        var _fcrToday = new Date();
+        var _fcrTodayStr = _fcrToday.getFullYear() + "-" + String(_fcrToday.getMonth()+1).padStart(2,"0") + "-" + String(_fcrToday.getDate()).padStart(2,"0");
+        var _fcrCurMonth = _fcrToday.getFullYear() + "-" + String(_fcrToday.getMonth()+1).padStart(2,"0");
+
+        var _fcrClassOpts = classOptions.map(function(n){ return '<option value="'+escapeAttr(n)+'">'+_fcrEsc(n)+'</option>'; }).join("");
+        var _fcrAllStudents = database.students || [];
+        var _fcrAllFees = database.fees || [];
+        var _fcrGS = database.generalSettings || {};
+        if (!Array.isArray(_fcrGS.feeCollections)) _fcrGS.feeCollections = [];
+        if (_fcrGS.feeCollections.length === 0 && _fcrAllFees.length > 0) {
+          _fcrGS.feeCollections = _fcrAllFees.map(function(f, i){
+            var _stu = _fcrAllStudents.find(function(s){ return s.id === f.studentId; }) || null;
+            return { id: f.id || ("COL-SYNC-" + (i+1)), feeId: f.id || "", studentId: f.studentId || "", studentName: f.studentName || (_stu ? _stu.name : "") || "-", studentRollNo: f.admissionNo || (_stu ? _stu.admissionNo : "") || "-", feeMonth: f.feeMonth || f.month || "-", totalAmount: Number(f.totalAmount || f.amount || 0), deposit: Number(f.deposit || 0), remaining: Number(f.remaining || 0), collectedAt: f.paymentDate || f.date || f.createdAt || "" };
+          });
+        }
+        var _fcrAllCollections = _fcrGS.feeCollections;
+        var _fcrAllClasses = database.classes || [];
+        var _fcrBanks = _fcrGS.bankAccounts || [];
+
+        var _fcrState = { preset:"all", dateFrom:"", dateTo:"", classVal:"all", section:"all", feeType:"all", payMethod:"all", status:"all", collectedBy:"all", search:"", sortCol:"date", sortDir:"desc", page:1, perPage:25 };
+
+        function _fcrBuildTransactions(){
+          var txns = [];
+          var seenFeeIds = {};
+          _fcrAllFees.forEach(function(fee){
+            var stu = _fcrAllStudents.find(function(s){ return s.id === fee.studentId; }) || {};
+            var cls = fee.className || stu.className || "-";
+            var pp = cls.split("|");
+            var baseClass = pp[0] ? pp[0].trim() : cls;
+            var section = pp[1] ? pp[1].trim() : "-";
+            var totalAmt = Number(fee.totalAmount || fee.amount || 0);
+            var deposit = Math.max(0, Number(fee.deposit || 0));
+            var remaining = Math.max(0, totalAmt - deposit);
+            var discount = Math.max(0, totalAmt - deposit - remaining);
+            var payDate = fee.paymentDate || fee.date || "";
+            var feeMonth = fee.feeMonth || fee.month || "-";
+            var feeType = "Tuition Fee";
+            if(fee.particulars && fee.particulars.length > 0){
+              var nonZero = fee.particulars.filter(function(p){ return Number(p.amount||0) !== 0; });
+              if(nonZero.length === 1) feeType = nonZero[0].label || "Tuition Fee";
+              else if(nonZero.length > 1) feeType = "Multiple";
+            }
+            var status = "unpaid";
+            if(deposit > 0 && remaining <= 0) status = "paid";
+            else if(deposit > 0 && remaining > 0) status = "partial";
+            if(deposit <= 0) return;
+            var col = _fcrAllCollections.find(function(c){ return c.feeId === fee.id; }) || null;
+            var collectedAt = col ? (col.collectedAt || "") : "";
+            var bankName = "Cash";
+            if(fee.bankId){
+              var bank = _fcrBanks.find(function(b){ return b.id === fee.bankId; });
+              if(bank) bankName = bank.name || "Bank";
+            }
+            txns.push({
+              id: fee.id, receiptNo: "RC-" + String(fee.id).slice(-6).toUpperCase(),
+              date: payDate, studentId: fee.studentId || "",
+              studentName: stu.name || col ? (col.studentName || "-") : "-",
+              rollNo: stu.admissionNo || (col ? col.studentRollNo : "-") || "-",
+              className: cls, baseClass: baseClass, section: section,
+              feeMonth: feeMonth, feeType: feeType,
+              invoiceNo: "INV-" + String(fee.id).slice(-6).toUpperCase(),
+              amount: totalAmt, discount: discount, netPaid: Math.max(0, deposit),
+              paymentMethod: bankName, collectedBy: "Admin",
+              status: status, remaining: remaining
+            });
+            seenFeeIds[fee.id] = true;
+          });
+          _fcrAllCollections.forEach(function(col){
+            if(seenFeeIds[col.feeId]) return;
+            var stu = _fcrAllStudents.find(function(s){ return s.id === col.studentId; }) || {};
+            var cls = stu.className || "-";
+            var pp = cls.split("|");
+            var totalAmt = Number(col.totalAmount || 0);
+            var deposit = Math.max(0, Number(col.deposit || 0));
+            if(deposit <= 0) return;
+            var remaining = Math.max(0, totalAmt - deposit);
+            var discount = Math.max(0, totalAmt - deposit - remaining);
+            var payDate = col.collectedAt ? col.collectedAt.slice(0,10) : "";
+            var status = "unpaid";
+            if(deposit > 0 && remaining <= 0) status = "paid";
+            else if(deposit > 0 && remaining > 0) status = "partial";
+            txns.push({
+              id: col.id, receiptNo: "RC-" + String(col.id).slice(-6).toUpperCase(),
+              date: payDate, studentId: col.studentId || "",
+              studentName: col.studentName || stu.name || "-",
+              rollNo: col.studentRollNo || stu.admissionNo || "-",
+              className: cls, baseClass: pp[0] ? pp[0].trim() : cls, section: pp[1] ? pp[1].trim() : "-",
+              feeMonth: col.feeMonth || "-", feeType: "Tuition Fee",
+              invoiceNo: "INV-" + String(col.feeId || "").slice(-6).toUpperCase(),
+              amount: totalAmt, discount: discount, netPaid: Math.max(0, deposit),
+              paymentMethod: "Cash", collectedBy: "Admin",
+              status: status, remaining: remaining
+            });
+          });
+          return txns;
+        }
+
+        function _fcrFilterDate(txn){
+          var d = txn.date || "";
+          if(!_fcrState.dateFrom && !_fcrState.dateTo) return true;
+          if(!d) return true;
+          if(_fcrState.dateFrom && d < _fcrState.dateFrom) return false;
+          if(_fcrState.dateTo && d > _fcrState.dateTo) return false;
+          return true;
+        }
+
+        function _fcrFilterAll(txns){
+          var q = _fcrState.search.toLowerCase();
+          return txns.filter(function(t){
+            if(!_fcrFilterDate(t)) return false;
+            if(_fcrState.classVal !== "all" && t.baseClass !== _fcrState.classVal) return false;
+            if(_fcrState.section !== "all" && t.section !== _fcrState.section) return false;
+            if(_fcrState.feeType !== "all" && t.feeType !== _fcrState.feeType) return false;
+            if(_fcrState.payMethod !== "all" && t.paymentMethod !== _fcrState.payMethod) return false;
+            if(_fcrState.status !== "all" && t.status !== _fcrState.status) return false;
+            if(q){
+              return String(t.studentName).toLowerCase().includes(q) ||
+                     String(t.rollNo).toLowerCase().includes(q) ||
+                     String(t.receiptNo).toLowerCase().includes(q) ||
+                     String(t.invoiceNo).toLowerCase().includes(q) ||
+                     String(t.id).toLowerCase().includes(q);
+            }
+            return true;
+          });
+        }
+
+        function _fcrSort(txns){
+          var col = _fcrState.sortCol, dir = _fcrState.sortDir === "asc" ? 1 : -1;
+          return txns.slice().sort(function(a,b){
+            var va = a[col] || "", vb = b[col] || "";
+            if(col === "amount" || col === "netPaid" || col === "discount" || col === "remaining"){
+              va = Number(va); vb = Number(vb);
+              return (va - vb) * dir;
+            }
+            return String(va).localeCompare(String(vb)) * dir;
+          });
+        }
+
+        function _fcrPresetDates(preset){
+          var now = new Date(), from = "", to = _fcrTodayStr;
+          var y = now.getFullYear(), m = now.getMonth(), d = now.getDate();
+          if(preset === "today"){ from = _fcrTodayStr; to = _fcrTodayStr; }
+          else if(preset === "week"){
+            var day = now.getDay() || 7;
+            var mon = new Date(y, m, d - day + 1);
+            from = mon.getFullYear()+"-"+String(mon.getMonth()+1).padStart(2,"0")+"-"+String(mon.getDate()).padStart(2,"0");
+          }
+          else if(preset === "month"){ from = _fcrCurMonth+"-01"; to = _fcrCurMonth+"-31"; }
+          else if(preset === "lastMonth"){
+            var lm = new Date(y, m-1, 1);
+            var lmEnd = new Date(y, m, 0);
+            from = lm.getFullYear()+"-"+String(lm.getMonth()+1).padStart(2,"0")+"-01";
+            to = lmEnd.getFullYear()+"-"+String(lmEnd.getMonth()+1).padStart(2,"0")+"-"+String(lmEnd.getDate()).padStart(2,"0");
+          }
+          else if(preset === "all"){ from = ""; to = ""; }
+          _fcrState.dateFrom = from; _fcrState.dateTo = to;
+        }
+
+        var _fcrSections = ["all"];
+        var _fcrFeeTypes = ["all"];
+        var _fcrPayMethods = ["all"];
+        var _fcrCollectedByList = ["all"];
+        var _fcrUniqFeeTypes = {};
+        var _fcrUniqMethods = {};
+
+        function _fcrBuildMeta(){
+          var secs = {}; var cls = {};
+          _fcrAllStudents.forEach(function(s){ if(s.className){ var pp = s.className.split("|"); if(pp[1]) secs[pp[1].trim()] = true; cls[pp[0].trim()] = true; }});
+          _fcrSections = ["all"].concat(Object.keys(secs).sort());
+          var allTxns = _fcrBuildTransactions();
+          _fcrUniqFeeTypes = {}; _fcrUniqMethods = {};
+          allTxns.forEach(function(t){ _fcrUniqFeeTypes[t.feeType] = true; _fcrUniqMethods[t.paymentMethod] = true; });
+          _fcrFeeTypes = ["all"].concat(Object.keys(_fcrUniqFeeTypes).sort());
+          _fcrPayMethods = ["all"].concat(Object.keys(_fcrUniqMethods).sort());
+        }
+        _fcrBuildMeta();
+
+        var _fcrClassSections = {};
+        _fcrAllStudents.forEach(function(s){
+          if(!s.className) return;
+          var pp = s.className.split("|");
+          var base = pp[0] ? pp[0].trim() : s.className;
+          if(!_fcrClassSections[base]) _fcrClassSections[base] = {};
+          if(pp[1]) _fcrClassSections[base][pp[1].trim()] = true;
+        });
+
+        moduleSummary.innerHTML = '<article class="fcr">' +
+          '<div class="fcr__topbar"><div class="fcr__topbar-left"><p class="fcr__eyebrow">REPORTS</p><h2 class="fcr__title">Fees Collection Report</h2><p class="fcr__subtitle">Detailed analysis of all fee payments and collections.</p></div>' +
+          '<div class="fcr__topbar-right"><button class="fcr__btn" id="fcrExportBtn" type="button"><i class="fas fa-download"></i> Export</button><button class="fcr__btn" id="fcrPrintBtn" type="button"><i class="fas fa-print"></i> Print</button><button class="fcr__btn fcr__btn--primary" id="fcrRefreshBtn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div></div>' +
+          '<div class="fcr__stats" id="fcrStats"></div>' +
+          '<div class="fcr__filters" id="fcrFilters"><div class="fcr__filters-row">' +
+            '<div class="fcr__filters-group"><button class="fcr__preset" data-fcr-preset="today" type="button">Today</button><button class="fcr__preset" data-fcr-preset="week" type="button">This Week</button><button class="fcr__preset" data-fcr-preset="month" type="button">This Month</button><button class="fcr__preset" data-fcr-preset="lastMonth" type="button">Last Month</button><button class="fcr__preset fcr__preset--active" data-fcr-preset="all" type="button">All Time</button><button class="fcr__preset" data-fcr-preset="custom" type="button">Custom</button></div>' +
+            '<div class="fcr__field" id="fcrCustomDates" style="display:none"><div style="display:flex;gap:4px;align-items:center"><input type="date" id="fcrDateFrom" class="fcr__field"><span style="color:#94a3b8;font-size:0.72rem;">to</span><input type="date" id="fcrDateTo" class="fcr__field"></div></div>' +
+            '<div class="fcr__field"><select id="fcrClass"><option value="all">All Classes</option>' + _fcrClassOpts + '</select></div>' +
+            '<div class="fcr__field"><select id="fcrSection"><option value="all">All Sections</option></select></div>' +
+            '<div class="fcr__field"><select id="fcrFeeType"><option value="all">All Fee Types</option></select></div>' +
+            '<div class="fcr__field"><select id="fcrPayMethod"><option value="all">All Methods</option></select></div>' +
+            '<div class="fcr__field"><select id="fcrStatus"><option value="all">All Status</option><option value="paid">Paid</option><option value="partial">Partial</option><option value="unpaid">Unpaid</option></select></div>' +
+            '<div class="fcr__search-wrap"><i class="fas fa-search"></i><input type="search" id="fcrSearch" class="fcr__search-input" placeholder="Search student, roll no, receipt..."></div>' +
+            '<div class="fcr__filter-actions"><button class="fcr__filter-btn fcr__filter-btn--apply" id="fcrApplyBtn" type="button">Apply</button><button class="fcr__filter-btn" id="fcrResetBtn" type="button">Reset</button></div>' +
+          '</div></div>' +
+          '<div class="fcr__charts"><div class="fcr__chart-card"><h4 class="fcr__chart-title"><i class="fas fa-chart-line" style="color:#6366f1;margin-right:6px;"></i>Payment Status Trend</h4><div id="fcrTrendChart"></div></div><div class="fcr__chart-card"><h4 class="fcr__chart-title"><i class="fas fa-chart-pie" style="color:#6366f1;margin-right:6px;"></i>Payment Status</h4><div id="fcrPayMethods"></div></div></div>' +
+          '<div class="fcr__chart-card" style="margin-bottom:1.1rem"><h4 class="fcr__chart-title"><i class="fas fa-tags" style="color:#6366f1;margin-right:6px;"></i>Collection by Fee Type</h4><div id="fcrFeeTypeBreakdown" class="fcr__fee-types"></div></div>' +
+          '<div class="fcr__table-wrap"><div class="fcr__table-head"><div><h4 class="fcr__table-title">Fee Collection Transactions</h4><span class="fcr__table-count" id="fcrTableCount"></span></div></div>' +
+          '<div class="fcr__table-scroll"><table class="fcr__tbl"><thead><tr>' +
+            '<td data-fcr-col="receiptNo" class="fcr__sort-active">Receipt # <span class="fcr__sort"><i class="fas fa-sort-down"></i></span></td>' +
+            '<td data-fcr-col="date">Date <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="studentName">Student <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="rollNo">Roll No <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="baseClass">Class <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="feeType">Fee Type <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="amount">Amount <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="discount">Discount <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="netPaid">Net Paid <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="paymentMethod">Method <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td data-fcr-col="status">Status <span class="fcr__sort"><i class="fas fa-sort"></i></span></td>' +
+            '<td>Action</td>' +
+          '</tr></thead><tbody id="fcrTableBody"></tbody></table></div>' +
+          '<div class="fcr__pagination" id="fcrPagination"></div></div>' +
+          '<div class="fcr__summary-section" id="fcrDailySection"><div class="fcr__summary-head"><h4 class="fcr__summary-title"><i class="fas fa-calendar-day" style="color:#6366f1;margin-right:6px;"></i>Daily Collection Summary</h4></div><div class="fcr__summary-scroll" id="fcrDailySummary"></div></div>' +
+          '<div class="fcr__summary-section" id="fcrMonthlySection"><div class="fcr__summary-head"><h4 class="fcr__summary-title"><i class="fas fa-calendar-alt" style="color:#6366f1;margin-right:6px;"></i>Monthly Collection Summary</h4></div><div class="fcr__summary-scroll" id="fcrMonthlySummary"></div></div>' +
+          '<div class="fcr__receipt-modal-overlay" id="fcrReceiptOverlay"><div class="fcr__receipt-modal"><div class="fcr__receipt-head"><h3><i class="fas fa-receipt" style="color:#6366f1;margin-right:6px;"></i>Payment Details</h3><button class="fcr__receipt-close" id="fcrReceiptClose" type="button"><i class="fas fa-times"></i></button></div><div class="fcr__receipt-body" id="fcrReceiptBody"></div><div class="fcr__receipt-actions"><button class="fcr__receipt-print" id="fcrReceiptPrint" type="button"><i class="fas fa-print"></i> Print Receipt</button></div></div></div>' +
+          '</article>';
+
         moduleGuide.innerHTML = "";
-        const monthInput = document.getElementById("feeReportMonthInput");
-        const classSelect = document.getElementById("feeReportClassSelect");
-        const statusSelect = document.getElementById("feeReportStatusSelect");
-        const searchInput = document.getElementById("feeReportSearchInput");
-        const searchDropdown = document.getElementById("feeReportSearchDropdown");
-        const searchContainer = document.getElementById("feeReportSearchContainer");
-        const statsWrap = document.getElementById("feeReportStats");
-        const chartWrap = document.getElementById("feeReportChart");
-        const barsWrap = document.getElementById("feeReportBars");
-        const tableBody = document.getElementById("feeReportTableBody");
+        if(moduleGuideHeader) moduleGuideHeader.style.display = "none";
 
-        initializeStudentProfessionalSearch(
-          "feeReportSearchInput",
-          "feeReportSearchDropdown",
-          "feeReportSearchContainer",
-          function(student) {
-            searchInput.value = student.name || "";
-            renderRows();
+        var _fcrStatsEl = _fcrE("fcrStats");
+        var _fcrTrendEl = _fcrE("fcrTrendChart");
+        var _fcrPayMethodsEl = _fcrE("fcrPayMethods");
+        var _fcrFeeTypeEl = _fcrE("fcrFeeTypeBreakdown");
+        var _fcrTableBody = _fcrE("fcrTableBody");
+        var _fcrTableCount = _fcrE("fcrTableCount");
+        var _fcrPagination = _fcrE("fcrPagination");
+        var _fcrDailySummary = _fcrE("fcrDailySummary");
+        var _fcrMonthlySummary = _fcrE("fcrMonthlySummary");
+        var _fcrClassEl = _fcrE("fcrClass");
+        var _fcrSectionEl = _fcrE("fcrSection");
+        var _fcrFeeTypeEl2 = _fcrE("fcrFeeType");
+        var _fcrPayMethodEl = _fcrE("fcrPayMethod");
+        var _fcrStatusEl = _fcrE("fcrStatus");
+        var _fcrSearchEl = _fcrE("fcrSearch");
+        var _fcrDateFromEl = _fcrE("fcrDateFrom");
+        var _fcrDateToEl = _fcrE("fcrDateTo");
+        var _fcrCustomDatesEl = _fcrE("fcrCustomDates");
+        var _fcrReceiptOverlay = _fcrE("fcrReceiptOverlay");
+        var _fcrReceiptBody = _fcrE("fcrReceiptBody");
+        var _fcrLastTxn = null;
+
+        function _fcrPopulateSections(){
+          var base = _fcrClassEl.value;
+          var opts = '<option value="all">All Sections</option>';
+          if(base !== "all" && _fcrClassSections[base]){
+            Object.keys(_fcrClassSections[base]).sort().forEach(function(s){ opts += '<option value="'+escapeAttr(s)+'">'+_fcrEsc(s)+'</option>'; });
           }
-        );
-
-        function getRows() {
-          return getFeeCollectionReportRows(monthInput.value, classSelect.value, searchInput.value, statusSelect.value);
+          _fcrSectionEl.innerHTML = opts;
         }
 
-        function renderRows() {
-          const rows = getRows();
-          const paid = rows.filter(function (row) { return row.status === "paid"; }).length;
-          const due = rows.length - paid;
-          const totalAmount = rows.reduce(function (sum, row) { return sum + row.totalAmount; }, 0);
-          const totalDeposit = rows.reduce(function (sum, row) { return sum + row.deposit; }, 0);
-          const totalDue = rows.reduce(function (sum, row) { return sum + row.remaining; }, 0);
-          const paidPercent = rows.length ? Math.round((paid / rows.length) * 100) : 0;
-          statsWrap.innerHTML = `<article class="stat-card stat-card--indigo"><strong>Total Students</strong><span>${rows.length}</span></article><article class="stat-card stat-card--violet"><strong>Total Amount</strong><span>${totalAmount}</span></article><article class="stat-card stat-card--emerald"><strong>Collected</strong><span>${totalDeposit}</span></article><article class="stat-card stat-card--rose"><strong>Due</strong><span>${totalDue}</span></article>`;
-          chartWrap.innerHTML = rows.length ? buildCircleChart(paidPercent, `Paid ${paid} | Due ${due}`, "#10b981", "#e2e8f0") : `<p class="empty-state">No data found.</p>`;
-          const classTotals = rows.reduce(function (map, row) { map.set(row.student.className || "-", (map.get(row.student.className || "-") || 0) + row.deposit); return map; }, new Map());
-          const bars = Array.from(classTotals.entries()).map(function (entry) { return { label: entry[0], value: entry[1] }; });
-          const max = bars.length ? Math.max.apply(null, bars.map(function (item) { return item.value; })) : 1;
-          barsWrap.innerHTML = bars.length ? buildBarChart(bars, max) : `<p class="empty-state">No class data.</p>`;
-          tableBody.innerHTML = rows.map(function (row) {
-            return `<tr><td>${escapeHtml(row.student.admissionNo || "-")}</td><td>${escapeHtml(row.student.name || "-")}</td><td>${escapeHtml(row.student.className || "-")}</td><td>${escapeHtml(row.month || "-")}</td><td>${row.totalAmount}</td><td>${row.deposit}</td><td>${row.remaining}</td><td><span class="status-pill ${row.status === "paid" ? "active" : "inactive"}">${row.status === "paid" ? "Paid" : "Due"}</span></td></tr>`;
+        function _fcrPopulateDropdowns(){
+          _fcrFeeTypeEl2.innerHTML = '<option value="all">All Fee Types</option>' + _fcrFeeTypes.filter(function(f){ return f !== "all"; }).map(function(f){ return '<option value="'+escapeAttr(f)+'">'+_fcrEsc(f)+'</option>'; }).join("");
+          _fcrPayMethodEl.innerHTML = '<option value="all">All Methods</option>' + _fcrPayMethods.filter(function(m){ return m !== "all"; }).map(function(m){ return '<option value="'+escapeAttr(m)+'">'+_fcrEsc(m)+'</option>'; }).join("");
+          _fcrPopulateSections();
+        }
+        _fcrPopulateDropdowns();
+
+        function _fcrRenderStats(filtered){
+          var totalCollected = 0, totalDiscount = 0, totalOutstanding = 0;
+          var todayCount = 0, todayAmt = 0, monthCount = 0, monthAmt = 0;
+          var txCount = filtered.length;
+          filtered.forEach(function(t){
+            totalCollected += Math.max(0, Number(t.netPaid || 0));
+            totalDiscount += Math.max(0, Number(t.discount || 0));
+            totalOutstanding += Math.max(0, Number(t.remaining || 0));
+            if(t.date === _fcrTodayStr){ todayCount++; todayAmt += Math.max(0, Number(t.netPaid || 0)); }
+            if(t.date && t.date.slice(0,7) === _fcrCurMonth){ monthCount++; monthAmt += Math.max(0, Number(t.netPaid || 0)); }
+          });
+          _fcrStatsEl.innerHTML =
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--blue"><i class="fas fa-dollar-sign"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Total Collection</div><div class="fcr__stat-value">' + _fcrFc(totalCollected) + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--green"><i class="fas fa-receipt"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Total Transactions</div><div class="fcr__stat-value">' + txCount.toLocaleString() + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--purple"><i class="fas fa-clock"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Today</div><div class="fcr__stat-value">' + _fcrFc(todayAmt) + '</div><div class="fcr__stat-sub">' + todayCount + ' transaction' + (todayCount !== 1 ? 's' : '') + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--teal"><i class="fas fa-calendar-check"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">This Month</div><div class="fcr__stat-value">' + _fcrFc(monthAmt) + '</div><div class="fcr__stat-sub">' + monthCount + ' transaction' + (monthCount !== 1 ? 's' : '') + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--red"><i class="fas fa-exclamation-circle"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Outstanding</div><div class="fcr__stat-value">' + _fcrFc(totalOutstanding) + '</div></div></div>' +
+            '<div class="fcr__stat"><div class="fcr__stat-icon fcr__stat-icon--amber"><i class="fas fa-percentage"></i></div><div class="fcr__stat-body"><div class="fcr__stat-label">Discounts</div><div class="fcr__stat-value">' + _fcrFc(totalDiscount) + '</div></div></div>';
+        }
+
+        function _fcrRenderTrend(filtered){
+          var dayMap = {};
+          filtered.forEach(function(t){
+            if(!t.date) return;
+            if(!dayMap[t.date]) dayMap[t.date] = { paid:0, partial:0, unpaid:0 };
+            var s = t.status || "unpaid";
+            if(!dayMap[t.date][s]) dayMap[t.date][s] = 0;
+            dayMap[t.date][s]++;
+          });
+          var days = Object.keys(dayMap).sort();
+          if(days.length === 0){ _fcrTrendEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-chart-line"></i><h4>No Data</h4></div>'; return; }
+          var maxPaid = 0, maxPartial = 0, maxUnpaid = 0;
+          days.forEach(function(d){
+            if(dayMap[d].paid > maxPaid) maxPaid = dayMap[d].paid;
+            if(dayMap[d].partial > maxPartial) maxPartial = dayMap[d].partial;
+            if(dayMap[d].unpaid > maxUnpaid) maxUnpaid = dayMap[d].unpaid;
+          });
+          var maxAll = Math.max(maxPaid, maxPartial, maxUnpaid, 1);
+          var barW = Math.max(8, Math.floor(100 / days.length));
+          var cfg = [
+            { key:"paid", color:"#10b981", label:"Paid" },
+            { key:"partial", color:"#f59e0b", label:"Partial" },
+            { key:"unpaid", color:"#ef4444", label:"Unpaid" }
+          ];
+          var bars = days.map(function(d){
+            var v = dayMap[d];
+            var hPd = Math.round((v.paid / maxAll) * 100);
+            var hPt = Math.round((v.partial / maxAll) * 100);
+            var hUn = Math.round((v.unpaid / maxAll) * 100);
+            var short = d.slice(5);
+            var tip = short + ": Paid=" + v.paid + " Partial=" + v.partial + " Unpaid=" + v.unpaid;
+            return '<div class="fcr__trend-bar-group" data-tip="' + tip + '" style="width:' + barW + '%;">' +
+              '<div class="fcr__trend-bar-seg" style="height:' + hUn + '%;background:#ef4444;bottom:0;"></div>' +
+              '<div class="fcr__trend-bar-seg" style="height:' + hPt + '%;background:#f59e0b;bottom:' + hUn + '%;"></div>' +
+              '<div class="fcr__trend-bar-seg" style="height:' + hPd + '%;background:#10b981;bottom:' + (hUn + hPt) + '%;"></div>' +
+              '</div>';
           }).join("");
+          var firstLabel = days[0] ? days[0].slice(5) : "";
+          var lastLabel = days[days.length-1] ? days[days.length-1].slice(5) : "";
+          var legendHtml = cfg.map(function(c){
+            return '<span class="fcr__trend-legend"><span class="fcr__trend-legend-dot" style="background:' + c.color + ';"></span>' + c.label + '</span>';
+          }).join("");
+          _fcrTrendEl.innerHTML = '<div class="fcr__trend-chart"><div class="fcr__trend-legend-row">' + legendHtml + '</div><div class="fcr__trend-bars">' + bars + '</div><div class="fcr__trend-labels"><span>' + firstLabel + '</span><span>' + lastLabel + '</span></div></div>';
         }
 
-        safeOn(document.getElementById("printFeeReportBtn"), "click", function () {
-          const rows = getRows();
-          if (!rows.length) {
-            return;
+        function _fcrRenderPayMethods(filtered){
+          var statusMap = { paid:{ amount:0, count:0 }, partial:{ amount:0, count:0 }, unpaid:{ amount:0, count:0 } };
+          filtered.forEach(function(t){
+            var s = t.status || "unpaid";
+            if(!statusMap[s]) statusMap[s] = { amount:0, count:0 };
+            if(s === "unpaid"){
+              statusMap[s].amount += Math.max(0, Number(t.remaining || t.amount || 0));
+            } else if(s === "partial"){
+              statusMap[s].amount += Math.max(0, Number(t.remaining || 0));
+            } else {
+              statusMap[s].amount += Math.max(0, Number(t.netPaid || 0));
+            }
+            statusMap[s].count++;
+          });
+          var paidStudentIds = {};
+          filtered.forEach(function(t){ if(t.status === "paid" || t.status === "partial") paidStudentIds[t.studentId] = true; });
+          _fcrAllStudents.forEach(function(stu){
+            if(stu.status === "inactive") return;
+            if(paidStudentIds[stu.id]) return;
+            var cls = stu.className || "-";
+            var clsObj = _fcrAllClasses.find(function(c){ return c.name === cls; }) || {};
+            var classFee = Number(clsObj.monthlyTuitionFees || clsObj.fee || 0);
+            if(classFee <= 0) return;
+            statusMap.unpaid.amount += classFee;
+            statusMap.unpaid.count++;
+          });
+          var total = filtered.length;
+          var cfg = [
+            { key:"paid", label:"Paid", color:"#10b981", icon:"fa-check-circle" },
+            { key:"partial", label:"Partial", color:"#f59e0b", icon:"fa-hourglass-half" },
+            { key:"unpaid", label:"Unpaid", color:"#ef4444", icon:"fa-times-circle" }
+          ];
+          var totalAmt = cfg.reduce(function(s,c){ return s + statusMap[c.key].amount; }, 0);
+          var totalCount = cfg.reduce(function(s,c){ return s + statusMap[c.key].count; }, 0);
+          if(totalCount === 0){ _fcrPayMethodsEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-chart-pie"></i><h4>No Data</h4></div>'; return; }
+          var slices = [];
+          var cumDeg = 0;
+          cfg.forEach(function(c){
+            var pct = totalCount > 0 ? (statusMap[c.key].count / totalCount) * 100 : 0;
+            var deg = (pct / 100) * 360;
+            slices.push(c.color + " " + cumDeg + "deg " + (cumDeg + deg) + "deg");
+            cumDeg += deg;
+          });
+          var pieBg = "conic-gradient(" + slices.join(",") + ")";
+          var legend = cfg.map(function(c){
+            var cnt = statusMap[c.key].count;
+            var pct = totalCount > 0 ? Math.round((cnt / totalCount) * 100) : 0;
+            return '<div class="fcr__pie-legend"><span class="fcr__pie-dot" style="background:' + c.color + ';"></span><span class="fcr__pie-label"><i class="fas ' + c.icon + '" style="color:' + c.color + ';margin-right:4px;"></i>' + c.label + '</span><span class="fcr__pie-count">' + cnt + ' (' + pct + '%)</span><span class="fcr__pie-amt">' + _fcrFc(statusMap[c.key].amount) + '</span></div>';
+          }).join("");
+          _fcrPayMethodsEl.innerHTML =
+            '<div class="fcr__pie-wrap">' +
+              '<div class="fcr__pie-chart" style="background:' + pieBg + ';"></div>' +
+              '<div class="fcr__pie-center"><span class="fcr__pie-total">' + totalCount + '</span><span class="fcr__pie-sub">Total</span></div>' +
+            '</div>' +
+            '<div class="fcr__pie-legend-wrap">' + legend + '</div>';
+        }
+
+        function _fcrRenderFeeTypes(filtered){
+          var map = {};
+          filtered.forEach(function(t){
+            var ft = t.feeType || "Other";
+            if(!map[ft]) map[ft] = { invoices:0, collected:0, outstanding:0 };
+            map[ft].invoices++;
+            map[ft].collected += t.netPaid;
+            map[ft].outstanding += t.remaining;
+          });
+          var items = Object.keys(map).sort(function(a,b){ return map[b].collected - map[a].collected; });
+          if(items.length === 0){ _fcrFeeTypeEl.innerHTML = '<div class="fcr__empty"><i class="fas fa-tags"></i><h4>No Fee Type Data</h4></div>'; return; }
+          var maxCol = Math.max.apply(null, items.map(function(k){ return map[k].collected; }));
+          if(maxCol === 0) maxCol = 1;
+          _fcrFeeTypeEl.innerHTML = '<table><thead><tr><th>Fee Type</th><th>Invoices</th><th>Collected</th><th>Outstanding</th><th>Collection %</th></tr></thead><tbody>' + items.map(function(k){
+            var total = map[k].collected + map[k].outstanding;
+            var pct = total > 0 ? Math.round((map[k].collected / total) * 100) : 0;
+            var barW = Math.round((map[k].collected / maxCol) * 100);
+            return '<tr><td style="font-weight:600;">' + _fcrEsc(k) + '</td><td>' + map[k].invoices + '</td><td>' + _fcrFc(map[k].collected) + '</td><td>' + _fcrFc(map[k].outstanding) + '</td><td>' + pct + '% <span class="fcr__pct-bar" style="width:' + barW + 'px;"></span></td></tr>';
+          }).join("") + '</tbody></table>';
+        }
+
+        function _fcrRenderTable(filtered){
+          var sorted = _fcrSort(filtered);
+          var total = sorted.length;
+          var totalPages = Math.max(1, Math.ceil(total / _fcrState.perPage));
+          if(_fcrState.page > totalPages) _fcrState.page = totalPages;
+          var start = (_fcrState.page - 1) * _fcrState.perPage;
+          var pageRows = sorted.slice(start, start + _fcrState.perPage);
+          _fcrTableCount.textContent = "Showing " + (total > 0 ? start + 1 : 0) + "\u2013" + Math.min(start + _fcrState.perPage, total) + " of " + total + " transactions";
+          if(pageRows.length === 0){
+            _fcrTableBody.innerHTML = '<tr><td colspan="12"><div class="fcr__empty"><i class="fas fa-search"></i><h4>No Transactions Found</h4><p>Try changing the date range or filters.</p></div></td></tr>';
+          } else {
+            _fcrTableBody.innerHTML = pageRows.map(function(t){
+              var statusCls = t.status === "paid" ? "fcr__status--paid" : (t.status === "partial" ? "fcr__status--partial" : "fcr__status--unpaid");
+              var statusLbl = t.status === "paid" ? "Paid" : (t.status === "partial" ? "Partial" : "Unpaid");
+              var payDate = t.date ? (function(){ var p = t.date.split("-"); return p.length === 3 ? p[2] + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(p[1],10)-1] + " " + p[0] : t.date; })() : "-";
+              return '<tr>' +
+                '<td style="font-weight:600;color:#6366f1;">' + _fcrEsc(t.receiptNo) + '</td>' +
+                '<td>' + _fcrEsc(payDate) + '</td>' +
+                '<td style="font-weight:600;">' + _fcrEsc(t.studentName) + '</td>' +
+                '<td>' + _fcrEsc(t.rollNo) + '</td>' +
+                '<td>' + _fcrEsc(t.baseClass) + (t.section !== "-" ? " | " + _fcrEsc(t.section) : "") + '</td>' +
+                '<td>' + _fcrEsc(t.feeType) + '</td>' +
+                '<td style="font-weight:600;">' + _fcrFc(t.amount) + '</td>' +
+                '<td>' + (t.discount > 0 ? _fcrFc(t.discount) : '-') + '</td>' +
+                '<td style="font-weight:700;color:#16a34a;">' + _fcrFc(t.netPaid) + '</td>' +
+                '<td>' + _fcrEsc(t.paymentMethod) + '</td>' +
+                '<td><span class="fcr__status ' + statusCls + '">' + statusLbl + '</span></td>' +
+                '<td><button class="fcr__action-btn" data-fcr-view="' + escapeAttr(t.id) + '" type="button"><i class="fas fa-eye"></i> View</button></td>' +
+                '</tr>';
+            }).join("");
           }
+          var btns = '';
+          btns += '<button class="fcr__page-btn' + (_fcrState.page <= 1 ? ' fcr__page-btn--disabled' : '') + '" data-fcr-page="prev" type="button"' + (_fcrState.page <= 1 ? ' disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
+          var startPage = Math.max(1, _fcrState.page - 2);
+          var endPage = Math.min(totalPages, startPage + 4);
+          if(endPage - startPage < 4) startPage = Math.max(1, endPage - 4);
+          for(var pi = startPage; pi <= endPage; pi++){
+            btns += '<button class="fcr__page-btn' + (pi === _fcrState.page ? ' fcr__page-btn--active' : '') + '" data-fcr-page="' + pi + '" type="button">' + pi + '</button>';
+          }
+          btns += '<button class="fcr__page-btn' + (_fcrState.page >= totalPages ? ' fcr__page-btn--disabled' : '') + '" data-fcr-page="next" type="button"' + (_fcrState.page >= totalPages ? ' disabled' : '') + '><i class="fas fa-chevron-right"></i></button>';
+          _fcrPagination.innerHTML = '<span class="fcr__page-info">Page ' + _fcrState.page + ' of ' + totalPages + '</span><div class="fcr__page-btns">' + btns + '</div>';
+        }
+
+        function _fcrRenderDaily(filtered){
+          var dayMap = {};
+          filtered.forEach(function(t){
+            if(!t.date) return;
+            if(!dayMap[t.date]) dayMap[t.date] = { txns:0, collected:0, discount:0 };
+            dayMap[t.date].txns++;
+            dayMap[t.date].collected += t.netPaid;
+            dayMap[t.date].discount += t.discount;
+          });
+          var days = Object.keys(dayMap).sort().reverse();
+          if(days.length === 0){ _fcrDailySummary.innerHTML = '<div class="fcr__empty"><p>No daily data available.</p></div>'; document.getElementById("fcrDailySection").style.display = "none"; return; }
+          document.getElementById("fcrDailySection").style.display = "";
+          var totalTx = 0, totalCol = 0, totalDis = 0;
+          days.forEach(function(d){ totalTx += dayMap[d].txns; totalCol += dayMap[d].collected; totalDis += dayMap[d].discount; });
+          _fcrDailySummary.innerHTML = '<table class="fcr__summary-table"><thead><tr><th>Date</th><th>Transactions</th><th>Collected</th><th>Discount</th><th>Net Collection</th></tr></thead><tbody>' +
+            days.map(function(d){
+              var v = dayMap[d];
+              var net = v.collected;
+              var short = d.split("-").reverse().join("-");
+              return '<tr><td style="font-weight:600;">' + _fcrEsc(short) + '</td><td>' + v.txns + '</td><td>' + _fcrFc(v.collected) + '</td><td>' + (v.discount > 0 ? _fcrFc(v.discount) : '-') + '</td><td style="font-weight:700;color:#16a34a;">' + _fcrFc(net) + '</td></tr>';
+            }).join("") +
+            '<tr class="fcr__total-row"><td>Total</td><td>' + totalTx + '</td><td>' + _fcrFc(totalCol) + '</td><td>' + (totalDis > 0 ? _fcrFc(totalDis) : '-') + '</td><td style="color:#16a34a;">' + _fcrFc(totalCol) + '</td></tr></tbody></table>';
+        }
+
+        function _fcrRenderMonthly(filtered){
+          var monthMap = {};
+          filtered.forEach(function(t){
+            if(!t.date) return;
+            var mk = t.date.slice(0,7);
+            if(!monthMap[mk]) monthMap[mk] = { txns:0, collected:0, discount:0 };
+            monthMap[mk].txns++;
+            monthMap[mk].collected += t.netPaid;
+            monthMap[mk].discount += t.discount;
+          });
+          var months = Object.keys(monthMap).sort().reverse();
+          if(months.length <= 1){ document.getElementById("fcrMonthlySection").style.display = "none"; return; }
+          document.getElementById("fcrMonthlySection").style.display = "";
+          var totalTx = 0, totalCol = 0, totalDis = 0;
+          months.forEach(function(m){ totalTx += monthMap[m].txns; totalCol += monthMap[m].collected; totalDis += monthMap[m].discount; });
+          var monthNames = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+          _fcrMonthlySummary.innerHTML = '<table class="fcr__summary-table"><thead><tr><th>Month</th><th>Transactions</th><th>Total Collected</th><th>Discounts</th><th>Net Collection</th><th>Avg. Transaction</th></tr></thead><tbody>' +
+            months.map(function(m){
+              var v = monthMap[m];
+              var parts = m.split("-");
+              var label = monthNames[parseInt(parts[1],10)-1] + " " + parts[0];
+              var avg = v.txns > 0 ? Math.round(v.collected / v.txns) : 0;
+              return '<tr><td style="font-weight:600;">' + label + '</td><td>' + v.txns + '</td><td>' + _fcrFc(v.collected) + '</td><td>' + (v.discount > 0 ? _fcrFc(v.discount) : '-') + '</td><td style="font-weight:700;color:#16a34a;">' + _fcrFc(v.collected) + '</td><td>' + _fcrFc(avg) + '</td></tr>';
+            }).join("") +
+            '<tr class="fcr__total-row"><td>Total</td><td>' + totalTx + '</td><td>' + _fcrFc(totalCol) + '</td><td>' + (totalDis > 0 ? _fcrFc(totalDis) : '-') + '</td><td style="color:#16a34a;">' + _fcrFc(totalCol) + '</td><td>' + (totalTx > 0 ? _fcrFc(Math.round(totalCol / totalTx)) : _fcrFc(0)) + '</td></tr></tbody></table>';
+        }
+
+        function _fcrRenderAll(){
+          var allTxns = _fcrBuildTransactions();
+          var filtered = _fcrFilterAll(allTxns);
+          _fcrRenderStats(filtered);
+          _fcrRenderTrend(filtered);
+          _fcrRenderPayMethods(filtered);
+          _fcrRenderFeeTypes(filtered);
+          _fcrRenderTable(filtered);
+          _fcrRenderDaily(filtered);
+          _fcrRenderMonthly(filtered);
+        }
+
+        function _fcrShowReceipt(txn){
+          _fcrLastTxn = txn;
+          var profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+          var schoolName = profile.instituteName || database.schoolName || "SagarSoft";
+          var payDate = txn.date ? (function(){ var p = txn.date.split("-"); return p.length === 3 ? p[2] + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][parseInt(p[1],10)-1] + " " + p[0] : txn.date; })() : "-";
+          _fcrReceiptBody.innerHTML =
+            '<div class="fcr__receipt-section"><div class="fcr__receipt-section-title">Student Information</div><div class="fcr__receipt-grid">' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Student Name</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.studentName) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Roll No</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.rollNo) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Class</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.baseClass) + (txn.section !== "-" ? " | " + _fcrEsc(txn.section) : "") + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Fee Month</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.feeMonth) + '</span></div>' +
+            '</div></div>' +
+            '<div class="fcr__receipt-section"><div class="fcr__receipt-section-title">Payment Information</div><div class="fcr__receipt-grid">' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Receipt No</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.receiptNo) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Invoice No</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.invoiceNo) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Fee Type</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.feeType) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Payment Date</span><span class="fcr__receipt-item-value">' + _fcrEsc(payDate) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Payment Method</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.paymentMethod) + '</span></div>' +
+              '<div class="fcr__receipt-item"><span class="fcr__receipt-item-label">Collected By</span><span class="fcr__receipt-item-value">' + _fcrEsc(txn.collectedBy) + '</span></div>' +
+            '</div></div>' +
+            '<div class="fcr__receipt-section"><div class="fcr__receipt-section-title">Financial Breakdown</div><div class="fcr__receipt-financial">' +
+              '<div class="fcr__receipt-fin-row"><span>Gross Amount</span><span>' + _fcrFc(txn.amount) + '</span></div>' +
+              '<div class="fcr__receipt-fin-row"><span>Discount</span><span>' + (txn.discount > 0 ? _fcrFc(txn.discount) : "PKR 0") + '</span></div>' +
+              '<div class="fcr__receipt-fin-row fcr__receipt-fin-total"><span>Net Amount Paid</span><span>' + _fcrFc(txn.netPaid) + '</span></div>' +
+              '<div class="fcr__receipt-fin-row"><span>Remaining Balance</span><span style="color:' + (txn.remaining > 0 ? '#dc2626' : '#16a34a') + ';">' + _fcrFc(txn.remaining) + '</span></div>' +
+            '</div></div>';
+          _fcrReceiptOverlay.classList.add("fcr__receipt-modal-overlay--open");
+        }
+
+        _fcrPresetDates("all");
+
+        safeOn(_fcrE("fcrRefreshBtn"), "click", function(){ refreshDatabase(); setRoute("fee-collection-report"); });
+
+        document.querySelectorAll("[data-fcr-preset]").forEach(function(btn){
+          safeOn(btn, "click", function(){
+            document.querySelectorAll("[data-fcr-preset]").forEach(function(b){ b.classList.remove("fcr__preset--active"); });
+            btn.classList.add("fcr__preset--active");
+            var preset = btn.getAttribute("data-fcr-preset");
+            if(preset === "custom"){
+              _fcrCustomDatesEl.style.display = "";
+              _fcrState.dateFrom = _fcrDateFromEl.value || "";
+              _fcrState.dateTo = _fcrDateToEl.value || "";
+            } else {
+              _fcrCustomDatesEl.style.display = "none";
+              _fcrPresetDates(preset);
+              _fcrState.page = 1;
+              _fcrRenderAll();
+            }
+          });
+        });
+
+        safeOn(_fcrDateFromEl, "change", function(){ _fcrState.dateFrom = _fcrDateFromEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrDateToEl, "change", function(){ _fcrState.dateTo = _fcrDateToEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrClassEl, "change", function(){ _fcrState.classVal = _fcrClassEl.value; _fcrState.page = 1; _fcrPopulateSections(); _fcrRenderAll(); });
+        safeOn(_fcrSectionEl, "change", function(){ _fcrState.section = _fcrSectionEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrFeeTypeEl2, "change", function(){ _fcrState.feeType = _fcrFeeTypeEl2.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrPayMethodEl, "change", function(){ _fcrState.payMethod = _fcrPayMethodEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrStatusEl, "change", function(){ _fcrState.status = _fcrStatusEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+        safeOn(_fcrSearchEl, "input", function(){ _fcrState.search = _fcrSearchEl.value; _fcrState.page = 1; _fcrRenderAll(); });
+
+        safeOn(_fcrE("fcrApplyBtn"), "click", function(){
+          if(_fcrCustomDatesEl.style.display !== "none"){
+            _fcrState.dateFrom = _fcrDateFromEl.value || "";
+            _fcrState.dateTo = _fcrDateToEl.value || "";
+          }
+          _fcrState.page = 1;
+          _fcrRenderAll();
+        });
+
+        safeOn(_fcrE("fcrResetBtn"), "click", function(){
+          _fcrState = { preset:"all", dateFrom:"", dateTo:"", classVal:"all", section:"all", feeType:"all", payMethod:"all", status:"all", collectedBy:"all", search:"", sortCol:"date", sortDir:"desc", page:1, perPage:25 };
+          _fcrPresetDates("all");
+          _fcrClassEl.value = "all"; _fcrSectionEl.value = "all"; _fcrFeeTypeEl2.value = "all"; _fcrPayMethodEl.value = "all"; _fcrStatusEl.value = "all"; _fcrSearchEl.value = ""; _fcrDateFromEl.value = ""; _fcrDateToEl.value = "";
+          _fcrCustomDatesEl.style.display = "none";
+          document.querySelectorAll("[data-fcr-preset]").forEach(function(b){ b.classList.remove("fcr__preset--active"); });
+          document.querySelector('[data-fcr-preset="all"]').classList.add("fcr__preset--active");
+          _fcrPopulateSections();
+          _fcrRenderAll();
+        });
+
+        document.querySelectorAll("[data-fcr-col]").forEach(function(th){
+          safeOn(th, "click", function(){
+            var col = th.getAttribute("data-fcr-col");
+            if(_fcrState.sortCol === col) _fcrState.sortDir = _fcrState.sortDir === "asc" ? "desc" : "asc";
+            else { _fcrState.sortCol = col; _fcrState.sortDir = "asc"; }
+            document.querySelectorAll("[data-fcr-col]").forEach(function(h){ h.classList.remove("fcr__sort-active"); h.querySelector(".fcr__sort i").className = "fas fa-sort"; });
+            th.classList.add("fcr__sort-active");
+            th.querySelector(".fcr__sort i").className = "fas fa-sort-" + (_fcrState.sortDir === "asc" ? "up" : "down");
+            _fcrRenderAll();
+          });
+        });
+
+        safeOn(_fcrPagination, "click", function(e){
+          var btn = e.target.closest("[data-fcr-page]");
+          if(!btn || btn.disabled) return;
+          var pg = btn.getAttribute("data-fcr-page");
+          if(pg === "prev") _fcrState.page = Math.max(1, _fcrState.page - 1);
+          else if(pg === "next") _fcrState.page++;
+          else _fcrState.page = parseInt(pg) || 1;
+          _fcrRenderAll();
+        });
+
+        safeOn(_fcrTableBody, "click", function(e){
+          var btn = e.target.closest("[data-fcr-view]");
+          if(!btn) return;
+          var tid = btn.getAttribute("data-fcr-view");
+          var allTxns = _fcrBuildTransactions();
+          var txn = allTxns.find(function(t){ return t.id === tid; });
+          if(txn) _fcrShowReceipt(txn);
+        });
+
+        safeOn(_fcrReceiptOverlay, "click", function(e){ if(e.target === _fcrReceiptOverlay) _fcrReceiptOverlay.classList.remove("fcr__receipt-modal-overlay--open"); });
+        safeOn(_fcrE("fcrReceiptClose"), "click", function(){ _fcrReceiptOverlay.classList.remove("fcr__receipt-modal-overlay--open"); });
+
+        safeOn(_fcrE("fcrReceiptPrint"), "click", function(){
+          if(!_fcrLastTxn) return;
+          var t = _fcrLastTxn;
+          var profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+          var schoolName = profile.instituteName || database.schoolName || "SagarSoft";
           openPrintReport({
-            title: "Fee Collection Report",
-            subtitle: `Month: ${normalizeFeeMonthLabel(monthInput.value)} | Class: ${classSelect.value} | Status: ${statusSelect.value}`,
-            headers: ["Roll No", "Student", "Class", "Month", "Total", "Deposit", "Remaining", "Status"],
-            rows: rows.map(function (row) {
-              return [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), escapeHtml(row.month || "-"), row.totalAmount, row.deposit, row.remaining, row.status === "paid" ? "Paid" : "Due"];
+            title: "Fee Collection Receipt",
+            subtitle: "Receipt: " + t.receiptNo + " | Date: " + t.date,
+            headers: ["Field", "Details"],
+            rows: [
+              ["School", schoolName], ["Receipt No", t.receiptNo], ["Invoice No", t.invoiceNo],
+              ["Student", t.studentName], ["Roll No", t.rollNo], ["Class", t.baseClass + (t.section !== "-" ? " | " + t.section : "")],
+              ["Fee Month", t.feeMonth], ["Fee Type", t.feeType], ["Payment Date", t.date],
+              ["Gross Amount", _fcrFc(t.amount)], ["Discount", _fcrFc(t.discount)], ["Net Paid", _fcrFc(t.netPaid)],
+              ["Remaining", _fcrFc(t.remaining)], ["Payment Method", t.paymentMethod], ["Status", t.status]
+            ]
+          });
+        });
+
+        safeOn(_fcrE("fcrExportBtn"), "click", function(){
+          var allTxns = _fcrBuildTransactions();
+          var filtered = _fcrFilterAll(allTxns);
+          if(filtered.length === 0){ openAppMessageBox("No Data", "No transactions to export.", "warning"); return; }
+          var csv = "Receipt No,Date,Student,Roll No,Class,Section,Fee Month,Invoice No,Fee Type,Amount,Discount,Net Paid,Remaining,Payment Method,Collected By,Status\n";
+          filtered.forEach(function(t){
+            csv += '"' + [t.receiptNo,t.date,t.studentName,t.rollNo,t.baseClass,t.section,t.feeMonth,t.invoiceNo,t.feeType,t.amount,t.discount,t.netPaid,t.remaining,t.paymentMethod,t.collectedBy,t.status].join('","') + '"\n';
+          });
+          var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+          var url = URL.createObjectURL(blob);
+          var a = document.createElement("a"); a.href = url; a.download = "fees-collection-report-" + _fcrTodayStr + ".csv";
+          document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+        });
+
+        safeOn(_fcrE("fcrPrintBtn"), "click", function(){
+          var allTxns = _fcrBuildTransactions();
+          var filtered = _fcrFilterAll(allTxns);
+          if(filtered.length === 0){ openAppMessageBox("No Data", "No transactions to print.", "warning"); return; }
+          var profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
+          var schoolName = profile.instituteName || database.schoolName || "SagarSoft";
+          openPrintReport({
+            title: "Fees Collection Report",
+            subtitle: schoolName + " | " + (_fcrState.dateFrom || "Start") + " to " + (_fcrState.dateTo || "End") + " | " + filtered.length + " transactions",
+            headers: ["Receipt #", "Date", "Student", "Roll No", "Class", "Fee Type", "Amount", "Discount", "Net Paid", "Method", "Status"],
+            rows: filtered.map(function(t){
+              return [t.receiptNo, t.date, t.studentName, t.rollNo, t.baseClass, t.feeType, t.amount, t.discount > 0 ? t.discount : "-", t.netPaid, t.paymentMethod, t.status];
             })
           });
         });
 
-        [monthInput, classSelect, statusSelect].forEach(function (input) {
-          input.addEventListener("change", renderRows);
-        });
-        searchInput.addEventListener("input", renderRows);
-        renderRows();
+        _fcrPresetDates("all");
+        _fcrRenderAll();
         return;
       }
 
       var _now = new Date();
-      var _firstOfMonth = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-01";
-      var _today = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-" + String(_now.getDate()).padStart(2, "0");
-      moduleSummary.innerHTML = `
-        <article style="overflow-x:hidden;">
-          <strong class="module-center-title">Account Statement</strong>
-          <div class="accounts-filter-bar" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;">
-            <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">From<input id="accountsFromInput" type="date" value="${_firstOfMonth}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
-            <label class="accounts-filter-label" style="flex:1 1 140px;min-width:0;">To<input id="accountsToInput" type="date" value="${_today}" class="accounts-filter-date" style="width:100%;box-sizing:border-box;"></label>
-            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.72rem;font-weight:600;margin-bottom:2px;">Type</label><select id="accountsTypeFilter" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Types</option><option value="fees">Fees</option><option value="income">Income</option><option value="expense">Expense</option></select></div>
-            <div style="flex:1 1 160px;min-width:0;"><label style="display:block;font-size:0.72rem;font-weight:600;margin-bottom:2px;">Search</label><input id="accountsSearchInput" type="search" placeholder="Search description..." style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <button id="clearAccountsHistoryBtn" type="button" class="btn-account-action btn-danger-action" style="flex:1 1 100px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Clear History</button>
-            <button id="printAccountsBtn" type="button" class="btn-account-action btn-primary-action" style="flex:1 1 80px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Print</button>
-            <button id="pdfAccountsBtn" type="button" class="btn-account-action btn-secondary-action" style="flex:1 1 60px;min-width:0;white-space:normal;text-align:center;justify-content:center;">PDF</button>
-            <button id="excelAccountsBtn" type="button" class="btn-account-action btn-secondary-action" style="flex:1 1 60px;min-width:0;white-space:normal;text-align:center;justify-content:center;">Excel</button>
-          </div>
-          <div class="report-cards" id="accountsStats" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;"></div>
-          <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;"><table style="min-width:500px;width:100%;"><thead><tr><th>Date</th><th>Description</th><th>Debit</th><th>Credit</th><th>Net Balance</th></tr></thead><tbody id="accountsTableBody"></tbody></table></div>
-        </article>
-      `;
-      moduleGuide.innerHTML = "";
-      const fromInput = document.getElementById("accountsFromInput");
-      const toInput = document.getElementById("accountsToInput");
-      const typeFilter = document.getElementById("accountsTypeFilter");
-      const searchFilter = document.getElementById("accountsSearchInput");
-      const statsWrap = document.getElementById("accountsStats");
-      const tableBody = document.getElementById("accountsTableBody");
+      var _acrFirstOfMonth = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-01";
+      var _acrToday = _now.getFullYear() + "-" + String(_now.getMonth() + 1).padStart(2, "0") + "-" + String(_now.getDate()).padStart(2, "0");
+      var _acrCurrency = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
+      var _acrFromVal = _acrFirstOfMonth;
+      var _acrToVal = _acrToday;
+      var _acrCategoryVal = "all";
+      var _acrStatusVal = "all";
+      var _acrSearchVal = "";
+      var _acrPeriod = "month";
 
-      function getStatementRows() {
+      function _acrGetAllRows() {
         var settings = database.generalSettings || {};
-        var fromVal = fromInput.value;
-        var toVal = toInput.value;
-        function inRange(dv) {
-          if (!fromVal && !toVal) return true;
-          var d = String(dv || "").substring(0, 10);
-          if (!d) return false;
-          if (fromVal && d < fromVal) return false;
-          if (toVal && d > toVal) return false;
-          return true;
-        }
         var rows = [];
         (settings.accountsLedger || []).forEach(function (item) {
-          if (!inRange(item.date || item.createdAt)) return;
           var amt = Number(item.amount || 0);
+          if (amt <= 0) return;
           var _type = String(item.type || "").toLowerCase();
+          var _cat = String(item.category || "").toLowerCase();
+          var _isReversal = _cat.indexOf("reversed") !== -1 || _cat.indexOf("reversal") !== -1;
+          var _desc = item.description || item.note || item.category || "-";
+          var _status = "Completed";
+          if (_isReversal) {
+            _status = "Reversed";
+            if (_desc.indexOf("Reversed") === -1) _desc = "Fee Collection Reversed - " + (_desc || item.note || "");
+          }
           rows.push({
+            id: item.id || "",
             date: String(item.date || item.createdAt || "-").substring(0, 10),
-            description: item.description || item.note || item.category || "-",
-            debit: _type === "expense" ? amt : 0,
-            credit: _type === "income" ? amt : 0,
-            source: _type === "expense" ? "expense" : "income",
-            category: item.category || ""
+            description: _desc,
+            amount: amt,
+            income: _type === "income" ? amt : 0,
+            expense: _type === "expense" ? amt : 0,
+            category: item.category || "-",
+            type: _type === "income" ? "income" : "expense",
+            source: _isReversal ? "reversal" : (_type === "income" ? "income" : "expense"),
+            status: _status,
+            note: item.note || "",
+            createdAt: item.createdAt || "",
+            rawType: "ledger"
           });
         });
         (settings.salaryPayments || []).forEach(function (item) {
-          if (!inRange(item.paymentDate || item.date || "")) return;
-          var total = Number(item.netAmount ?? (Number(item.salaryAmount || 0) + Number(item.bonus || 0) - Number(item.deduction || 0)));
+          if (!item.paymentDate && !item.date) return;
+          var total = Number(item.netSalary ?? (Number(item.salaryAmount || 0) + Number(item.bonus || 0) - Number(item.deduction || 0)));
+          if (total <= 0) return;
           rows.push({
+            id: item.id || "",
             date: String(item.paymentDate || item.date || "-").substring(0, 10),
-            description: "Salary paid to " + (item.employeeName || item.employeeId || "-"),
-            debit: total,
-            credit: 0,
+            description: "Salary paid to " + (item.employeeName || item.employeeId || "-") + (item.salaryMonth ? " (" + item.salaryMonth + ")" : ""),
+            amount: total,
+            income: 0,
+            expense: total,
+            category: "Salary",
+            type: "expense",
             source: "expense",
-            category: "Salary"
+            status: "Completed",
+            note: "Salary: " + _acrCurrency + " " + (item.salaryAmount || 0) + (item.bonus ? " + Bonus " + item.bonus : "") + (item.deduction ? " - Deduction " + item.deduction : ""),
+            createdAt: item.createdAt || "",
+            employeeName: item.employeeName || "-",
+            employeeRole: item.role || item.designation || "-",
+            salaryMonth: item.salaryMonth || "-",
+            rawType: "salary"
           });
         });
         rows.sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
-        var balance = 0;
+        rows.forEach(function (r, i) { r.txnNo = "TXN-" + String(i + 1).padStart(4, "0"); });
+        return rows;
+      }
+
+      function _acrFilterRows(allRows) {
+        return allRows.filter(function (r) {
+          if (r.date && r.date >= _acrFromVal && r.date <= _acrToVal) {} else if (_acrFromVal || _acrToVal) return false;
+          if (_acrCategoryVal !== "all" && r.category.toLowerCase() !== _acrCategoryVal.toLowerCase()) return false;
+          if (_acrStatusVal !== "all" && r.status.toLowerCase() !== _acrStatusVal.toLowerCase()) return false;
+          if (_acrSearchVal) {
+            var s = _acrSearchVal.toLowerCase();
+            var haystack = (r.description + " " + r.category + " " + r.note + " " + (r.employeeName || "") + " " + r.id + " " + (r.txnNo || "")).toLowerCase();
+            if (haystack.indexOf(s) === -1) return false;
+          }
+          return true;
+        });
+      }
+
+      function _acrCalcStats(rows) {
+        var totalIncome = 0, totalExpenses = 0, feeIncome = 0, salaries = 0, otherExpenses = 0;
+        var categories = {};
+        var monthly = {};
         rows.forEach(function (r) {
-          balance = balance + r.credit - r.debit;
-          r.balance = balance;
+          if (r.status === "Reversed") return;
+          if (r.type === "income") {
+            totalIncome += r.amount;
+            if (r.category.toLowerCase() === "fee collection") feeIncome += r.amount;
+          } else {
+            totalExpenses += r.amount;
+            if (r.category.toLowerCase() === "salary") salaries += r.amount;
+            else otherExpenses += r.amount;
+          }
+          var catKey = r.category || "Other";
+          if (!categories[catKey]) categories[catKey] = { income: 0, expense: 0 };
+          if (r.type === "income") categories[catKey].income += r.amount;
+          else categories[catKey].expense += r.amount;
+          var mKey = (r.date || "").substring(0, 7);
+          if (mKey) {
+            if (!monthly[mKey]) monthly[mKey] = { income: 0, expense: 0 };
+            if (r.type === "income" && r.status !== "Reversed") monthly[mKey].income += r.amount;
+            else if (r.type === "expense" && r.status !== "Reversed") monthly[mKey].expense += r.amount;
+          }
         });
-        var totalDebit = rows.reduce(function (s, r) { return s + r.debit; }, 0);
-        var totalCredit = rows.reduce(function (s, r) { return s + r.credit; }, 0);
-        return { rows: rows, totalDebit: totalDebit, totalCredit: totalCredit, netBalance: totalCredit - totalDebit };
+        return { totalIncome: totalIncome, totalExpenses: totalExpenses, netBalance: totalIncome - totalExpenses, feeIncome: feeIncome, salaries: salaries, otherExpenses: otherExpenses, categories: categories, monthly: monthly };
       }
 
-      function getDateRangeLabel() {
-        if (fromInput.value && toInput.value) return fromInput.value + " to " + toInput.value;
-        if (fromInput.value) return "From " + fromInput.value;
-        if (toInput.value) return "Until " + toInput.value;
-        return "All Time";
-      }
-
-      function renderStatement() {
-        var data = getStatementRows();
-        var _typeVal = typeFilter ? typeFilter.value : "all";
-        var _searchVal = searchFilter ? searchFilter.value.trim().toLowerCase() : "";
-        if (_typeVal !== "all") {
-          data.rows = data.rows.filter(function (r) { return r.source === _typeVal; });
+      function _acrSetPeriod(period, el) {
+        _acrPeriod = period;
+        var today = new Date();
+        var from = new Date();
+        switch (period) {
+          case "today": from = new Date(today); break;
+          case "week": from.setDate(today.getDate() - 7); break;
+          case "month": from = new Date(today.getFullYear(), today.getMonth(), 1); break;
+          case "lastMonth": from = new Date(today.getFullYear(), today.getMonth() - 1, 1); today = new Date(today.getFullYear(), today.getMonth(), 0); break;
+          case "year": from = new Date(today.getFullYear(), 0, 1); break;
+          default: from = new Date(today.getFullYear(), today.getMonth(), 1);
         }
-        if (_searchVal) {
-          data.rows = data.rows.filter(function (r) {
-            return String(r.description || "").toLowerCase().includes(_searchVal) || String(r.category || "").toLowerCase().includes(_searchVal);
-          });
+        _acrFromVal = from.getFullYear() + "-" + String(from.getMonth() + 1).padStart(2, "0") + "-" + String(from.getDate()).padStart(2, "0");
+        _acrToVal = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+        var fromEl = document.getElementById("acrFromDate");
+        var toEl = document.getElementById("acrToDate");
+        if (fromEl) fromEl.value = _acrFromVal;
+        if (toEl) toEl.value = _acrToVal;
+        document.querySelectorAll(".acr-period-btn").forEach(function (b) { b.classList.remove("acr-period-btn--active"); });
+        if (el) el.classList.add("acr-period-btn--active");
+        _acrRender();
+      }
+
+      function _acrFormatMoney(v) {
+        return _acrCurrency + " " + Math.round(v).toLocaleString();
+      }
+
+      function _acrRender() {
+        var allRows = _acrGetAllRows();
+        var rows = _acrFilterRows(allRows);
+        var stats = _acrCalcStats(rows);
+        var statsAll = _acrCalcStats(allRows);
+
+        document.getElementById("acrTotalIncome").textContent = _acrFormatMoney(stats.totalIncome);
+        document.getElementById("acrTotalExpenses").textContent = _acrFormatMoney(stats.totalExpenses);
+        var nbEl = document.getElementById("acrNetBalance");
+        nbEl.textContent = _acrFormatMoney(stats.netBalance);
+        nbEl.className = "acr-card__val " + (stats.netBalance >= 0 ? "acr-card__val--positive" : "acr-card__val--negative");
+        document.getElementById("acrFeeIncome").textContent = _acrFormatMoney(stats.feeIncome);
+        document.getElementById("acrSalaries").textContent = _acrFormatMoney(stats.salaries);
+        document.getElementById("acrOtherExpenses").textContent = _acrFormatMoney(stats.otherExpenses);
+
+        var cats = Object.keys(statsAll.categories).sort();
+        var catOpts = '<option value="all">All Categories</option>';
+        cats.forEach(function (c) { catOpts += '<option value="' + escapeAttr(c) + '">' + escapeHtml(c) + '</option>'; });
+        var catSelect = document.getElementById("acrCategoryFilter");
+        if (catSelect) { var sv = catSelect.value; catSelect.innerHTML = catOpts; catSelect.value = sv; }
+
+        _acrRenderTransactionTable(rows);
+
+        var periodMonths = Object.keys(stats.monthly).sort();
+        _acrRenderIncExpChart(stats);
+        _acrRenderExpBreakdown(stats);
+        _acrRenderMonthlyTrend(stats);
+      }
+
+      function _acrRenderTransactionTable(rows) {
+        var tbody = document.getElementById("acrTransBody");
+        if (!tbody) return;
+        if (!rows.length) {
+          tbody.innerHTML = '<tr><td colspan="9" class="acr-nodata-td"><div class="acr-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No financial transactions found</p><span>Try changing the date range or transaction filters.</span></div></td></tr>';
+          return;
         }
         var balance = 0;
-        data.rows.forEach(function (r) {
-          balance = balance + r.credit - r.debit;
-          r.balance = balance;
-        });
-        data.totalDebit = data.rows.reduce(function (s, r) { return s + r.debit; }, 0);
-        data.totalCredit = data.rows.reduce(function (s, r) { return s + r.credit; }, 0);
-        data.netBalance = data.totalCredit - data.totalDebit;
-        statsWrap.innerHTML = '<article class="stat-card stat-card--emerald" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Credit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#10b981;margin-top:2px;">' + data.totalCredit + '</span></article><article class="stat-card stat-card--rose" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Total Debit</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#ef4444;margin-top:2px;">' + data.totalDebit + '</span></article><article class="stat-card stat-card--sky" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Net Balance</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#0ea5e9;margin-top:2px;">' + data.netBalance + '</span></article><article class="stat-card stat-card--amber" style="padding:10px 12px;"><strong style="font-size:0.72rem;text-transform:uppercase;letter-spacing:0.04em;color:#888;">Transactions</strong><span style="display:block;font-size:1.1rem;font-weight:700;color:#f59e0b;margin-top:2px;">' + data.rows.length + '</span></article>';
-        var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
-        var tbody = data.rows.map(function (r) {
-          return '<tr><td>' + escapeHtml(r.date) + '</td><td>' + escapeHtml(r.description) + '</td><td>' + (r.debit > 0 ? r.debit : "-") + '</td><td>' + (r.credit > 0 ? r.credit : "-") + '</td><td><strong>' + currencySymbol + ' ' + r.balance + '</strong></td></tr>';
+        tbody.innerHTML = rows.map(function (r, i) {
+          balance += r.income - r.expense;
+          var statusClass = r.status === "Reversed" ? "acr-badge--reversed" : (r.status === "Voided" ? "acr-badge--voided" : "acr-badge--completed");
+          var rowClass = r.status === "Reversed" ? " acr-row--reversed" : "";
+          return '<tr class="acr-row' + rowClass + '"><td class="acr-mono"><strong style="color:#6366f1;">' + escapeHtml(r.txnNo || "-") + '</strong></td><td>' + escapeHtml(r.date) + '</td><td><div class="acr-desc">' + escapeHtml(r.description) + '</div></td><td><span class="acr-cat-badge">' + escapeHtml(r.category) + '</span></td><td class="acr-mono acr-income">' + (r.income > 0 ? _acrFormatMoney(r.income) : '<span class="acr-dash">-</span>') + '</td><td class="acr-mono acr-expense">' + (r.expense > 0 ? _acrFormatMoney(r.expense) : '<span class="acr-dash">-</span>') + '</td><td class="acr-mono"><strong style="color:' + (balance >= 0 ? "#059669" : "#dc2626") + ';">' + _acrFormatMoney(balance) + '</strong></td><td><span class="acr-badge ' + statusClass + '">' + r.status + '</span></td><td><button class="acr-view-btn" type="button" data-acr-idx="' + i + '">View</button></td></tr>';
         }).join("");
-        tbody += '<tr style="font-weight:700;background:rgba(27,95,122,0.06);border-top:2px solid #1b5f7a;"><td colspan="2"><strong>Total</strong></td><td>' + data.totalDebit + '</td><td>' + data.totalCredit + '</td><td><strong>' + currencySymbol + ' ' + data.netBalance + '</strong></td></tr>';
-        tableBody.innerHTML = tbody;
-      }
-
-      function getStatementPrintData() {
-        var data = getStatementRows();
-        var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
-        return {
-          title: "Account Statement",
-          subtitle: getDateRangeLabel(),
-          headers: ["Date", "Description", "Debit", "Credit", "Net Balance"],
-          rows: data.rows.map(function (r) { return [r.date, r.description, r.debit > 0 ? r.debit : "-", r.credit > 0 ? r.credit : "-", currencySymbol + " " + r.balance]; }),
-          footerHtml: '<p style="margin-top:12px;"><strong>Total Debit:</strong> ' + data.totalDebit + ' | <strong>Total Credit:</strong> ' + data.totalCredit + ' | <strong>Net:</strong> ' + currencySymbol + " " + data.netBalance + '</p>'
-        };
-      }
-
-      safeOn(document.getElementById("printAccountsBtn"), "click", function () {
-        var pd = getStatementPrintData();
-        if (!pd.rows.length) return;
-        openPrintReport(pd);
-      });
-
-      safeOn(document.getElementById("pdfAccountsBtn"), "click", function () {
-        var pd = getStatementPrintData();
-        if (!pd.rows.length) return;
-        openPrintReport(pd);
-      });
-
-      safeOn(document.getElementById("excelAccountsBtn"), "click", function () {
-        var data = getStatementRows();
-        if (!data.rows.length) return;
-        var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
-        var csvRows = [["Date", "Description", "Debit", "Credit", "Net Balance"].join(",")];
-        data.rows.forEach(function (r) {
-          csvRows.push([r.date, '"' + r.description.replace(/"/g, '""') + '"', r.debit > 0 ? r.debit : "", r.credit > 0 ? r.credit : "", r.balance].join(","));
+        var totalRow = '<tr class="acr-total-row"><td colspan="4"><strong>Total (' + rows.length + ' transactions)</strong></td><td class="acr-mono acr-income"><strong>' + _acrFormatMoney(rows.reduce(function (s, r) { return s + r.income; }, 0)) + '</strong></td><td class="acr-mono acr-expense"><strong>' + _acrFormatMoney(rows.reduce(function (s, r) { return s + r.expense; }, 0)) + '</strong></td><td class="acr-mono"><strong style="color:' + (balance >= 0 ? "#059669" : "#dc2626") + ';">' + _acrFormatMoney(balance) + '</strong></td><td colspan="2"></td></tr>';
+        tbody.innerHTML += totalRow;
+        tbody.querySelectorAll(".acr-view-btn").forEach(function (btn) {
+          safeOn(btn, "click", function () {
+            var idx = Number(btn.getAttribute("data-acr-idx"));
+            if (idx >= 0 && idx < rows.length) _acrShowDetail(rows[idx]);
+          });
         });
-        csvRows.push(["Total", "", data.totalDebit, data.totalCredit, data.netBalance].join(","));
+      }
+
+      function _acrShowDetail(row) {
+        var modal = document.getElementById("acrDetailModal");
+        var body = document.getElementById("acrDetailBody");
+        if (!modal || !body) return;
+        var amount = row.income || row.expense;
+        var typeLabel = row.type === "income" ? "Income" : "Expense";
+        var typeColor = row.type === "income" ? "#059669" : "#dc2626";
+        body.innerHTML = '<div class="acr-detail-row"><span class="acr-detail-lbl">TXN ID</span><span class="acr-detail-val" style="color:#6366f1;font-size:1rem;">' + escapeHtml(row.txnNo || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Internal ID</span><span class="acr-detail-val" style="font-size:0.72rem;color:#94a3b8;">' + escapeHtml(row.id || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Date</span><span class="acr-detail-val">' + escapeHtml(row.date || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Description</span><span class="acr-detail-val">' + escapeHtml(row.description || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Category</span><span class="acr-detail-val">' + escapeHtml(row.category || "-") + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Amount</span><span class="acr-detail-val" style="font-size:1.1rem;font-weight:700;color:' + typeColor + ';">' + _acrFormatMoney(amount) + '</span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Type</span><span class="acr-detail-val"><span class="acr-badge ' + (row.type === "income" ? "acr-badge--completed" : "acr-badge--reversed") + '">' + typeLabel + '</span></span></div>' +
+          '<div class="acr-detail-row"><span class="acr-detail-lbl">Status</span><span class="acr-detail-val"><span class="acr-badge ' + (row.status === "Reversed" ? "acr-badge--reversed" : "acr-badge--completed") + '">' + row.status + '</span></span></div>';
+        if (row.rawType === "salary") {
+          body.innerHTML += '<div class="acr-detail-row"><span class="acr-detail-lbl">Employee</span><span class="acr-detail-val">' + escapeHtml(row.employeeName || "-") + '</span></div>' +
+            '<div class="acr-detail-row"><span class="acr-detail-lbl">Role</span><span class="acr-detail-val">' + escapeHtml(row.employeeRole || "-") + '</span></div>' +
+            '<div class="acr-detail-row"><span class="acr-detail-lbl">Salary Month</span><span class="acr-detail-val">' + escapeHtml(row.salaryMonth || "-") + '</span></div>';
+        }
+        if (row.note) body.innerHTML += '<div class="acr-detail-row"><span class="acr-detail-lbl">Note</span><span class="acr-detail-val">' + escapeHtml(row.note) + '</span></div>';
+        if (row.createdAt) body.innerHTML += '<div class="acr-detail-row"><span class="acr-detail-lbl">Created</span><span class="acr-detail-val">' + escapeHtml(row.createdAt) + '</span></div>';
+        modal.style.display = "flex";
+      }
+
+      function _acrRenderIncExpChart(stats) {
+        var wrap = document.getElementById("acrIncExpChart");
+        if (!wrap) return;
+        var inc = Math.max(0, stats.totalIncome);
+        var exp = Math.max(0, stats.totalExpenses);
+        var total = inc + exp;
+        if (total === 0) { wrap.innerHTML = '<div class="acr-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg><p>No financial data for this period</p></div>'; return; }
+        var incPct = Math.round((inc / total) * 100);
+        var expPct = 100 - incPct;
+        wrap.innerHTML = '<div class="acr-bar-chart"><div class="acr-bar-row"><span class="acr-bar-lbl">Income</span><div class="acr-bar-track"><div class="acr-bar-fill acr-bar-fill--green" style="width:' + incPct + '%;"></div></div><span class="acr-bar-val acr-income">' + _acrFormatMoney(inc) + '</span></div>' +
+          '<div class="acr-bar-row"><span class="acr-bar-lbl">Expenses</span><div class="acr-bar-track"><div class="acr-bar-fill acr-bar-fill--red" style="width:' + expPct + '%;"></div></div><span class="acr-bar-val acr-expense">' + _acrFormatMoney(exp) + '</span></div></div>' +
+          '<div class="acr-chart-legend"><span class="acr-legend-dot" style="background:#059669;"></span> Income ' + incPct + '%<span class="acr-legend-dot" style="background:#dc2626;margin-left:12px;"></span> Expenses ' + expPct + '%</div>';
+      }
+
+      function _acrRenderExpBreakdown(stats) {
+        var wrap = document.getElementById("acrExpBreakdown");
+        if (!wrap) return;
+        var cats = [];
+        Object.keys(stats.categories).forEach(function (k) {
+          var v = stats.categories[k];
+          if (v.expense > 0) cats.push({ name: k, amount: v.expense });
+        });
+        cats.sort(function (a, b) { return b.amount - a.amount; });
+        var totalExp = cats.reduce(function (s, c) { return s + c.amount; }, 0);
+        if (!cats.length) { wrap.innerHTML = '<div class="acr-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><circle cx="12" cy="12" r="10"/><path d="M16 8l-8 8"/><path d="M8 8l8 8"/></svg><p>No expense data available for this period.</p></div>'; return; }
+        var colors = ["#6366f1", "#0ea5e9", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6", "#ec4899", "#14b8a6", "#f97316", "#64748b"];
+        var html = cats.map(function (c, i) {
+          var pct = totalExp > 0 ? Math.round((c.amount / totalExp) * 100) : 0;
+          var clr = colors[i % colors.length];
+          return '<div class="acr-exp-row"><div class="acr-exp-info"><span class="acr-exp-dot" style="background:' + clr + ';"></span><span class="acr-exp-name">' + escapeHtml(c.name) + '</span></div><div class="acr-exp-right"><div class="acr-exp-track"><div class="acr-exp-fill" style="width:' + pct + '%;background:' + clr + ';"></div></div><span class="acr-exp-amt">' + _acrFormatMoney(c.amount) + '</span><span class="acr-exp-pct">' + pct + '%</span></div></div>';
+        }).join("");
+        wrap.innerHTML = html;
+      }
+
+      function _acrRenderMonthlyTrend(stats) {
+        var wrap = document.getElementById("acrMonthlyTrend");
+        if (!wrap) return;
+        var months = Object.keys(stats.monthly).sort();
+        if (!months.length) { wrap.innerHTML = '<div class="acr-empty"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><p>No monthly data available.</p></div>'; return; }
+        var maxVal = 0;
+        months.forEach(function (m) {
+          var d = stats.monthly[m];
+          if (d.income > maxVal) maxVal = d.income;
+          if (d.expense > maxVal) maxVal = d.expense;
+        });
+        if (maxVal === 0) maxVal = 1;
+        var html = '<div class="acr-trend-chart">';
+        months.forEach(function (m) {
+          var d = stats.monthly[m];
+          var incH = Math.round((d.income / maxVal) * 120);
+          var expH = Math.round((d.expense / maxVal) * 120);
+          var net = d.income - d.expense;
+          html += '<div class="acr-trend-col"><div class="acr-trend-bars"><div class="acr-trend-bar acr-trend-bar--inc" style="height:' + incH + 'px;" title="Income: ' + _acrFormatMoney(d.income) + '"></div><div class="acr-trend-bar acr-trend-bar--exp" style="height:' + expH + 'px;" title="Expenses: ' + _acrFormatMoney(d.expense) + '"></div></div><div class="acr-trend-lbl">' + escapeHtml(m) + '</div><div class="acr-trend-net" style="color:' + (net >= 0 ? "#059669" : "#dc2626") + ';">' + (net >= 0 ? "+" : "") + Math.round(net) + '</div></div>';
+        });
+        html += '</div><div class="acr-chart-legend"><span class="acr-legend-dot" style="background:#059669;"></span> Income<span class="acr-legend-dot" style="background:#dc2626;margin-left:12px;"></span> Expenses</div>';
+        wrap.innerHTML = html;
+      }
+
+      moduleSummary.innerHTML = '<div class="acr-wrap">' +
+        '<div class="acr-hdr"><div class="acr-hdr__left"><div class="acr-hdr__eyebrow">SagarSoft Finance</div><h2 class="acr-hdr__title">Accounts Report</h2><p class="acr-hdr__sub">Complete financial overview and transaction statement.</p></div>' +
+        '<div class="acr-hdr__actions"><button class="acr-btn acr-btn--ghost" type="button" id="acrRefreshBtn">Refresh</button><button class="acr-btn acr-btn--accent" type="button" id="acrPrintBtn">Print</button><button class="acr-btn acr-btn--accent" type="button" id="acrPdfBtn">PDF</button><button class="acr-btn acr-btn--accent" type="button" id="acrExcelBtn">Excel</button></div></div>' +
+        '<div class="acr-period">' +
+        '<button class="acr-period-btn" type="button" data-period="today">Today</button>' +
+        '<button class="acr-period-btn" type="button" data-period="week">This Week</button>' +
+        '<button class="acr-period-btn acr-period-btn--active" type="button" data-period="month">This Month</button>' +
+        '<button class="acr-period-btn" type="button" data-period="lastMonth">Last Month</button>' +
+        '<button class="acr-period-btn" type="button" data-period="year">This Year</button>' +
+        '<div class="acr-period-custom"><label class="acr-period-lbl">From</label><input class="acr-period-date" type="date" id="acrFromDate" value="' + _acrFromVal + '"><label class="acr-period-lbl">To</label><input class="acr-period-date" type="date" id="acrToDate" value="' + _acrToVal + '"></div></div>' +
+        '<div class="acr-cards">' +
+        '<div class="acr-card acr-card--green"><div class="acr-card__icon" style="background:#059669;"><i class="fas fa-arrow-down"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Total Income</div><div class="acr-card__val acr-card__val--positive" id="acrTotalIncome">Rs 0</div><div class="acr-card__sub">All incoming funds</div></div></div>' +
+        '<div class="acr-card acr-card--red"><div class="acr-card__icon" style="background:#dc2626;"><i class="fas fa-arrow-up"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Total Expenses</div><div class="acr-card__val acr-card__val--negative" id="acrTotalExpenses">Rs 0</div><div class="acr-card__sub">All outgoing funds</div></div></div>' +
+        '<div class="acr-card acr-card--blue"><div class="acr-card__icon" style="background:#2563eb;"><i class="fas fa-balance-scale"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Net Balance</div><div class="acr-card__val acr-card__val--positive" id="acrNetBalance">Rs 0</div><div class="acr-card__sub">Income minus expenses</div></div></div>' +
+        '<div class="acr-card acr-card--emerald"><div class="acr-card__icon" style="background:#10b981;"><i class="fas fa-graduation-cap"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Fee Income</div><div class="acr-card__val" id="acrFeeIncome">Rs 0</div><div class="acr-card__sub">Student fee collections</div></div></div>' +
+        '<div class="acr-card acr-card--amber"><div class="acr-card__icon" style="background:#f59e0b;"><i class="fas fa-users"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Salaries</div><div class="acr-card__val acr-card__val--negative" id="acrSalaries">Rs 0</div><div class="acr-card__sub">Employee salary payments</div></div></div>' +
+        '<div class="acr-card acr-card--purple"><div class="acr-card__icon" style="background:#8b5cf6;"><i class="fas fa-receipt"></i></div><div class="acr-card__body"><div class="acr-card__lbl">Other Expenses</div><div class="acr-card__val acr-card__val--negative" id="acrOtherExpenses">Rs 0</div><div class="acr-card__sub">Utilities, maintenance, etc.</div></div></div></div>' +
+        '<div class="acr-toolbar"><input class="acr-search" type="search" id="acrSearchInput" placeholder="Search transactions..."><select class="acr-filter-sel" id="acrCategoryFilter"><option value="all">All Categories</option></select><select class="acr-filter-sel" id="acrStatusFilter"><option value="all">All Status</option><option value="Completed">Completed</option><option value="Reversed">Reversed</option><option value="Voided">Voided</option></select></div>' +
+        '<div class="acr-trans-wrap"><table class="acr-tbl"><thead><tr><th>TXN ID</th><th>Date</th><th>Transaction</th><th>Category</th><th>Income</th><th>Expense</th><th>Running Balance</th><th>Status</th><th>Action</th></tr></thead><tbody id="acrTransBody"></tbody></table></div>' +
+        '<div class="acr-grid2">' +
+        '<div class="acr-panel"><div class="acr-panel__hd"><h3 class="acr-panel__tt">Income vs Expenses</h3></div><div class="acr-panel__bd" id="acrIncExpChart"></div></div>' +
+        '<div class="acr-panel"><div class="acr-panel__hd"><h3 class="acr-panel__tt">Expense Breakdown</h3></div><div class="acr-panel__bd" id="acrExpBreakdown"></div></div></div>' +
+        '<div class="acr-panel"><div class="acr-panel__hd"><h3 class="acr-panel__tt">Monthly Financial Trend</h3></div><div class="acr-panel__bd" id="acrMonthlyTrend"></div></div>' +
+        '</div>' +
+        '<div class="acr-modal" id="acrDetailModal"><div class="acr-modal__overlay"></div><div class="acr-modal__dialog"><div class="acr-modal__hd"><h3 class="acr-modal__tt">Transaction Details</h3><button class="acr-modal__close" type="button" id="acrModalClose">&times;</button></div><div class="acr-modal__bd" id="acrDetailBody"></div><div class="acr-modal__ft"><button class="acr-btn acr-btn--ghost" type="button" id="acrModalCloseBtn">Close</button></div></div></div>';
+      moduleGuide.innerHTML = "";
+
+      safeOn(document.getElementById("acrFromDate"), "change", function () { _acrFromVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrToDate"), "change", function () { _acrToVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrCategoryFilter"), "change", function () { _acrCategoryVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrStatusFilter"), "change", function () { _acrStatusVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrSearchInput"), "input", function () { _acrSearchVal = this.value; _acrRender(); });
+      safeOn(document.getElementById("acrRefreshBtn"), "click", function () { refreshDatabase(); _acrRender(); });
+      document.querySelectorAll(".acr-period-btn").forEach(function (btn) {
+        safeOn(btn, "click", function () { _acrSetPeriod(btn.getAttribute("data-period"), btn); });
+      });
+      safeOn(document.getElementById("acrModalClose"), "click", function () { document.getElementById("acrDetailModal").style.display = "none"; });
+      safeOn(document.getElementById("acrModalCloseBtn"), "click", function () { document.getElementById("acrDetailModal").style.display = "none"; });
+      safeOn(document.querySelector(".acr-modal__overlay"), "click", function () { document.getElementById("acrDetailModal").style.display = "none"; });
+
+      safeOn(document.getElementById("acrPrintBtn"), "click", function () {
+        var allRows = _acrGetAllRows();
+        var rows = _acrFilterRows(allRows);
+        var stats = _acrCalcStats(rows);
+        if (!rows.length) return;
+        var schoolName = ((database.generalSettings || {}).instituteProfile || {}).name || (database.school || {}).name || "SagarSoft";
+        var pw = window.open("", "_blank", "width=900,height=700");
+        if (!pw) { alert("Please allow popups for printing."); return; }
+        pw.document.write("<!DOCTYPE html><html><head><title>Accounts Report</title><style>body{font-family:'Segoe UI',sans-serif;margin:20px;color:#1e293b;}h1{font-size:20px;margin:0 0 4px;}h2{font-size:14px;color:#64748b;margin:0 0 16px;font-weight:500;}.summary{display:flex;gap:16px;margin-bottom:16px;}.summary>div{flex:1;padding:10px;border:1px solid #e2e8f0;border-radius:8px;}.summary .lbl{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;}.summary .val{font-size:18px;font-weight:700;margin-top:2px;}.green{color:#059669;}.red{color:#dc2626;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:left;}th{background:#f8fafc;font-weight:600;font-size:11px;text-transform:uppercase;}.total{font-weight:700;background:#f1f5f9;}.footer{margin-top:16px;font-size:10px;color:#94a3b8;text-align:center;}</style></head><body>");
+        pw.document.write("<h1>" + escapeHtml(schoolName) + " - Accounts Report</h1>");
+        pw.document.write("<h2>" + _acrFromVal + " to " + _acrToVal + "</h2>");
+        pw.document.write('<div class="summary"><div><div class="lbl">Total Income</div><div class="val green">' + _acrFormatMoney(stats.totalIncome) + '</div></div><div><div class="lbl">Total Expenses</div><div class="val red">' + _acrFormatMoney(stats.totalExpenses) + '</div></div><div><div class="lbl">Net Balance</div><div class="val ' + (stats.netBalance >= 0 ? "green" : "red") + '">' + _acrFormatMoney(stats.netBalance) + '</div></div></div>');
+        pw.document.write("<table><thead><tr><th>TXN ID</th><th>Date</th><th>Transaction</th><th>Category</th><th>Income</th><th>Expense</th><th>Balance</th><th>Status</th></tr></thead><tbody>");
+        var bal = 0;
+        rows.forEach(function (r) {
+          bal += r.income - r.expense;
+          var incCol = r.income > 0 ? _acrFormatMoney(r.income) : "-";
+          var expCol = r.expense > 0 ? _acrFormatMoney(r.expense) : "-";
+          pw.document.write("<tr><td>" + escapeHtml(r.txnNo || "-") + "</td><td>" + escapeHtml(r.date) + "</td><td>" + escapeHtml(r.description) + "</td><td>" + escapeHtml(r.category) + "</td><td>" + incCol + "</td><td>" + expCol + "</td><td><strong>" + _acrFormatMoney(bal) + "</strong></td><td>" + r.status + "</td></tr>");
+        });
+        pw.document.write('<tr class="total"><td colspan="4"><strong>Total</strong></td><td><strong>' + _acrFormatMoney(stats.totalIncome) + '</strong></td><td><strong>' + _acrFormatMoney(stats.totalExpenses) + '</strong></td><td><strong>' + _acrFormatMoney(stats.netBalance) + '</strong></td><td></td></tr>');
+        pw.document.write("</tbody></table>");
+        pw.document.write('<div class="footer">Generated on ' + new Date().toLocaleString() + '</div>');
+        pw.document.write("</body></html>");
+        pw.document.close();
+        setTimeout(function () { pw.print(); }, 400);
+      });
+
+      safeOn(document.getElementById("acrPdfBtn"), "click", function () {
+        document.getElementById("acrPrintBtn").click();
+      });
+
+      safeOn(document.getElementById("acrExcelBtn"), "click", function () {
+        var allRows = _acrGetAllRows();
+        var rows = _acrFilterRows(allRows);
+        if (!rows.length) return;
+        var csvRows = [["TXN ID", "Date", "Transaction", "Category", "Income", "Expense", "Running Balance", "Status", "Reference"].join(",")];
+        var bal = 0;
+        rows.forEach(function (r) { bal += r.income - r.expense; csvRows.push([r.txnNo || "", r.date, '"' + r.description.replace(/"/g, '""') + '"', '"' + r.category.replace(/"/g, '""') + '"', r.income > 0 ? r.income : "", r.expense > 0 ? r.expense : "", bal, r.status, r.id].join(",")); });
+        var stats = _acrCalcStats(rows);
+        csvRows.push(["", "", "Total Income", stats.totalIncome, "", "", "", ""].join(","));
+        csvRows.push(["", "", "Total Expenses", "", stats.totalExpenses, "", "", ""].join(","));
+        csvRows.push(["", "", "Net Balance", "", "", stats.netBalance, "", ""].join(","));
         var csv = csvRows.join("\r\n");
         var blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
         var link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
-        link.download = "Account_Statement_" + getTodayDateISO() + ".csv";
+        link.download = "Accounts_Report_" + getTodayDateISO() + ".csv";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(link.href);
       });
 
-      safeOn(document.getElementById("clearAccountsHistoryBtn"), "click", function () {
-        showStyledDeleteConfirmation("all account ledger history", function () {
-          var settings = database.generalSettings || {};
-          settings.accountsLedger = [];
-          saveDatabase(null, [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: [], school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          refreshDatabase();
-          renderStatement();
-        });
-      });
-
-      fromInput.addEventListener("change", renderStatement);
-      toInput.addEventListener("change", renderStatement);
-      if (typeFilter) typeFilter.addEventListener("change", renderStatement);
-      if (searchFilter) searchFilter.addEventListener("input", renderStatement);
-      renderStatement();
+      _acrRender();
       return;
     }
 
     if (route === "customised-reports") {
-      const classOptionsMarkup = classOptions.map(function (name) {
-        return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
-      }).join("");
-      const examOptionsMarkup = getExams().map(function (exam) {
-        return `<option value="${exam.id}">${escapeHtml(exam.name)}</option>`;
-      }).join("");
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">Customised Reports</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Report Type*</label><select id="customReportType" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="students-info">Students Info</option><option value="parents-info">Parents Info</option><option value="student-attendance">Students Attendance (Monthly)</option><option value="staff-attendance">Staff Attendance (Monthly)</option><option value="fee-collection">Fee Collection</option><option value="student-progress">Student Progress</option><option value="accounts">Accounts</option></select></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Class</label><select id="customReportClass" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="all">All Classes</option>${classOptionsMarkup}</select></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Month</label><input id="customReportMonth" type="month" value="${getCurrentMonthInputValue()}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Exam</label><select id="customReportExam" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Exam</option>${examOptionsMarkup}</select></div>
-          </div>
-          <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search</label><div style="position:relative;"><input id="customReportSearch" type="search" placeholder="Search by name / roll no / phone" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="customReportSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div></div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:6px 0 8px 0;"><button class="primary-button" id="generateCustomReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Generate</button><button class="secondary-button" id="printCustomReportBtn" type="button" style="padding:6px 16px;font-size:0.8rem;">Print</button></div>
-          <div class="table-wrap"><table><thead id="customReportHead"></thead><tbody id="customReportBody"></tbody></table></div>
-          <p class="empty-state" id="customReportEmptyState" hidden>No report generated yet.</p>
-        </article>
-      `;
-      moduleGuide.innerHTML = "";
-      const typeSelect = document.getElementById("customReportType");
-      const classSelect = document.getElementById("customReportClass");
-      const monthInput = document.getElementById("customReportMonth");
-      const examSelect = document.getElementById("customReportExam");
-      const searchInput = document.getElementById("customReportSearch");
-      const searchDropdown = document.getElementById("customReportSearchDropdown");
-      const searchContainer = document.getElementById("customReportSearchContainer");
-      const head = document.getElementById("customReportHead");
+      var _crptClassOpts = classOptions.map(function (n) { return '<option value="' + escapeAttr(n) + '">' + escapeHtml(n) + '</option>'; }).join("");
+      var _crptExamOpts = getExams().map(function (e) { return '<option value="' + escapeAttr(e.id) + '">' + escapeHtml(e.name) + '</option>'; }).join("");
+      var _crptReportTypes = [
+        { value: "students-info", label: "Students Information", icon: "fa-user-graduate", cat: "Students" },
+        { value: "parents-info", label: "Parents Information", icon: "fa-users", cat: "Parents" },
+        { value: "student-attendance", label: "Monthly Student Attendance", icon: "fa-calendar-check", cat: "Attendance" },
+        { value: "staff-attendance", label: "Monthly Employee Attendance", icon: "fa-user-clock", cat: "Attendance" },
+        { value: "fee-collection", label: "Fee Collection", icon: "fa-money-bill-wave", cat: "Finance" },
+        { value: "student-progress", label: "Student Progress", icon: "fa-chart-line", cat: "Academic" },
+        { value: "accounts", label: "Account Statement", icon: "fa-book", cat: "Finance" }
+      ];
+      var _crptCats = ["Students", "Academic", "Attendance", "Finance", "Parents"];
+      var _crptCatIcons = { Students: "fa-user-graduate", Academic: "fa-graduation-cap", Attendance: "fa-calendar-check", Finance: "fa-money-bill-wave", Parents: "fa-users" };
+      var _crptCurrentType = "students-info";
+      var _crptPage = 1;
+      var _crptPageSize = 25;
+      var _crptData = [];
+      var _crptHeaders = [];
+      var _crptSummary = {};
+      var _crptReportTitle = "";
+      var _crptReportSubtitle = "";
+      var _crptLoading = false;
 
-      initializeStudentProfessionalSearch(
-        "customReportSearch",
-        "customReportSearchDropdown",
-        "customReportSearchContainer",
-        function(student) {
-          searchInput.value = student.name || "";
-          // User will click generate
-        }
-      );
-      const body = document.getElementById("customReportBody");
-      const emptyState = document.getElementById("customReportEmptyState");
-      let printState = null;
-
-      function setData(title, subtitle, headers, rows) {
-        head.innerHTML = `<tr>${headers.map(function (h) { return `<th>${h}</th>`; }).join("")}</tr>`;
-        body.innerHTML = rows.map(function (row) { return `<tr>${row.map(function (col) { return `<td>${col}</td>`; }).join("")}</tr>`; }).join("");
-        emptyState.hidden = rows.length !== 0;
-        printState = { title: title, subtitle: subtitle, headers: headers, rows: rows };
+      function _crptGetFilterConfig(type) {
+        var configs = {
+          "students-info": { fields: ["class", "gender", "status", "search"], searchPh: "Search by name / roll no / phone" },
+          "parents-info": { fields: ["class", "search"], searchPh: "Search by student or parent name" },
+          "student-attendance": { fields: ["month", "class", "search"], searchPh: "Search by student name" },
+          "staff-attendance": { fields: ["month", "search"], searchPh: "Search by employee name" },
+          "fee-collection": { fields: ["month", "class", "feeStatus", "search"], searchPh: "Search by student name" },
+          "student-progress": { fields: ["exam", "class", "search"], searchPh: "Search by student name" },
+          "accounts": { fields: ["month", "txnType", "search"], searchPh: "Search description / category" }
+        };
+        return configs[type] || { fields: ["search"], searchPh: "Search..." };
       }
 
-      safeOn(document.getElementById("generateCustomReportBtn"), "click", function () {
-        const type = typeSelect.value;
-        const classValue = classSelect.value;
-        const monthValue = monthInput.value;
-        const searchValue = searchInput.value;
-        if (type === "students-info") {
-          const rows = getStudentsByFilter(classValue, searchValue).map(function (student) {
-            return [escapeHtml(student.admissionNo || "-"), escapeHtml(student.name || "-"), escapeHtml(student.className || "-"), escapeHtml(student.gender || "-"), escapeHtml(student.studentPhone || student.phone || "-")];
+      function _crptRenderFilters() {
+        var cfg = _crptGetFilterConfig(_crptCurrentType);
+        var html = "";
+        if (cfg.fields.indexOf("class") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Class</label><select class="crpt-sel" id="crptClass"><option value="all">All Classes</option>' + _crptClassOpts + '</select></div>';
+        if (cfg.fields.indexOf("month") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Month</label><input class="crpt-inp" type="month" id="crptMonth" value="' + getCurrentMonthInputValue() + '"></div>';
+        if (cfg.fields.indexOf("exam") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Exam</label><select class="crpt-sel" id="crptExam"><option value="">Select Exam</option>' + _crptExamOpts + '</select></div>';
+        if (cfg.fields.indexOf("gender") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Gender</label><select class="crpt-sel" id="crptGender"><option value="all">All</option><option value="Male">Male</option><option value="Female">Female</option></select></div>';
+        if (cfg.fields.indexOf("status") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Status</label><select class="crpt-sel" id="crptStatus"><option value="all">All</option><option value="active">Active</option><option value="inactive">Inactive</option></select></div>';
+        if (cfg.fields.indexOf("feeStatus") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Fee Status</label><select class="crpt-sel" id="crptFeeStatus"><option value="all">All</option><option value="paid">Paid</option><option value="due">Due</option></select></div>';
+        if (cfg.fields.indexOf("txnType") !== -1) html += '<div class="crpt-field"><label class="crpt-lbl">Type</label><select class="crpt-sel" id="crptTxnType"><option value="all">All Types</option><option value="Income">Income</option><option value="Expense">Expense</option></select></div>';
+        if (cfg.fields.indexOf("search") !== -1) html += '<div class="crpt-field crpt-field--wide"><label class="crpt-lbl">Search</label><input class="crpt-inp" type="search" id="crptSearch" placeholder="' + (cfg.searchPh || "Search...") + '"></div>';
+        document.getElementById("crptFiltersArea").innerHTML = html;
+      }
+
+      function _crptBuildTypeSelector() {
+        var html = '<div class="crpt-type-grid">';
+        _crptCats.forEach(function (cat) {
+          var items = _crptReportTypes.filter(function (t) { return t.cat === cat; });
+          if (!items.length) return;
+          html += '<div class="crpt-type-cat"><div class="crpt-type-cat__hd"><i class="fas ' + (_crptCatIcons[cat] || "fa-folder") + '"></i> ' + escapeHtml(cat) + '</div><div class="crpt-type-cat__items">';
+          items.forEach(function (t) {
+            var active = t.value === _crptCurrentType ? " crpt-type--active" : "";
+            html += '<button class="crpt-type' + active + '" type="button" data-crpt-type="' + t.value + '">' + escapeHtml(t.label) + '</button>';
           });
-          setData("Custom Report - Students Info", `Class: ${classValue}`, ["Roll No", "Name", "Class", "Gender", "Phone"], rows);
-          return;
-        }
-        if (type === "parents-info") {
-          const rows = getStudentsByFilter(classValue, searchValue).map(function (student) {
-            return [escapeHtml(student.name || "-"), escapeHtml(student.className || "-"), escapeHtml(student.fatherName || "-"), escapeHtml(student.fatherPhone || "-"), escapeHtml(student.motherName || "-"), escapeHtml(student.motherPhone || "-")];
-          });
-          setData("Custom Report - Parents Info", `Class: ${classValue}`, ["Student", "Class", "Father", "Father Phone", "Mother", "Mother Phone"], rows);
-          return;
-        }
-        if (type === "student-attendance") {
-          const rows = getStudentMonthlyAttendance(monthValue, classValue, searchValue).map(function (row) {
-            return [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), row.present, row.absent, row.leave, row.total, `${row.percent}%`];
-          });
-          setData("Custom Report - Students Attendance", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Roll No", "Student", "Class", "P", "A", "L", "Total", "%"], rows);
-          return;
-        }
-        if (type === "staff-attendance") {
-          const rows = getEmployeeMonthlyAttendance(monthValue, searchValue).map(function (row) {
-            return [escapeHtml(row.employee.name || "-"), escapeHtml(row.employee.role || "-"), row.present, row.absent, row.leave, row.total, `${row.percent}%`];
-          });
-          setData("Custom Report - Staff Attendance", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Employee", "Role", "P", "A", "L", "Total", "%"], rows);
-          return;
-        }
-        if (type === "fee-collection") {
-          const rows = getFeeCollectionReportRows(monthValue, classValue, searchValue, "all").map(function (row) {
-            return [escapeHtml(row.student.admissionNo || "-"), escapeHtml(row.student.name || "-"), escapeHtml(row.student.className || "-"), row.totalAmount, row.deposit, row.remaining, row.status === "paid" ? "Paid" : "Due"];
-          });
-          setData("Custom Report - Fee Collection", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Roll No", "Student", "Class", "Total", "Deposit", "Remaining", "Status"], rows);
-          return;
-        }
-        if (type === "student-progress") {
-          if (!examSelect.value) {
-            setData("Custom Report - Student Progress", "Select exam first", ["Info"], [["Please select exam first."]]);
-            return;
-          }
-          const exam = getExamById(examSelect.value);
-          const rows = getStudentsByFilter(classValue, searchValue).map(function (student) {
-            const result = evaluateExamResult(examSelect.value, student.className, student.id);
-            return [escapeHtml(student.admissionNo || "-"), escapeHtml(student.name || "-"), escapeHtml(student.className || "-"), result.obtainedMarks, result.totalMarks, `${result.percentage}%`, escapeHtml(result.grade), escapeHtml(result.status)];
-          });
-          setData("Custom Report - Student Progress", `Exam: ${exam ? exam.name : "-"}`, ["Roll No", "Student", "Class", "Obtain", "Total", "%", "Grade", "Status"], rows);
-          return;
-        }
-        const accounts = getAccountsReportRows("monthly", monthValue);
-        const rows = accounts.rows.map(function (row) {
-          return [escapeHtml(row.date || "-"), row.type, escapeHtml(row.source || "-"), escapeHtml(row.ref || "-"), row.amount];
+          html += '</div></div>';
         });
-        setData("Custom Report - Accounts", `Month: ${normalizeFeeMonthLabel(monthValue)}`, ["Date", "Type", "Source", "Reference", "Amount"], rows);
+        html += '</div>';
+        return html;
+      }
+
+      function _crptGenerate() {
+        if (_crptLoading) return;
+        _crptLoading = true;
+        var genBtn = document.getElementById("crptGenBtn");
+        if (genBtn) { genBtn.disabled = true; genBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...'; }
+        var summaryWrap = document.getElementById("crptSummaryCards");
+        var previewWrap = document.getElementById("crptPreview");
+        var exportBar = document.getElementById("crptExportBar");
+
+        setTimeout(function () {
+          try {
+            var type = _crptCurrentType;
+            var classEl = document.getElementById("crptClass");
+            var monthEl = document.getElementById("crptMonth");
+            var examEl = document.getElementById("crptExam");
+            var genderEl = document.getElementById("crptGender");
+            var statusEl = document.getElementById("crptStatus");
+            var feeStatusEl = document.getElementById("crptFeeStatus");
+            var txnTypeEl = document.getElementById("crptTxnType");
+            var searchEl = document.getElementById("crptSearch");
+            var classVal = classEl ? classEl.value : "all";
+            var monthVal = monthEl ? monthEl.value : getCurrentMonthInputValue();
+            var examVal = examEl ? examEl.value : "";
+            var genderVal = genderEl ? genderEl.value : "all";
+            var statusVal = statusEl ? statusEl.value : "all";
+            var feeStatusVal = feeStatusEl ? feeStatusEl.value : "all";
+            var txnTypeVal = txnTypeEl ? txnTypeEl.value : "all";
+            var searchVal = searchEl ? searchEl.value : "";
+
+            if (type === "students-info") {
+              var students = getStudentsByFilter(classVal, searchVal);
+              if (genderVal !== "all") students = students.filter(function (s) { return (s.gender || "").toLowerCase() === genderVal.toLowerCase(); });
+              if (statusVal !== "all") students = students.filter(function (s) { return (s.status || "active").toLowerCase() === statusVal.toLowerCase(); });
+              _crptHeaders = ["Roll No", "Student Name", "Father Name", "Class", "Gender", "Phone", "Status"];
+              _crptData = students.map(function (s) { return [s.admissionNo || "-", s.name || "-", s.fatherName || "-", s.className || "-", s.gender || "-", s.studentPhone || s.phone || "-", s.status || "Active"]; });
+              var active = students.filter(function (s) { return (s.status || "active").toLowerCase() === "active"; }).length;
+              var male = students.filter(function (s) { return (s.gender || "").toLowerCase() === "male"; }).length;
+              var female = students.filter(function (s) { return (s.gender || "").toLowerCase() === "female"; }).length;
+              _crptSummary = { cards: [{ lbl: "Total Students", val: students.length, clr: "#6366f1" }, { lbl: "Active", val: active, clr: "#059669" }, { lbl: "Male", val: male, clr: "#2563eb" }, { lbl: "Female", val: female, clr: "#ec4899" }] };
+              _crptReportTitle = "Students Information Report";
+              _crptReportSubtitle = "Class: " + classVal + (genderVal !== "all" ? " | Gender: " + genderVal : "") + (statusVal !== "all" ? " | Status: " + statusVal : "");
+            } else if (type === "parents-info") {
+              var students = getStudentsByFilter(classVal, searchVal);
+              _crptHeaders = ["Student", "Class", "Father Name", "Father Phone", "Mother Name", "Mother Phone"];
+              _crptData = students.map(function (s) { return [s.name || "-", s.className || "-", s.fatherName || "-", s.fatherPhone || "-", s.motherName || "-", s.motherPhone || "-"]; });
+              _crptSummary = { cards: [{ lbl: "Total Records", val: students.length, clr: "#6366f1" }, { lbl: "With Father Phone", val: students.filter(function (s) { return s.fatherPhone; }).length, clr: "#059669" }] };
+              _crptReportTitle = "Parents Information Report";
+              _crptReportSubtitle = "Class: " + classVal;
+            } else if (type === "student-attendance") {
+              var rows = getStudentMonthlyAttendance(monthVal, classVal, searchVal);
+              _crptHeaders = ["Roll No", "Student", "Class", "Present", "Absent", "Leave", "Total", "Percentage"];
+              _crptData = rows.map(function (r) { return [r.student.admissionNo || "-", r.student.name || "-", r.student.className || "-", r.present, r.absent, r.leave, r.total, r.percent + "%"]; });
+              var totalP = rows.reduce(function (s, r) { return s + r.present; }, 0);
+              var totalA = rows.reduce(function (s, r) { return s + r.absent; }, 0);
+              var totalL = rows.reduce(function (s, r) { return s + r.leave; }, 0);
+              var totalD = totalP + totalA + totalL;
+              var avgPct = totalD ? Math.round((totalP / totalD) * 100) : 0;
+              _crptSummary = { cards: [{ lbl: "Total Students", val: rows.length, clr: "#6366f1" }, { lbl: "Total Present", val: totalP, clr: "#059669" }, { lbl: "Total Absent", val: totalA, clr: "#dc2626" }, { lbl: "Avg Attendance", val: avgPct + "%", clr: "#f59e0b" }] };
+              _crptReportTitle = "Student Attendance Report";
+              _crptReportSubtitle = "Month: " + normalizeFeeMonthLabel(monthVal) + " | Class: " + classVal;
+            } else if (type === "staff-attendance") {
+              var rows = getEmployeeMonthlyAttendance(monthVal, searchVal);
+              _crptHeaders = ["Employee", "Role", "Present", "Absent", "Leave", "Total", "Percentage"];
+              _crptData = rows.map(function (r) { return [r.employee.name || "-", r.employee.role || "-", r.present, r.absent, r.leave, r.total, r.percent + "%"]; });
+              var totalP = rows.reduce(function (s, r) { return s + r.present; }, 0);
+              var totalA = rows.reduce(function (s, r) { return s + r.absent; }, 0);
+              var totalL = rows.reduce(function (s, r) { return s + r.leave; }, 0);
+              var totalD = totalP + totalA + totalL;
+              var avgPct = totalD ? Math.round((totalP / totalD) * 100) : 0;
+              _crptSummary = { cards: [{ lbl: "Total Employees", val: rows.length, clr: "#6366f1" }, { lbl: "Total Present", val: totalP, clr: "#059669" }, { lbl: "Total Absent", val: totalA, clr: "#dc2626" }, { lbl: "Avg Attendance", val: avgPct + "%", clr: "#f59e0b" }] };
+              _crptReportTitle = "Employee Attendance Report";
+              _crptReportSubtitle = "Month: " + normalizeFeeMonthLabel(monthVal);
+            } else if (type === "fee-collection") {
+              var rows = getFeeCollectionReportRows(monthVal, classVal, searchVal, feeStatusVal);
+              var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
+              _crptHeaders = ["Roll No", "Student", "Class", "Total", "Deposit", "Remaining", "Status"];
+              _crptData = rows.map(function (r) { return [r.student.admissionNo || "-", r.student.name || "-", r.student.className || "-", currencySymbol + " " + r.totalAmount, currencySymbol + " " + r.deposit, currencySymbol + " " + r.remaining, r.status === "paid" ? "Paid" : "Due"]; });
+              var paid = rows.filter(function (r) { return r.status === "paid"; }).length;
+              var due = rows.filter(function (r) { return r.status === "due"; }).length;
+              var totalCol = rows.reduce(function (s, r) { return s + r.deposit; }, 0);
+              _crptSummary = { cards: [{ lbl: "Total Collection", val: currencySymbol + " " + totalCol, clr: "#059669" }, { lbl: "Transactions", val: rows.length, clr: "#6366f1" }, { lbl: "Paid Students", val: paid, clr: "#10b981" }, { lbl: "Pending Students", val: due, clr: "#f59e0b" }] };
+              _crptReportTitle = "Fee Collection Report";
+              _crptReportSubtitle = "Month: " + normalizeFeeMonthLabel(monthVal) + " | Class: " + classVal;
+            } else if (type === "student-progress") {
+              if (!examVal) {
+                _crptData = [];
+                _crptHeaders = ["Info"];
+                _crptSummary = { cards: [] };
+                _crptReportTitle = "Student Progress Report";
+                _crptReportSubtitle = "Please select an exam first.";
+                _crptRenderPreview();
+                _crptLoading = false;
+                if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '<i class="fas fa-search"></i> Generate Report'; }
+                return;
+              }
+              var exam = getExamById(examVal);
+              var students = getStudentsByFilter(classVal, searchVal);
+              _crptHeaders = ["Roll No", "Student", "Class", "Obtained", "Total", "Percentage", "Grade", "Status"];
+              _crptData = students.map(function (s) {
+                var result = evaluateExamResult(examVal, s.className, s.id);
+                return [s.admissionNo || "-", s.name || "-", s.className || "-", result.obtainedMarks, result.totalMarks, result.percentage + "%", result.grade || "-", result.status || "-"];
+              });
+              var passed = _crptData.filter(function (r) { return r[7] === "Pass"; }).length;
+              var failed = _crptData.filter(function (r) { return r[7] === "Fail"; }).length;
+              var avgPct = _crptData.length ? Math.round(_crptData.reduce(function (s, r) { return s + parseInt(r[5]) || 0; }, 0) / _crptData.length) : 0;
+              _crptSummary = { cards: [{ lbl: "Total Students", val: students.length, clr: "#6366f1" }, { lbl: "Passed", val: passed, clr: "#059669" }, { lbl: "Failed", val: failed, clr: "#dc2626" }, { lbl: "Average", val: avgPct + "%", clr: "#f59e0b" }] };
+              _crptReportTitle = "Student Progress Report";
+              _crptReportSubtitle = "Exam: " + (exam ? exam.name : "-") + " | Class: " + classVal;
+            } else if (type === "accounts") {
+              var acctData = getAccountsReportRows("monthly", monthVal);
+              var allRows = acctData.rows || [];
+              if (txnTypeVal !== "all") allRows = allRows.filter(function (r) { return r.type === txnTypeVal; });
+              if (searchVal) {
+                var q = searchVal.toLowerCase();
+                allRows = allRows.filter(function (r) { return ((r.date || "") + " " + (r.type || "") + " " + (r.source || "") + " " + (r.ref || "")).toLowerCase().indexOf(q) !== -1; });
+              }
+              var currencySymbol = ((database.generalSettings || {}).accountSettings || {}).symbol || "Rs";
+              _crptHeaders = ["Date", "Type", "Category", "Reference", "Amount"];
+              _crptData = allRows.map(function (r) { return [r.date || "-", r.type || "-", r.source || "-", r.ref || "-", currencySymbol + " " + r.amount]; });
+              var inc = allRows.filter(function (r) { return r.type === "Income"; }).reduce(function (s, r) { return s + r.amount; }, 0);
+              var exp = allRows.filter(function (r) { return r.type === "Expense"; }).reduce(function (s, r) { return s + r.amount; }, 0);
+              _crptSummary = { cards: [{ lbl: "Total Income", val: currencySymbol + " " + inc, clr: "#059669" }, { lbl: "Total Expenses", val: currencySymbol + " " + exp, clr: "#dc2626" }, { lbl: "Net Balance", val: currencySymbol + " " + (inc - exp), clr: inc - exp >= 0 ? "#059669" : "#dc2626" }, { lbl: "Transactions", val: allRows.length, clr: "#6366f1" }] };
+              _crptReportTitle = "Account Statement";
+              _crptReportSubtitle = "Month: " + normalizeFeeMonthLabel(monthVal);
+            }
+
+            _crptPage = 1;
+            _crptRenderSummary();
+            _crptRenderPreview();
+            if (exportBar) exportBar.style.display = "flex";
+          } catch (err) {
+            console.error("Report generation error:", err);
+            if (summaryWrap) summaryWrap.innerHTML = '<div class="crpt-empty"><p>Error generating report.</p></div>';
+          }
+          _crptLoading = false;
+          if (genBtn) { genBtn.disabled = false; genBtn.innerHTML = '<i class="fas fa-search"></i> Generate Report'; }
+        }, 150);
+      }
+
+      function _crptRenderSummary() {
+        var wrap = document.getElementById("crptSummaryCards");
+        if (!wrap || !_crptSummary.cards || !_crptSummary.cards.length) { if (wrap) wrap.innerHTML = ""; return; }
+        wrap.innerHTML = _crptSummary.cards.map(function (c) {
+          return '<div class="crpt-scard"><div class="crpt-scard__body"><div class="crpt-scard__val" style="color:' + c.clr + ';">' + c.val + '</div><div class="crpt-scard__lbl">' + escapeHtml(c.lbl) + '</div></div></div>';
+        }).join("");
+      }
+
+      function _crptRenderPreview() {
+        var wrap = document.getElementById("crptPreview");
+        if (!wrap) return;
+        if (!_crptData.length && !_crptHeaders.length) {
+          wrap.innerHTML = '<div class="crpt-empty"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>No records found</p><span>Try changing your filters or report type.</span><button class="crpt-btn crpt-btn--ghost" type="button" id="crptResetEmpty">Reset Filters</button></div>';
+          var resetBtn = document.getElementById("crptResetEmpty");
+          if (resetBtn) safeOn(resetBtn, "click", function () { _crptResetFilters(); });
+          return;
+        }
+        var schoolName = ((database.generalSettings || {}).instituteProfile || {}).name || (database.school || {}).name || "SagarSoft";
+        var total = _crptData.length;
+        var totalPages = Math.max(1, Math.ceil(total / _crptPageSize));
+        if (_crptPage > totalPages) _crptPage = totalPages;
+        var start = (_crptPage - 1) * _crptPageSize;
+        var pageData = _crptData.slice(start, start + _crptPageSize);
+        var html = '<div class="crpt-preview__hdr"><div class="crpt-preview__school">' + escapeHtml(schoolName) + '</div><div class="crpt-preview__title">' + escapeHtml(_crptReportTitle) + '</div><div class="crpt-preview__sub">' + escapeHtml(_crptReportSubtitle) + '</div></div>';
+        html += '<div class="crpt-tblwrap"><table class="crpt-tbl"><thead><tr>';
+        _crptHeaders.forEach(function (h) { html += '<th>' + escapeHtml(h) + '</th>'; });
+        html += '</tr></thead><tbody>';
+        pageData.forEach(function (row) {
+          html += '<tr>';
+          row.forEach(function (cell, ci) { html += '<td>' + escapeHtml(String(cell)) + '</td>'; });
+          html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+        if (total > _crptPageSize) {
+          html += '<div class="crpt-pager"><span class="crpt-pager__info">Showing ' + (start + 1) + '–' + Math.min(start + _crptPageSize, total) + ' of ' + total + '</span><div class="crpt-pager__btns">';
+          html += '<button class="crpt-pager__btn" type="button" data-crpt-page="' + (_crptPage - 1) + '"' + (_crptPage <= 1 ? ' disabled' : '') + '><i class="fas fa-chevron-left"></i></button>';
+          for (var p = 1; p <= totalPages; p++) {
+            if (totalPages > 7 && p > 3 && p < totalPages - 2 && Math.abs(p - _crptPage) > 1) { if (p === 4 || p === totalPages - 3) html += '<span class="crpt-pager__dots">...</span>'; continue; }
+            html += '<button class="crpt-pager__btn' + (p === _crptPage ? ' crpt-pager__btn--active' : '') + '" type="button" data-crpt-page="' + p + '">' + p + '</button>';
+          }
+          html += '<button class="crpt-pager__btn" type="button" data-crpt-page="' + (_crptPage + 1) + '"' + (_crptPage >= totalPages ? ' disabled' : '') + '><i class="fas fa-chevron-right"></i></button>';
+          html += '</div></div>';
+        } else if (total > 0) {
+          html += '<div class="crpt-pager"><span class="crpt-pager__info">Showing all ' + total + ' records</span></div>';
+        }
+        wrap.innerHTML = html;
+        wrap.querySelectorAll("[data-crpt-page]").forEach(function (btn) {
+          safeOn(btn, "click", function () {
+            var pg = Number(btn.getAttribute("data-crpt-page"));
+            if (pg >= 1 && pg <= totalPages) { _crptPage = pg; _crptRenderPreview(); }
+          });
+        });
+      }
+
+      function _crptResetFilters() {
+        _crptCurrentType = "students-info";
+        _crptData = [];
+        _crptHeaders = [];
+        _crptSummary = {};
+        document.querySelectorAll("[data-crpt-type]").forEach(function (b) { b.classList.remove("crpt-type--active"); });
+        var firstBtn = document.querySelector('[data-crpt-type="students-info"]');
+        if (firstBtn) firstBtn.classList.add("crpt-type--active");
+        _crptRenderFilters();
+        document.getElementById("crptSummaryCards").innerHTML = "";
+        document.getElementById("crptPreview").innerHTML = "";
+        var exportBar = document.getElementById("crptExportBar");
+        if (exportBar) exportBar.style.display = "none";
+      }
+
+      function _crptOpenPrint(pdfMode) {
+        if (!_crptData.length) return;
+        var schoolName = ((database.generalSettings || {}).instituteProfile || {}).name || (database.school || {}).name || "SagarSoft";
+        var pw = window.open("", "_blank", "width=900,height=700");
+        if (!pw) { alert("Please allow popups."); return; }
+        pw.document.write("<!DOCTYPE html><html><head><title>" + _crptReportTitle + "</title><style>body{font-family:'Segoe UI',sans-serif;margin:20px;color:#1e293b;font-size:12px;}h1{font-size:18px;margin:0 0 2px;}h2{font-size:13px;color:#64748b;margin:0 0 4px;font-weight:500;}h3{font-size:11px;color:#94a3b8;margin:0 0 12px;font-weight:400;}.school{font-size:20px;font-weight:800;color:#4f46e5;margin-bottom:2px;}table{width:100%;border-collapse:collapse;margin-top:8px;}th{background:#f1f5f9;padding:6px 8px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;border-bottom:2px solid #e2e8f0;}td{padding:5px 8px;border-bottom:1px solid #f1f5f9;font-size:11px;}tr:nth-child(even){background:#fafbfc;}.footer{margin-top:16px;font-size:9px;color:#94a3b8;text-align:center;border-top:1px solid #e2e8f0;padding-top:8px;}</style></head><body>");
+        pw.document.write('<div class="school">' + escapeHtml(schoolName) + '</div>');
+        pw.document.write("<h1>" + escapeHtml(_crptReportTitle) + "</h1>");
+        pw.document.write("<h2>" + escapeHtml(_crptReportSubtitle) + "</h2>");
+        pw.document.write("<h3>Generated: " + new Date().toLocaleString() + "</h3>");
+        pw.document.write("<table><thead><tr>");
+        _crptHeaders.forEach(function (h) { pw.document.write("<th>" + escapeHtml(h) + "</th>"); });
+        pw.document.write("</tr></thead><tbody>");
+        _crptData.forEach(function (row) {
+          pw.document.write("<tr>");
+          row.forEach(function (cell) { pw.document.write("<td>" + escapeHtml(String(cell)) + "</td>"); });
+          pw.document.write("</tr>");
+        });
+        pw.document.write("</tbody></table>");
+        pw.document.write('<div class="footer">Generated by SagarSoft Management System</div>');
+        pw.document.write("</body></html>");
+        pw.document.close();
+        if (!pdfMode) setTimeout(function () { pw.print(); }, 400);
+      }
+
+      function _crptExportCSV() {
+        if (!_crptData.length) return;
+        var csvRows = [_crptHeaders.map(function (h) { return '"' + h.replace(/"/g, '""') + '"'; }).join(",")];
+        _crptData.forEach(function (row) {
+          csvRows.push(row.map(function (cell) { return '"' + String(cell).replace(/"/g, '""') + '"'; }).join(","));
+        });
+        var blob = new Blob(["\uFEFF" + csvRows.join("\r\n")], { type: "text/csv;charset=utf-8;" });
+        var link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = _crptReportTitle.replace(/[^a-z0-9]/gi, "_") + "_" + getTodayDateISO() + ".csv";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+      }
+
+      moduleSummary.innerHTML = '<div class="crpt-wrap">' +
+        '<div class="crpt-hdr"><div class="crpt-hdr__left"><div class="crpt-hdr__eyebrow">SagarSoft Analytics</div><h2 class="crpt-hdr__title">Customised Reports</h2><p class="crpt-hdr__sub">Generate, preview and export professional school reports from one place.</p></div></div>' +
+        '<div class="crpt-top">' +
+        '<div class="crpt-panel crpt-panel--types"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-th-large"></i> Report Center</h3></div><div class="crpt-panel__bd" id="crptTypeArea">' + _crptBuildTypeSelector() + '</div></div>' +
+        '<div class="crpt-panel crpt-panel--filters"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-filter"></i> Filters</h3></div><div class="crpt-panel__bd"><div class="crpt-filter-grid" id="crptFiltersArea"></div><div class="crpt-filter-actions"><button class="crpt-btn crpt-btn--accent" type="button" id="crptGenBtn"><i class="fas fa-search"></i> Generate Report</button><button class="crpt-btn crpt-btn--ghost" type="button" id="crptResetBtn"><i class="fas fa-undo"></i> Reset</button></div></div></div></div>' +
+        '<div id="crptSummaryCards" class="crpt-scards"></div>' +
+        '<div class="crpt-panel crpt-panel--preview" id="crptPreviewPanel"><div class="crpt-panel__hd"><h3 class="crpt-panel__tt"><i class="fas fa-eye"></i> Report Preview</h3><div class="crpt-export-bar" id="crptExportBar" style="display:none;"><button class="crpt-btn crpt-btn--sm" type="button" id="crptPrintBtn"><i class="fas fa-print"></i> Print</button><button class="crpt-btn crpt-btn--sm" type="button" id="crptPdfBtn"><i class="fas fa-file-pdf"></i> PDF</button><button class="crpt-btn crpt-btn--sm" type="button" id="crptCsvBtn"><i class="fas fa-file-csv"></i> CSV</button></div></div><div class="crpt-panel__bd" id="crptPreview"><div class="crpt-empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Select a report type and click Generate</p></div></div></div>' +
+        '</div>';
+      moduleGuide.innerHTML = "";
+
+      _crptRenderFilters();
+
+      document.querySelectorAll("[data-crpt-type]").forEach(function (btn) {
+        safeOn(btn, "click", function () {
+          _crptCurrentType = btn.getAttribute("data-crpt-type");
+          document.querySelectorAll("[data-crpt-type]").forEach(function (b) { b.classList.remove("crpt-type--active"); });
+          btn.classList.add("crpt-type--active");
+          _crptRenderFilters();
+          _crptData = [];
+          _crptHeaders = [];
+          _crptSummary = {};
+          document.getElementById("crptSummaryCards").innerHTML = "";
+          document.getElementById("crptPreview").innerHTML = '<div class="crpt-empty-state"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p>Select a report type and click Generate</p></div>';
+          var exportBar = document.getElementById("crptExportBar");
+          if (exportBar) exportBar.style.display = "none";
+        });
       });
 
-      safeOn(document.getElementById("printCustomReportBtn"), "click", function () {
-        if (!printState) {
-          return;
-        }
-        openPrintReport(printState);
+      safeOn(document.getElementById("crptGenBtn"), "click", function () {
+        _crptGenerate();
       });
+      safeOn(document.getElementById("crptResetBtn"), "click", function () { _crptResetFilters(); });
+      safeOn(document.getElementById("crptPrintBtn"), "click", function () { _crptOpenPrint(false); });
+      safeOn(document.getElementById("crptPdfBtn"), "click", function () { _crptOpenPrint(true); });
+      safeOn(document.getElementById("crptCsvBtn"), "click", function () { _crptExportCSV(); });
+
       return;
     }
 
@@ -18341,7 +20649,7 @@ ${allContent}
         const message = document.getElementById("qpChapterMessage");
         const tableBody = document.getElementById("qpChapterBody");
 
-        // â”€â”€ Question Type UI Functions (subject-chapters route) â”€â”€
+        // ── Question Type UI Functions (subject-chapters route) ──
         var _qpAutoTitleDefaults = {
           mcq: "Choose The Correct Option",
           fill: "Fill In The Blanks",
@@ -18434,7 +20742,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Save Question Button Handler â”€â”€
+        // ── Save Question Button Handler ──
         safeOn(document.getElementById("qpSaveQuestion"), "click", function() {
           var className = classSelect.value;
           var subject = subjectSelect.value;
@@ -18510,7 +20818,7 @@ ${allContent}
           }
         });
 
-        // â”€â”€ MCQ Add/Remove Handlers â”€â”€
+        // ── MCQ Add/Remove Handlers ──
         safeOn(document.getElementById("qpAddMcq"), "click", function() {
           if (mcqOptions.length >= 8) return;
           mcqOptions.push("");
@@ -18522,7 +20830,7 @@ ${allContent}
           renderMcqRows();
         });
 
-        // â”€â”€ Document Object Model State Manager â”€â”€
+        // ── Document Object Model State Manager ──
         var _qeDoc = {
           objects: new Map(),
           selectedIds: new Set(),
@@ -18659,7 +20967,7 @@ ${allContent}
               if (obj.h) tbl.style.height = obj.h + "px";
               tbl.style.borderCollapse = "collapse";
             }
-            // Wrapper adapts to table â€” no fixed width/height on wrapper
+            // Wrapper adapts to table — no fixed width/height on wrapper
             obj.el.style.width = "";
             obj.el.style.height = "";
           }
@@ -18783,7 +21091,7 @@ ${allContent}
           }
         }
 
-        // â”€â”€ Selection System â”€â”€
+        // ── Selection System ──
         function _qeSelect(el, type) {
           // Exit text edit mode if selecting a different object
           if (_qeTextEditActive && _qeTextEditTarget && !el.contains(_qeTextEditTarget)) {
@@ -18821,7 +21129,7 @@ ${allContent}
           _qeHidePropsPanel();
         }
 
-        // â”€â”€ Properties Panel â”€â”€
+        // ── Properties Panel ──
         function _qeShowPropsPanel() {
           _qeHidePropsPanel();
           if (!_qe.selectedEl || !_qe.selectedType) return;
@@ -18899,7 +21207,7 @@ ${allContent}
           }
         }
 
-        // â”€â”€ Context Menu System â”€â”€
+        // ── Context Menu System ──
         function _qeShowContextMenu(e, type, el, extra) {
           e.preventDefault();
           e.stopPropagation();
@@ -19032,7 +21340,7 @@ ${allContent}
           if (_qe.contextMenu) { _qe.contextMenu.remove(); _qe.contextMenu = null; }
         }
 
-        // â”€â”€ Color Picker Popup (for context menu) â”€â”€
+        // ── Color Picker Popup (for context menu) ──
         function _qeShowColorPopup(e, title, currentColor, onApply) {
           _qeHideContextMenu();
           var popup = document.createElement("div");
@@ -19133,7 +21441,7 @@ ${allContent}
           }, 10);
         }
 
-        // â”€â”€ Text Edit Mode â”€â”€
+        // ── Text Edit Mode ──
         var _qeTextEditActive = false;
         var _qeTextEditTarget = null;
 
@@ -19173,7 +21481,7 @@ ${allContent}
           _qeTextEditTarget = null;
         }
 
-        // â”€â”€ Object Manipulation â”€â”€
+        // ── Object Manipulation ──
         function _qeSetupObjectDrag(el) {
           if (el.getAttribute("data-drag-wired")) return;
           el.setAttribute("data-drag-wired", "1");
@@ -19312,7 +21620,7 @@ ${allContent}
           _qeSetupRotateHandle(el);
         }
 
-        // â”€â”€ Duplicate Object â”€â”€
+        // ── Duplicate Object ──
         function _qeDuplicateObject(el) {
           var obj = _qeGetObject(el);
           if (!obj) return;
@@ -19368,7 +21676,7 @@ ${allContent}
           setTimeout(function() { _qeWireAllObjects(); }, 0);
         }
 
-        // â”€â”€ Crop Image â”€â”€
+        // ── Crop Image ──
         function _qeStartCrop(el) {
           var img = el.querySelector("img");
           if (!img) return;
@@ -19392,7 +21700,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Wire All Objects â”€â”€
+        // ── Wire All Objects ──
         function _qeWireAllObjects() {
           if (!_qe.el) return;
           _qe.el.querySelectorAll(".ss-qe-figure").forEach(function(fig) {
@@ -19492,7 +21800,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Move Handle â”€â”€
+        // ── Table Move Handle ──
         function _qeSetupTableMoveHandle(ft) {
           if (ft.querySelector(".ss-qe-table-move-handle")) return;
           var handle = document.createElement("div");
@@ -19517,7 +21825,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Resize Handle â”€â”€
+        // ── Table Resize Handle ──
         function _qeSetupTableResizeHandle(ft) {
           if (ft.querySelector(".ss-qe-table-resize-handle")) return;
           var handle = document.createElement("div");
@@ -19549,7 +21857,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Column Resize (Word-style border dragging) â”€â”€
+        // ── Table Column Resize (Word-style border dragging) ──
         function _qeSetupTableColResize(table) {
           if (!table) return;
           var _colResizeActive = false;
@@ -19662,7 +21970,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Row Resize (Word-style border dragging) â”€â”€
+        // ── Table Row Resize (Word-style border dragging) ──
         function _qeSetupTableRowResize(table) {
           if (!table) return;
           var _rowResizeActive = false;
@@ -19758,7 +22066,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Selection (click/double-click/triple-click) â”€â”€
+        // ── Table Selection (click/double-click/triple-click) ──
         function _qeSetupTableSelection(ft, table) {
           if (!table) return;
           // Click on cell: allow it to receive focus for typing
@@ -19770,7 +22078,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Table Operations â”€â”€
+        // ── Table Operations ──
         function _qeInsertTable(rows, cols) {
           var wrapper = document.createElement("figure");
           wrapper.className = "ss-qe-float-table";
@@ -19862,7 +22170,7 @@ ${allContent}
           }
         }
 
-        // â”€â”€ Shape Library â”€â”€
+        // ── Shape Library ──
         var _qeShapeLibrary = {
           rectangle: { label: "Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="2" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
           roundedRect: { label: "Rounded Rectangle", svg: '<svg viewBox="0 0 120 80" preserveAspectRatio="none"><rect x="2" y="2" width="116" height="76" rx="14" fill="#4fc3f7" stroke="#0277bd" stroke-width="1"/></svg>' },
@@ -20101,7 +22409,7 @@ ${allContent}
           _qeShowUrlPopup("Insert Link", "https://", function(url) { _qeExec("createLink", url); });
         }
 
-        // â”€â”€ Toolbar â”€â”€
+        // ── Toolbar ──
         function _qeBuildToolbar() {
           var tb = _qe.toolbar; if (!tb) return;
           function btn(icon, title, cmd, val, cls) {
@@ -20213,7 +22521,7 @@ ${allContent}
           }); }
         }
 
-        // â”€â”€ Keyboard Shortcuts â”€â”€
+        // ── Keyboard Shortcuts ──
         function _qeHandleKeydown(e) {
           if (!_qe.el || !_qe.el.contains(e.target)) return;
           var ctrl = e.ctrlKey || e.metaKey;
@@ -20233,7 +22541,7 @@ ${allContent}
             if (an && an.getAttribute && an.getAttribute("contenteditable") === "true") isInEditable = true;
             if (an && an.closest && (an.closest("td") || an.closest("th") || an.closest(".ss-qe-shape-text-editor") || an.closest("#ssQEContent"))) isInEditable = true;
           }
-          // If inside an editable text area, only handle Escape â€” let browser handle everything else
+          // If inside an editable text area, only handle Escape — let browser handle everything else
           if (isInEditable) {
             if (e.key === "Escape") { e.preventDefault(); _qeExitTextEditMode(); }
             return;
@@ -20300,7 +22608,7 @@ ${allContent}
           }
         }
 
-        // â”€â”€ Drag Selection (Marquee) â”€â”€
+        // ── Drag Selection (Marquee) ──
         var _qeMarquee = null;
         var _qeMarqueeStart = null;
 
@@ -20382,7 +22690,7 @@ ${allContent}
           });
         }
 
-        // â”€â”€ Wire Events â”€â”€
+        // ── Wire Events ──
         function _qeWireEvents() {
           _qe.el.addEventListener("input", function() { _qeUpdateStatus(); });
           _qe.el.addEventListener("keyup", function() { _qeUpdateStatus(); _qeUpdateToolbar(); });
@@ -20463,7 +22771,7 @@ ${allContent}
         function insertAtCursor(html) { _qeInsertHTML(html); }
 
 
-        // â”€â”€ Question Editor initialization â”€â”€
+        // ── Question Editor initialization ──
         (function initQuestionEditor() {
           _qe.el = document.getElementById("ssQEContent");
           _qe.toolbar = document.getElementById("ssQEToolbar");
@@ -20498,7 +22806,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
         renderMcqRows();
         renderChapterRows();
 
-        // â”€â”€ Edit Mode: Load question from Question Bank â”€â”€
+        // ── Edit Mode: Load question from Question Bank ──
         var editQId = sessionStorage.getItem("sagarsoft_edit_question_id");
         if (editQId) {
           var editRow = (settings.questionChapters || []).find(function(r) { return String(r.id) === String(editQId); });
@@ -21566,226 +23874,1155 @@ classSelect.addEventListener("change", renderSubjectSelect);
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
       }).join("");
       if (route === "certificate-templates") {
-        moduleSummary.innerHTML = `
-          <article style="max-width:100%;overflow-x:hidden;">
-            <strong class="module-center-title">Certificate Templates</strong>
-            <div style="margin:10px 0 4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template Name*</label><input id="certificateTemplateName" type="text" placeholder="e.g Achievement Certificate" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template Body*</label><textarea id="certificateTemplateBody" rows="5" placeholder="Use placeholders: {student}, {roll}, {class}, {date}, {school}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;"></textarea></div>
-            <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="saveCertificateTemplateBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Save Template</button></div>
-            <p class="form-message" id="certificateTemplateMessage"></p>
-            <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;margin-top:6px;"><table style="min-width:400px;width:100%;font-size:0.8rem;border-collapse:collapse;"><thead><tr><th style="white-space:nowrap;">Name</th><th style="white-space:nowrap;">Template</th><th style="white-space:nowrap;">Action</th></tr></thead><tbody id="certificateTemplateBodyRows"></tbody></table></div>
-          </article>
-        `;
+        settings.certificateTemplates = Array.isArray(settings.certificateTemplates) ? settings.certificateTemplates : [];
+        var _ctplTemplates = settings.certificateTemplates;
+        var _ctplEditId = null;
+        var _ctplTypes = [
+          { value: "achievement", label: "Achievement" },
+          { value: "character", label: "Character" },
+          { value: "birth", label: "Birth" },
+          { value: "bonafide", label: "Bonafide" },
+          { value: "leaving", label: "Leaving" },
+          { value: "transfer", label: "Transfer" },
+          { value: "custom", label: "Custom" }
+        ];
+        var _ctplPlaceholders = [
+          { label: "Student Name", value: "{student_name}" },
+          { label: "Father Name", value: "{father_name}" },
+          { label: "Class", value: "{class}" },
+          { label: "Section", value: "{section}" },
+          { label: "Roll No", value: "{roll_no}" },
+          { label: "DOB", value: "{dob}" },
+          { label: "Admission Date", value: "{admission_date}" },
+          { label: "Issue Date", value: "{issue_date}" },
+          { label: "Leaving Date", value: "{leaving_date}" },
+          { label: "Conduct", value: "{conduct}" },
+          { label: "School Name", value: "{school_name}" },
+          { label: "Certificate No", value: "{certificate_no}" }
+        ];
+        var _ctplTypeBadgeColors = {
+          achievement: { bg: "#ebf8ff", fg: "#2b6cb0" },
+          character: { bg: "#fefcbf", fg: "#975a16" },
+          birth: { bg: "#f0fff4", fg: "#276749" },
+          bonafide: { bg: "#faf5ff", fg: "#6b46c1" },
+          leaving: { bg: "#fff5f5", fg: "#c53030" },
+          transfer: { bg: "#edf2f7", fg: "#4a5568" },
+          custom: { bg: "#e2e8f0", fg: "#2d3748" }
+        };
+
+        function _ctplTypeLabel(val) {
+          var found = _ctplTypes.find(function (t) { return t.value === val; });
+          return found ? found.label : val || "Custom";
+        }
+        function _ctplTypeBadgeStyle(val) {
+          var c = _ctplTypeBadgeColors[val] || _ctplTypeBadgeColors.custom;
+          return "background:" + c.bg + ";color:" + c.fg + ";";
+        }
+        function _ctplTruncate(text, max) {
+          var t = String(text || "").replace(/\n/g, " ");
+          return t.length > max ? t.substring(0, max) + "..." : t;
+        }
+
+        moduleSummary.innerHTML = '' +
+          '<div class="ctpl-page">' +
+            '<div class="ctpl-page__header">' +
+              '<div><h2 class="ctpl-page__title">Certificate Templates</h2><p class="ctpl-page__subtitle">Create and manage reusable certificate templates.</p></div>' +
+              '<div class="ctpl-page__stat"><span class="ctpl-page__stat-num">' + _ctplTemplates.length + '</span><span class="ctpl-page__stat-label">Templates</span></div>' +
+            '</div>' +
+
+            '<div class="ctpl-section">' +
+              '<div class="ctpl-section__header"><h3 class="ctpl-section__title" id="ctplFormTitle">Create Template</h3></div>' +
+              '<div class="ctpl-section__body">' +
+                '<div class="ctpl-form-row">' +
+                  '<div class="ctpl-field ctpl-field--lg"><label class="ctpl-field__label">Template Name *</label><input id="ctplName" type="text" class="ctpl-input" placeholder="e.g. Achievement Certificate"></div>' +
+                  '<div class="ctpl-field ctpl-field--sm"><label class="ctpl-field__label">Certificate Type</label><select id="ctplType" class="ctpl-input">' + _ctplTypes.map(function (t) { return '<option value="' + t.value + '">' + t.label + '</option>'; }).join("") + '</select></div>' +
+                '</div>' +
+                '<div class="ctpl-field" style="margin-bottom:6px;"><label class="ctpl-field__label">Template Body *</label><textarea id="ctplBody" class="ctpl-textarea" rows="10" placeholder="Write your certificate template text here. Use placeholders like {student_name}, {father_name}, {class} etc."></textarea></div>' +
+                '<div class="ctpl-placeholder-bar">' +
+                  '<span class="ctpl-placeholder-bar__label">Insert Placeholder:</span>' +
+                  '<div class="ctpl-placeholder-bar__items">' +
+                    _ctplPlaceholders.map(function (p) {
+                      return '<button type="button" class="ctpl-ph-btn" data-ph="' + escapeAttr(p.value) + '" title="' + escapeAttr(p.value) + '">' + escapeHtml(p.label) + '</button>';
+                    }).join("") +
+                  '</div>' +
+                '</div>' +
+                '<div class="ctpl-form-actions">' +
+                  '<button class="ctpl-btn ctpl-btn--primary" id="ctplSaveBtn" type="button">Save Template</button>' +
+                  '<button class="ctpl-btn ctpl-btn--ghost" id="ctplResetBtn" type="button">Reset</button>' +
+                  '<button class="ctpl-btn ctpl-btn--ghost" id="ctplCancelEditBtn" type="button" style="display:none;">Cancel Edit</button>' +
+                '</div>' +
+                '<p class="form-message" id="ctplMessage"></p>' +
+              '</div>' +
+            '</div>' +
+
+            '<div class="ctpl-section">' +
+              '<div class="ctpl-section__header"><h3 class="ctpl-section__title">Saved Templates</h3></div>' +
+              '<div class="ctpl-section__body">' +
+                '<div class="ctpl-table-wrap">' +
+                  '<table class="ctpl-table">' +
+                    '<thead><tr><th>Template Name</th><th>Type</th><th>Preview</th><th>Actions</th></tr></thead>' +
+                    '<tbody id="ctplListBody"></tbody>' +
+                  '</table>' +
+                  '<div id="ctplEmptyState" class="ctpl-empty" style="' + (_ctplTemplates.length > 0 ? 'display:none;' : '') + '">' +
+                    '<div class="ctpl-empty__icon">&#128203;</div>' +
+                    '<p>No certificate templates yet.</p>' +
+                    '<p class="ctpl-empty__sub">Create your first certificate template to get started.</p>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
+
         moduleGuide.innerHTML = "";
-        const body = document.getElementById("certificateTemplateBodyRows");
-        function renderTemplates() {
-          body.innerHTML = (settings.certificateTemplates || []).map(function (item) {
-            return `<tr><td>${escapeHtml(item.name || "-")}</td><td>${escapeHtml(item.body || "-")}</td><td><button class="table-action-btn danger" type="button" data-delete-certificate-template="${escapeAttr(item.id)}">Delete</button></td></tr>`;
+
+        var ctplName = document.getElementById("ctplName");
+        var ctplType = document.getElementById("ctplType");
+        var ctplBody = document.getElementById("ctplBody");
+        var ctplMessage = document.getElementById("ctplMessage");
+        var ctplFormTitle = document.getElementById("ctplFormTitle");
+        var ctplCancelEditBtn = document.getElementById("ctplCancelEditBtn");
+
+        function _ctplRenderList() {
+          var listBody = document.getElementById("ctplListBody");
+          var emptyState = document.getElementById("ctplEmptyState");
+          var statNum = document.querySelector(".ctpl-page__stat-num");
+          if (statNum) statNum.textContent = _ctplTemplates.length;
+          if (_ctplTemplates.length === 0) {
+            listBody.innerHTML = "";
+            if (emptyState) emptyState.style.display = "";
+            return;
+          }
+          if (emptyState) emptyState.style.display = "none";
+          listBody.innerHTML = _ctplTemplates.map(function (tpl) {
+            var preview = _ctplTruncate(tpl.body || "", 80);
+            var typeBadge = '<span class="ctpl-type-badge" style="' + _ctplTypeBadgeStyle(tpl.type) + '">' + escapeHtml(_ctplTypeLabel(tpl.type)) + '</span>';
+            return '<tr>' +
+              '<td><strong>' + escapeHtml(tpl.name || "-") + '</strong></td>' +
+              '<td>' + typeBadge + '</td>' +
+              '<td class="ctpl-td-preview">' + escapeHtml(preview || "No content") + '</td>' +
+              '<td><div class="ctpl-row-actions">' +
+                '<button class="ctpl-btn ctpl-btn--xs ctpl-btn--outline" data-ctpl-edit="' + escapeAttr(tpl.id) + '">Edit</button>' +
+                '<button class="ctpl-btn ctpl-btn--xs ctpl-btn--danger" data-ctpl-delete="' + escapeAttr(tpl.id) + '">Delete</button>' +
+                '<button class="ctpl-btn ctpl-btn--xs ctpl-btn--primary" data-ctpl-use="' + escapeAttr(tpl.id) + '">Use Template</button>' +
+              '</div></td>' +
+            '</tr>';
           }).join("");
         }
-        safeOn(document.getElementById("saveCertificateTemplateBtn"), "click", function () {
-          const name = document.getElementById("certificateTemplateName").value.trim();
-          const bodyText = document.getElementById("certificateTemplateBody").value.trim();
-          const message = document.getElementById("certificateTemplateMessage");
+
+        function _ctplResetForm() {
+          ctplName.value = "";
+          ctplType.value = "character";
+          ctplBody.value = "";
+          _ctplEditId = null;
+          ctplFormTitle.textContent = "Create Template";
+          ctplCancelEditBtn.style.display = "none";
+        }
+
+        safeOn(document.getElementById("ctplSaveBtn"), "click", function () {
+          var name = ctplName.value.trim();
+          var bodyText = ctplBody.value.trim();
+          var type = ctplType.value;
           if (!name || !bodyText) {
-            message.textContent = "Please fill required fields.";
-            message.className = "form-message error";
+            ctplMessage.textContent = "Please fill required fields (Name and Body).";
+            ctplMessage.className = "form-message error";
             return;
           }
-          settings.certificateTemplates.unshift({ id: `CRT-TPL-${generateId()}`, name: name, body: bodyText });
-          saveDatabase("", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: settings.certificateTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          message.textContent = "Certificate template saved successfully.";
-          message.className = "form-message success";
-          renderTemplates();
-        });
-        body.addEventListener("click", function (event) {
-          const button = event.target.closest("[data-delete-certificate-template]");
-          if (!button) {
-            return;
+          if (_ctplEditId) {
+            var idx = _ctplTemplates.findIndex(function (t) { return String(t.id) === String(_ctplEditId); });
+            if (idx >= 0) {
+              _ctplTemplates[idx].name = name;
+              _ctplTemplates[idx].type = type;
+              _ctplTemplates[idx].body = bodyText;
+              _ctplTemplates[idx].updatedAt = new Date().toISOString();
+            }
+            ctplMessage.textContent = "Template updated successfully.";
+          } else {
+            _ctplTemplates.unshift({
+              id: "CRT-TPL-" + generateId(),
+              name: name,
+              type: type,
+              body: bodyText,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            });
+            ctplMessage.textContent = "Certificate template saved successfully.";
           }
-          const id = button.getAttribute("data-delete-certificate-template");
-          trackDeletion(id);
-          settings.certificateTemplates = (settings.certificateTemplates || []).filter(function (item) { return String(item.id) !== String(id); });
-          saveDatabase("Deleting template...", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: settings.certificateTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
-          renderTemplates();
+          ctplMessage.className = "form-message success";
+          saveDatabase("", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: _ctplTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+          _ctplResetForm();
+          _ctplRenderList();
         });
-        renderTemplates();
+
+        safeOn(document.getElementById("ctplResetBtn"), "click", function () {
+          _ctplResetForm();
+          ctplMessage.textContent = "";
+          ctplMessage.className = "form-message";
+        });
+
+        safeOn(ctplCancelEditBtn, "click", function () {
+          _ctplResetForm();
+          ctplMessage.textContent = "";
+          ctplMessage.className = "form-message";
+        });
+
+        document.querySelectorAll("[data-ctpl-ph]").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            var ph = btn.getAttribute("data-ctpl-ph");
+            var ta = ctplBody;
+            var start = ta.selectionStart;
+            var end = ta.selectionEnd;
+            var text = ta.value;
+            ta.value = text.substring(0, start) + ph + text.substring(end);
+            ta.selectionStart = ta.selectionEnd = start + ph.length;
+            ta.focus();
+          });
+        });
+
+        var ctplPlaceholderBar = document.querySelector(".ctpl-placeholder-bar");
+        if (ctplPlaceholderBar) {
+          ctplPlaceholderBar.addEventListener("click", function (ev) {
+            var btn = ev.target.closest(".ctpl-ph-btn");
+            if (!btn) return;
+            var ph = btn.getAttribute("data-ph");
+            var ta = ctplBody;
+            var start = ta.selectionStart;
+            var end = ta.selectionEnd;
+            var text = ta.value;
+            ta.value = text.substring(0, start) + ph + text.substring(end);
+            ta.selectionStart = ta.selectionEnd = start + ph.length;
+            ta.focus();
+          });
+        }
+
+        document.getElementById("ctplListBody").addEventListener("click", function (ev) {
+          var editBtn = ev.target.closest("[data-ctpl-edit]");
+          var deleteBtn = ev.target.closest("[data-ctpl-delete]");
+          var useBtn = ev.target.closest("[data-ctpl-use]");
+          if (editBtn) {
+            var editId = editBtn.getAttribute("data-ctpl-edit");
+            var tpl = _ctplTemplates.find(function (t) { return String(t.id) === String(editId); });
+            if (tpl) {
+              ctplName.value = tpl.name || "";
+              ctplType.value = tpl.type || "character";
+              ctplBody.value = tpl.body || "";
+              _ctplEditId = tpl.id;
+              ctplFormTitle.textContent = "Edit Template";
+              ctplCancelEditBtn.style.display = "";
+              ctplMessage.textContent = "";
+              ctplMessage.className = "form-message";
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }
+          if (deleteBtn) {
+            var delId = deleteBtn.getAttribute("data-ctpl-delete");
+            var delTpl = _ctplTemplates.find(function (t) { return String(t.id) === String(delId); });
+            var confirmMsg = 'Are you sure you want to delete "' + (delTpl ? delTpl.name : "this template") + '"?';
+            if (window.confirm(confirmMsg)) {
+              trackDeletion(delId);
+              _ctplTemplates = _ctplTemplates.filter(function (t) { return String(t.id) !== String(delId); });
+              settings.certificateTemplates = _ctplTemplates;
+              saveDatabase("Deleting template...", [{ table: "school_settings", record: { id: "certificateTemplates", source_id: "certificateTemplates", data: _ctplTemplates, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+              if (_ctplEditId === delId) _ctplResetForm();
+              _ctplRenderList();
+              ctplMessage.textContent = "Template deleted.";
+              ctplMessage.className = "form-message success";
+            }
+          }
+          if (useBtn) {
+            var useId = useBtn.getAttribute("data-ctpl-use");
+            try { sessionStorage.setItem("ctplUseTemplateId", useId); } catch (e) {}
+            setRoute("generate-certificate");
+          }
+        });
+
+        _ctplRenderList();
         return;
       }
 
-      const activeStudents = (database.students || []).filter(function (student) { return String(student.status || "").toLowerCase() === "active"; });
-      const studentSuggestions = activeStudents.map(function (student) {
-        return `<option value="${escapeAttr(student.name || "")} (${escapeAttr(student.admissionNo || "-")})"></option>`;
-      }).join("");
-      const templateOptionsMarkup = (settings.certificateTemplates || []).map(function (tpl) {
-        return `<option value="${escapeAttr(tpl.id)}">${escapeHtml(tpl.name || "-")}</option>`;
-      }).join("");
+      const activeStudents = (database.students || []).filter(function (s) { return String(s.status || "").toLowerCase() === "active"; });
+      const templates = settings.certificateTemplates || [];
+      settings.certificates = Array.isArray(settings.certificates) ? settings.certificates : [];
+      const issuedCerts = settings.certificates;
+      const profile = settings.instituteProfile || {};
+      const schoolName = profile.name || database.school.name || "School";
+      const schoolLogo = profile.logo || "";
+      const schoolAddress = profile.address || database.school.address || "";
+      const schoolSlogan = profile.slogan || "";
+      const today = new Date().toISOString().slice(0, 10);
+      var _certSelectedStudent = null;
+      var _certSelectedStudents = [];
+      var _certType = "character";
+      var _certPreviewDebounce = null;
+      var _certNumberIssued = null;
 
-      moduleSummary.innerHTML = `
-        <article style="max-width:100%;overflow-x:hidden;">
-          <strong class="module-center-title">Generate Certificate</strong>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="certificateClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
-            <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search Student*</label><input id="certificateStudentSearch" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="certificateSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
-            <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Issue Date*</label><input id="certificateIssueDate" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-          </div>
-          <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Leaving Date (SLC)</label><input id="certificateLeavingDate" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Conduct (SLC)</label><input id="certificateConductText" type="text" placeholder="e.g., Excellent, Good" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template*</label><select id="certificateTemplateSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Template</option>${templateOptionsMarkup}</select></div>
-          </div>
-          <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Certificate Text</label><textarea id="certificateBodyPreview" rows="8" placeholder="Template text will appear here" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;"></textarea></div>
-          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="printCertificateBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Print Certificate</button></div>
-          <p class="form-message" id="certificateMessage"></p>
-        </article>
-      `;
-      moduleGuide.innerHTML = "";
-      const classSelect = document.getElementById("certificateClassSelect");
-      const studentSearch = document.getElementById("certificateStudentSearch");
-      const studentSearchDropdown = document.getElementById("certificateSearchDropdown");
-      const studentSearchContainer = document.getElementById("certificateSearchContainer");
-      const issueDateInput = document.getElementById("certificateIssueDate");
+      var _certTypeConfig = {
+        character: { label: "Character Certificate", icon: "★", fields: ["conduct"], bulk: false, showClass: false, showRoll: false },
+        slc: { label: "School Leaving Certificate", icon: "✎", fields: ["class","admissionDate","leavingDate","dob","leavingReason","conduct"], bulk: false, showClass: true, showRoll: false },
+        bonafide: { label: "Bonafide Certificate", icon: "⚖", fields: ["purpose"], bulk: false, showClass: false, showRoll: false },
+        transfer: { label: "Transfer Certificate", icon: "⇄", fields: ["class","admissionDate","leavingDate","leavingReason","conduct"], bulk: false, showClass: true, showRoll: false },
+        student: { label: "Student Certificate", icon: "🎓", fields: ["class","purpose"], bulk: true, showClass: true, showRoll: false },
+        custom: { label: "Custom Certificate", icon: "✍", fields: [], bulk: false, showClass: false, showRoll: false }
+      };
 
-      initializeStudentProfessionalSearch(
-        "certificateStudentSearch",
-        "certificateSearchDropdown",
-        "certificateSearchContainer",
-        function(student) {
-          studentSearch.value = student.name + " (" + (student.admissionNo || "-") + ")";
-          fillTemplatePreview();
+      function _certNextNumber() {
+        var maxNum = 0;
+        var year = new Date().getFullYear();
+        var prefix = "CERT-" + year + "-";
+        for (var ci = 0; ci < issuedCerts.length; ci++) {
+          var cn = String(issuedCerts[ci].certificateNumber || "");
+          if (cn.indexOf(prefix) === 0) {
+            var numPart = parseInt(cn.replace(prefix, ""), 10);
+            if (!isNaN(numPart) && numPart > maxNum) maxNum = numPart;
+          }
         }
-      );
-      const leavingDateInput = document.getElementById("certificateLeavingDate");
-      const conductInput = document.getElementById("certificateConductText");
-      const templateSelect = document.getElementById("certificateTemplateSelect");
-      const bodyPreview = document.getElementById("certificateBodyPreview");
-      const certificateMessage = document.getElementById("certificateMessage");
-
-      function getSelectedStudentForCertificate() {
-        const typed = String(studentSearch.value || "").trim().toLowerCase();
-        const filteredStudents = activeStudents.filter(function (student) {
-          return !classSelect.value || student.className === classSelect.value;
-        });
-        const matchedStudent = filteredStudents.find(function (student) {
-          const name = String(student.name || "").toLowerCase();
-          const roll = String(student.admissionNo || "-").toLowerCase();
-          const displayValue = `${name} (${roll})`;
-          return typed && (
-            typed === displayValue ||
-            typed === name ||
-            typed === roll ||
-            displayValue.includes(typed) ||
-            name.includes(typed) ||
-            roll.includes(typed)
-          );
-        });
-        if (matchedStudent) {
-          return matchedStudent;
-        }
-        return typed ? null : (filteredStudents.length === 1 ? filteredStudents[0] : null);
+        return prefix + String(maxNum + 1).padStart(5, "0");
       }
 
-      function fillTemplatePreview() {
-        const template = (settings.certificateTemplates || []).find(function (item) { return String(item.id) === String(templateSelect.value); }) || null;
-        const student = getSelectedStudentForCertificate();
-        if (!template) {
-          bodyPreview.value = "";
-          return;
-        }
-        let bodyText = String(template.body || "");
-        const replacements = {
+      function _certReplaceVars(text, student, extraFields) {
+        var issueDateEl = document.getElementById("certIssueDate");
+        var leavingDateEl = document.getElementById("certLeavingDate");
+        var conductEl = document.getElementById("certConduct");
+        var dobEl = document.getElementById("certDob");
+        var admissionDateEl = document.getElementById("certAdmissionDate");
+        var leavingReasonEl = document.getElementById("certLeavingReason");
+        var purposeEl = document.getElementById("certPurpose");
+        var ef = extraFields || {};
+        var replacements = {
           student_name: student ? (student.name || "-") : "-",
           father_name: student ? (student.fatherName || "-") : "-",
-          dob: student ? (student.dateOfBirth || "-") : "-",
-          admission_date: student ? (student.dateOfAdmission || "-") : "-",
-          admitted_class: student ? (student.className || "-") : (classSelect.value || "-"),
-          last_class: student ? (student.className || "-") : "-",
-          leaving_date: leavingDateInput.value || "",
-          conduct: conductInput.value || "",
-          issue_date: issueDateInput.value || "-",
+          roll_no: student ? (student.rollNo || student.admissionNo || "-") : "-",
+          section: student ? (student.section || "-") : "-",
+          class: ef["class"] || (student ? (student.className || "-") : "-"),
+          dob: dobEl ? (dobEl.value || (student ? (student.dateOfBirth || "-") : "-")) : (student ? (student.dateOfBirth || "-") : "-"),
+          admission_date: admissionDateEl ? (admissionDateEl.value || (student ? (student.dateOfAdmission || "-") : "-")) : (student ? (student.dateOfAdmission || "-") : "-"),
+          issue_date: issueDateEl ? (issueDateEl.value || today) : today,
+          leaving_date: leavingDateEl ? (leavingDateEl.value || "-") : "-",
+          conduct: conductEl ? (conductEl.value || "-") : "-",
+          certificate_no: _certNumberIssued || "(Preview)",
+          school_name: schoolName,
+          school: schoolName,
           student: student ? (student.name || "-") : "-",
-          roll: student ? (student.admissionNo || "-") : "-",
-          class: student ? (student.className || "-") : (classSelect.value || "-"),
-          date: issueDateInput.value || "-",
-          school: database.school.name || "School"
+          roll: student ? (student.rollNo || student.admissionNo || "-") : "-",
+          date: issueDateEl ? (issueDateEl.value || today) : today,
+          admitted_class: student ? (student.className || "-") : "-",
+          last_class: student ? (student.className || "-") : "-",
+          purpose: purposeEl ? (purposeEl.value || "-") : "-",
+          leaving_reason: leavingReasonEl ? (leavingReasonEl.value || "-") : "-"
         };
-        bodyText = bodyText.replace(/\{\{(\w+)\}\}/g, function (_, key) {
-          return typeof replacements[key] === "undefined" ? "" : String(replacements[key]);
-        });
-        bodyText = bodyText.replace(/\{(\w+)\}/g, function (_, key) {
-          return typeof replacements[key] === "undefined" ? "" : String(replacements[key]);
-        });
-        bodyPreview.value = bodyText;
+        var result = String(text || "");
+        result = result.replace(/\{\{(\w+)\}\}/g, function (_, key) { return typeof replacements[key] === "undefined" ? "" : String(replacements[key]); });
+        result = result.replace(/\{(\w+)\}/g, function (_, key) { return typeof replacements[key] === "undefined" ? "" : String(replacements[key]); });
+        return result;
       }
 
-      [classSelect, studentSearch, issueDateInput, leavingDateInput, conductInput, templateSelect].forEach(function (input) {
-        input.addEventListener("input", fillTemplatePreview);
-        input.addEventListener("change", fillTemplatePreview);
-      });
-      safeOn(document.getElementById("printCertificateBtn"), "click", function () {
-        const student = getSelectedStudentForCertificate();
-        const text = bodyPreview.value.trim();
-        if (!student || !text) {
-          certificateMessage.textContent = "Please select student and template first.";
-          certificateMessage.className = "form-message error";
+      function _certBuildDynamicFields() {
+        var container = document.getElementById("certDynamicFields");
+        if (!container) return;
+        var cfg = _certTypeConfig[_certType];
+        if (!cfg) { container.innerHTML = ""; return; }
+        var fields = cfg.fields;
+        var html = "";
+        if (fields.indexOf("class") !== -1) {
+          html += '<div class="cert-field-row"><div class="cert-field cert-field--sm"><label class="cert-field__label">Class *</label><select id="certDynClass" class="cert-input"><option value="">Select Class</option>' + classOptionsMarkup + '</select></div></div>';
+        }
+        if (fields.indexOf("admissionDate") !== -1) {
+          html += '<div class="cert-field-row"><div class="cert-field cert-field--sm"><label class="cert-field__label">Admission Date</label><input id="certAdmissionDate" type="date" class="cert-input" value="' + (_certSelectedStudent ? (_certSelectedStudent.dateOfAdmission || today) : today) + '"></div></div>';
+        }
+        if (fields.indexOf("dob") !== -1) {
+          html += '<div class="cert-field-row"><div class="cert-field cert-field--sm"><label class="cert-field__label">Date of Birth</label><input id="certDob" type="date" class="cert-input" value="' + (_certSelectedStudent ? (_certSelectedStudent.dateOfBirth || "") : "") + '"></div></div>';
+        }
+        if (fields.indexOf("leavingDate") !== -1) {
+          html += '<div class="cert-field-row"><div class="cert-field cert-field--sm"><label class="cert-field__label">Leaving Date</label><input id="certLeavingDate" type="date" class="cert-input"></div></div>';
+        }
+        if (fields.indexOf("leavingReason") !== -1) {
+          html += '<div class="cert-field-row"><div class="cert-field cert-field--lg"><label class="cert-field__label">Reason for Leaving</label><textarea id="certLeavingReason" class="cert-textarea" rows="2" placeholder="Reason..."></textarea></div></div>';
+        }
+        if (fields.indexOf("conduct") !== -1) {
+          html += '<div class="cert-field-row"><div class="cert-field cert-field--sm"><label class="cert-field__label">Conduct</label><input id="certConduct" type="text" class="cert-input" placeholder="e.g., Excellent, Good"></div></div>';
+        }
+        if (fields.indexOf("purpose") !== -1) {
+          html += '<div class="cert-field-row"><div class="cert-field cert-field--lg"><label class="cert-field__label">Purpose</label><input id="certPurpose" type="text" class="cert-input" placeholder="Purpose of certificate..."></div></div>';
+        }
+        container.innerHTML = html;
+        container.querySelectorAll("input, select, textarea").forEach(function (el) {
+          el.addEventListener("input", function () { _certUpdatePreview(); });
+          el.addEventListener("change", function () { _certUpdatePreview(); });
+        });
+      }
+
+      function _certShowSuccess(certNo) {
+        var el = document.getElementById("certSuccessMsg");
+        if (el) {
+          el.innerHTML = '<div class="cert-success-card">' +
+            '<div class="cert-success-icon">&#10003;</div>' +
+            '<div><strong>Certificate issued successfully.</strong><br><span class="cert-success-no">' + escapeHtml(certNo) + '</span></div>' +
+          '</div>';
+          el.style.display = "";
+        }
+      }
+
+      function _certShowBulkConfirm(studentCount, className, typeName, templateName) {
+        var overlay = document.createElement("div");
+        overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:10000;display:flex;align-items:center;justify-content:center;";
+        overlay.innerHTML = '<div style="background:#fff;border-radius:12px;padding:28px 32px;max-width:420px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;">' +
+          '<div style="font-size:2.2rem;margin-bottom:12px;">📋</div>' +
+          '<h3 style="margin:0 0 12px;color:#0f2b3f;font-size:1.1rem;">Bulk Print Confirmation</h3>' +
+          '<p style="margin:0 0 8px;color:#1f2933;font-size:0.9rem;">You are about to print <strong>' + escapeHtml(String(studentCount)) + '</strong> certificates.</p>' +
+          '<div style="background:#f0f7fa;border-radius:8px;padding:12px 16px;margin:12px 0;text-align:left;font-size:0.85rem;">' +
+            '<p style="margin:0 0 4px;"><strong>Class:</strong> ' + escapeHtml(className) + '</p>' +
+            '<p style="margin:0 0 4px;"><strong>Type:</strong> ' + escapeHtml(typeName) + '</p>' +
+            '<p style="margin:0;"><strong>Template:</strong> ' + escapeHtml(templateName) + '</p>' +
+          '</div>' +
+          '<div style="display:flex;gap:10px;margin-top:20px;">' +
+            '<button id="bulkConfirmCancel" class="cert-btn cert-btn--outline" style="flex:1;">Cancel</button>' +
+            '<button id="bulkConfirmOk" class="cert-btn cert-btn--primary" style="flex:1;">Print ' + escapeHtml(String(studentCount)) + ' Certificates</button>' +
+          '</div>' +
+        '</div>';
+        document.body.appendChild(overlay);
+        overlay.querySelector("#bulkConfirmCancel").addEventListener("click", function () { document.body.removeChild(overlay); });
+        overlay.querySelector("#bulkConfirmOk").addEventListener("click", function () {
+          document.body.removeChild(overlay);
+          var bodyText = document.getElementById("certBodyText") ? document.getElementById("certBodyText").value.trim() : "";
+          var issueDateEl = document.getElementById("certIssueDate");
+          var issueDate = issueDateEl ? issueDateEl.value : today;
+          var html = _certBuildBulkPrintHtml(_certSelectedStudents, bodyText, issueDate);
+          openPrintReport({ title: "Certificates", subtitle: "", hideHeader: true, contentHtml: html }, null, "a4");
+        });
+        overlay.addEventListener("click", function (ev) { if (ev.target === overlay) document.body.removeChild(overlay); });
+      }
+
+      function _certRenderPreview() {
+        var previewEl = document.getElementById("certLivePreview");
+        if (!previewEl) return;
+        var text = document.getElementById("certBodyText") ? document.getElementById("certBodyText").value.trim() : "";
+        var student = _certSelectedStudent;
+        var cfg = _certTypeConfig[_certType] || {};
+        var showClass = cfg.showClass;
+        var showRoll = cfg.showRoll;
+        var certTextLines = text.split("\n").filter(function (l) { return l.trim().length > 0; });
+        var heading = certTextLines[0] || "Certificate";
+        var bodyLines = certTextLines.slice(1).filter(function (l) {
+          var nl = l.trim().replace(/\s+/g, " ").toLowerCase();
+          return nl !== "signature: principal" && nl !== "signature principal" && nl !== "school stamp";
+        });
+        var bodyHtml = escapeHtml(bodyLines.join("\n")).replace(/\n/g, "<br>");
+        var logoHtml = schoolLogo ? '<img src="' + escapeAttr(schoolLogo) + '" alt="Logo" style="max-height:56px;object-fit:contain;">' : '<div style="width:50px;height:50px;border-radius:50%;background:#0f2b3f;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1rem;font-family:Georgia,serif;">' + escapeHtml((schoolName || "S").charAt(0)) + '</div>';
+        var certNo = _certNumberIssued || "(Preview)";
+        var issueDateEl = document.getElementById("certIssueDate");
+        var issueDate = issueDateEl ? (issueDateEl.value || today) : today;
+        var sName = student ? escapeHtml(student.name || "") : "";
+        var fName = student ? escapeHtml(student.fatherName || "") : "";
+        var certPhone = profile.phone || "";
+        var certPsra = profile.psra || "";
+        var certInfoLine = [certPhone ? escapeHtml(certPhone) : "", certPsra ? "PSRA: " + escapeHtml(certPsra) : "", schoolAddress ? escapeHtml(schoolAddress) : ""].filter(function (x) { return x; }).join(" | ");
+
+        var classRollHtml = "";
+        if (showClass || showRoll) {
+          var parts = [];
+          if (showClass && student) parts.push("Class: " + escapeHtml(student.className || "-"));
+          if (showRoll && student) parts.push("Roll No: " + escapeHtml(student.rollNo || student.admissionNo || "-"));
+          if (parts.length > 0) classRollHtml = '<p style="text-align:center;font-size:0.78rem;color:#718096;margin:4px 0 14px;">' + parts.join(" | ") + '</p>';
+        }
+
+        previewEl.innerHTML =
+          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:20px 20px;background:#fff;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;display:flex;flex-direction:column;position:relative;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;">' +
+              '<div style="font-size:0.7rem;color:#5b6777;letter-spacing:0.3px;font-weight:600;">Certificate No: ' + escapeHtml(certNo) + '</div>' +
+              '<div style="font-size:0.7rem;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Date: ' + escapeHtml(issueDate) + '</div>' +
+            '</div>' +
+            '<div style="text-align:center;margin-bottom:10px;">' +
+              '<div style="margin-bottom:6px;">' + logoHtml + '</div>' +
+              '<h2 style="margin:0;font-size:1.1rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(schoolName) + '</h2>' +
+              (schoolSlogan ? '<p style="margin:2px auto 0;font-size:0.58rem;color:#718096;font-style:italic;">' + escapeHtml(schoolSlogan) + '</p>' : '') +
+              (certInfoLine ? '<p style="margin:2px auto 0;font-size:0.55rem;color:#718096;max-width:400px;letter-spacing:0.3px;">' + certInfoLine + '</p>' : '') +
+            '</div>' +
+            '<div style="text-align:center;margin-bottom:10px;"><div style="display:inline-block;width:90px;height:1px;background:#0f2b3f;vertical-align:middle;"></div><div style="display:inline-block;width:5px;height:5px;background:#0f2b3f;border-radius:50%;margin:0 8px;vertical-align:middle;"></div><div style="display:inline-block;width:90px;height:1px;background:#0f2b3f;vertical-align:middle;"></div></div>' +
+            '<h3 style="text-align:center;margin:0 0 14px;font-size:1rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(heading) + '</h3>' +
+            '<p style="text-align:center;font-size:0.8rem;color:#555;margin-bottom:6px;">This is to certify that</p>' +
+            (sName ? '<div style="text-align:center;margin-bottom:4px;"><span style="font-size:1.05rem;font-weight:700;color:#0f2b3f;border-bottom:1.5px solid #0f2b3f;padding-bottom:2px;display:inline-block;">' + sName + '</span></div>' : '<div style="text-align:center;margin-bottom:4px;color:#999;font-style:italic;font-size:0.82rem;">Select a student</div>') +
+            (fName ? '<p style="text-align:center;font-size:0.8rem;color:#555;margin-bottom:2px;">S/O ' + fName + '</p>' : '') +
+            classRollHtml +
+            '<div style="text-align:justify;line-height:1.7;font-size:0.8rem;color:#1f2933;flex:1;margin-bottom:16px;">' +
+              (bodyHtml || '<span style="color:#bbb;font-style:italic;">Certificate body text will appear here...</span>') +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:8px;border-top:1px solid #e5e7eb;">' +
+              '<div style="text-align:center;width:38%;"><div style="height:24px;border-bottom:1px solid #0f2b3f;margin-bottom:4px;"></div><p style="margin:0;font-size:0.6rem;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
+              '<div style="flex:1;"></div>' +
+              '<div style="text-align:center;width:38%;"><div style="height:24px;border-bottom:1px solid #0f2b3f;margin-bottom:4px;"></div><p style="margin:0;font-size:0.6rem;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">School Stamp</p></div>' +
+            '</div>' +
+          '</div>';
+      }
+
+      function _certUpdatePreview() {
+        if (_certPreviewDebounce) clearTimeout(_certPreviewDebounce);
+        _certPreviewDebounce = setTimeout(_certRenderPreview, 60);
+      }
+
+      function _certBuildPrintHtml(student, text, certNo, issueDate) {
+        var cfg = _certTypeConfig[_certType] || {};
+        var showClass = cfg.showClass;
+        var showRoll = cfg.showRoll;
+        var certTextLines = text.split("\n").filter(function (l) { return l.trim().length > 0; });
+        var heading = certTextLines[0] || "Certificate";
+        var bodyLines = certTextLines.slice(1).filter(function (l) {
+          var nl = l.trim().replace(/\s+/g, " ").toLowerCase();
+          return nl !== "signature: principal" && nl !== "signature principal" && nl !== "school stamp";
+        });
+        var bodyHtml = escapeHtml(bodyLines.join("\n")).replace(/\n/g, "<br>");
+        var logoHtml = schoolLogo ? '<img src="' + escapeAttr(schoolLogo) + '" alt="Logo" style="max-height:60px;object-fit:contain;">' : '<div style="width:54px;height:54px;border-radius:50%;background:#0f2b3f;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem;font-family:Georgia,serif;">' + escapeHtml((schoolName || "S").charAt(0)) + '</div>';
+        var resolvedCertNo = certNo || _certNumberIssued || "(Preview)";
+        var resolvedDate = issueDate || today;
+        var sName = student ? escapeHtml(student.name || "") : "";
+        var fName = student ? escapeHtml(student.fatherName || "") : "";
+        var certPhoneP = profile.phone || "";
+        var certPsraP = profile.psra || "";
+        var certInfoLineP = [certPhoneP ? escapeHtml(certPhoneP) : "", certPsraP ? "PSRA: " + escapeHtml(certPsraP) : "", schoolAddress ? escapeHtml(schoolAddress) : ""].filter(function (x) { return x; }).join(" | ");
+
+        var classRollHtml = "";
+        if (showClass || showRoll) {
+          var parts = [];
+          if (showClass && student) parts.push("Class: " + escapeHtml(student.className || "-"));
+          if (showRoll && student) parts.push("Roll No: " + escapeHtml(student.rollNo || student.admissionNo || "-"));
+          if (parts.length > 0) classRollHtml = '<p style="text-align:center;font-size:13px;color:#718096;margin:4px 0 14px;">' + parts.join(" | ") + '</p>';
+        }
+
+        return '<article style="max-width:900px;margin:0 auto;font-family:Georgia,\'Times New Roman\',serif;color:#1f2933;page-break-after:always;">' +
+          '<div style="border:2px solid #0f2b3f;outline:1px solid #0f2b3f;outline-offset:3px;border-radius:4px;padding:24px 26px;display:flex;flex-direction:column;">' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">' +
+              '<div style="font-size:12px;color:#5b6777;letter-spacing:0.3px;font-weight:600;">Certificate No: ' + escapeHtml(resolvedCertNo) + '</div>' +
+              '<div style="font-size:12px;color:#5b6777;letter-spacing:0.3px;font-weight:600;text-align:right;">Date: ' + escapeHtml(resolvedDate) + '</div>' +
+            '</div>' +
+            '<div style="text-align:center;margin-bottom:12px;">' +
+              (logoHtml ? '<div style="margin-bottom:8px;">' + logoHtml + '</div>' : '') +
+              '<h1 style="margin:0;font-size:20px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(schoolName) + '</h1>' +
+              (schoolSlogan ? '<p style="margin:3px auto 0;font-size:10px;color:#718096;font-style:italic;">' + escapeHtml(schoolSlogan) + '</p>' : '') +
+              (certInfoLineP ? '<p style="margin:3px auto 0;font-size:10px;color:#718096;max-width:400px;letter-spacing:0.3px;">' + certInfoLineP + '</p>' : '') +
+            '</div>' +
+            '<div style="text-align:center;margin-bottom:12px;"><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div><div style="display:inline-block;width:5px;height:5px;background:#0f2b3f;border-radius:50%;margin:0 8px;vertical-align:middle;"></div><div style="display:inline-block;width:100px;height:1px;background:#0f2b3f;vertical-align:middle;"></div></div>' +
+            '<h2 style="text-align:center;margin:0 0 16px;font-size:18px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(heading) + '</h2>' +
+            '<p style="text-align:center;font-size:14px;color:#555;margin-bottom:8px;">This is to certify that</p>' +
+            (sName ? '<div style="text-align:center;margin-bottom:4px;"><span style="font-size:18px;font-weight:700;color:#0f2b3f;border-bottom:1.5px solid #0f2b3f;padding-bottom:2px;display:inline-block;">' + sName + '</span></div>' : '') +
+            (fName ? '<p style="text-align:center;font-size:14px;color:#555;margin-bottom:4px;">S/O ' + fName + '</p>' : '') +
+            classRollHtml +
+            '<div style="text-align:justify;line-height:1.7;font-size:13px;color:#1f2933;flex:1;margin-bottom:24px;">' +
+              (bodyHtml || '') +
+            '</div>' +
+            '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:auto;padding-top:10px;border-top:1px solid #e5e7eb;">' +
+              '<div style="text-align:center;width:38%;"><div style="height:28px;border-bottom:1px solid #0f2b3f;margin-bottom:5px;"></div><p style="margin:0;font-size:10px;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">Principal / Authorized Signature</p></div>' +
+              '<div style="flex:1;"></div>' +
+              '<div style="text-align:center;width:38%;"><div style="height:28px;border-bottom:1px solid #0f2b3f;margin-bottom:5px;"></div><p style="margin:0;font-size:10px;font-weight:700;color:#0f2b3f;text-transform:uppercase;letter-spacing:0.5px;">School Stamp</p></div>' +
+            '</div>' +
+          '</div>' +
+        '</article>';
+      }
+
+      function _certBuildBulkPrintHtml(students, text, issueDate) {
+        var self = this;
+        var result = "";
+        for (var bi = 0; bi < students.length; bi++) {
+          var stu = students[bi];
+          var certNo = _certNextNumber();
+          var certRecord = {
+            id: "CRT-" + generateId(),
+            certificateNumber: certNo,
+            certificateType: _certType,
+            studentId: stu.id || "",
+            studentName: stu.name || "-",
+            className: stu.className || "-",
+            issueDate: issueDate,
+            template: document.getElementById("certTemplateSelect") ? document.getElementById("certTemplateSelect").value : "",
+            body: text,
+            status: "issued"
+          };
+          issuedCerts.unshift(certRecord);
+          result += '<div style="page-break-after:always;">' +
+            _certBuildPrintHtml(stu, text, certNo, issueDate) +
+          '</div>';
+        }
+        _certNumberIssued = null;
+        saveDatabase("", [{ table: "school_settings", record: { id: "certificates", source_id: "certificates", data: issuedCerts, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        return result;
+      }
+
+      function _certRenderHistory(filterText, filterType) {
+        var histBody = document.getElementById("certHistBody");
+        var histEmpty = document.getElementById("certHistEmpty");
+        if (!histBody) return;
+        var filtered = issuedCerts.filter(function (c) {
+          var matchText = !filterText || String(c.studentName || "").toLowerCase().indexOf(filterText) >= 0 || String(c.certificateNumber || "").toLowerCase().indexOf(filterText) >= 0;
+          var matchType = !filterType || filterType === "all" || String(c.certificateType || "") === filterType;
+          return matchText && matchType;
+        });
+        if (filtered.length === 0) {
+          histBody.innerHTML = "";
+          if (histEmpty) histEmpty.style.display = "";
           return;
         }
-        
-        // Extract heading from certificate text (first line)
-        const textLines = text.split('\n').filter(function(line) { return line.trim().length > 0; });
-        const heading = textLines[0] || "Certificate";
-        const bodyContent = textLines.slice(1)
-          .filter(function (line) {
-            const normalizedLine = line.trim().replace(/\s+/g, " ").toLowerCase();
-            return normalizedLine !== "signature: principal" &&
-              normalizedLine !== "signature principal" &&
-              normalizedLine !== "school stamp";
-          })
-          .join('\n');
-        
-        const certificateHtml = `
-          <article class="report-card certificate-print-card" style="max-width: 900px; min-height: 560px; margin: 0 auto; page-break-after: avoid; border: 2px solid #0f2b3f; box-shadow: inset 0 0 0 5px rgba(15, 43, 63, 0.08); display: flex; flex-direction: column; font-family: Georgia, 'Times New Roman', serif;">
-            <div style="text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px double #0f2b3f;">
-              <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #0f2b3f;">
-                ${escapeHtml(heading)}
-              </h1>
-              <p style="margin: 8px auto 0; max-width: 520px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #5b6777;">Official School Certificate</p>
-            </div>
-            <div style="text-align: justify; line-height: 1.65; font-size: 14px; color: #1f2933; margin-bottom: 22px; flex: 1;">
-              <p style="white-space: pre-wrap; margin: 0;">${escapeHtml(bodyContent)}</p>
-            </div>
-            <div style="margin-top: auto; padding-top: 24px;">
-              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; align-items: end;">
-                <div style="text-align: center;">
-                  <div style="height: 34px; border-bottom: 1.5px solid #0f2b3f;"></div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">Prepared By</p>
-                </div>
-                <div style="text-align: center;">
-                  <div style="height: 34px; border-bottom: 1.5px solid #0f2b3f;"></div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">Checked By</p>
-                </div>
-                <div style="text-align: center;">
-                  <div style="height: 34px; border-bottom: 1.5px solid #0f2b3f;"></div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">Signature Principal</p>
-                </div>
-                <div style="text-align: center;">
-                  <div style="width: 72px; height: 72px; margin: 0 auto; border: 1.5px dashed #0f2b3f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #5b6777; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">School<br>Stamp</div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">School Stamp</p>
-                </div>
-              </div>
-            </div>
-          </article>
-        `;
-        
-        openPrintReport({
-          title: "Certificate",
-          subtitle: `Issued To: ${student.name || "-"} | Roll: ${student.admissionNo || "-"} | Class: ${student.className || "-"} | Date: ${issueDateInput.value || "-"}`,
-          contentHtml: certificateHtml
-        });
-        certificateMessage.textContent = "Certificate prepared successfully.";
-        certificateMessage.className = "form-message success";
+        if (histEmpty) histEmpty.style.display = "none";
+        histBody.innerHTML = filtered.map(function (c) {
+          var typeLabel = (_certTypeConfig[c.certificateType] || {}).label || c.certificateType || "Character";
+          return '<tr>' +
+            '<td><strong>' + escapeHtml(c.certificateNumber || "-") + '</strong></td>' +
+            '<td>' + escapeHtml(c.studentName || "-") + '</td>' +
+            '<td><span class="cert-type-badge cert-type-badge--' + escapeAttr(c.certificateType || "character") + '">' + escapeHtml(typeLabel) + '</span></td>' +
+            '<td>' + escapeHtml(c.issueDate || "-") + '</td>' +
+            '<td><span class="cert-status-pill cert-status--issued">Issued</span></td>' +
+            '<td>' +
+              '<button class="cert-btn cert-btn--sm cert-btn--outline" data-cert-view="' + escapeAttr(c.id || "") + '" style="margin-right:4px;">View</button>' +
+              '<button class="cert-btn cert-btn--sm cert-btn--outline" data-cert-print="' + escapeAttr(c.id || "") + '">Print</button>' +
+            '</td>' +
+          '</tr>';
+        }).join("");
+      }
+
+      var certificateTypes = [
+        { key: "character", label: "Character Certificate", icon: "&#9733;" },
+        { key: "slc", label: "School Leaving Certificate", icon: "&#9998;" },
+        { key: "bonafide", label: "Bonafide Certificate", icon: "&#9878;" },
+        { key: "transfer", label: "Transfer Certificate", icon: "&#8644;" },
+        { key: "student", label: "Student Certificate", icon: "&#127891;" },
+        { key: "custom", label: "Custom Certificate", icon: "&#9997;" }
+      ];
+
+      var typeCardsHtml = certificateTypes.map(function (t) {
+        var cfg = _certTypeConfig[t.key];
+        var activeClass = t.key === _certType ? " cert-type-card--active" : "";
+        var bulkTag = cfg && cfg.bulk ? ' <span style="font-size:0.65rem;background:#0f2b3f;color:#fff;padding:1px 5px;border-radius:3px;margin-left:3px;">Bulk</span>' : "";
+        return '<button type="button" class="cert-type-card' + activeClass + '" data-cert-type="' + escapeAttr(t.key) + '">' +
+          '<span class="cert-type-card__icon">' + t.icon + '</span>' +
+          '<span class="cert-type-card__label">' + escapeHtml(t.label) + bulkTag + '</span>' +
+        '</button>';
+      }).join("");
+
+      var filteredTemplates = templates.filter(function (tpl) {
+        return !tpl.type || tpl.type === _certType || _certType === "custom";
       });
-      fillTemplatePreview();
+      var templateOptionsHtml = filteredTemplates.length > 0
+        ? filteredTemplates.map(function (t) {
+            var typeLabel = t.type ? " [" + escapeHtml(t.type.charAt(0).toUpperCase() + t.type.slice(1)) + "]" : "";
+            return '<option value="' + escapeAttr(t.id) + '">' + escapeHtml(t.name || "-") + typeLabel + '</option>';
+          }).join("")
+        : '<option value="" disabled>No templates for this type</option>';
+
+      var cfg = _certTypeConfig[_certType];
+      var needsClass = cfg && cfg.fields.indexOf("class") !== -1;
+      var isBulk = cfg && cfg.bulk;
+
+      var historyRowsHtml = "";
+      if (issuedCerts.length > 0) {
+        historyRowsHtml = issuedCerts.map(function (c) {
+          var typeLabel = (_certTypeConfig[c.certificateType] || {}).label || c.certificateType || "Character";
+          return '<tr>' +
+            '<td><strong>' + escapeHtml(c.certificateNumber || "-") + '</strong></td>' +
+            '<td>' + escapeHtml(c.studentName || "-") + '</td>' +
+            '<td><span class="cert-type-badge cert-type-badge--' + escapeAttr(c.certificateType || "character") + '">' + escapeHtml(typeLabel) + '</span></td>' +
+            '<td>' + escapeHtml(c.issueDate || "-") + '</td>' +
+            '<td><span class="cert-status-pill cert-status--issued">Issued</span></td>' +
+            '<td>' +
+              '<button class="cert-btn cert-btn--sm cert-btn--outline" data-cert-view="' + escapeAttr(c.id || "") + '" style="margin-right:4px;">View</button>' +
+              '<button class="cert-btn cert-btn--sm cert-btn--outline" data-cert-print="' + escapeAttr(c.id || "") + '">Print</button>' +
+            '</td>' +
+          '</tr>';
+        }).join("");
+      }
+
+      moduleSummary.innerHTML = '' +
+        '<div class="cert-mgmt">' +
+          '<div class="cert-mgmt__header">' +
+            '<div><h2 class="cert-mgmt__title">Certificate Management</h2><p class="cert-mgmt__subtitle">Create, preview, issue and manage student certificates.</p></div>' +
+            '<div class="cert-mgmt__stats">' +
+              '<div class="cert-stat-card"><span class="cert-stat-card__num">' + issuedCerts.length + '</span><span class="cert-stat-card__label">Issued</span></div>' +
+              '<div class="cert-stat-card"><span class="cert-stat-card__num">' + templates.length + '</span><span class="cert-stat-card__label">Templates</span></div>' +
+              '<div class="cert-stat-card"><span class="cert-stat-card__num">' + activeStudents.length + '</span><span class="cert-stat-card__label">Students</span></div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="cert-section">' +
+            '<div class="cert-section__header"><span class="cert-step-badge">1</span><h3 class="cert-section__title">Certificate Type</h3></div>' +
+            '<div class="cert-section__body">' +
+              '<div class="cert-type-grid">' + typeCardsHtml + '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="cert-section">' +
+            '<div class="cert-section__header"><span class="cert-step-badge">2</span><h3 class="cert-section__title">Student Selection</h3></div>' +
+            '<div class="cert-section__body">' +
+              '<div id="certClassRow" style="' + (needsClass && isBulk ? "" : "display:none;") + '">' +
+                '<div class="cert-field-row">' +
+                  '<div class="cert-field cert-field--sm"><label class="cert-field__label">Select Class</label><select id="certClassSelect" class="cert-input"><option value="">Select Class</option>' + classOptionsMarkup + '</select></div>' +
+                '</div>' +
+              '</div>' +
+              '<div id="certBulkInfo" style="display:none;">' +
+                '<div class="cert-student-profile" style="background:#f0f7fa;border:1px solid #b6d8e8;">' +
+                  '<div class="cert-student-profile__info"><h4 id="certBulkCount" style="margin:0;color:#0f2b3f;"></h4></div>' +
+                '</div>' +
+              '</div>' +
+              '<div id="certSingleStudentArea">' +
+                '<div class="cert-field-row" style="justify-content:center;">' +
+                  '<div class="cert-field" id="certSearchContainer" style="flex:0 1 420px;max-width:420px;position:relative;"><label class="cert-field__label">Search Student</label><input id="certStudentSearch" type="search" class="cert-input" placeholder="Search by name, roll no, admission no..."><div id="certSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>' +
+                '</div>' +
+                '<div id="certStudentProfile" class="cert-student-profile" style="display:none;">' +
+                  '<div class="cert-student-profile__photo" id="certProfilePhoto"></div>' +
+                  '<div class="cert-student-profile__info">' +
+                    '<h4 class="cert-student-profile__name" id="certProfileName"></h4>' +
+                    '<div class="cert-student-profile__details">' +
+                      '<span id="certProfileRoll"></span>' +
+                      '<span id="certProfileFather"></span>' +
+                      '<span id="certProfileClass"></span>' +
+                      '<span id="certProfileAdmNo"></span>' +
+                      '<span id="certProfileStatus"></span>' +
+                    '</div>' +
+                  '</div>' +
+                '</div>' +
+                '<div id="certNoStudentMsg" class="cert-empty-hint">Select a student to continue</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="cert-split">' +
+            '<div class="cert-split__form">' +
+
+              '<div class="cert-section">' +
+                '<div class="cert-section__header"><span class="cert-step-badge">3</span><h3 class="cert-section__title">Certificate Details</h3></div>' +
+                '<div class="cert-section__body">' +
+                  '<div class="cert-field-row">' +
+                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Template</label><select id="certTemplateSelect" class="cert-input"><option value="">Select Template</option>' + templateOptionsHtml + '</select></div>' +
+                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Issue Date *</label><input id="certIssueDate" type="date" class="cert-input" value="' + today + '"></div>' +
+                  '</div>' +
+                  '<div id="certDynamicFields"></div>' +
+                  '<div class="cert-field-row">' +
+                    '<div class="cert-field cert-field--sm"><label class="cert-field__label">Certificate No</label><input id="certNumber" type="text" class="cert-input" readonly value="' + escapeAttr(_certNextNumber()) + '"></div>' +
+                  '</div>' +
+                  '<div class="cert-adv-toggle" id="certAdvToggle"><span>&#9660; Advanced Editing</span></div>' +
+                  '<div class="cert-adv-body" id="certAdvBody" style="display:none;">' +
+                    '<label class="cert-field__label">Certificate Text</label>' +
+                    '<textarea id="certBodyText" class="cert-textarea" rows="8" placeholder="Template text will appear here..."></textarea>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="cert-section">' +
+                '<div class="cert-section__header"><span class="cert-step-badge">4</span><h3 class="cert-section__title">Actions</h3></div>' +
+                '<div class="cert-section__body">' +
+                  '<div class="cert-actions">' +
+                    '<button class="cert-btn cert-btn--primary" id="certSaveBtn" type="button">&#10003; Save & Issue Certificate</button>' +
+                    '<button class="cert-btn cert-btn--outline" id="certPrintBtn" type="button">&#128424; Print Certificate</button>' +
+                  '</div>' +
+                  '<p class="form-message" id="certMessage"></p>' +
+                  '<div id="certSuccessMsg" style="display:none;"></div>' +
+                '</div>' +
+              '</div>' +
+
+            '</div>' +
+
+            '<div class="cert-split__preview">' +
+              '<div class="cert-preview-header"><h3>Certificate Preview</h3></div>' +
+              '<div id="certLivePreview" class="cert-preview-container">' +
+                '<div class="cert-preview__paper"><div class="cert-preview__border cert-preview__border--empty">' +
+                  '<div class="cert-preview__placeholder"><p>&#128196;</p><p>Select a student and template to see the preview</p></div>' +
+                '</div></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+          '<div class="cert-section cert-history-section">' +
+            '<div class="cert-section__header"><h3 class="cert-section__title">&#128203; Certificate History</h3></div>' +
+            '<div class="cert-section__body">' +
+              '<div class="cert-history-toolbar">' +
+                '<input id="certHistSearch" type="search" class="cert-input" placeholder="Search by certificate no or student name...">' +
+                '<select id="certHistTypeFilter" class="cert-input cert-input--sm"><option value="all">All Types</option>' + certificateTypes.map(function (t) { return '<option value="' + escapeAttr(t.key) + '">' + escapeHtml(t.label) + '</option>'; }).join("") + '</select>' +
+              '</div>' +
+              '<div class="cert-history-table-wrap">' +
+                '<table class="cert-history-table">' +
+                  '<thead><tr><th>Certificate No</th><th>Student</th><th>Type</th><th>Issue Date</th><th>Status</th><th>Actions</th></tr></thead>' +
+                  '<tbody id="certHistBody">' + historyRowsHtml + '</tbody>' +
+                '</table>' +
+                '<div id="certHistEmpty" class="cert-history-empty" style="' + (issuedCerts.length > 0 ? 'display:none;' : '') + '">' +
+                  '<div class="cert-history-empty__icon">&#128196;</div>' +
+                  '<p>No certificates issued yet.</p>' +
+                  '<p class="cert-history-empty__sub">Generate a certificate to see it here.</p>' +
+                '</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+
+        '</div>';
+
+      moduleGuide.innerHTML = "";
+
+      var certClassSelect = document.getElementById("certClassSelect");
+      var certStudentSearch = document.getElementById("certStudentSearch");
+      var certTemplateSelect = document.getElementById("certTemplateSelect");
+      var certIssueDate = document.getElementById("certIssueDate");
+      var certNumber = document.getElementById("certNumber");
+      var certBodyText = document.getElementById("certBodyText");
+      var certMessage = document.getElementById("certMessage");
+
+      _certBuildDynamicFields();
+
+      function _certUpdatePreviewDebounced() {
+        if (_certPreviewDebounce) clearTimeout(_certPreviewDebounce);
+        _certPreviewDebounce = setTimeout(_certRenderPreview, 60);
+      }
+
+      var _ctplUseId = null;
+      try { _ctplUseId = sessionStorage.getItem("ctplUseTemplateId"); sessionStorage.removeItem("ctplUseTemplateId"); } catch (e) {}
+      if (_ctplUseId && certTemplateSelect) {
+        var _ctplUseMatch = templates.find(function (t) { return String(t.id) === String(_ctplUseId); });
+        if (_ctplUseMatch) {
+          certTemplateSelect.value = _ctplUseMatch.id;
+          var filledText = _certReplaceVars(_ctplUseMatch.body || "", null);
+          certBodyText.value = filledText;
+          var tplType = _ctplUseMatch.type || "";
+          if (tplType && _certTypeConfig[tplType]) {
+            _certType = tplType;
+          } else if (tplType === "leaving") {
+            _certType = "slc";
+          } else if (tplType === "achievement" || tplType === "birth") {
+            _certType = "custom";
+          }
+          _certBuildDynamicFields();
+          var typeBtn = document.querySelector('[data-cert-type="' + escapeAttr(_certType) + '"]');
+          if (typeBtn) {
+            document.querySelectorAll("[data-cert-type]").forEach(function (b) { b.classList.remove("cert-type-card--active"); });
+            typeBtn.classList.add("cert-type-card--active");
+          }
+          if (certClassSelect) {
+            var cfg2 = _certTypeConfig[_certType];
+            var rowEl = document.getElementById("certClassRow");
+            var singleEl = document.getElementById("certSingleStudentArea");
+            if (cfg2 && cfg2.bulk) {
+              if (rowEl) rowEl.style.display = "";
+              if (singleEl) singleEl.style.display = "none";
+            } else {
+              if (rowEl) rowEl.style.display = "none";
+              if (singleEl) singleEl.style.display = "";
+            }
+          }
+          _certUpdatePreviewDebounced();
+        }
+      }
+
+      initializeStudentProfessionalSearch(
+        "certStudentSearch",
+        "certSearchDropdown",
+        "certSearchContainer",
+        function (student) {
+          _certSelectedStudent = student;
+          certStudentSearch.value = student.name + " (" + (student.admissionNo || "-") + ")";
+          document.getElementById("certStudentProfile").style.display = "";
+          document.getElementById("certNoStudentMsg").style.display = "none";
+          var photoEl = document.getElementById("certProfilePhoto");
+          if (student.photo) {
+            photoEl.innerHTML = '<img src="' + escapeAttr(student.photo) + '" alt="Photo">';
+          } else {
+            photoEl.innerHTML = '<span>' + escapeHtml((student.name || "?").charAt(0).toUpperCase()) + '</span>';
+          }
+          document.getElementById("certProfileName").textContent = student.name || "-";
+          document.getElementById("certProfileRoll").innerHTML = '<strong>Roll No:</strong> ' + escapeHtml(student.rollNo || student.admissionNo || "-");
+          document.getElementById("certProfileFather").innerHTML = '<strong>Father:</strong> ' + escapeHtml(student.fatherName || "-");
+          document.getElementById("certProfileClass").innerHTML = '<strong>Class:</strong> ' + escapeHtml(student.className || "-");
+          document.getElementById("certProfileAdmNo").innerHTML = '<strong>Adm No:</strong> ' + escapeHtml(student.admissionNo || "-");
+          document.getElementById("certProfileStatus").innerHTML = '<strong>Status:</strong> <span class="cert-status-pill cert-status--active">' + escapeHtml(student.status || "Active") + '</span>';
+          _certBuildDynamicFields();
+          _certUpdatePreviewDebounced();
+        }
+      );
+
+      safeOn(certClassSelect, "change", function () {
+        var cfg3 = _certTypeConfig[_certType];
+        if (cfg3 && cfg3.bulk) {
+          var selectedClass = certClassSelect.value;
+          _certSelectedStudents = activeStudents.filter(function (s) {
+            return selectedClass && String(s.className || "").toLowerCase() === String(selectedClass).toLowerCase();
+          });
+          var bulkInfo = document.getElementById("certBulkInfo");
+          var bulkCountEl = document.getElementById("certBulkCount");
+          var singleArea = document.getElementById("certSingleStudentArea");
+          if (selectedClass && _certSelectedStudents.length > 0) {
+            if (bulkInfo) bulkInfo.style.display = "";
+            if (bulkCountEl) bulkCountEl.textContent = _certSelectedStudents.length + " student" + (_certSelectedStudents.length !== 1 ? "s" : "") + " found in " + selectedClass;
+            if (singleArea) singleArea.style.display = "none";
+            _certSelectedStudent = null;
+          } else {
+            if (bulkInfo) bulkInfo.style.display = "none";
+            if (singleArea) singleArea.style.display = "";
+          }
+        } else {
+          _certSelectedStudent = null;
+          certStudentSearch.value = "";
+          document.getElementById("certStudentProfile").style.display = "none";
+          document.getElementById("certNoStudentMsg").style.display = "";
+        }
+        _certUpdatePreviewDebounced();
+      });
+
+      document.querySelectorAll("[data-cert-type]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          document.querySelectorAll("[data-cert-type]").forEach(function (b) { b.classList.remove("cert-type-card--active"); });
+          btn.classList.add("cert-type-card--active");
+          _certType = btn.getAttribute("data-cert-type");
+          _certBuildDynamicFields();
+          var cfg4 = _certTypeConfig[_certType];
+          var needsClassF = cfg4 && cfg4.fields.indexOf("class") !== -1;
+          var isBulkF = cfg4 && cfg4.bulk;
+          var classRow = document.getElementById("certClassRow");
+          var singleArea = document.getElementById("certSingleStudentArea");
+          var bulkInfo = document.getElementById("certBulkInfo");
+          if (needsClassF && isBulkF) {
+            if (classRow) classRow.style.display = "";
+            if (singleArea) singleArea.style.display = "none";
+          } else {
+            if (classRow) classRow.style.display = "none";
+            if (singleArea) singleArea.style.display = "";
+            if (bulkInfo) bulkInfo.style.display = "none";
+            _certSelectedStudents = [];
+            if (certClassSelect) certClassSelect.value = "";
+          }
+          var tplSelect = document.getElementById("certTemplateSelect");
+          if (tplSelect) {
+            var fTpls = templates.filter(function (tpl) { return !tpl.type || tpl.type === _certType || _certType === "custom"; });
+            tplSelect.innerHTML = '<option value="">Select Template</option>' +
+              (fTpls.length > 0 ? fTpls.map(function (t) {
+                var tl = t.type ? " [" + escapeHtml(t.type.charAt(0).toUpperCase() + t.type.slice(1)) + "]" : "";
+                return '<option value="' + escapeAttr(t.id) + '">' + escapeHtml(t.name || "-") + tl + '</option>';
+              }).join("") : '<option value="" disabled>No templates for this type</option>');
+          }
+          _certUpdatePreviewDebounced();
+        });
+      });
+
+      safeOn(certTemplateSelect, "change", function () {
+        var tpl = templates.find(function (t) { return String(t.id) === String(certTemplateSelect.value); }) || null;
+        if (tpl) {
+          var stu = _certTypeConfig[_certType] && _certTypeConfig[_certType].bulk ? null : _certSelectedStudent;
+          var filled = _certReplaceVars(tpl.body || "", stu);
+          certBodyText.value = filled;
+        } else {
+          certBodyText.value = "";
+        }
+        _certUpdatePreviewDebounced();
+      });
+
+      safeOn(certIssueDate, "input", function () { _certUpdatePreviewDebounced(); });
+      safeOn(certIssueDate, "change", function () { _certUpdatePreviewDebounced(); });
+
+      safeOn(certBodyText, "input", function () { _certUpdatePreviewDebounced(); });
+
+      var advToggle = document.getElementById("certAdvToggle");
+      var advBody = document.getElementById("certAdvBody");
+      if (advToggle && advBody) {
+        advToggle.addEventListener("click", function () {
+          var isOpen = advBody.style.display !== "none";
+          advBody.style.display = isOpen ? "none" : "";
+          advToggle.innerHTML = isOpen ? '<span>&#9660; Advanced Editing</span>' : '<span>&#9650; Hide Advanced Editing</span>';
+        });
+      }
+
+      safeOn(document.getElementById("certSaveBtn"), "click", function () {
+        var cfg5 = _certTypeConfig[_certType];
+        var isBulkType = cfg5 && cfg5.bulk;
+        var text = certBodyText.value.trim();
+
+        if (isBulkType) {
+          if (!certClassSelect || !certClassSelect.value) {
+            certMessage.textContent = "Please select a class for bulk certificates.";
+            certMessage.className = "form-message error";
+            return;
+          }
+          if (_certSelectedStudents.length === 0) {
+            certMessage.textContent = "No students found in the selected class.";
+            certMessage.className = "form-message error";
+            return;
+          }
+        } else {
+          if (!_certSelectedStudent) {
+            certMessage.textContent = "Please select a student.";
+            certMessage.className = "form-message error";
+            return;
+          }
+        }
+        if (!certTemplateSelect.value) {
+          certMessage.textContent = "Please select a template.";
+          certMessage.className = "form-message error";
+          return;
+        }
+        if (!certIssueDate.value) {
+          certMessage.textContent = "Please select an issue date.";
+          certMessage.className = "form-message error";
+          return;
+        }
+        if (!text) {
+          certMessage.textContent = "Please select a template or enter certificate text.";
+          certMessage.className = "form-message error";
+          return;
+        }
+
+        _certNumberIssued = _certNextNumber();
+
+        if (isBulkType) {
+          for (var si = 0; si < _certSelectedStudents.length; si++) {
+            var stu = _certSelectedStudents[si];
+            var certRec = {
+              id: "CRT-" + generateId(),
+              certificateNumber: _certNextNumber(),
+              certificateType: _certType,
+              studentId: stu.id || "",
+              studentName: stu.name || "-",
+              className: stu.className || "-",
+              issueDate: certIssueDate.value,
+              template: certTemplateSelect.value,
+              templateName: certTemplateSelect.options[certTemplateSelect.selectedIndex] ? certTemplateSelect.options[certTemplateSelect.selectedIndex].text : "",
+              body: text,
+              status: "issued"
+            };
+            issuedCerts.unshift(certRec);
+          }
+          _certShowSuccess(_certSelectedStudents.length + " certificates issued.");
+          _certNumberIssued = null;
+        } else {
+          var certRecord = {
+            id: "CRT-" + generateId(),
+            certificateNumber: _certNumberIssued,
+            certificateType: _certType,
+            studentId: _certSelectedStudent.id || "",
+            studentName: _certSelectedStudent.name || "-",
+            className: _certSelectedStudent.className || "-",
+            issueDate: certIssueDate.value,
+            template: certTemplateSelect.value,
+            templateName: certTemplateSelect.options[certTemplateSelect.selectedIndex] ? certTemplateSelect.options[certTemplateSelect.selectedIndex].text : "",
+            body: text,
+            status: "issued"
+          };
+          issuedCerts.unshift(certRecord);
+          _certShowSuccess(_certNumberIssued);
+          _certNumberIssued = null;
+        }
+
+        saveDatabase("", [{ table: "school_settings", record: { id: "certificates", source_id: "certificates", data: issuedCerts, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        certMessage.textContent = "";
+        certNumber.value = _certNextNumber();
+
+        var histCountEl = document.querySelector(".cert-stat-card__num");
+        if (histCountEl) histCountEl.textContent = issuedCerts.length;
+        _certRenderHistory("", "all");
+      });
+
+      safeOn(document.getElementById("certPrintBtn"), "click", function () {
+        var cfg6 = _certTypeConfig[_certType];
+        var isBulkType = cfg6 && cfg6.bulk;
+        var text = certBodyText.value.trim();
+
+        if (isBulkType) {
+          if (!certClassSelect || !certClassSelect.value || _certSelectedStudents.length === 0) {
+            certMessage.textContent = "Please select a class with students first.";
+            certMessage.className = "form-message error";
+            return;
+          }
+          if (!text) {
+            certMessage.textContent = "Please select a template or enter certificate text.";
+            certMessage.className = "form-message error";
+            return;
+          }
+          var tplName = certTemplateSelect.options[certTemplateSelect.selectedIndex] ? certTemplateSelect.options[certTemplateSelect.selectedIndex].text : "N/A";
+          var typeName = cfg6.label || _certType;
+          _certShowBulkConfirm(_certSelectedStudents.length, certClassSelect.value, typeName, tplName);
+        } else {
+          if (!_certSelectedStudent || !text) {
+            certMessage.textContent = "Please select student and template first.";
+            certMessage.className = "form-message error";
+            return;
+          }
+          var certHtml = _certBuildPrintHtml(_certSelectedStudent, text, null, certIssueDate.value);
+          openPrintReport({
+            title: "Certificate",
+            subtitle: "",
+            hideHeader: true,
+            contentHtml: certHtml
+          }, null, "a4");
+          certMessage.textContent = "Certificate prepared for printing.";
+          certMessage.className = "form-message success";
+        }
+      });
+
+      var histSearch = document.getElementById("certHistSearch");
+      var histTypeFilter = document.getElementById("certHistTypeFilter");
+      if (histSearch) histSearch.addEventListener("input", function () { _certRenderHistory(histSearch.value.toLowerCase().trim(), histTypeFilter ? histTypeFilter.value : "all"); });
+      if (histTypeFilter) histTypeFilter.addEventListener("change", function () { _certRenderHistory(histSearch ? histSearch.value.toLowerCase().trim() : "", histTypeFilter.value); });
+
+      var histBody = document.getElementById("certHistBody");
+      if (histBody) {
+        histBody.addEventListener("click", function (ev) {
+          var viewBtn = ev.target.closest("[data-cert-view]");
+          if (viewBtn) {
+            var certId = viewBtn.getAttribute("data-cert-view");
+            var cert = issuedCerts.find(function (c) { return String(c.id) === String(certId); });
+            if (!cert) return;
+            _certSelectedStudent = (database.students || []).find(function (s) { return String(s.id) === String(cert.studentId); }) || { name: cert.studentName, className: cert.className };
+            if (cert.body) certBodyText.value = cert.body;
+            if (cert.issueDate) certIssueDate.value = cert.issueDate;
+            if (cert.certificateNumber) certNumber.value = cert.certificateNumber;
+            var typeBtnV = document.querySelector('[data-cert-type="' + escapeAttr(cert.certificateType || "character") + '"]');
+            if (typeBtnV) typeBtnV.click();
+            if (cert.body) {
+              var tplMatch = templates.find(function (t) { return String(t.id) === String(cert.template); });
+              if (tplMatch && certTemplateSelect) certTemplateSelect.value = tplMatch.id;
+            }
+            var singleAreaV = document.getElementById("certSingleStudentArea");
+            var cfg7 = _certTypeConfig[cert.certificateType || "character"];
+            if (cfg7 && cfg7.bulk) {
+              if (certClassSelect && cert.className) {
+                for (var oi = 0; oi < certClassSelect.options.length; oi++) {
+                  if (String(certClassSelect.options[oi].value).toLowerCase() === String(cert.className).toLowerCase()) {
+                    certClassSelect.selectedIndex = oi;
+                    certClassSelect.dispatchEvent(new Event("change"));
+                    break;
+                  }
+                }
+              }
+            } else {
+              var searchEl = document.getElementById("certStudentSearch");
+              if (searchEl && _certSelectedStudent) {
+                searchEl.value = (_certSelectedStudent.name || "") + " (" + (_certSelectedStudent.admissionNo || "-") + ")";
+                document.getElementById("certStudentProfile").style.display = "";
+                document.getElementById("certNoStudentMsg").style.display = "none";
+                var photoElV = document.getElementById("certProfilePhoto");
+                if (_certSelectedStudent.photo) {
+                  photoElV.innerHTML = '<img src="' + escapeAttr(_certSelectedStudent.photo) + '" alt="Photo">';
+                } else {
+                  photoElV.innerHTML = '<span>' + escapeHtml((_certSelectedStudent.name || "?").charAt(0).toUpperCase()) + '</span>';
+                }
+                document.getElementById("certProfileName").textContent = _certSelectedStudent.name || "-";
+                document.getElementById("certProfileRoll").innerHTML = '<strong>Roll No:</strong> ' + escapeHtml(_certSelectedStudent.rollNo || _certSelectedStudent.admissionNo || "-");
+                document.getElementById("certProfileFather").innerHTML = '<strong>Father:</strong> ' + escapeHtml(_certSelectedStudent.fatherName || "-");
+                document.getElementById("certProfileClass").innerHTML = '<strong>Class:</strong> ' + escapeHtml(_certSelectedStudent.className || "-");
+                document.getElementById("certProfileAdmNo").innerHTML = '<strong>Adm No:</strong> ' + escapeHtml(_certSelectedStudent.admissionNo || "-");
+                document.getElementById("certProfileStatus").innerHTML = '<strong>Status:</strong> <span class="cert-status-pill cert-status--active">' + escapeHtml(_certSelectedStudent.status || "Active") + '</span>';
+              }
+            }
+            _certUpdatePreviewDebounced();
+            window.scrollTo({ top: 0, behavior: "smooth" });
+            return;
+          }
+
+          var printBtn = ev.target.closest("[data-cert-print]");
+          if (printBtn) {
+            var certIdP = printBtn.getAttribute("data-cert-print");
+            var certP = issuedCerts.find(function (c) { return String(c.id) === String(certIdP); });
+            if (!certP) return;
+            var stuP = (database.students || []).find(function (s) { return String(s.id) === String(certP.studentId); }) || { name: certP.studentName, className: certP.className, fatherName: "-", rollNo: "-", admissionNo: "-" };
+            var certHtmlP = _certBuildPrintHtml(stuP, certP.body || "", certP.certificateNumber, certP.issueDate);
+            openPrintReport({
+              title: "Certificate",
+              subtitle: "",
+              hideHeader: true,
+              contentHtml: certHtmlP
+            }, null, "a4");
+          }
+        });
+      }
+
+      _certRenderPreview();
       return;
     }
 
@@ -23668,8 +26905,8 @@ classSelect.addEventListener("change", renderSubjectSelect);
             <ol class="sms-guide-list" style="margin:6px 0 0;">
               <li>Install <strong>SagarSoft SMS Agent</strong> app on phone ? Login with school credentials.</li>
               <li>In app, go to <strong>SIM Registration</strong> ? enter SIM number ? tap <strong>Register SIM</strong>.</li>
-              <li>Tap <strong>Start Service</strong> ï¿½ it will auto-send queued SMS.</li>
-              <li>Works from <strong>any network</strong> ï¿½ WiFi, mobile data, different locations, no setup needed.</li>
+              <li>Tap <strong>Start Service</strong> � it will auto-send queued SMS.</li>
+              <li>Works from <strong>any network</strong> � WiFi, mobile data, different locations, no setup needed.</li>
             </ol>
           </div>
         </article>
@@ -25429,7 +28666,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
 
       searchTimer = setTimeout(function() {
         if (searchInput.value.toLowerCase().trim() !== searchTerm) return;
-        var results = filterFunction(searchTerm).slice(0, 10);
+        var results = filterFunction(searchTerm).slice(0, 50);
         if (results.length === 0) {
           dropdownContainer.innerHTML = '<div class="gsac-empty">No results found</div>';
           dropdownContainer.style.display = "block";
@@ -25772,7 +29009,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
           <div class="admission-field"><strong>Admission Date</strong><span>${student.dateOfAdmission || "-"}</span></div>
           <div class="admission-field"><strong>Account Status</strong><span>${loginInfo.status}</span></div>
           <div class="admission-field"><strong>Username</strong><span>${loginInfo.username}</span></div>
-          <div class="admission-field"><strong>Password</strong><span>ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½</span></div>
+          <div class="admission-field"><strong>Password</strong><span>��������</span></div>
         </div>
       </article>
     `;
@@ -29072,7 +32309,7 @@ classSelect.addEventListener("change", renderSubjectSelect);
   initKeyboardScanner();
 
   /* ===================================================================
-     NUCLEAR MOBILE RESPONSIVE FIX ï¿½ JS-based, runs after every render
+     NUCLEAR MOBILE RESPONSIVE FIX � JS-based, runs after every render
      Bypasses ALL CSS specificity wars and inline style conflicts
      =================================================================== */
   function forceMobileLayout() {

@@ -1,10 +1,10 @@
-var CACHE = "sagarsoft-v137";
+var CACHE = "sagarsoft-v182";
 const PRECACHE_URLS = [
   "./",
   "./login.html",
   "./dashboard.html",
   "./css/base.css?v=20260823b",
-  "./css/dashboard.css?v=20260823g",
+  "./css/dashboard.css?v=20260915i",
   "./js/online-config.js?v=20260729",
   "./js/crypto-utils.js?v=20260729",
   "./js/utils.js?v=20260729",
@@ -13,7 +13,7 @@ const PRECACHE_URLS = [
   "./js/auth.js?v=20260729",
   "./js/cache-manager.js?v=20260805",
   "./js/login.js?v=20260729",
-  "./js/dashboard.js?v=20260823h",
+  "./js/dashboard.js?v=20260915i",
   "./assets/SagarSoft.logo.png",
   "./assets/parents.png",
   "./manifest.json"
@@ -46,7 +46,10 @@ self.addEventListener("activate", function (event) {
         keys.filter(function (key) { return key !== CACHE; }).map(function (key) { return caches.delete(key); })
       );
     }).then(function () {
-      return self.clients.claim();
+      return self.clients.matchAll().then(function (clients) {
+        clients.forEach(function (client) { client.postMessage({ type: "SW_UPDATED", version: CACHE }); });
+        return self.clients.claim();
+      });
     })
   );
 });
