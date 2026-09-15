@@ -6254,9 +6254,11 @@ document.addEventListener("DOMContentLoaded", function () {
                       (profile.logo ? '<img src="' + escapeAttr(profile.logo) + '" alt="Logo" id="ipLogoImg">' : '<div class="ip-logo-placeholder" id="ipLogoPlaceholder"><span>' + escapeHtml((profile.name || "S").charAt(0).toUpperCase()) + '</span></div>') +
                     '</div>' +
                     '<div class="ip-logo-actions">' +
-                      '<label class="ip-btn ip-btn--sm ip-btn--primary" for="ipLogoInput">&#128247; Upload Logo</label>' +
-                      '<input type="file" id="ipLogoInput" accept="image/*" style="display:none;">' +
-                      (profile.logo ? '<button type="button" class="ip-btn ip-btn--sm ip-btn--danger" id="ipLogoRemove">Remove</button>' : '') +
+                      '<div style="display:flex;align-items:center;gap:6px;">' +
+                        '<label class="ip-btn ip-btn--sm ip-btn--primary" for="ipLogoInput">&#128247; Upload Logo</label>' +
+                        '<input type="file" id="ipLogoInput" accept="image/*" style="display:none;">' +
+                        (profile.logo ? '<button type="button" class="ip-btn ip-btn--sm ip-btn--danger" id="ipLogoRemove">Remove</button>' : '') +
+                      '</div>' +
                       '<p class="ip-logo-hint">JPG, PNG or SVG. Max 2MB.</p>' +
                     '</div>' +
                   '</div>' +
@@ -6285,7 +6287,7 @@ document.addEventListener("DOMContentLoaded", function () {
               '</div>' +
 
               '<div class="ip-section">' +
-                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--info">&#8505;</div><div><p class="ip-section__title">Used Across SagarSoft</p><p class="ip-section__subtitle">Where this information appears</p></div></div>' +
+                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--info">&#8505;</div><div><p class="ip-section__title">Where This Information Is Used</p><p class="ip-section__subtitle">Appears automatically across relevant school documents</p></div></div>' +
                 '<div class="ip-section__body">' +
                   '<div class="ip-usage-grid">' +
                     '<div class="ip-usage-item">&#128196; Fee Invoices</div>' +
@@ -6362,6 +6364,7 @@ document.addEventListener("DOMContentLoaded", function () {
               (pAddress ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Address</span><span class="ip-preview-card__value">' + escapeHtml(pAddress) + '</span></div>' : '') +
               (pCountry ? '<div class="ip-preview-card__row"><span class="ip-preview-card__label">Country</span><span class="ip-preview-card__value">' + escapeHtml(pCountry) + '</span></div>' : '') +
             '</div>' +
+            '<div class="ip-preview-card__footer"><p class="ip-preview-card__footer-text">Document Identity Preview</p></div>' +
           '</div>';
       }
 
@@ -6397,7 +6400,8 @@ document.addEventListener("DOMContentLoaded", function () {
               rmBtn.className = "ip-btn ip-btn--sm ip-btn--danger";
               rmBtn.id = "ipLogoRemove";
               rmBtn.textContent = "Remove";
-              ipLogoArea.querySelector(".ip-logo-actions").insertBefore(rmBtn, ipLogoArea.querySelector(".ip-logo-hint"));
+              var _btnWrap = ipLogoArea.querySelector(".ip-logo-actions > div");
+              if (_btnWrap) { _btnWrap.appendChild(rmBtn); } else { ipLogoArea.querySelector(".ip-logo-actions").insertBefore(rmBtn, ipLogoArea.querySelector(".ip-logo-hint")); }
               ipLogoRemove = rmBtn;
               ipLogoRemove.addEventListener("click", ipRemoveLogo);
             }
