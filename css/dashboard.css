@@ -15852,3 +15852,22 @@ button.ss-btn-loading {
 @media(max-width:480px){
   .ctpl-table th:nth-child(3),.ctpl-table td:nth-child(3){display:none;}
 }
+
+/* ── Certificate Print Styles ─────────────────────────────────── */
+@media print{
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}
+  body{margin:0!important;padding:0!important;background:#fff!important;}
+  .sidebar,.app-header,.app-nav,.panel-card,.cert-mgmt__header,.cert-section,.cert-split__form,.cert-history-section,.cert-preview-header,.form-message,.cert-success-card,#moduleGuide,#moduleSectionLabel,.app-footer{display:none!important;}
+  .content-area,.module-center,.panel-grid{margin:0!important;padding:0!important;background:#fff!important;}
+  #moduleSummary{margin:0!important;padding:0!important;background:#fff!important;}
+  #moduleSummary > *{display:none!important;}
+  #moduleSummary .report-content,#moduleSummary article{display:block!important;}
+  .cert-preview-container{border:none!important;padding:0!important;background:#fff!important;min-height:auto!important;}
+  .cert-preview__paper{box-shadow:none!important;border:none!important;max-width:100%!important;}
+  .cert-preview__border{border:3px double #0f2b3f!important;padding:40px 36px!important;min-height:auto!important;page-break-inside:avoid;}
+  @page{size:A4 landscape;margin:12mm;}
+}
+@media print{
+  .report-content article[style*="page-break-after:always"]{page-break-after:always;break-after:page;}
+  .report-content article{page-break-inside:avoid;break-inside:avoid;}
+}
