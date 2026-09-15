@@ -6262,8 +6262,10 @@ document.addEventListener("DOMContentLoaded", function () {
                       '<p class="ip-logo-hint">JPG, PNG or SVG. Max 2MB.</p>' +
                     '</div>' +
                   '</div>' +
-                  '<div class="ip-field"><label class="ip-field__label">Institute Name <span class="ip-required">*</span></label><input class="ip-field__input" id="ipName" type="text" value="' + escapeAttr(profile.name) + '" placeholder="e.g., SagarSoft Public School"></div>' +
-                  '<div class="ip-field"><label class="ip-field__label">Slogan / Tagline</label><input class="ip-field__input" id="ipSlogan" type="text" value="' + escapeAttr(profile.slogan) + '" placeholder="e.g., Learning Today, Leading Tomorrow"></div>' +
+                  '<div class="ip-field-row">' +
+                    '<div class="ip-field"><label class="ip-field__label">Institute Name <span class="ip-required">*</span></label><input class="ip-field__input" id="ipName" type="text" value="' + escapeAttr(profile.name) + '" placeholder="e.g., SagarSoft Public School"></div>' +
+                    '<div class="ip-field"><label class="ip-field__label">Slogan / Tagline</label><input class="ip-field__input" id="ipSlogan" type="text" value="' + escapeAttr(profile.slogan) + '" placeholder="e.g., Learning Today, Leading Tomorrow"></div>' +
+                  '</div>' +
                 '</div>' +
               '</div>' +
 
@@ -6274,7 +6276,10 @@ document.addEventListener("DOMContentLoaded", function () {
                     '<div class="ip-field"><label class="ip-field__label">Phone Number <span class="ip-required">*</span></label><input class="ip-field__input" id="ipPhone" type="text" inputmode="numeric" value="' + escapeAttr(profile.phone) + '" placeholder="e.g., 03001234567"></div>' +
                     '<div class="ip-field"><label class="ip-field__label">Official Email</label><input class="ip-field__input" id="ipEmail" type="email" value="' + escapeAttr(profile.email || "") + '" placeholder="e.g., info@school.edu.pk"></div>' +
                   '</div>' +
-                  '<div class="ip-field"><label class="ip-field__label">PSRA / Registration Number</label><input class="ip-field__input" id="ipPsra" type="text" value="' + escapeAttr(profile.psra) + '" placeholder="e.g., PSRA-12345"></div>' +
+                  '<div class="ip-field-row">' +
+                    '<div class="ip-field"><label class="ip-field__label">PSRA / Registration Number</label><input class="ip-field__input" id="ipPsra" type="text" value="' + escapeAttr(profile.psra) + '" placeholder="e.g., PSRA-12345"></div>' +
+                    '<div class="ip-field"><label class="ip-field__label">Country <span class="ip-required">*</span></label><input class="ip-field__input" id="ipCountry" type="text" value="' + escapeAttr(profile.country) + '" placeholder="e.g., Pakistan"></div>' +
+                  '</div>' +
                 '</div>' +
               '</div>' +
 
@@ -6282,10 +6287,6 @@ document.addEventListener("DOMContentLoaded", function () {
                 '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--location">&#9906;</div><div><p class="ip-section__title">Location</p><p class="ip-section__subtitle">School address and country</p></div></div>' +
                 '<div class="ip-section__body">' +
                   '<div class="ip-field"><label class="ip-field__label">Address <span class="ip-required">*</span></label><input class="ip-field__input" id="ipAddress" type="text" value="' + escapeAttr(profile.address) + '" placeholder="e.g., Online Campus, Education City"></div>' +
-                  '<div class="ip-field-row ip-field-row--location">' +
-                    '<div class="ip-field"><label class="ip-field__label">Country <span class="ip-required">*</span></label><input class="ip-field__input" id="ipCountry" type="text" value="' + escapeAttr(profile.country) + '" placeholder="e.g., Pakistan"></div>' +
-                    '<div></div>' +
-                  '</div>' +
                 '</div>' +
               '</div>' +
 
