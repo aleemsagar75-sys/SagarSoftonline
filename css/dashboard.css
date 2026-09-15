@@ -15636,6 +15636,92 @@ button.ss-btn-loading {
   .crpt-pager__btns{justify-content:center;}
 }
 
+/* ── Institute Profile Premium ────────────────────────────────── */
+.ip-page{max-width:100%;overflow-x:hidden;}
+.ip-page__header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
+.ip-page__title{margin:0 0 2px;font-size:1.25rem;font-weight:700;color:#102542;}
+.ip-page__subtitle{margin:0;font-size:0.8rem;color:#5b6777;}
+
+.ip-layout{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start;}
+.ip-layout__form{display:flex;flex-direction:column;gap:12px;}
+.ip-layout__preview{position:sticky;top:80px;}
+
+.ip-section{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.03);}
+.ip-section__header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #f0f3f6;background:#fafbfc;}
+.ip-section__icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;color:#fff;}
+.ip-section__icon--identity{background:linear-gradient(135deg,#1b5f7a,#2fb08a);}
+.ip-section__icon--contact{background:linear-gradient(135deg,#6b46c1,#9f7aea);}
+.ip-section__icon--location{background:linear-gradient(135deg,#c53030,#fc8181);}
+.ip-section__icon--info{background:linear-gradient(135deg,#2b6cb0,#63b3ed);}
+.ip-section__title{margin:0;font-size:0.88rem;font-weight:600;color:#102542;}
+.ip-section__subtitle{margin:0;font-size:0.72rem;color:#718096;}
+.ip-section__body{padding:16px;}
+
+.ip-logo-area{display:flex;align-items:center;gap:16px;margin-bottom:14px;padding:12px;background:#f7fafc;border:1px solid #e2e8f0;border-radius:10px;}
+.ip-logo-preview{width:72px;height:72px;border-radius:12px;overflow:hidden;background:#fff;border:2px solid #e2e8f0;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ip-logo-preview img{width:100%;height:100%;object-fit:contain;}
+.ip-logo-placeholder{width:100%;height:100%;background:linear-gradient(135deg,#1b5f7a,#2fb08a);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.6rem;font-weight:700;font-family:Georgia,serif;}
+.ip-logo-actions{display:flex;flex-direction:column;gap:4px;}
+.ip-logo-hint{margin:0;font-size:0.68rem;color:#a0aec0;}
+
+.ip-field{margin-bottom:10px;}
+.ip-field:last-child{margin-bottom:0;}
+.ip-field__label{display:block;font-size:0.75rem;font-weight:600;margin-bottom:4px;color:#4a5568;text-transform:uppercase;letter-spacing:0.3px;}
+.ip-field__input{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #dde4ea;border-radius:8px;font-size:0.85rem;transition:border-color 0.2s,box-shadow 0.2s;background:#fff;}
+.ip-field__input:focus{outline:none;border-color:#1b5f7a;box-shadow:0 0 0 3px rgba(27,95,122,0.1);}
+.ip-field__input::placeholder{color:#a0aec0;}
+.ip-required{color:#c53030;}
+.ip-field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+.ip-btn{display:inline-flex;align-items:center;gap:5px;padding:8px 16px;border-radius:8px;font-size:0.8rem;font-weight:600;cursor:pointer;border:none;transition:all 0.2s;text-decoration:none;}
+.ip-btn--sm{padding:6px 12px;font-size:0.72rem;}
+.ip-btn--primary{background:#1b5f7a;color:#fff;}
+.ip-btn--primary:hover{background:#164e63;}
+.ip-btn--danger{background:#fff;color:#c53030;border:1px solid #fed7d7;}
+.ip-btn--danger:hover{background:#fff5f5;border-color:#c53030;}
+.ip-btn--save{padding:10px 28px;font-size:0.85rem;border-radius:10px;}
+.ip-btn--save:disabled{opacity:0.6;cursor:not-allowed;}
+
+.ip-save-bar{display:flex;align-items:center;justify-content:space-between;padding:14px 0 0;border-top:1px solid #f0f3f6;margin-top:4px;}
+.ip-save-bar__left{display:flex;align-items:center;gap:6px;}
+.ip-unsaved-dot{width:8px;height:8px;border-radius:50%;background:#e53e3e;animation:ipPulse 1.5s infinite;}
+.ip-unsaved-text{font-size:0.75rem;color:#e53e3e;font-weight:500;}
+@keyframes ipPulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+
+.ip-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:ipSpin 0.6s linear infinite;}
+@keyframes ipSpin{to{transform:rotate(360deg);}}
+
+.ip-toast{position:fixed;bottom:24px;right:24px;padding:12px 20px;border-radius:10px;font-size:0.82rem;font-weight:600;z-index:10000;transform:translateY(100px);opacity:0;transition:all 0.3s ease;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+.ip-toast--visible{transform:translateY(0);opacity:1;pointer-events:auto;}
+.ip-toast--success{background:#f0fff4;color:#276749;border:1px solid #c6f6d5;}
+.ip-toast--error{background:#fff5f5;color:#c53030;border:1px solid #fed7d7;}
+
+.ip-preview-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.03);}
+.ip-preview-card__header{padding:12px 16px;border-bottom:1px solid #f0f3f6;background:#fafbfc;}
+.ip-preview-card__title{margin:0;font-size:0.88rem;font-weight:600;color:#102542;}
+.ip-preview-card__subtitle{margin:0;font-size:0.72rem;color:#718096;}
+.ip-preview-card__body{padding:16px;}
+
+.ip-usage-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.ip-usage-item{padding:8px 12px;background:#f7fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:0.78rem;color:#4a5568;font-weight:500;}
+
+@media(max-width:1024px){
+  .ip-layout{grid-template-columns:1fr;}
+  .ip-layout__preview{position:static;}
+}
+@media(max-width:768px){
+  .ip-page__header{flex-direction:column;}
+  .ip-field-row{grid-template-columns:1fr;}
+  .ip-logo-area{flex-direction:column;text-align:center;}
+  .ip-usage-grid{grid-template-columns:1fr;}
+  .ip-save-bar{flex-direction:column;gap:10px;align-items:stretch;}
+  .ip-btn--save{width:100%;justify-content:center;}
+}
+@media(max-width:480px){
+  .ip-section__body{padding:12px;}
+  .ip-field__input{font-size:16px;}
+}
+
 /* ── Certificate Management ───────────────────────────────────── */
 .cert-mgmt{max-width:100%;overflow-x:hidden;}
 .cert-mgmt__header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;}

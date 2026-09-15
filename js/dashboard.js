@@ -5859,6 +5859,7 @@ document.addEventListener("DOMContentLoaded", function () {
         name: database.school.name || "",
         slogan: "",
         phone: database.school.phone || "",
+        email: "",
         psra: "",
         address: database.school.address || "",
         country: "Pakistan"
@@ -6231,86 +6232,213 @@ document.addEventListener("DOMContentLoaded", function () {
 
     if (route === "institute-profile") {
       const profile = settings.instituteProfile;
-      moduleSummary.innerHTML = `
-        <article class="gs-form-section">
-          <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">??</div>
-            <div><p class="gs-form-section__title">Institute Profile</p><p class="gs-form-section__subtitle">Update school information</p></div>
-          </div>
-          <div class="gs-form-grid">
-            <div class="gs-field gs-field--full"><label class="gs-field__label">Institute Logo*</label><input class="gs-field__input" id="instituteLogoInput" type="file" accept="image/*" style="padding:0.5rem;"></div>
-            <div class="gs-field"><label class="gs-field__label">Name of Institute*</label><input class="gs-field__input" id="instituteNameInput" type="text" value="${escapeAttr(profile.name)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Slogan*</label><input class="gs-field__input" id="instituteSloganInput" type="text" value="${escapeAttr(profile.slogan)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Phone Number*</label><input class="gs-field__input" id="institutePhoneInput" type="text" inputmode="numeric" value="${escapeAttr(profile.phone)}"></div>
-            <div class="gs-field"><label class="gs-field__label">PSRA</label><input class="gs-field__input" id="institutePsraInput" type="text" value="${escapeAttr(profile.psra)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Address*</label><input class="gs-field__input" id="instituteAddressInput" type="text" value="${escapeAttr(profile.address)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Country*</label><input class="gs-field__input" id="instituteCountryInput" type="text" value="${escapeAttr(profile.country)}"></div>
-          </div>
-          <div class="gs-button-row"><button class="gs-btn-primary" id="saveInstituteProfileBtn" type="button">Update Profile</button></div>
-          <div class="gs-message" id="instituteProfileMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
-        </article>
-      `;
+      var _ipDirty = false;
+      moduleSummary.innerHTML = '' +
+        '<div class="ip-page">' +
+          '<div class="ip-page__header">' +
+            '<div><h2 class="ip-page__title">Institute Profile</h2><p class="ip-page__subtitle">Manage your school identity, official information and branding.</p></div>' +
+          '</div>' +
+          '<div class="ip-layout">' +
+            '<div class="ip-layout__form">' +
 
-      moduleGuide.innerHTML = `
-        <article>
-          <strong>Preview</strong>
-          <div id="instituteProfilePreview" class="module-preview-card"></div>
-        </article>
-      `;
+              '<div class="ip-section">' +
+                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--identity">&#9733;</div><div><p class="ip-section__title">Institute Identity</p><p class="ip-section__subtitle">School name, logo and tagline</p></div></div>' +
+                '<div class="ip-section__body">' +
+                  '<div class="ip-logo-area" id="ipLogoArea">' +
+                    '<div class="ip-logo-preview" id="ipLogoPreview">' +
+                      (profile.logo ? '<img src="' + escapeAttr(profile.logo) + '" alt="Logo" id="ipLogoImg">' : '<div class="ip-logo-placeholder" id="ipLogoPlaceholder"><span>' + escapeHtml((profile.name || "S").charAt(0).toUpperCase()) + '</span></div>') +
+                    '</div>' +
+                    '<div class="ip-logo-actions">' +
+                      '<label class="ip-btn ip-btn--sm ip-btn--primary" for="ipLogoInput">&#128247; Upload Logo</label>' +
+                      '<input type="file" id="ipLogoInput" accept="image/*" style="display:none;">' +
+                      (profile.logo ? '<button type="button" class="ip-btn ip-btn--sm ip-btn--danger" id="ipLogoRemove">Remove</button>' : '') +
+                      '<p class="ip-logo-hint">JPG, PNG or SVG. Max 2MB.</p>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="ip-field"><label class="ip-field__label">Institute Name <span class="ip-required">*</span></label><input class="ip-field__input" id="ipName" type="text" value="' + escapeAttr(profile.name) + '" placeholder="e.g., SagarSoft Public School"></div>' +
+                  '<div class="ip-field"><label class="ip-field__label">Slogan / Tagline</label><input class="ip-field__input" id="ipSlogan" type="text" value="' + escapeAttr(profile.slogan) + '" placeholder="e.g., Learning Today, Leading Tomorrow"></div>' +
+                '</div>' +
+              '</div>' +
 
-      const logoInput = document.getElementById("instituteLogoInput");
-      const nameInput = document.getElementById("instituteNameInput");
-      const sloganInput = document.getElementById("instituteSloganInput");
-      const phoneInput = document.getElementById("institutePhoneInput");
-      const psraInput = document.getElementById("institutePsraInput");
-      const addressInput = document.getElementById("instituteAddressInput");
-      const countryInput = document.getElementById("instituteCountryInput");
-      const message = document.getElementById("instituteProfileMessage");
-      const preview = document.getElementById("instituteProfilePreview");
-      let logoData = profile.logo || "";
+              '<div class="ip-section">' +
+                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--contact">&#9743;</div><div><p class="ip-section__title">Contact & Registration</p><p class="ip-section__subtitle">Official contact details and registration</p></div></div>' +
+                '<div class="ip-section__body">' +
+                  '<div class="ip-field-row">' +
+                    '<div class="ip-field"><label class="ip-field__label">Phone Number <span class="ip-required">*</span></label><input class="ip-field__input" id="ipPhone" type="text" inputmode="numeric" value="' + escapeAttr(profile.phone) + '" placeholder="e.g., 03001234567"></div>' +
+                    '<div class="ip-field"><label class="ip-field__label">Official Email</label><input class="ip-field__input" id="ipEmail" type="email" value="' + escapeAttr(profile.email || "") + '" placeholder="e.g., info@school.edu.pk"></div>' +
+                  '</div>' +
+                  '<div class="ip-field"><label class="ip-field__label">PSRA / Registration Number</label><input class="ip-field__input" id="ipPsra" type="text" value="' + escapeAttr(profile.psra) + '" placeholder="e.g., PSRA-12345"></div>' +
+                '</div>' +
+              '</div>' +
 
-      function renderProfilePreview() {
-        preview.innerHTML = `
-          <div class="module-preview-head">
-            ${logoData ? `<img src="${logoData}" alt="Institute logo" class="module-preview-logo">` : `<span class="module-preview-logo-placeholder">SS</span>`}
-            <div>
-              <h4>${escapeHtml(nameInput.value || "-")}</h4>
-              <p>${escapeHtml(sloganInput.value || "-")}</p>
-            </div>
-          </div>
-          <p><strong>Phone:</strong> ${escapeHtml(phoneInput.value || "-")}</p>
-          <p><strong>PSRA:</strong> ${escapeHtml(psraInput.value || "-")}</p>
-          <p><strong>Address:</strong> ${escapeHtml(addressInput.value || "-")}</p>
-          <p><strong>Country:</strong> ${escapeHtml(countryInput.value || "-")}</p>
-        `;
+              '<div class="ip-section">' +
+                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--location">&#9906;</div><div><p class="ip-section__title">Location</p><p class="ip-section__subtitle">School address and country</p></div></div>' +
+                '<div class="ip-section__body">' +
+                  '<div class="ip-field"><label class="ip-field__label">Address <span class="ip-required">*</span></label><input class="ip-field__input" id="ipAddress" type="text" value="' + escapeAttr(profile.address) + '" placeholder="e.g., Online Campus, Education City"></div>' +
+                  '<div class="ip-field"><label class="ip-field__label">Country <span class="ip-required">*</span></label><input class="ip-field__input" id="ipCountry" type="text" value="' + escapeAttr(profile.country) + '" placeholder="e.g., Pakistan"></div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="ip-section">' +
+                '<div class="ip-section__header"><div class="ip-section__icon ip-section__icon--info">&#8505;</div><div><p class="ip-section__title">Used Across SagarSoft</p><p class="ip-section__subtitle">Where this information appears</p></div></div>' +
+                '<div class="ip-section__body">' +
+                  '<div class="ip-usage-grid">' +
+                    '<div class="ip-usage-item">&#128196; Fee Invoices</div>' +
+                    '<div class="ip-usage-item">&#127891; Certificates</div>' +
+                    '<div class="ip-usage-item">&#128203; Student Reports</div>' +
+                    '<div class="ip-usage-item">&#128101; Employee Reports</div>' +
+                    '<div class="ip-usage-item">&#128197; Attendance Reports</div>' +
+                    '<div class="ip-usage-item">&#128176; Account Statements</div>' +
+                    '<div class="ip-usage-item">&#128424; Printable Documents</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>' +
+
+              '<div class="ip-save-bar">' +
+                '<div class="ip-save-bar__left"><span class="ip-unsaved-dot" id="ipUnsavedDot" style="display:none;"></span><span class="ip-unsaved-text" id="ipUnsavedText" style="display:none;">Unsaved changes</span></div>' +
+                '<button class="ip-btn ip-btn--primary ip-btn--save" id="ipSaveBtn" type="button">&#10003; Save Changes</button>' +
+              '</div>' +
+              '<div class="ip-toast" id="ipToast"></div>' +
+            '</div>' +
+
+            '<div class="ip-layout__preview">' +
+              '<div class="ip-preview-card">' +
+                '<div class="ip-preview-card__header"><p class="ip-preview-card__title">Live Preview</p><p class="ip-preview-card__subtitle">How your school identity appears in documents</p></div>' +
+                '<div class="ip-preview-card__body" id="ipLivePreview"></div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+
+      moduleGuide.innerHTML = "";
+
+      var ipLogoInput = document.getElementById("ipLogoInput");
+      var ipName = document.getElementById("ipName");
+      var ipSlogan = document.getElementById("ipSlogan");
+      var ipPhone = document.getElementById("ipPhone");
+      var ipEmail = document.getElementById("ipEmail");
+      var ipPsra = document.getElementById("ipPsra");
+      var ipAddress = document.getElementById("ipAddress");
+      var ipCountry = document.getElementById("ipCountry");
+      var ipSaveBtn = document.getElementById("ipSaveBtn");
+      var ipToast = document.getElementById("ipToast");
+      var ipUnsavedDot = document.getElementById("ipUnsavedDot");
+      var ipUnsavedText = document.getElementById("ipUnsavedText");
+      var ipLivePreview = document.getElementById("ipLivePreview");
+      var ipLogoPreview = document.getElementById("ipLogoPreview");
+      var ipLogoRemove = document.getElementById("ipLogoRemove");
+      var ipLogoArea = document.getElementById("ipLogoArea");
+      var ipLogoData = profile.logo || "";
+
+      function ipRenderPreview() {
+        var pName = ipName.value.trim();
+        var pSlogan = ipSlogan.value.trim();
+        var pPhone = ipPhone.value.trim();
+        var pEmail = ipEmail.value.trim();
+        var pPsra = ipPsra.value.trim();
+        var pAddress = ipAddress.value.trim();
+        var pCountry = ipCountry.value.trim();
+        var logoHtml = ipLogoData
+          ? '<img src="' + escapeAttr(ipLogoData) + '" alt="Logo" style="max-height:64px;object-fit:contain;">'
+          : '<div style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#1b5f7a,#2fb08a);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.4rem;font-family:Georgia,serif;">' + escapeHtml((pName || "S").charAt(0).toUpperCase()) + '</div>';
+        var contactParts = [];
+        if (pPhone) contactParts.push(escapeHtml(pPhone));
+        if (pPsra) contactParts.push("PSRA: " + escapeHtml(pPsra));
+        var contactLine = contactParts.length > 0 ? '<p style="margin:3px 0 0;font-size:0.72rem;color:#5b6777;">' + contactParts.join(" &middot; ") + '</p>' : '';
+        var emailLine = pEmail ? '<p style="margin:2px 0 0;font-size:0.68rem;color:#718096;">' + escapeHtml(pEmail) + '</p>' : '';
+        var locationParts = [];
+        if (pAddress) locationParts.push(escapeHtml(pAddress));
+        if (pCountry) locationParts.push(escapeHtml(pCountry));
+        var locationLine = locationParts.length > 0 ? '<p style="margin:4px 0 0;font-size:0.68rem;color:#718096;">' + locationParts.join(", ") + '</p>' : '';
+
+        ipLivePreview.innerHTML =
+          '<div style="text-align:center;padding:20px 16px;border:1px solid #e2e8f0;border-radius:10px;background:#fafbfc;">' +
+            '<div style="margin-bottom:10px;">' + logoHtml + '</div>' +
+            (pName ? '<h3 style="margin:0;font-size:1rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(pName) + '</h3>' : '<h3 style="margin:0;font-size:1rem;color:#a0aec0;">School Name</h3>') +
+            (pSlogan ? '<p style="margin:3px 0 0;font-size:0.72rem;color:#718096;font-style:italic;">' + escapeHtml(pSlogan) + '</p>' : '') +
+            contactLine +
+            emailLine +
+            locationLine +
+          '</div>';
       }
 
-      [nameInput, sloganInput, phoneInput, psraInput, addressInput, countryInput].forEach(function (input) {
-        input.addEventListener("input", renderProfilePreview);
+      function ipMarkDirty() {
+        _ipDirty = true;
+        if (ipUnsavedDot) ipUnsavedDot.style.display = "";
+        if (ipUnsavedText) ipUnsavedText.style.display = "";
+      }
+
+      [ipName, ipSlogan, ipPhone, ipEmail, ipPsra, ipAddress, ipCountry].forEach(function (el) {
+        if (el) el.addEventListener("input", function () { ipRenderPreview(); ipMarkDirty(); });
       });
 
-      logoInput.addEventListener("change", function () {
-        const file = logoInput.files && logoInput.files[0];
-        if (!file) {
+      if (ipLogoInput) {
+        ipLogoInput.addEventListener("change", function () {
+          var file = ipLogoInput.files && ipLogoInput.files[0];
+          if (!file) return;
+          if (file.size > 2 * 1024 * 1024) {
+            ipShowToast("Image must be under 2MB.", "error");
+            return;
+          }
+          if (!file.type.match(/^image\/(jpeg|png|gif|webp|svg\+xml)/)) {
+            ipShowToast("Please upload a JPG, PNG, GIF, WebP or SVG image.", "error");
+            return;
+          }
+          var reader = new FileReader();
+          reader.onload = function () {
+            ipLogoData = reader.result;
+            ipLogoPreview.innerHTML = '<img src="' + escapeAttr(ipLogoData) + '" alt="Logo" id="ipLogoImg">';
+            if (!ipLogoRemove) {
+              var rmBtn = document.createElement("button");
+              rmBtn.type = "button";
+              rmBtn.className = "ip-btn ip-btn--sm ip-btn--danger";
+              rmBtn.id = "ipLogoRemove";
+              rmBtn.textContent = "Remove";
+              ipLogoArea.querySelector(".ip-logo-actions").insertBefore(rmBtn, ipLogoArea.querySelector(".ip-logo-hint"));
+              ipLogoRemove = rmBtn;
+              ipLogoRemove.addEventListener("click", ipRemoveLogo);
+            }
+            ipRenderPreview();
+            ipMarkDirty();
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      function ipRemoveLogo() {
+        ipLogoData = "";
+        ipLogoPreview.innerHTML = '<div class="ip-logo-placeholder" id="ipLogoPlaceholder"><span>' + escapeHtml((ipName.value || "S").charAt(0).toUpperCase()) + '</span></div>';
+        ipLogoInput.value = "";
+        ipRenderPreview();
+        ipMarkDirty();
+      }
+      if (ipLogoRemove) ipLogoRemove.addEventListener("click", ipRemoveLogo);
+
+      function ipShowToast(msg, type) {
+        if (!ipToast) return;
+        ipToast.textContent = msg;
+        ipToast.className = "ip-toast ip-toast--" + (type || "success") + " ip-toast--visible";
+        setTimeout(function () { ipToast.className = "ip-toast"; }, 3000);
+      }
+
+      if (ipSaveBtn) ipSaveBtn.addEventListener("click", async function () {
+        var pName = ipName.value.trim();
+        if (!pName) {
+          ipShowToast("Institute name is required.", "error");
+          ipName.focus();
           return;
         }
-        const reader = new FileReader();
-        reader.onload = function () {
-          logoData = reader.result;
-          renderProfilePreview();
-        };
-        reader.readAsDataURL(file);
-      });
-
-      var _el = document.getElementById("saveInstituteProfileBtn"); if (_el) _el.addEventListener("click", async function () {
+        ipSaveBtn.disabled = true;
+        ipSaveBtn.innerHTML = '<span class="ip-spinner"></span> Saving...';
         var newProfile = {
-          logo: logoData,
-          name: nameInput.value.trim(),
-          slogan: sloganInput.value.trim(),
-          phone: phoneInput.value.trim(),
-          psra: psraInput.value.trim(),
-          address: addressInput.value.trim(),
-          country: countryInput.value.trim()
+          logo: ipLogoData,
+          name: pName,
+          slogan: ipSlogan.value.trim(),
+          phone: ipPhone.value.trim(),
+          email: ipEmail.value.trim(),
+          psra: ipPsra.value.trim(),
+          address: ipAddress.value.trim(),
+          country: ipCountry.value.trim()
         };
         settings.instituteProfile = newProfile;
         database.school.name = newProfile.name;
@@ -6330,20 +6458,23 @@ document.addEventListener("DOMContentLoaded", function () {
         if (_pa) _pa.textContent = getInitials(newProfile.name || "Admin");
         updateTopProfileIdentity();
         renderProfileDropdownMenu();
-        if (typeof logoData !== "undefined") {
-          var _logoEl = document.getElementById("instituteLogoPreview");
-          if (_logoEl && logoData) { _logoEl.src = logoData; _logoEl.style.display = "block"; }
-        }
+        ipSaveBtn.disabled = false;
+        ipSaveBtn.innerHTML = "&#10003; Save Changes";
+        _ipDirty = false;
+        if (ipUnsavedDot) ipUnsavedDot.style.display = "none";
+        if (ipUnsavedText) ipUnsavedText.style.display = "none";
         if (_saved) {
-          message.textContent = "Institute profile updated successfully.";
-          message.className = "form-message success";
+          ipShowToast("Institute profile updated successfully.", "success");
         } else {
-          message.textContent = "Save failed. Please check your connection and try again.";
-          message.className = "form-message error";
+          ipShowToast("Save failed. Please check your connection and try again.", "error");
         }
       });
 
-      renderProfilePreview();
+      window.addEventListener("beforeunload", function (e) {
+        if (_ipDirty) { e.preventDefault(); e.returnValue = ""; }
+      });
+
+      ipRenderPreview();
       return;
     }
 
