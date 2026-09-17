@@ -1,0 +1,32 @@
+{
+  "name": "SagarSoft School Management System",
+  "short_name": "SagarSoft SMS",
+  "description": "Manage students, teachers, classes, attendance, fees, exams, and communications — all from one dashboard.",
+  "start_url": "./login.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f0f4f8",
+  "theme_color": "#08172f",
+  "categories": ["education", "business"],
+  "icons": [
+    {
+      "src": "assets/app-icon-256.png",
+      "sizes": "256x256",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/app-icon-256.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/app-icon-256.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

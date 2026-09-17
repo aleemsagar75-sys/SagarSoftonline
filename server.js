@@ -1,0 +1,3716 @@
+// ARCHITECTURE: This file (root server.js) is the CANONICAL source for the API server.
+// server/server.js is a mirror kept in sync for Render deployment (render.yaml uses server/server.js).
+// Edit ONLY this file, then push both files to stay in sync.
+require("dotenv").config({ path: __dirname + "/.env" });
+
+const dns = require("dns");
+const crypto = require("crypto");
+const { promisify } = require("util");
+const express = require("express");
+const fs = require("fs");
+const path = require("path");
+const { Pool } = require("pg");
+
+const pbkdf2Async = promisify(crypto.pbkdf2);
+
+let cors = null;
+try { cors = require("cors"); } catch (_error) { cors = null; }
+
+let compression = null;
+try { compression = require("compression"); } catch (_error) { compression = null; }
+
+const app = express();
+const port = Number(process.env.PORT || 10000);
+const apiKey = String(process.env.SAGARSOFT_API_KEY || "").trim();
+const defaultSchoolId = String(process.env.DEFAULT_SCHOOL_ID || "SCH-2026-001").trim();
+
+const SUPERADMIN_EMAIL = String(process.env.SUPERADMIN_EMAIL || "").trim();
+const SUPERADMIN_PASSWORD_STORED = String(process.env.SUPERADMIN_PASSWORD_HASH || "").trim();
+const SUPERADMIN_SESSION_SECRET = String(process.env.SUPERADMIN_SESSION_SECRET || crypto.randomBytes(32).toString("hex")).trim();
+const SESSION_SECRET_KEY = SUPERADMIN_SESSION_SECRET;
+const SUPERADMIN_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
+
+function sha256(input) {
+  return crypto.createHash("sha256").update(String(input)).digest("hex");
+}
+
+async function hashPassword(password) {
+  var salt = crypto.randomBytes(16).toString("hex");
+  var hash = (await pbkdf2Async(String(password), salt, 100000, 64, "sha512")).toString("hex");
+  return salt + ":" + hash;
+}
+
+async function verifyPasswordHash(password, stored) {
+  if (!stored) return false;
+  if (!stored.includes(":")) return sha256(String(password)) === stored;
+  var parts = stored.split(":");
+  var salt = parts[0];
+  var hash = parts[1];
+  if (!salt || !hash) return false;
+  try {
+    var verify = (await pbkdf2Async(String(password), salt, 100000, 64, "sha512")).toString("hex");
+    if (Buffer.byteLength(hash, "hex") !== Buffer.byteLength(verify, "hex")) return false;
+    return crypto.timingSafeEqual(Buffer.from(hash, "hex"), Buffer.from(verify, "hex"));
+  } catch (e) {
+    return false;
+  }
+}
+
+function generateToken() {
+  return "sft-" + crypto.randomBytes(24).toString("hex");
+}
+
+function calculateExpiryDate(plan, startDate, customDays) {
+  var start = startDate ? new Date(startDate) : new Date();
+  if (isNaN(start.getTime())) start = new Date();
+  var days = 30;
+  var p = String(plan || "").toLowerCase().trim();
+  if (p === "monthly") days = 30;
+  else if (p === "3-months" || p === "3months") days = 90;
+  else if (p === "5-months" || p === "5months") days = 150;
+  else if (p === "1-year" || p === "1year") days = 365;
+  else if (p === "custom") days = Number(customDays || 30) || 30;
+  else days = 30;
+  var expiry = new Date(start);
+  expiry.setDate(expiry.getDate() + days);
+  return expiry.toISOString().slice(0, 10);
+}
+
+function signToken(payload) {
+  var data = Buffer.from(JSON.stringify(payload)).toString("base64url");
+  var sig = crypto.createHmac("sha256", SESSION_SECRET_KEY).update(data).digest("base64url");
+  return data + "." + sig;
+}
+
+function verifyToken(token) {
+  try {
+    var parts = String(token || "").split(".");
+    if (parts.length !== 2) return null;
+    var expectedSig = crypto.createHmac("sha256", SESSION_SECRET_KEY).update(parts[0]).digest("base64url");
+    var sigBuf = Buffer.from(parts[1], "base64url");
+    var expectedBuf = Buffer.from(expectedSig, "base64url");
+    if (sigBuf.length !== expectedBuf.length) return null;
+    if (!crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
+    var payload = JSON.parse(Buffer.from(parts[0], "base64url").toString());
+    if (payload.exp && Date.now() > payload.exp) return null;
+    return payload;
+  } catch (_e) {
+    return null;
+  }
+}
+
+const loginRateLimit = {};
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000;
+const RATE_LIMIT_MAX = 10;
+const RATE_LIMIT_MAX_KEYS = 1000;
+function checkRateLimit(key) {
+  var now = Date.now();
+  if (!loginRateLimit[key] || now - loginRateLimit[key].start > RATE_LIMIT_WINDOW_MS) {
+    loginRateLimit[key] = { start: now, count: 1 };
+    if (Object.keys(loginRateLimit).length > RATE_LIMIT_MAX_KEYS) {
+      Object.keys(loginRateLimit).forEach(function (k) {
+        if (now - loginRateLimit[k].start > RATE_LIMIT_WINDOW_MS) delete loginRateLimit[k];
+      });
+    }
+    return true;
+  }
+  loginRateLimit[key].count++;
+  return loginRateLimit[key].count <= RATE_LIMIT_MAX;
+}
+setInterval(function () {
+  var now = Date.now();
+  Object.keys(loginRateLimit).forEach(function (key) {
+    if (now - loginRateLimit[key].start > RATE_LIMIT_WINDOW_MS) delete loginRateLimit[key];
+  });
+}, 60000);
+
+function requireSuperAdmin(req, res, next) {
+  var authHeader = String(req.headers["authorization"] || "").trim();
+  var token = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  if (!token) {
+    return res.status(401).json({ success: false, message: "Super admin authentication required." });
+  }
+  var payload = verifyToken(token);
+  if (!payload || payload.role !== "superadmin") {
+    return res.status(401).json({ success: false, message: "Invalid or expired session." });
+  }
+  req.superAdmin = payload;
+  return next();
+}
+
+if (!process.env.SUPABASE_DB_URL) {
+  console.error("FATAL: SUPABASE_DB_URL is required. Set it in your .env file or Render environment.");
+  process.exit(1);
+}
+if (!SUPERADMIN_EMAIL) {
+  console.error("FATAL: SUPERADMIN_EMAIL is required. Set it in your .env file or Render environment.");
+  process.exit(1);
+}
+if (!SUPERADMIN_PASSWORD_STORED) {
+  console.error("FATAL: SUPERADMIN_PASSWORD_HASH is required. Set it in your .env file or Render environment.");
+  process.exit(1);
+}
+
+function parseDbUrl(url) {
+  var u = new URL(url);
+  return {
+    host: u.hostname,
+    port: parseInt(u.port || "5432"),
+    user: decodeURIComponent(u.username),
+    password: decodeURIComponent(u.password),
+    database: u.pathname.slice(1).split("?")[0]
+  };
+}
+
+var _pool = null;
+var _poolPromise = null;
+
+async function _initPool() {
+  if (_pool) return _pool;
+  var info = parseDbUrl(process.env.SUPABASE_DB_URL);
+  try {
+    var addrs = await dns.promises.resolve4(info.host);
+    info.host = addrs[0];
+  } catch (_e) {
+    var match = info.host.match(/^db\.(.+?)\.supabase\.co$/);
+    if (match) {
+      var poolerHost = match[1] + ".pooler.supabase.com";
+      try {
+        var pAddrs = await dns.promises.resolve4(poolerHost);
+        info.host = pAddrs[0];
+        info.port = 5432;
+      } catch (_e2) {}
+    }
+  }
+  _pool = new Pool({ host: info.host, port: info.port, user: info.user, password: info.password, database: info.database, max: 50, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000, statement_timeout: 30000, ssl: process.env.DB_SSL_REJECT_UNAUTHORIZED === "true" ? { rejectUnauthorized: true } : { rejectUnauthorized: false } });
+  return _pool;
+}
+
+var pool = new Proxy({}, {
+  get: function (target, prop) {
+    return function () {
+      var args = arguments;
+      var ctx = this;
+      if (!_poolPromise) _poolPromise = _initPool();
+      return _poolPromise.then(function (p) {
+        return p[prop].apply(p, args);
+      });
+    };
+  }
+});
+
+var defaultOrigins = [
+  "https://sagarsoftonline.onrender.com",
+  "https://sagarsoftadmin.onrender.com",
+  "http://localhost:10000",
+  "http://localhost:3000"
+];
+var allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map(function (o) { return o.trim(); })
+  : defaultOrigins;
+
+function isOriginAllowed(origin) {
+  if (!origin) return true;
+  return allowedOrigins.some(function (o) { return origin === o || origin === o + "/"; });
+}
+
+if (cors) {
+  app.use(cors({
+    origin: function (origin, callback) {
+      if (isOriginAllowed(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, false);
+      }
+    },
+    allowedHeaders: ["Content-Type", "x-sagarsoft-api-key", "x-license-token", "Authorization"]
+  }));
+} else {
+  app.use(function (req, res, next) {
+    var origin = req.headers.origin || "";
+    var allowed = isOriginAllowed(origin);
+    if (allowed) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    } else {
+      res.setHeader("Access-Control-Allow-Origin", "https://sagarsoftonline.onrender.com");
+    }
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, x-sagarsoft-api-key, x-license-token, Authorization");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+    return next();
+  });
+}
+if (compression) { app.use(compression({ threshold: 1024 })); }
+app.use(express.json({ limit: "5mb" }));
+
+app.use(function (_req, res, next) {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Content-Security-Policy", "default-src 'self' https:; script-src 'self' 'unsafe-inline' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https:;");
+  return next();
+});
+
+const webDirCandidates = [
+  process.env.SAGARSOFT_WEB_DIR,
+  path.resolve(__dirname, "..", "sagarsoft"),
+  path.resolve(__dirname, ".."),
+  __dirname
+].filter(Boolean);
+const webAppDir = webDirCandidates.find((candidate) => fs.existsSync(path.join(candidate, "dashboard.html")));
+if (webAppDir) {
+  app.use("/app", express.static(webAppDir));
+  app.use(express.static(webAppDir));
+}
+
+app.get("/", (_req, res) => {
+  res.type("html").send(`
+    <!doctype html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <title>SagarSoft Online API</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 32px; color: #123; }
+          code { background: #eef4f8; padding: 3px 6px; border-radius: 4px; }
+        </style>
+      </head>
+      <body>
+        <h1>SagarSoft Online API is live</h1>
+        <p>This URL is the backend API for the SagarSoft desktop app.</p>
+        <p>Health check: <code>/health</code></p>
+      </body>
+    </html>
+  `);
+});
+
+function requireApiKey(req, res, next) {
+  if (!apiKey) {
+    return res.status(503).json({ success: false, message: "API key not configured. Service unavailable." });
+  }
+  const incoming = String(req.headers["x-sagarsoft-api-key"] || "").trim();
+  if (incoming !== apiKey) {
+    return res.status(401).json({ success: false, message: "Invalid API key." });
+  }
+  return next();
+}
+
+var _authCache = new Map();
+var _authCacheTTL = 60000;
+var _authCacheMaxSize = 500;
+
+function requireSchoolAuth(req, res, next) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  var authHeader = String(req.headers["authorization"] || "").trim();
+  var bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+  var schoolToken = String(req.headers["x-school-token"] || req.query.school_token || "").trim();
+  var licenseToken = String(req.headers["x-license-token"] || req.query.license_token || "").trim();
+  var apiKey = String(req.headers["x-sagarsoft-api-key"] || "").trim();
+  var token = bearerToken || schoolToken || licenseToken || apiKey;
+  if (!token) {
+    return res.status(401).json({ success: false, message: "School authentication required." });
+  }
+  var superPayload = verifyToken(token);
+  if (superPayload && superPayload.role === "superadmin") {
+    return res.status(403).json({ success: false, message: "Super Admin cannot access school data endpoints. Use /api/admin/* endpoints instead." });
+  }
+  var _authCacheKey = schoolId + ":" + token;
+  var _authCacheEntry = _authCache.get(_authCacheKey);
+  if (_authCacheEntry && Date.now() < _authCacheEntry.expiresAt) {
+    var row = _authCacheEntry.row;
+    req.authSchoolId = row.school_id;
+    req.authRole = "school";
+    return next();
+  }
+  pool.query("select school_id, license_token, api_token, status, modules_locked, expiry_date from public.license_accounts where school_id = $1 limit 1", [schoolId])
+    .then(async function (result) {
+      if (!result.rowCount) {
+        return res.status(401).json({ success: false, message: "School not found." });
+      }
+      var row = result.rows[0];
+      var expectedToken = row.license_token;
+      var altToken = row.api_token;
+      var tokenValid = false;
+      if (expectedToken && token.length === expectedToken.length) {
+        try { tokenValid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expectedToken)); } catch (_e) {}
+      }
+      if (!tokenValid && altToken && token.length === altToken.length) {
+        try { tokenValid = crypto.timingSafeEqual(Buffer.from(token), Buffer.from(altToken)); } catch (_e) {}
+      }
+      if (!tokenValid && !expectedToken && !altToken) {
+        return res.status(401).json({ success: false, message: "No authentication token configured for this school. Please contact Super Admin." });
+      }
+      if (!tokenValid) {
+        return res.status(401).json({ success: false, message: "Invalid school token." });
+      }
+      var status = String(row.status || "").toLowerCase();
+      if (status !== "active") {
+        return res.status(403).json({ success: false, message: "School is not active." });
+      }
+      if (row.modules_locked) {
+        return res.status(403).json({ success: false, message: "School access is locked." });
+      }
+      if (row.expiry_date) {
+        var expiry = new Date(row.expiry_date);
+        var today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (expiry < today) {
+          return res.status(403).json({ success: false, message: "School subscription has expired." });
+        }
+      }
+      req.authSchoolId = row.school_id;
+      req.authRole = "school";
+      _authCache.set(_authCacheKey, { row: row, expiresAt: Date.now() + _authCacheTTL });
+      if (_authCache.size > _authCacheMaxSize) {
+        var _oldestKey = _authCache.keys().next().value;
+        if (_oldestKey) _authCache.delete(_oldestKey);
+      }
+      return next();
+    })
+    .catch(function (err) {
+      console.error("requireSchoolAuth error:", err.message);
+      return res.status(500).json({ success: false, message: "Auth check failed." });
+    });
+}
+
+async function ensureSchema() {
+  await pool.query(`
+    create table if not exists public.school_databases (
+      school_id text primary key,
+      database jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+
+    create table if not exists public.license_accounts (
+      school_id text primary key,
+      school_name text not null default '',
+      email text,
+      password text,
+      status text not null default 'inactive',
+      plan text not null default 'monthly',
+      start_date date,
+      expiry_date date,
+      license_token text unique,
+      internet_required_after_days integer not null default 9999,
+      modules_locked boolean not null default false,
+      last_seen timestamptz,
+      timezone text default 'Asia/Karachi',
+      currency text default 'PKR',
+      symbol text default 'Rs',
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now()
+    );
+
+    create table if not exists public.license_notifications (
+      id bigserial primary key,
+      school_id text not null references public.license_accounts(school_id) on delete cascade,
+      title text not null default 'Notification',
+      message text not null default '',
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists public.employees (
+      id text primary key,
+      school_id text,
+      source_id text,
+      name text,
+      subject text,
+      designation text,
+      role text,
+      phone text,
+      date_of_joining date,
+      monthly_salary numeric,
+      email text,
+      status text,
+      data jsonb,
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists public.school_backups (
+      id bigserial primary key,
+      school_id text not null,
+      database jsonb not null default '{}'::jsonb,
+      size_bytes bigint not null default 0,
+      created_at timestamptz not null default now()
+    );
+    create index if not exists idx_school_backups_school_id on public.school_backups(school_id);
+
+    create table if not exists public.teachers (
+      id text primary key,
+      school_id text,
+      source_id text,
+      name text,
+      designation text,
+      phone text,
+      email text,
+      status text,
+      data jsonb,
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists public.students (
+      id text primary key,
+      school_id text,
+      source_id text,
+      admission_no text,
+      name text,
+      picture text,
+      date_of_admission date,
+      class_name text,
+      discount_in_fee numeric,
+      date_of_birth date,
+      gender text,
+      blood_group text,
+      disease_info text,
+      birth_id text,
+      previous_school text,
+      previous_id text,
+      orphan_status text,
+      religion text,
+      address text,
+      phone text,
+      father_name text,
+      father_education text,
+      father_national_id text,
+      father_phone text,
+      father_occupation text,
+      father_income text,
+      mother_name text,
+      mother_education text,
+      mother_national_id text,
+      mother_phone text,
+      mother_occupation text,
+      status text,
+      data jsonb,
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists public.classes (
+      id text primary key,
+      school_id text,
+      source_id text,
+      name text,
+      monthly_fee numeric,
+      teacher_id text,
+      data jsonb,
+      created_at timestamptz not null default now()
+    );
+
+    create table if not exists public.app_records (
+      school_id text not null,
+      module_name text not null,
+      record_id text not null,
+      record_data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, module_name, record_id)
+    );
+
+    create table if not exists public.app_users (
+      school_id text not null,
+      source_id text not null,
+      name text,
+      email text,
+      role text,
+      active boolean,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.subjects (
+      school_id text not null,
+      source_id text not null,
+      subject_name text,
+      class_name text,
+      teacher_id text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.attendance (
+      school_id text not null,
+      source_id text not null,
+      entity_type text,
+      student_id text,
+      employee_id text,
+      date date,
+      status text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.fees (
+      school_id text not null,
+      source_id text not null,
+      student_id text,
+      student_name text,
+      class_name text,
+      fee_month text,
+      status text,
+      total_amount numeric,
+      deposit numeric,
+      remaining numeric,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.fee_invoices (
+      school_id text not null,
+      source_id text not null,
+      student_id text,
+      student_name text,
+      class_name text,
+      fee_month text,
+      total_amount numeric,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.fee_collections (
+      school_id text not null,
+      source_id text not null,
+      student_id text,
+      student_name text,
+      class_name text,
+      fee_month text,
+      deposit numeric,
+      remaining numeric,
+      collected_at timestamptz,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.salary_payments (
+      school_id text not null,
+      source_id text not null,
+      employee_id text,
+      employee_name text,
+      salary_month text,
+      salary_amount numeric,
+      bonus numeric,
+      deduction numeric,
+      net_salary numeric,
+      payment_date date,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.accounts_ledger (
+      school_id text not null,
+      source_id text not null,
+      date date,
+      type text,
+      category text,
+      amount numeric,
+      note text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.activity_logs (
+      school_id text not null,
+      source_id text not null,
+      title text,
+      message text,
+      created_at timestamptz,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create unique index if not exists uq_employees_school_source on public.employees (school_id, source_id);
+    create unique index if not exists uq_teachers_school_source on public.teachers (school_id, source_id);
+    create unique index if not exists uq_students_school_source on public.students (school_id, source_id);
+    create unique index if not exists uq_classes_school_source on public.classes (school_id, source_id);
+    create index if not exists idx_employees_school_id on public.employees (school_id);
+    create index if not exists idx_teachers_school_id on public.teachers (school_id);
+    create index if not exists idx_students_school_id on public.students (school_id);
+    create index if not exists idx_classes_school_id on public.classes (school_id);
+    create index if not exists idx_app_users_school_id on public.app_users (school_id);
+    create index if not exists idx_subjects_school_id on public.subjects (school_id);
+    create index if not exists idx_attendance_school_id on public.attendance (school_id);
+    create index if not exists idx_fees_school_id on public.fees (school_id);
+    create index if not exists idx_fee_invoices_school_id on public.fee_invoices (school_id);
+    create index if not exists idx_fee_collections_school_id on public.fee_collections (school_id);
+    create index if not exists idx_salary_payments_school_id on public.salary_payments (school_id);
+    create index if not exists idx_accounts_ledger_school_id on public.accounts_ledger (school_id);
+    create index if not exists idx_activity_logs_school_id on public.activity_logs (school_id);
+
+    alter table if exists public.students add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.teachers add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.classes add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.employees add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.account_activity add column if not exists updated_at timestamptz not null default now();
+    alter table if exists public.activity_logs add column if not exists id text;
+    alter table if exists public.license_accounts drop constraint if exists license_accounts_email_key;
+    alter table if exists public.license_accounts add column if not exists api_token text;
+
+    create table if not exists public.exams (
+      school_id text not null,
+      source_id text not null,
+      exam_name text,
+      class_name text,
+      subject text,
+      total_marks numeric,
+      pass_marks numeric,
+      exam_date date,
+      exam_type text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.exam_marks (
+      school_id text not null,
+      source_id text not null,
+      exam_source_id text,
+      student_id text,
+      student_name text,
+      class_name text,
+      marks_obtained numeric,
+      grade text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.timetable (
+      school_id text not null,
+      source_id text not null,
+      class_name text,
+      day text,
+      period_number numeric,
+      start_time text,
+      end_time text,
+      subject text,
+      teacher_id text,
+      room text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.homework (
+      school_id text not null,
+      source_id text not null,
+      class_name text,
+      subject text,
+      description text,
+      due_date date,
+      assigned_date date,
+      teacher_id text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.class_tests (
+      school_id text not null,
+      source_id text not null,
+      test_name text,
+      class_name text,
+      subject text,
+      total_marks numeric,
+      test_date date,
+      teacher_id text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.class_test_marks (
+      school_id text not null,
+      source_id text not null,
+      test_source_id text,
+      student_id text,
+      student_name text,
+      marks_obtained numeric,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.question_papers (
+      school_id text not null,
+      source_id text not null,
+      title text,
+      class_name text,
+      subject text,
+      total_marks numeric,
+      duration text,
+      content text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.certificates (
+      school_id text not null,
+      source_id text not null,
+      certificate_type text,
+      student_id text,
+      student_name text,
+      class_name text,
+      issue_date date,
+      template text,
+      data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.notices (
+      school_id text not null,
+      source_id text not null,
+      title text,
+      message text,
+      audience text,
+      priority text default 'normal',
+      push_to_dashboard boolean default false,
+      pinned boolean default false,
+      data jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.events (
+      school_id text not null,
+      source_id text not null,
+      title text,
+      event_date date,
+      event_type text,
+      description text,
+      all_day boolean default false,
+      color text,
+      data jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.sms_templates (
+      school_id text not null,
+      source_id text not null,
+      name text,
+      message text,
+      category text default 'general',
+      data jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.account_activity (
+      school_id text not null,
+      source_id text not null,
+      title text,
+      message text,
+      role text,
+      user_email text,
+      device_info text,
+      data jsonb not null default '{}'::jsonb,
+      created_at timestamptz not null default now(),
+      primary key (school_id, source_id)
+    );
+
+    create table if not exists public.school_settings (
+      school_id text not null,
+      setting_key text not null,
+      setting_value jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, setting_key)
+    );
+
+    create table if not exists public.school_setting_items (
+      school_id text not null,
+      setting_key text not null,
+      item_id text not null,
+      item_data jsonb not null default '{}'::jsonb,
+      updated_at timestamptz not null default now(),
+      primary key (school_id, setting_key, item_id)
+    );
+
+    create index if not exists idx_school_settings_school_id on public.school_settings (school_id);
+    create index if not exists idx_school_setting_items_school_key on public.school_setting_items (school_id, setting_key);
+    create index if not exists idx_notices_school_id on public.notices (school_id);
+    create index if not exists idx_events_school_id on public.events (school_id);
+    create index if not exists idx_sms_templates_school_id on public.sms_templates (school_id);
+    create index if not exists idx_account_activity_school_id on public.account_activity (school_id);
+    create index if not exists idx_exams_school_id on public.exams (school_id);
+    create index if not exists idx_exam_marks_school_id on public.exam_marks (school_id);
+    create index if not exists idx_timetable_school_id on public.timetable (school_id);
+    create index if not exists idx_homework_school_id on public.homework (school_id);
+    create index if not exists idx_class_tests_school_id on public.class_tests (school_id);
+    create index if not exists idx_class_test_marks_school_id on public.class_test_marks (school_id);
+    create index if not exists idx_question_papers_school_id on public.question_papers (school_id);
+    create index if not exists idx_certificates_school_id on public.certificates (school_id);
+    create index if not exists idx_license_accounts_email on public.license_accounts (lower(email));
+    create index if not exists idx_license_notifications_school_id on public.license_notifications (school_id);
+    create index if not exists idx_sms_queue_school_id_status on public.sms_queue (school_id, status);
+    create index if not exists idx_sent_messages_school_id on public.sent_messages (school_id);
+  `);
+  console.log("Schema ready");
+}
+
+async function ensureSmsTables() {
+  if (!_pool) { console.log("SMS tables: DB not connected, skipping."); return; }
+  try {
+    await _pool.query(`
+      CREATE TABLE IF NOT EXISTS sms_queue (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        device_id TEXT,
+        recipient_phone TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        source TEXT DEFAULT 'Manual SMS',
+        campaign_type TEXT DEFAULT 'manual',
+        recipient_name TEXT,
+        recipient_type TEXT DEFAULT 'student',
+        error_message TEXT,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS sent_messages (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT,
+        device_id TEXT,
+        recipient_phone TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT,
+        error_message TEXT,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS devices (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        device_name TEXT,
+        device_id TEXT NOT NULL UNIQUE,
+        is_active BOOLEAN DEFAULT false,
+        sim_number TEXT,
+        last_poll_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `);
+    await _pool.query(`
+      GRANT ALL ON TABLE sms_queue TO anon;
+      GRANT ALL ON TABLE devices TO anon;
+      GRANT ALL ON TABLE sent_messages TO anon;
+      GRANT ALL ON TABLE sms_queue TO authenticated;
+      GRANT ALL ON TABLE devices TO authenticated;
+      GRANT ALL ON TABLE sent_messages TO authenticated;
+      ALTER TABLE sms_queue ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE sent_messages ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
+    `);
+    var rlsPolicies = `
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sms_queue_anon_all' AND tablename='sms_queue') THEN CREATE POLICY sms_queue_anon_all ON sms_queue FOR ALL TO anon USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sms_queue_auth_all' AND tablename='sms_queue') THEN CREATE POLICY sms_queue_auth_all ON sms_queue FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='devices_anon_all' AND tablename='devices') THEN CREATE POLICY devices_anon_all ON devices FOR ALL TO anon USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='devices_auth_all' AND tablename='devices') THEN CREATE POLICY devices_auth_all ON devices FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sent_messages_anon_all' AND tablename='sent_messages') THEN CREATE POLICY sent_messages_anon_all ON sent_messages FOR ALL TO anon USING (true) WITH CHECK (true); END IF; END $$;
+      DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sent_messages_auth_all' AND tablename='sent_messages') THEN CREATE POLICY sent_messages_auth_all ON sent_messages FOR ALL TO authenticated USING (true) WITH CHECK (true); END IF; END $$;
+    `;
+    await _pool.query(rlsPolicies);
+    console.log("SMS tables ready with RLS policies.");
+  } catch (err) {
+    console.error("ensureSmsTables error:", err.message);
+  }
+}
+
+function normalizeSchoolId(value) {
+  const trimmed = String(value || "").trim();
+  if (!trimmed) {
+    console.warn("normalizeSchoolId: empty school_id, using default");
+    return defaultSchoolId || "SCH-2026-001";
+  }
+  return trimmed;
+}
+
+function toLicensePayload(row, notifications) {
+  const licenseToken = row.license_token || generateToken();
+  return {
+    success: true,
+    school_id: row.school_id,
+    school_name: row.school_name,
+    email: row.email,
+    activation_status: row.status,
+    status: row.status,
+    plan: row.plan,
+    start_date: row.start_date,
+    expiry_date: row.expiry_date,
+    license_token: licenseToken,
+    internet_required_after_days: row.internet_required_after_days,
+    modules_locked: row.modules_locked,
+    notifications: notifications || []
+  };
+}
+
+function scopedMirrorId(schoolId, sourceId, prefix) {
+  const rawId = String(sourceId || `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  return {
+    sourceId: rawId,
+    mirrorId: `${schoolId}:${rawId}`
+  };
+}
+
+async function syncEmployeeMirrorTables(client, schoolId, database) {
+  const employees = Array.isArray(database && database.employees) ? database.employees : [];
+  const teachers = Array.isArray(database && database.teachers) ? database.teachers : [];
+  const allStaff = employees.length > 0 ? employees : teachers;
+  await client.query("delete from public.employees where school_id = $1", [schoolId]);
+
+  for (const employee of allStaff) {
+    const ids = scopedMirrorId(schoolId, employee.id, "EMP");
+    await client.query(`
+      insert into public.employees (
+        id, school_id, source_id, name, subject, designation, role, phone, date_of_joining,
+        monthly_salary, email, status, data, created_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13::jsonb, now())
+      on conflict (id)
+      do update set
+        school_id = excluded.school_id,
+        source_id = excluded.source_id,
+        name = excluded.name,
+        subject = excluded.subject,
+        designation = excluded.designation,
+        role = excluded.role,
+        phone = excluded.phone,
+        date_of_joining = excluded.date_of_joining,
+        monthly_salary = excluded.monthly_salary,
+        email = excluded.email,
+        status = excluded.status,
+        data = excluded.data
+    `, [
+      ids.mirrorId,
+      schoolId,
+      ids.sourceId,
+      String(employee.name || ""),
+      String(employee.subject || ""),
+      String(employee.designation || employee.role || ""),
+      String(employee.role || ""),
+      String(employee.phone || employee.mobile || ""),
+      employee.dateOfJoining || null,
+      Number(employee.monthlySalary || 0),
+      String(employee.email || ""),
+      String(employee.status || "active"),
+      JSON.stringify(employee)
+    ]);
+  }
+}
+
+function emptyToNullDate(value) {
+  const raw = String(value || "").trim();
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+}
+
+async function syncStudentMirrorTable(client, schoolId, database) {
+  const students = Array.isArray(database && database.students) ? database.students : [];
+  await client.query("delete from public.students where school_id = $1", [schoolId]);
+
+  for (const student of students) {
+    const ids = scopedMirrorId(schoolId, student.id, "STU");
+    await client.query(`
+      insert into public.students (
+        id, school_id, source_id, admission_no, name, picture, date_of_admission, class_name,
+        discount_in_fee, date_of_birth, gender, blood_group, disease_info,
+        birth_id, previous_school, previous_id, orphan_status, religion, address,
+        phone, father_name, father_education, father_national_id, father_phone,
+        father_occupation, father_income, mother_name, mother_education,
+        mother_national_id, mother_phone, mother_occupation, status, data, created_at
+      )
+      values (
+        $1, $2, $3, $4, $5, $6, $7, $8,
+        $9, $10, $11, $12, $13,
+        $14, $15, $16, $17, $18, $19,
+        $20, $21, $22, $23, $24,
+        $25, $26, $27, $28,
+        $29, $30, $31, $32, $33::jsonb, now()
+      )
+      on conflict (id)
+      do update set
+        school_id = excluded.school_id,
+        source_id = excluded.source_id,
+        admission_no = excluded.admission_no,
+        name = excluded.name,
+        picture = excluded.picture,
+        date_of_admission = excluded.date_of_admission,
+        class_name = excluded.class_name,
+        discount_in_fee = excluded.discount_in_fee,
+        date_of_birth = excluded.date_of_birth,
+        gender = excluded.gender,
+        blood_group = excluded.blood_group,
+        disease_info = excluded.disease_info,
+        birth_id = excluded.birth_id,
+        previous_school = excluded.previous_school,
+        previous_id = excluded.previous_id,
+        orphan_status = excluded.orphan_status,
+        religion = excluded.religion,
+        address = excluded.address,
+        phone = excluded.phone,
+        father_name = excluded.father_name,
+        father_education = excluded.father_education,
+        father_national_id = excluded.father_national_id,
+        father_phone = excluded.father_phone,
+        father_occupation = excluded.father_occupation,
+        father_income = excluded.father_income,
+        mother_name = excluded.mother_name,
+        mother_education = excluded.mother_education,
+        mother_national_id = excluded.mother_national_id,
+        mother_phone = excluded.mother_phone,
+        mother_occupation = excluded.mother_occupation,
+        status = excluded.status,
+        data = excluded.data
+    `, [
+      ids.mirrorId,
+      schoolId,
+      ids.sourceId,
+      String(student.admissionNo || student.rollNo || ""),
+      String(student.name || ""),
+      String(student.picture || ""),
+      emptyToNullDate(student.dateOfAdmission),
+      String(student.className || ""),
+      Number(student.discountInFee || 0),
+      emptyToNullDate(student.dateOfBirth),
+      String(student.gender || ""),
+      String(student.bloodGroup || ""),
+      String(student.diseaseInfo || ""),
+      String(student.birthId || ""),
+      String(student.previousSchool || ""),
+      String(student.previousId || ""),
+      String(student.orphanStatus || ""),
+      String(student.religion || ""),
+      String(student.address || ""),
+      String(student.phone || ""),
+      String(student.fatherName || ""),
+      String(student.fatherEducation || ""),
+      String(student.fatherNationalId || ""),
+      String(student.fatherPhone || ""),
+      String(student.fatherOccupation || ""),
+      String(student.fatherIncome || ""),
+      String(student.motherName || ""),
+      String(student.motherEducation || ""),
+      String(student.motherNationalId || ""),
+      String(student.motherPhone || ""),
+      String(student.motherOccupation || ""),
+      String(student.status || "active"),
+      JSON.stringify(student)
+    ]);
+  }
+}
+
+async function syncClassMirrorTable(client, schoolId, database) {
+  const classes = Array.isArray(database && database.classes) ? database.classes : [];
+  await client.query("delete from public.classes where school_id = $1", [schoolId]);
+
+  for (const classItem of classes) {
+    const ids = scopedMirrorId(schoolId, classItem.id, "CLS");
+    await client.query(`
+      insert into public.classes (id, school_id, source_id, name, monthly_fee, teacher_id, data, created_at)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+      on conflict (id)
+      do update set
+        school_id = excluded.school_id,
+        source_id = excluded.source_id,
+        name = excluded.name,
+        monthly_fee = excluded.monthly_fee,
+        teacher_id = excluded.teacher_id,
+        data = excluded.data
+    `, [
+      ids.mirrorId,
+      schoolId,
+      ids.sourceId,
+      String(classItem.name || ""),
+      Number(classItem.monthlyTuitionFees || classItem.monthlyFee || 0),
+      String(classItem.classTeacher || classItem.teacherId || ""),
+      JSON.stringify(classItem)
+    ]);
+  }
+}
+
+function collectAppRecords(database) {
+  const records = [];
+  const addRecord = function (moduleName, recordId, value) {
+    records.push({
+      moduleName: String(moduleName || "unknown"),
+      recordId: String(recordId || `${moduleName}-${records.length + 1}`),
+      data: value && typeof value === "object" ? value : { value: value }
+    });
+  };
+  const addArrayRecords = function (moduleName, rows) {
+    (Array.isArray(rows) ? rows : []).forEach(function (row, index) {
+      const id = row && typeof row === "object" && row.id ? row.id : `${moduleName}-${index + 1}`;
+      addRecord(moduleName, id, row);
+    });
+  };
+  const addObjectRecord = function (moduleName, value) {
+    if (value && typeof value === "object") {
+      addRecord(moduleName, moduleName, value);
+    }
+  };
+
+  Object.keys(database || {}).forEach(function (key) {
+    const value = database[key];
+    if (Array.isArray(value)) {
+      addArrayRecords(key, value);
+    } else if (value && typeof value === "object") {
+      addObjectRecord(key, value);
+      Object.keys(value).forEach(function (childKey) {
+        const childValue = value[childKey];
+        const moduleName = `${key}.${childKey}`;
+        if (Array.isArray(childValue)) {
+          addArrayRecords(moduleName, childValue);
+        } else if (childValue && typeof childValue === "object") {
+          addObjectRecord(moduleName, childValue);
+        }
+      });
+    } else {
+      addRecord(key, key, { value: value });
+    }
+  });
+
+  return records;
+}
+
+async function syncAppRecordsTable(client, schoolId, database) {
+  const records = collectAppRecords(database);
+  await client.query("delete from public.app_records where school_id = $1", [schoolId]);
+  for (const record of records) {
+    await client.query(`
+      insert into public.app_records (school_id, module_name, record_id, record_data, updated_at)
+      values ($1, $2, $3, $4::jsonb, now())
+      on conflict (school_id, module_name, record_id)
+      do update set
+        record_data = excluded.record_data,
+        updated_at = now()
+    `, [schoolId, record.moduleName, record.recordId, JSON.stringify(record.data)]);
+  }
+}
+
+function rowId(row, prefix, index) {
+  return String((row && row.id) || `${prefix}-${index + 1}`);
+}
+
+
+function rowData(row) {
+  return JSON.stringify(row && typeof row === "object" ? row : {});
+}
+
+async function syncStructuredModuleTables(client, schoolId, database) {
+  const users = Array.isArray(database && database.users) ? database.users : [];
+  const subjects = Array.isArray(database && database.subjects) ? database.subjects : [];
+  const attendance = Array.isArray(database && database.attendance) ? database.attendance : [];
+  const fees = Array.isArray(database && database.fees) ? database.fees : [];
+  const settings = (database && database.generalSettings) || {};
+  const feeInvoices = Array.isArray(settings.feeInvoices) ? settings.feeInvoices : [];
+  const feeCollections = Array.isArray(settings.feeCollections) ? settings.feeCollections : [];
+  const salaryPayments = Array.isArray(settings.salaryPayments) ? settings.salaryPayments : [];
+  const accountsLedger = Array.isArray(settings.accountsLedger) ? settings.accountsLedger : [];
+  const activityLogs = Array.isArray(database && database.activityLogs) ? database.activityLogs : [];
+
+  await client.query("delete from public.app_users where school_id = $1", [schoolId]);
+  await client.query("delete from public.subjects where school_id = $1", [schoolId]);
+  await client.query("delete from public.attendance where school_id = $1", [schoolId]);
+  await client.query("delete from public.fees where school_id = $1", [schoolId]);
+  await client.query("delete from public.fee_invoices where school_id = $1", [schoolId]);
+  await client.query("delete from public.fee_collections where school_id = $1", [schoolId]);
+  await client.query("delete from public.salary_payments where school_id = $1", [schoolId]);
+  await client.query("delete from public.accounts_ledger where school_id = $1", [schoolId]);
+  await client.query("delete from public.activity_logs where school_id = $1", [schoolId]);
+
+  for (let index = 0; index < users.length; index += 1) {
+    const row = users[index];
+    const sourceId = rowId(row, "USR", index);
+    await client.query(`
+      insert into public.app_users (school_id, source_id, name, email, role, active, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+    `, [schoolId, sourceId, row.name || "", row.email || "", row.role || "", row.active !== false, rowData(row)]);
+  }
+
+  for (let index = 0; index < subjects.length; index += 1) {
+    const row = subjects[index];
+    const sourceId = rowId(row, "SUB", index);
+    await client.query(`
+      insert into public.subjects (school_id, source_id, subject_name, class_name, teacher_id, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6::jsonb, now())
+      on conflict (school_id, source_id) do update set subject_name = excluded.subject_name, class_name = excluded.class_name, teacher_id = excluded.teacher_id, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.subjectName || row.name || "", row.className || "", row.teacherId || row.teacher || "", rowData(row)]);
+  }
+
+  for (let index = 0; index < attendance.length; index += 1) {
+    const row = attendance[index];
+    const sourceId = rowId(row, "ATT", index);
+    await client.query(`
+      insert into public.attendance (school_id, source_id, entity_type, student_id, employee_id, date, status, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
+      on conflict (school_id, source_id) do update set entity_type = excluded.entity_type, student_id = excluded.student_id, employee_id = excluded.employee_id, date = excluded.date, status = excluded.status, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.entityType || "student", row.studentId || "", row.employeeId || row.teacherId || "", emptyToNullDate(row.date), row.status || "", rowData(row)]);
+  }
+
+  for (let index = 0; index < fees.length; index += 1) {
+    const row = fees[index];
+    const sourceId = rowId(row, "FEE", index);
+    await client.query(`
+      insert into public.fees (school_id, source_id, student_id, student_name, class_name, fee_month, status, total_amount, deposit, remaining, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
+      on conflict (school_id, source_id) do update set student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, fee_month = excluded.fee_month, status = excluded.status, total_amount = excluded.total_amount, deposit = excluded.deposit, remaining = excluded.remaining, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", row.status || "", Number(row.totalAmount || row.amount || 0), Number(row.deposit || 0), Number(row.remaining || 0), rowData(row)]);
+  }
+
+  for (let index = 0; index < feeInvoices.length; index += 1) {
+    const row = feeInvoices[index];
+    const sourceId = rowId(row, "INV", index);
+    await client.query(`
+      insert into public.fee_invoices (school_id, source_id, student_id, student_name, class_name, fee_month, total_amount, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
+      on conflict (school_id, source_id) do update set student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, fee_month = excluded.fee_month, total_amount = excluded.total_amount, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", Number(row.totalAmount || row.amount || 0), rowData(row)]);
+  }
+
+  for (let index = 0; index < feeCollections.length; index += 1) {
+    const row = feeCollections[index];
+    const sourceId = rowId(row, "COL", index);
+    await client.query(`
+      insert into public.fee_collections (school_id, source_id, student_id, student_name, class_name, fee_month, deposit, remaining, collected_at, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
+      on conflict (school_id, source_id) do update set student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, fee_month = excluded.fee_month, deposit = excluded.deposit, remaining = excluded.remaining, collected_at = excluded.collected_at, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.studentId || "", row.studentName || row.name || "", row.className || "", row.feeMonth || row.month || "", Number(row.deposit || 0), Number(row.remaining || 0), row.collectedAt || row.paymentDate || row.date || null, rowData(row)]);
+  }
+
+  for (let index = 0; index < salaryPayments.length; index += 1) {
+    const row = salaryPayments[index];
+    const sourceId = rowId(row, "SAL", index);
+    await client.query(`
+      insert into public.salary_payments (school_id, source_id, employee_id, employee_name, salary_month, salary_amount, bonus, deduction, net_salary, payment_date, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
+      on conflict (school_id, source_id) do update set employee_id = excluded.employee_id, employee_name = excluded.employee_name, salary_month = excluded.salary_month, salary_amount = excluded.salary_amount, bonus = excluded.bonus, deduction = excluded.deduction, net_salary = excluded.net_salary, payment_date = excluded.payment_date, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.employeeId || row.teacherId || "", row.employeeName || row.teacherName || row.name || "", row.salaryMonth || row.month || "", Number(row.salaryAmount || 0), Number(row.bonus || 0), Number(row.deduction || 0), Number(row.netSalary || 0), emptyToNullDate(row.paymentDate || row.date), rowData(row)]);
+  }
+
+  for (let index = 0; index < accountsLedger.length; index += 1) {
+    const row = accountsLedger[index];
+    const sourceId = rowId(row, "LED", index);
+    await client.query(`
+      insert into public.accounts_ledger (school_id, source_id, date, type, category, amount, note, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, now())
+      on conflict (school_id, source_id) do update set date = excluded.date, type = excluded.type, category = excluded.category, amount = excluded.amount, note = excluded.note, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, emptyToNullDate(row.date), row.type || "", row.category || "", Number(row.amount || 0), row.note || "", rowData(row)]);
+  }
+
+  for (let index = 0; index < activityLogs.length; index += 1) {
+    const row = activityLogs[index];
+    const sourceId = rowId(row, "LOG", index);
+    await client.query(`
+      insert into public.activity_logs (school_id, source_id, title, message, created_at, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6::jsonb, now())
+      on conflict (school_id, source_id) do update set title = excluded.title, message = excluded.message, created_at = excluded.created_at, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.title || row.action || "", row.message || row.description || "", row.createdAt || row.date || null, rowData(row)]);
+  }
+}
+
+async function syncExamTables(client, schoolId, database) {
+  const settings = (database && database.generalSettings) || {};
+  const exams = Array.isArray(settings.exams) ? settings.exams : [];
+  const examMarks = Array.isArray(settings.examMarks) ? settings.examMarks : [];
+
+  await client.query("delete from public.exams where school_id = $1", [schoolId]);
+  await client.query("delete from public.exam_marks where school_id = $1", [schoolId]);
+
+  for (let index = 0; index < exams.length; index++) {
+    const row = exams[index];
+    const sourceId = rowId(row, "EXM", index);
+    await client.query(`
+      insert into public.exams (school_id, source_id, exam_name, class_name, subject, total_marks, pass_marks, exam_date, exam_type, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb, now())
+      on conflict (school_id, source_id) do update set exam_name = excluded.exam_name, class_name = excluded.class_name, subject = excluded.subject, total_marks = excluded.total_marks, pass_marks = excluded.pass_marks, exam_date = excluded.exam_date, exam_type = excluded.exam_type, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.examName || row.name || "", row.className || "", row.subject || "", Number(row.totalMarks || 0), Number(row.passMarks || 0), emptyToNullDate(row.examDate || row.date), row.examType || row.type || "", rowData(row)]);
+  }
+
+  for (let index = 0; index < examMarks.length; index++) {
+    const row = examMarks[index];
+    const sourceId = rowId(row, "EXK", index);
+    await client.query(`
+      insert into public.exam_marks (school_id, source_id, exam_source_id, student_id, student_name, class_name, marks_obtained, grade, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
+      on conflict (school_id, source_id) do update set exam_source_id = excluded.exam_source_id, student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, marks_obtained = excluded.marks_obtained, grade = excluded.grade, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.examId || row.examSourceId || "", row.studentId || "", row.studentName || row.name || "", row.className || "", Number(row.marksObtained || row.marks || 0), row.grade || "", rowData(row)]);
+  }
+}
+
+async function syncTimetableTable(client, schoolId, database) {
+  const settings = (database && database.generalSettings) || {};
+  const timetable = Array.isArray(settings.timetableEntries) ? settings.timetableEntries : [];
+
+  await client.query("delete from public.timetable where school_id = $1", [schoolId]);
+
+  for (let index = 0; index < timetable.length; index++) {
+    const row = timetable[index];
+    const sourceId = rowId(row, "TBT", index);
+    await client.query(`
+      insert into public.timetable (school_id, source_id, class_name, day, period_number, start_time, end_time, subject, teacher_id, room, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, now())
+      on conflict (school_id, source_id) do update set class_name = excluded.class_name, day = excluded.day, period_number = excluded.period_number, start_time = excluded.start_time, end_time = excluded.end_time, subject = excluded.subject, teacher_id = excluded.teacher_id, room = excluded.room, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.className || "", row.day || "", Number(row.periodNumber || row.period || index + 1), row.startTime || "", row.endTime || "", row.subject || "", row.teacherId || row.teacher || "", row.room || "", rowData(row)]);
+  }
+}
+
+async function syncHomeworkTable(client, schoolId, database) {
+  const settings = (database && database.generalSettings) || {};
+  const homework = Array.isArray(settings.homework) ? settings.homework : [];
+
+  await client.query("delete from public.homework where school_id = $1", [schoolId]);
+
+  for (let index = 0; index < homework.length; index++) {
+    const row = homework[index];
+    const sourceId = rowId(row, "HWK", index);
+    await client.query(`
+      insert into public.homework (school_id, source_id, class_name, subject, description, due_date, assigned_date, teacher_id, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
+      on conflict (school_id, source_id) do update set class_name = excluded.class_name, subject = excluded.subject, description = excluded.description, due_date = excluded.due_date, assigned_date = excluded.assigned_date, teacher_id = excluded.teacher_id, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.className || "", row.subject || "", row.description || row.title || "", emptyToNullDate(row.dueDate), emptyToNullDate(row.assignedDate || row.date), row.teacherId || row.teacher || "", rowData(row)]);
+  }
+}
+
+async function syncClassTestTables(client, schoolId, database) {
+  const settings = (database && database.generalSettings) || {};
+  const classTests = Array.isArray(settings.classTests) ? settings.classTests : [];
+  const classTestMarks = Array.isArray(settings.classTestMarks) ? settings.classTestMarks : [];
+
+  await client.query("delete from public.class_tests where school_id = $1", [schoolId]);
+  await client.query("delete from public.class_test_marks where school_id = $1", [schoolId]);
+
+  for (let index = 0; index < classTests.length; index++) {
+    const row = classTests[index];
+    const sourceId = rowId(row, "CTE", index);
+    await client.query(`
+      insert into public.class_tests (school_id, source_id, test_name, class_name, subject, total_marks, test_date, teacher_id, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
+      on conflict (school_id, source_id) do update set test_name = excluded.test_name, class_name = excluded.class_name, subject = excluded.subject, total_marks = excluded.total_marks, test_date = excluded.test_date, teacher_id = excluded.teacher_id, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.testName || row.name || "", row.className || "", row.subject || "", Number(row.totalMarks || 0), emptyToNullDate(row.testDate || row.date), row.teacherId || row.teacher || "", rowData(row)]);
+  }
+
+  for (let index = 0; index < classTestMarks.length; index++) {
+    const row = classTestMarks[index];
+    const sourceId = rowId(row, "CTM", index);
+    await client.query(`
+      insert into public.class_test_marks (school_id, source_id, test_source_id, student_id, student_name, marks_obtained, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7::jsonb, now())
+      on conflict (school_id, source_id) do update set test_source_id = excluded.test_source_id, student_id = excluded.student_id, student_name = excluded.student_name, marks_obtained = excluded.marks_obtained, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.testId || row.testSourceId || "", row.studentId || "", row.studentName || row.name || "", Number(row.marksObtained || row.marks || 0), rowData(row)]);
+  }
+}
+
+async function syncQuestionPapersTable(client, schoolId, database) {
+  const settings = (database && database.generalSettings) || {};
+  const papers = Array.isArray(settings.questionPapers) ? settings.questionPapers : [];
+
+  await client.query("delete from public.question_papers where school_id = $1", [schoolId]);
+
+  for (let index = 0; index < papers.length; index++) {
+    const row = papers[index];
+    const sourceId = rowId(row, "QPR", index);
+    await client.query(`
+      insert into public.question_papers (school_id, source_id, title, class_name, subject, total_marks, duration, content, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
+      on conflict (school_id, source_id) do update set title = excluded.title, class_name = excluded.class_name, subject = excluded.subject, total_marks = excluded.total_marks, duration = excluded.duration, content = excluded.content, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.title || row.name || "", row.className || "", row.subject || "", Number(row.totalMarks || 0), row.duration || "", row.content || row.body || "", rowData(row)]);
+  }
+}
+
+async function syncCertificatesTable(client, schoolId, database) {
+  const settings = (database && database.generalSettings) || {};
+  const certificates = Array.isArray(settings.certificates) ? settings.certificates : [];
+
+  await client.query("delete from public.certificates where school_id = $1", [schoolId]);
+
+  for (let index = 0; index < certificates.length; index++) {
+    const row = certificates[index];
+    const sourceId = rowId(row, "CRT", index);
+    await client.query(`
+      insert into public.certificates (school_id, source_id, certificate_type, student_id, student_name, class_name, issue_date, template, data, updated_at)
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, now())
+      on conflict (school_id, source_id) do update set certificate_type = excluded.certificate_type, student_id = excluded.student_id, student_name = excluded.student_name, class_name = excluded.class_name, issue_date = excluded.issue_date, template = excluded.template, data = excluded.data, updated_at = now()
+    `, [schoolId, sourceId, row.certificateType || row.type || "", row.studentId || "", row.studentName || row.name || "", row.className || "", emptyToNullDate(row.issueDate || row.date), row.template || "", rowData(row)]);
+  }
+}
+
+const GENERAL_SETTINGS_SINGLETON_KEYS = [
+  "instituteProfile","accountSettings","themeLanguage","smsGateway",
+  "rulesAndRegulations","failCriteria","messageTemplates","marksGrading",
+  "feeStructures","feeParticulars","discountTypes","supabaseConfig","offlineSchoolsRegistry","smsOutbox",
+  "accountsLedger"
+];
+const GENERAL_SETTINGS_ARRAY_KEYS = [
+  "discountPolicies","bankAccounts","certificateTemplates",
+  "questionChapters","questionBank","timetableWeekdays","timetablePeriods",
+  "classRooms","examSchedule","homeworkAssignments"
+];
+
+async function syncSchoolSettingsTables(client, schoolId, database) {
+  const gs = (database && database.generalSettings) || {};
+
+  await client.query("delete from public.school_settings where school_id = $1", [schoolId]);
+  for (const key of GENERAL_SETTINGS_SINGLETON_KEYS) {
+    if (gs[key] !== undefined && gs[key] !== null) {
+      await client.query(
+        "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, $2, $3::jsonb, now())",
+        [schoolId, key, JSON.stringify(gs[key])]
+      );
+    }
+  }
+
+  await client.query("delete from public.school_setting_items where school_id = $1", [schoolId]);
+  for (const key of GENERAL_SETTINGS_ARRAY_KEYS) {
+    const arr = Array.isArray(gs[key]) ? gs[key] : [];
+    for (const item of arr) {
+      const itemId = item && item.id ? String(item.id) : "idx-" + Math.random().toString(36).slice(2, 10);
+      await client.query(
+        "insert into public.school_setting_items (school_id, setting_key, item_id, item_data, updated_at) values ($1, $2, $3, $4::jsonb, now())",
+        [schoolId, key, itemId, JSON.stringify(item || {})]
+      );
+    }
+  }
+}
+
+async function saveSchoolDatabaseWithMirrors(schoolId, database) {
+  const client = await pool.connect();
+  const dbStudents = Array.isArray(database.students) ? database.students.length : 0;
+  const dbEmployees = Array.isArray(database.teachers) ? database.teachers.length : 0;
+  const dbClasses = Array.isArray(database.classes) ? database.classes.length : 0;
+  const dbFees = Array.isArray(database.fees) ? database.fees.length : 0;
+  try {
+    await client.query("begin");
+    await client.query(`
+      insert into public.school_databases (school_id, database, updated_at)
+      values ($1, $2::jsonb, now())
+      on conflict (school_id)
+      do update set database = excluded.database, updated_at = now()
+    `, [schoolId, JSON.stringify(database || {})]);
+    await syncEmployeeMirrorTables(client, schoolId, database || {});
+    await syncStudentMirrorTable(client, schoolId, database || {});
+    await syncClassMirrorTable(client, schoolId, database || {});
+    await syncStructuredModuleTables(client, schoolId, database || {});
+    await syncExamTables(client, schoolId, database || {});
+    await syncTimetableTable(client, schoolId, database || {});
+    await syncHomeworkTable(client, schoolId, database || {});
+    await syncClassTestTables(client, schoolId, database || {});
+    await syncQuestionPapersTable(client, schoolId, database || {});
+    await syncCertificatesTable(client, schoolId, database || {});
+    await syncAppRecordsTable(client, schoolId, database || {});
+    await syncSchoolSettingsTables(client, schoolId, database || {});
+    await client.query("commit");
+  } catch (error) {
+    await client.query("rollback");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+async function getSchoolDatabase(schoolId) {
+  const result = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
+  const blob = result.rowCount ? (result.rows[0].database || {}) : {};
+  const database = {};
+  database.generalSettings = {};
+
+  const readDataRows = async function (tableName) {
+    try {
+      const rows = await pool.query(
+        `select data from public.${tableName} where school_id = $1 and data is not null order by updated_at desc`,
+        [schoolId]
+      );
+      return rows.rows.map((row) => row.data || {}).filter((row) => row && typeof row === "object");
+    } catch (_e) {
+      return [];
+    }
+  };
+
+  const readDataRowsSync = function (rows) {
+    return rows.map(function (row) {
+      if (!row) return {};
+      if (row.data !== undefined && row.data !== null && typeof row.data === "object" && !Array.isArray(row.data)) {
+        return row.data;
+      }
+      return row;
+    }).filter(function (row) { return row && typeof row === "object"; });
+  };
+
+  var tables = ["students","classes","app_users","subjects","attendance","fees","fee_invoices","fee_collections","salary_payments","accounts_ledger","activity_logs","exams","exam_marks","timetable","homework","class_tests","class_test_marks","question_papers","certificates","employees","notices","events","sms_templates","account_activity"];
+  var cteParts = [];
+  var selectParts = [];
+  tables.forEach(function(t, i) {
+    cteParts.push(`t${i} AS (SELECT jsonb_agg(row_to_json(d.*)) as arr FROM (SELECT data FROM public.${t} WHERE school_id = $1 AND data IS NOT NULL ORDER BY updated_at DESC) d)`);
+    selectParts.push(`(SELECT COALESCE(arr, '[]'::jsonb) FROM t${i}) as col${i}`);
+  });
+  var cteSql = "WITH " + cteParts.join(", ") + " SELECT " + selectParts.join(", ");
+
+  let allResults;
+  try {
+    const combined = await pool.query(cteSql, [schoolId]);
+    allResults = combined.rows[0] ? tables.map((_, i) => readDataRowsSync(combined.rows[0]["col" + i] || [])) : tables.map(() => []);
+  } catch (_e) {
+    allResults = [];
+    for (var i = 0; i < tables.length; i += 5) {
+      var batch = tables.slice(i, i + 5);
+      var batchResults = await Promise.all(batch.map(function(t) { return readDataRows(t); }));
+      allResults = allResults.concat(batchResults);
+    }
+  }
+
+  let [
+    students, classes, users, subjects, attendance, fees,
+    feeInvoices, feeCollections, salaryPayments, accountsLedger,
+    activityLogs, exams, examMarks, timetable, homework,
+    classTests, classTestMarks, questionPapers, certificates,
+    employees, notices, events, smsTemplates, accountActivity
+  ] = allResults;
+
+  // Migration: if dedicated table is empty but JSONB blob has data, migrate to dedicated table
+  var migrateEntities = [
+    { key: "students", table: "students" },
+    { key: "classes", table: "classes" },
+    { key: "employees", table: "employees" },
+    { key: "subjects", table: "subjects" },
+    { key: "attendance", table: "attendance" },
+    { key: "fees", table: "fees" },
+    { key: "notices", table: "notices" },
+    { key: "events", table: "events" },
+    { key: "activityLogs", table: "activity_logs" },
+    { key: "smsTemplates", table: "sms_templates" },
+    { key: "accountActivity", table: "account_activity" }
+  ];
+  var dedicatedResults = { students: students, classes: classes, subjects: subjects, attendance: attendance, fees: fees, notices: notices, events: events, activityLogs: activityLogs, smsTemplates: smsTemplates, accountActivity: accountActivity, employees: employees };
+  for (var mi = 0; mi < migrateEntities.length; mi++) {
+    var ent = migrateEntities[mi];
+    var blobArr = blob[ent.key] || [];
+    var dedArr = dedicatedResults[ent.key] || [];
+    if (!dedArr.length && blobArr.length) {
+      for (var bi = 0; bi < blobArr.length; bi++) {
+        var bItem = blobArr[bi];
+        if (bItem && bItem.id) {
+          try {
+            await pool.query(
+              "insert into public." + ent.table + " (id, school_id, source_id, data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, source_id) do nothing",
+              [bItem.id, schoolId, bItem.id, JSON.stringify(bItem)]
+            );
+          } catch (_e) {}
+        }
+      }
+      var migrated = await readDataRows(ent.table);
+      if (migrated.length) dedicatedResults[ent.key] = migrated;
+    }
+  }
+  students = dedicatedResults.students;
+  classes = dedicatedResults.classes;
+  subjects = dedicatedResults.subjects;
+  attendance = dedicatedResults.attendance;
+  fees = dedicatedResults.fees;
+  notices = dedicatedResults.notices;
+  events = dedicatedResults.events;
+  activityLogs = dedicatedResults.activityLogs;
+  smsTemplates = dedicatedResults.smsTemplates;
+  accountActivity = dedicatedResults.accountActivity;
+  employees = dedicatedResults.employees;
+
+  // Migration: also migrate users from JSONB blob to app_users table
+  var usersDed = dedicatedResults.users || users;
+  if (!usersDed.length && blob.users && blob.users.length) {
+    for (var ui = 0; ui < blob.users.length; ui++) {
+      var uItem = blob.users[ui];
+      if (uItem && uItem.id) {
+        try {
+          await pool.query(
+            "insert into public.app_users (id, school_id, source_id, data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, source_id) do nothing",
+            [uItem.id, schoolId, uItem.id, JSON.stringify(uItem)]
+          );
+        } catch (_e) {}
+      }
+    }
+    var migratedUsers = await readDataRows("app_users");
+    if (migratedUsers.length) users = migratedUsers;
+  }
+
+  database.students = students;
+  database.classes = classes;
+  database.users = users;
+  database.subjects = subjects;
+  database.attendance = attendance;
+  database.fees = fees;
+  database.generalSettings.notices = notices;
+  database.generalSettings.events = events;
+  database.activityLogs = activityLogs;
+  database.accountActivity = accountActivity;
+  database.smsTemplates = smsTemplates;
+  database.employees = employees;
+  database.teachers = employees;
+  database.generalSettings.feeInvoices = feeInvoices;
+  database.generalSettings.feeCollections = feeCollections;
+  database.generalSettings.salaryPayments = salaryPayments;
+  database.generalSettings.accountsLedger = accountsLedger;
+  database.generalSettings.exams = exams;
+  database.generalSettings.examMarks = examMarks;
+  database.generalSettings.timetableEntries = timetable;
+  database.generalSettings.homework = homework;
+  database.generalSettings.classTests = classTests;
+  database.generalSettings.classTestMarks = classTestMarks;
+  database.generalSettings.questionPapers = questionPapers;
+  database.generalSettings.certificates = certificates;
+
+  try {
+    const [settingsRows, itemKeys, licResult] = await Promise.all([
+      pool.query("select setting_key, setting_value from public.school_settings where school_id = $1", [schoolId]),
+      pool.query("select setting_key, item_data from public.school_setting_items where school_id = $1 order by updated_at asc", [schoolId]),
+      pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, license_token, modules_locked from public.license_accounts where school_id = $1 limit 1", [schoolId])
+    ]);
+    for (const row of settingsRows.rows) {
+      if (row.setting_key && row.setting_value !== null && row.setting_value !== undefined) {
+        var existing = database.generalSettings[row.setting_key];
+        var isEmpty = !existing || (typeof existing === "object" && !Array.isArray(existing) && Object.keys(existing).length === 0) || (Array.isArray(existing) && existing.length === 0);
+        if (row.setting_key === "accountsLedger" && Array.isArray(row.setting_value) && row.setting_value.length > 0) {
+          var merged = {};
+          (database.generalSettings.accountsLedger || []).forEach(function(item) { if (item && item.id) merged[item.id] = item; });
+          row.setting_value.forEach(function(item) { if (item && item.id) merged[item.id] = item; });
+          database.generalSettings.accountsLedger = Object.values(merged);
+        } else if ((row.setting_key === "instituteProfile" || row.setting_key === "licenseSettings" || row.setting_key === "accountSettings") && typeof row.setting_value === "object" && !Array.isArray(row.setting_value)) {
+          database.generalSettings[row.setting_key] = Object.assign({}, existing || {}, row.setting_value);
+        } else if (isEmpty) {
+          database.generalSettings[row.setting_key] = row.setting_value;
+        }
+      }
+    }
+    const itemGroups = {};
+    for (const r of itemKeys.rows) {
+      if (!itemGroups[r.setting_key]) itemGroups[r.setting_key] = [];
+      itemGroups[r.setting_key].push(r.item_data || {});
+    }
+    for (const k in itemGroups) {
+      database.generalSettings[k] = itemGroups[k];
+    }
+    if (licResult.rowCount) {
+      const lic = licResult.rows[0];
+      database.generalSettings.licenseSettings = database.generalSettings.licenseSettings || {};
+      database.generalSettings.licenseSettings.schoolId = lic.school_id;
+      database.generalSettings.licenseSettings.schoolName = lic.school_name;
+      database.generalSettings.licenseSettings.activated = (String(lic.status || "").toLowerCase() === "active" && !lic.modules_locked);
+      database.generalSettings.licenseSettings.status = lic.status || "inactive";
+      database.generalSettings.licenseSettings.subscriptionPlan = lic.plan || "monthly";
+      database.generalSettings.licenseSettings.startDate = lic.start_date || "";
+      database.generalSettings.licenseSettings.expiryDate = lic.expiry_date || "";
+      database.generalSettings.licenseSettings.licenseToken = lic.license_token || "";
+    }
+  } catch (_e) {}
+
+  database.school = blob.school || {};
+  database.settings = blob.settings || {};
+  database._deletedIds = blob._deletedIds || [];
+
+  var _ls = database.generalSettings.licenseSettings || {};
+  if (!_ls.activated && _ls.expiryDate) {
+    var _exp = new Date(_ls.expiryDate);
+    var _now = new Date();
+    if (!isNaN(_exp.getTime()) && _exp > _now) {
+      _ls.activated = true;
+      if (!_ls.status || _ls.status === "inactive") _ls.status = "active";
+    }
+  }
+
+  return database;
+}
+
+async function findLicenseByToken(schoolId, token) {
+  const result = await pool.query(`
+    select * from public.license_accounts
+    where school_id = $1 and coalesce(license_token, 'LIC-' || school_id) = $2
+    limit 1
+  `, [schoolId, token]);
+  return result.rowCount ? result.rows[0] : null;
+}
+
+function isLicenseUsable(row) {
+  if (!row) {
+    return false;
+  }
+  const status = String(row.status || "").toLowerCase();
+  const expiry = row.expiry_date ? new Date(row.expiry_date) : null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return status === "active" && !row.modules_locked && (!expiry || expiry >= today);
+}
+
+var _serverStartTime = Date.now();
+var _requestMetrics = { total: 0, errors: 0, byEndpoint: {} };
+
+app.get("/health", async (_req, res) => {
+  var dbOk = true;
+  var dbError = null;
+  try {
+    await pool.query("select 1");
+  } catch (err) {
+    dbOk = false;
+    dbError = err.message;
+  }
+  var mem = process.memoryUsage();
+  var uptimeSec = Math.floor((Date.now() - _serverStartTime) / 1000);
+  var health = {
+    success: dbOk,
+    status: dbOk ? "healthy" : "degraded",
+    version: "5.1.0",
+    uptime: uptimeSec + "s",
+    database: dbOk ? "connected" : "unavailable",
+    dbError: dbError || undefined,
+    pool: {
+      total: pool.totalCount,
+      idle: pool.idleCount,
+      waiting: pool.waitingCount
+    },
+    memory: {
+      rss: Math.floor(mem.rss / 1048576) + "MB",
+      heapUsed: Math.floor(mem.heapUsed / 1048576) + "MB",
+      heapTotal: Math.floor(mem.heapTotal / 1048576) + "MB"
+    },
+    requests: {
+      total: _requestMetrics.total,
+      errors: _requestMetrics.errors
+    }
+  };
+  res.status(dbOk ? 200 : 503).json(health);
+});
+
+app.use(function (_req, _res, next) {
+  _requestMetrics.total++;
+  var end = _res.json;
+  _res.json = function (body) {
+    if (_res.statusCode >= 400) _requestMetrics.errors++;
+    return end.call(this, body);
+  };
+  next();
+});
+
+app.get("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
+  const schoolId = req.authSchoolId || normalizeSchoolId(req.params.schoolId);
+  try {
+    const database = await getSchoolDatabase(schoolId);
+    if (!database) {
+      return res.json({ success: true, school_id: schoolId, database: null });
+    }
+    return res.json({ success: true, school_id: schoolId, database: database });
+  } catch (error) {
+    console.error("GET /api/database/" + schoolId + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: "Unable to load database." });
+  }
+});
+
+app.post("/api/database/:schoolId", requireSchoolAuth, async (req, res) => {
+  const schoolId = req.authSchoolId || normalizeSchoolId(req.params.schoolId);
+  const incomingDb = req.body && req.body.database ? req.body.database : {};
+  try {
+    const licCheck = await pool.query("select school_id, license_token, status from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    if (!licCheck.rowCount) {
+      console.warn("POST /api/database/" + schoolId + " — school not in license_accounts. Rejecting save (no auto-create).");
+      return res.status(403).json({ success: false, message: "School not activated. Please login with activated school credentials." });
+    } else {
+      const lic = licCheck.rows[0];
+      const status = String(lic.status || "").toLowerCase();
+      if (status !== "active") {
+        return res.status(403).json({ success: false, message: "School account is " + status + ". Please contact Super Admin." });
+      }
+    }
+    delete incomingDb._replace;
+    await saveSchoolDatabaseWithMirrors(schoolId, incomingDb);
+    try {
+      const newName = String((incomingDb.school && incomingDb.school.name) || "").trim();
+      if (newName) {
+        await pool.query("update public.license_accounts set school_name = $1, updated_at = now() where school_id = $2", [newName, schoolId]);
+      }
+    } catch (_e) {}
+    console.log("POST /api/database/" + schoolId + " — SAVED OK");
+    return res.json({ success: true, school_id: schoolId });
+  } catch (error) {
+    console.error("POST /api/database/" + schoolId + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: "Unable to save online database." });
+  }
+});
+
+app.post("/api/database/:schoolId/resync", requireSchoolAuth, async (req, res) => {
+  const schoolId = req.authSchoolId || normalizeSchoolId(req.params.schoolId);
+  try {
+    const licCheck = await pool.query("select school_id, status from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    if (!licCheck.rowCount) {
+      return res.status(403).json({ success: false, message: "School not activated." });
+    }
+    const status = String(licCheck.rows[0].status || "").toLowerCase();
+    if (status !== "active") {
+      return res.status(403).json({ success: false, message: "School account is " + status + "." });
+    }
+    const dbResult = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
+    if (!dbResult.rowCount) {
+      return res.json({ success: true, message: "No database found for this school.", resynced: 0 });
+    }
+    let blob = dbResult.rows[0].database || {};
+    if (typeof blob === "string") { try { blob = JSON.parse(blob); } catch (_e) { blob = {}; } }
+    await saveSchoolDatabaseWithMirrors(schoolId, blob);
+    const checkResult = await pool.query("select (select count(*) from public.students where school_id = $1) as students, (select count(*) from public.employees where school_id = $1) as employees, (select count(*) from public.classes where school_id = $1) as classes", [schoolId]);
+    const counts = checkResult.rows[0] || {};
+    console.log("POST /api/database/" + schoolId + "/resync — OK", counts);
+    return res.json({ success: true, message: "Database re-synced from JSONB blob.", counts: counts });
+  } catch (error) {
+    console.error("POST /api/database/" + schoolId + "/resync — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: "Re-sync failed." });
+  }
+});
+
+app.get("/api/school/notifications/:schoolId", requireSchoolAuth, async (req, res) => {
+  const schoolId = req.authSchoolId || normalizeSchoolId(req.params.schoolId);
+  try {
+    const result = await pool.query(
+      "select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20",
+      [schoolId]
+    );
+    return res.json({ success: true, notifications: result.rows });
+  } catch (error) {
+    console.error("GET /api/school/notifications error:", error.message);
+    return res.status(500).json({ success: false, message: "Failed to load notifications." });
+  }
+});
+
+app.post("/api/school/profile/:schoolId", requireSchoolAuth, async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  const profile = req.body && req.body.profile ? req.body.profile : {};
+  const schoolData = req.body && req.body.school ? req.body.school : {};
+  try {
+    const licCheck = await pool.query("select school_id from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    if (!licCheck.rowCount) {
+      return res.status(403).json({ success: false, message: "School not activated." });
+    }
+    if (profile.name && String(profile.name).trim()) {
+      await pool.query("update public.license_accounts set school_name = $1, updated_at = now() where school_id = $2", [String(profile.name).trim(), schoolId]);
+    }
+    const dbResult = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
+    let db = dbResult.rowCount ? (dbResult.rows[0].database || {}) : {};
+    if (typeof db === "string") { try { db = JSON.parse(db); } catch (_e) { db = {}; } }
+    db.generalSettings = db.generalSettings || {};
+    db.generalSettings.instituteProfile = Object.assign(db.generalSettings.instituteProfile || {}, profile);
+    db.school = Object.assign(db.school || {}, schoolData);
+    await pool.query(`
+      insert into public.school_databases (school_id, database, updated_at)
+      values ($1, $2::jsonb, now())
+      on conflict (school_id)
+      do update set database = excluded.database, updated_at = now()
+    `, [schoolId, JSON.stringify(db)]);
+    console.log("POST /api/school/profile/" + schoolId + " — PROFILE SAVED OK");
+    return res.json({ success: true, school_id: schoolId, profile: db.generalSettings.instituteProfile, school: db.school });
+  } catch (error) {
+    console.error("POST /api/school/profile/" + schoolId + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: "Unable to save profile." });
+  }
+});
+
+app.get("/api/school-profile/:schoolId", requireSchoolAuth, async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  try {
+    const licResult = await pool.query(
+      "select school_id, school_name, email, status, plan, start_date, expiry_date, currency, symbol, timezone from public.license_accounts where school_id = $1 limit 1",
+      [schoolId]
+    );
+    if (!licResult.rowCount) {
+      return res.status(404).json({ success: false, message: "School not found." });
+    }
+    const lic = licResult.rows[0];
+    let profile = {};
+    try {
+      const gsResult = await pool.query(
+        "select setting_value from public.school_settings where school_id = $1 and setting_key = 'instituteProfile' limit 1",
+        [schoolId]
+      );
+      if (gsResult.rowCount && gsResult.rows[0].setting_value) {
+        profile = gsResult.rows[0].setting_value;
+      }
+    } catch (_e) {}
+    if (!profile.name && lic.school_name) profile.name = lic.school_name;
+    return res.json({ success: true, school_id: schoolId, profile, license: { school_name: lic.school_name, email: lic.email, status: lic.status, plan: lic.plan, start_date: lic.start_date, expiry_date: lic.expiry_date, currency: lic.currency, symbol: lic.symbol, timezone: lic.timezone } });
+  } catch (error) {
+    console.error("GET /api/school-profile/" + schoolId + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: "Unable to read profile." });
+  }
+});
+
+app.put("/api/school-profile/:schoolId", requireSchoolAuth, async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  const body = req.body || {};
+  const updates = {};
+  if (body.school_name !== undefined) updates.school_name = String(body.school_name || "").trim();
+  if (body.email !== undefined) updates.email = String(body.email || "").trim().toLowerCase();
+  if (body.password !== undefined) {
+    updates.password = body.password ? await hashPassword(body.password) : "";
+  }
+  if (body.currency !== undefined) updates.currency = String(body.currency || "PKR").trim();
+  if (body.symbol !== undefined) updates.symbol = String(body.symbol || "Rs").trim();
+  if (body.timezone !== undefined) updates.timezone = String(body.timezone || "Asia/Karachi").trim();
+  try {
+    if (Object.keys(updates).length > 0) {
+      const setClauses = Object.keys(updates).map((k, i) => `${k} = $${i + 1}`);
+      setClauses.push("updated_at = now()");
+      const values = Object.values(updates);
+      values.push(schoolId);
+      await pool.query(`update public.license_accounts set ${setClauses.join(", ")} where school_id = $${values.length}`, values);
+    }
+    if (body.instituteProfile) {
+      await pool.query(
+        "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, 'instituteProfile', $2::jsonb, now()) on conflict (school_id, setting_key) do update set setting_value = excluded.setting_value, updated_at = now()",
+        [schoolId, JSON.stringify(body.instituteProfile)]
+      );
+    }
+    const licResult = await pool.query(
+      "select school_id, school_name, email, status, plan, start_date, expiry_date from public.license_accounts where school_id = $1 limit 1",
+      [schoolId]
+    );
+    return res.json({ success: true, school_id: schoolId, license: licResult.rowCount ? licResult.rows[0] : {} });
+  } catch (error) {
+    console.error("PUT /api/school-profile/" + schoolId + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: "Unable to update profile." });
+  }
+});
+
+app.get("/api/school-settings/:schoolId/:key", requireSchoolAuth, async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  const key = String(req.params.key || "").trim();
+  if (!key) return res.status(400).json({ success: false, message: "Setting key required." });
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  try {
+    if (GENERAL_SETTINGS_ARRAY_KEYS.indexOf(key) >= 0) {
+      const result = await pool.query(
+        "select item_id, item_data from public.school_setting_items where school_id = $1 and setting_key = $2 order by updated_at asc",
+        [schoolId, key]
+      );
+      return res.json({ success: true, key, items: result.rows.map(r => r.item_data || {}) });
+    } else {
+      const result = await pool.query(
+        "select setting_value from public.school_settings where school_id = $1 and setting_key = $2 limit 1",
+        [schoolId, key]
+      );
+      return res.json({ success: true, key, value: result.rowCount ? result.rows[0].setting_value : null });
+    }
+  } catch (error) {
+    console.error("GET /api/school-settings/" + schoolId + "/" + key + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.put("/api/school-settings/:schoolId/:key", requireSchoolAuth, async (req, res) => {
+  const schoolId = normalizeSchoolId(req.params.schoolId);
+  const key = String(req.params.key || "").trim();
+  if (!key) return res.status(400).json({ success: false, message: "Setting key required." });
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      if (GENERAL_SETTINGS_ARRAY_KEYS.indexOf(key) >= 0) {
+        const items = Array.isArray(req.body) ? req.body : (req.body.items || []);
+        await client.query("delete from public.school_setting_items where school_id = $1 and setting_key = $2", [schoolId, key]);
+        for (const item of items) {
+          const itemId = item && item.id ? String(item.id) : "item-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+          await client.query(
+            "insert into public.school_setting_items (school_id, setting_key, item_id, item_data, updated_at) values ($1, $2, $3, $4::jsonb, now())",
+            [schoolId, key, itemId, JSON.stringify(item || {})]
+          );
+        }
+      } else {
+        const value = req.body.value !== undefined ? req.body.value : req.body;
+        await client.query(
+          "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, $2, $3::jsonb, now()) on conflict (school_id, setting_key) do update set setting_value = excluded.setting_value, updated_at = now()",
+          [schoolId, key, JSON.stringify(value)]
+        );
+      }
+      await client.query("commit");
+    } catch (e) {
+      await client.query("rollback");
+      throw e;
+    } finally {
+      client.release();
+    }
+    return res.json({ success: true, key });
+  } catch (error) {
+    console.error("PUT /api/school-settings/" + schoolId + "/" + key + " — ERROR:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/admin/license", requireSuperAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const schoolId = normalizeSchoolId(body.school_id);
+    const schoolName = String(body.school_name || "School Admin").trim();
+    const email = String(body.email || "").trim().toLowerCase();
+    const password = String(body.password || "").trim();
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required." });
+    }
+    const hashedPassword = await hashPassword(password);
+    var _existing = await pool.query("select license_token, expiry_date, plan, start_date, status from public.license_accounts where school_id = $1", [schoolId]);
+    var _ex = _existing.rowCount ? _existing.rows[0] : null;
+    var _newToken = (_ex && _ex.license_token) ? _ex.license_token : String(body.license_token || `LIC-${schoolId}`);
+    var _expiry = body.expiry_date || (_ex && _ex.expiry_date) || null;
+    var _plan = body.plan || (_ex && _ex.plan) || "monthly";
+    var _startDate = body.start_date || (_ex && _ex.start_date) || new Date().toISOString().slice(0, 10);
+    var _status = body.status || (_ex && _ex.status) || "active";
+    var _modulesLocked = body.modules_locked !== undefined ? Boolean(body.modules_locked) : false;
+    await pool.query(`
+      insert into public.license_accounts (
+        school_id, school_name, email, password, status, plan, start_date, expiry_date,
+        license_token, internet_required_after_days, modules_locked, updated_at
+      )
+      values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
+      on conflict (school_id)
+      do update set
+        school_name = excluded.school_name,
+        email = excluded.email,
+        password = excluded.password,
+        status = $5,
+        plan = $6,
+        start_date = $7,
+        expiry_date = $8,
+        license_token = $9,
+        internet_required_after_days = excluded.internet_required_after_days,
+        modules_locked = $11,
+        updated_at = now()
+    `, [
+      schoolId,
+      schoolName,
+      email,
+      hashedPassword,
+      _status,
+      _plan,
+      _startDate,
+      _expiry,
+      _newToken,
+      Number(body.internet_required_after_days || 20),
+      _modulesLocked
+    ]);
+    return res.json({ success: true, school_id: schoolId, license_token: _newToken });
+  } catch (error) {
+    console.error("POST /api/admin/license error:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+async function verifySupabaseAuth(email, password) {
+  var supaUrl = process.env.SUPABASE_URL;
+  var supaKey = process.env.SUPABASE_SECRET_KEY;
+  if (!supaUrl || !supaKey) return null;
+  try {
+    var resp = await fetch(supaUrl + "/auth/v1/token?grant_type=password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": supaKey },
+      body: JSON.stringify({ email: email, password: password, gotrue_meta_security: {} })
+    });
+    return resp.ok ? true : false;
+  } catch (_e) {
+    return null;
+  }
+}
+
+app.post("/api/activate-school", async (req, res) => {
+  try {
+    var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+    var rateKey = "activate:" + clientIp;
+    if (!checkRateLimit(rateKey)) {
+      return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+    }
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    var supaOk = await verifySupabaseAuth(email, password);
+    if (supaOk === false) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+    var row = null;
+    if (supaOk === true) {
+      row = (await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email])).rows[0];
+    } else {
+      var _r = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+      if (!_r.rowCount || !(await verifyPasswordHash(password, _r.rows[0].password))) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+      row = _r.rows[0];
+    }
+    if (!row) return res.status(401).json({ success: false, message: "Invalid school credentials." });
+    if (String(row.status || "").toLowerCase() !== "active") {
+      return res.status(403).json({ success: false, message: "Your school account has not been activated yet. Please contact SagarSoft Administration." });
+    }
+    if (row.modules_locked) {
+      return res.status(403).json({ success: false, message: "Account is locked. Please contact Super Admin." });
+    }
+    var _actNow = new Date().toISOString().slice(0, 10);
+    if (row.expiry_date && row.expiry_date <= _actNow) {
+      return res.status(403).json({ success: false, message: "Account license has expired. Please contact Super Admin to renew." });
+    }
+    await pool.query("update public.license_accounts set last_seen = now() where school_id = $1", [row.school_id]);
+    const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
+    return res.json(toLicensePayload(row, notes.rows));
+  } catch (error) {
+    console.error("POST /api/activate-school error:", error.message);
+    return res.status(500).json({ success: false, message: "Activation failed." });
+  }
+});
+
+app.post("/api/mobile/login", async (req, res) => {
+  var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+  var rateKey = "mobile:" + clientIp;
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+  }
+  try {
+    const identifier = String(req.body.identifier || req.body.email || req.body.school_id || "").trim();
+    const email = identifier.toLowerCase();
+    const password = String(req.body.password || "");
+    const requestedRole = String(req.body.role || "admin").trim().toLowerCase();
+    const clientDatabase = req.body.database || null;
+    if (!identifier || !password) {
+      return res.status(400).json({ success: false, message: "School email / ID and password are required." });
+    }
+
+    if (requestedRole === "superadmin") {
+      var supaOk = await verifySupabaseAuth(email, password);
+      if (supaOk === true) {
+        var supaResult = await pool.query("select * from public.license_accounts where lower(email) = $1 limit 1", [email]);
+        if (supaResult.rowCount) {
+          var lic = supaResult.rows[0];
+          return res.json({ success: true, license: toLicensePayload(lic, []), user: { id: "USR-SUPER-001", name: "SagarSoft Super Admin", email: email, role: "superadmin" }, school_id: lic.school_id, license_token: lic.license_token || generateToken(), database: {} });
+        }
+      }
+      return res.status(401).json({ success: false, message: "Invalid superadmin credentials." });
+    }
+
+    var supaVerified = await verifySupabaseAuth(email, password);
+
+    if (supaVerified === true) {
+      var licRow = await pool.query(`
+        select la.*,
+          coalesce((select sum(pg_column_size(sd.database)) from public.school_databases sd where sd.school_id = la.school_id), 0) as db_size
+        from public.license_accounts la
+        where lower(la.email) = $1
+        order by db_size desc, la.updated_at desc
+        limit 1
+      `, [email]);
+      if (licRow.rowCount) {
+        var lic2 = licRow.rows[0];
+        var nowDate2 = new Date().toISOString().slice(0, 10);
+        var expiryDate2 = lic2.expiry_date || "";
+        var isFutureExpiry2 = expiryDate2 && expiryDate2 > nowDate2;
+        if (isFutureExpiry2 && (String(lic2.status || "").toLowerCase() !== "active" || lic2.modules_locked)) {
+          await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [lic2.school_id]).catch(function() {});
+          lic2.status = "active";
+          lic2.modules_locked = false;
+        }
+        if (!isFutureExpiry2 && expiryDate2 && expiryDate2 <= nowDate2) {
+          return res.status(403).json({ success: false, message: "Account license has expired. Please contact Super Admin to renew." });
+        }
+        if (String(lic2.status || "").toLowerCase() !== "active") {
+          return res.status(403).json({ success: false, message: "Account not activated. Please contact Super Admin to activate your school." });
+        }
+        if (lic2.modules_locked) {
+          return res.status(403).json({ success: false, message: "Account is locked. Please contact Super Admin." });
+        }
+        var db2 = await getSchoolDatabase(lic2.school_id);
+        var notes2 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic2.school_id]);
+        var _finalToken = lic2.license_token;
+        if (!_finalToken) {
+          _finalToken = generateToken();
+          await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [_finalToken, lic2.school_id]).catch(function() {});
+        }
+        var _loginPayload2 = { success: true, license: toLicensePayload(lic2, notes2.rows), user: { id: "USR-ADMIN-001", name: lic2.school_name || "School Admin", email: email, role: "admin" }, school_id: lic2.school_id, license_token: _finalToken, database: db2 || {} };
+        return res.json(_loginPayload2);
+      }
+    }
+
+    var licOnly = await pool.query(`
+      select la.*, 
+        coalesce((select pg_column_size(sd.database) from public.school_databases sd where sd.school_id = la.school_id), 0) as db_size
+      from public.license_accounts la 
+      where lower(email) = $1 
+      order by db_size desc, la.updated_at desc 
+      limit 1
+    `, [email]);
+    if (licOnly.rowCount) {
+      var lic3 = licOnly.rows[0];
+      var pwdOk = false;
+      if (lic3.password) {
+        if (await verifyPasswordHash(password, lic3.password)) pwdOk = true;
+      }
+      if (pwdOk) {
+        var nowDate3 = new Date().toISOString().slice(0, 10);
+        var expiryDate3 = lic3.expiry_date || "";
+        var isFutureExpiry3 = expiryDate3 && expiryDate3 > nowDate3;
+        if (isFutureExpiry3 && (String(lic3.status || "").toLowerCase() !== "active" || lic3.modules_locked)) {
+          await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [lic3.school_id]).catch(function() {});
+          lic3.status = "active";
+          lic3.modules_locked = false;
+        }
+        if (!isFutureExpiry3 && expiryDate3 && expiryDate3 <= nowDate3) {
+          return res.status(403).json({ success: false, message: "Account license has expired. Please contact Super Admin to renew." });
+        }
+        if (String(lic3.status || "").toLowerCase() !== "active") {
+          return res.status(403).json({ success: false, message: "Account not activated. Please contact Super Admin to activate your school." });
+        }
+        if (lic3.modules_locked) {
+          return res.status(403).json({ success: false, message: "Account is locked. Please contact Super Admin." });
+        }
+        pool.query("delete from public.license_accounts where lower(email) = $1 and school_id != $2 and school_id not in (select school_id from public.school_databases where school_id is not null)", [email, lic3.school_id]).catch(function(){});
+        var db3 = await getSchoolDatabase(lic3.school_id);
+        db3 = db3 || {};
+        db3.generalSettings = db3.generalSettings || {};
+        db3.school = db3.school || {};
+        db3.school.name = lic3.school_name || db3.school.name || "School Admin";
+        if (!Array.isArray(db3.users)) db3.users = [];
+        var existingAdmin = db3.users.find(function(u) { return String(u.email || "").toLowerCase() === email && u.role === "admin"; });
+        if (!existingAdmin) {
+          var newUserId = "USR-ADMIN-" + Date.now();
+          var hashedPw = await hashPassword(password).catch(function() { return password; });
+          var newAdminUser = { id: newUserId, name: lic3.school_name || "School Admin", email: email, password: hashedPw, role: "admin", active: true, phone: "" };
+          try {
+            await pool.query(
+              "insert into public.app_users (id, school_id, source_id, data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, source_id) do update set data = excluded.data, updated_at = now()",
+              [newUserId, lic3.school_id, newUserId, JSON.stringify(newAdminUser)]
+            );
+            await pool.query(
+              "update public.school_databases set database = jsonb_set(coalesce(database, '{}'::jsonb), '{users}', coalesce(database->'users', '[]'::jsonb) || $1::jsonb), updated_at = now() where school_id = $2",
+              [JSON.stringify([newAdminUser]), lic3.school_id]
+            );
+          } catch (addErr) { console.error("Auto-add admin user error:", addErr.message); }
+          db3.users.push(newAdminUser);
+        }
+        var notes4 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [lic3.school_id]);
+        var loginRole = "admin";
+        var loginUserId = "USR-ADMIN-" + Date.now();
+        if (existingAdmin) { loginUserId = existingAdmin.id; loginRole = existingAdmin.role || "admin"; }
+        var actId = "ACT-" + Date.now();
+        pool.query("insert into public.account_activity (school_id, source_id, title, message, role, user_email, data, created_at) values ($1, $2, $3, $4, $5, $6, $7::jsonb, now()) on conflict (school_id, source_id) do nothing", [
+          lic3.school_id, actId, loginRole + " login", (lic3.school_name || "School Admin") + " signed in successfully.", loginRole, email,
+          JSON.stringify({ id: actId, title: loginRole + " login", role: loginRole, email: email, createdAt: new Date().toISOString() })
+        ]).catch(function(e) { console.error("account_activity log error:", e.message); });
+        var _finalToken3 = lic3.license_token;
+        if (!_finalToken3) {
+          _finalToken3 = generateToken();
+          await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [_finalToken3, lic3.school_id]).catch(function() {});
+        }
+        return res.json({ success: true, license: toLicensePayload(lic3, notes4.rows), user: { id: loginUserId, name: lic3.school_name || "School Admin", email: email, role: loginRole }, school_id: lic3.school_id, license_token: _finalToken3, database: db3 || {} });
+      }
+    }
+
+    var searchResult = await pool.query(`
+      select sd.school_id, sd.database, la.*,
+        pg_column_size(sd.database) as db_size
+      from public.school_databases sd
+      join public.license_accounts la on la.school_id = sd.school_id
+      where exists (
+        select 1
+        from jsonb_array_elements(coalesce(sd.database->'users', '[]'::jsonb)) app_user
+        where lower(app_user->>'email') = $1
+      )
+      order by db_size desc, la.updated_at desc
+      limit 1
+    `, [email]);
+
+    if (searchResult.rowCount) {
+      var foundLicense = searchResult.rows[0];
+      if (String(foundLicense.status || "").toLowerCase() !== "active") {
+        return res.status(403).json({ success: false, message: "Account not activated. Please contact Super Admin to activate your school." });
+      }
+      if (foundLicense.modules_locked) {
+        return res.status(403).json({ success: false, message: "Account is locked. Please contact Super Admin." });
+      }
+      var foundDb = foundLicense.database || {};
+      var matchedUser = Array.isArray(foundDb.users)
+        ? foundDb.users.find(function (u) {
+            return String(u.email || "").trim().toLowerCase() === email;
+          })
+        : null;
+      if (matchedUser) {
+        var pwdOk2 = false;
+        if (matchedUser.password) {
+          if (await verifyPasswordHash(password, matchedUser.password)) pwdOk2 = true;
+        }
+        if (pwdOk2) {
+          var _path3Token = foundLicense.license_token;
+          if (!_path3Token) {
+            _path3Token = generateToken();
+            await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [_path3Token, foundLicense.school_id]).catch(function () {});
+          }
+          var notes3 = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [foundLicense.school_id]);
+          return res.json({ success: true, license: toLicensePayload(foundLicense, notes3.rows), user: { id: matchedUser.id || "USR-ADMIN-001", name: matchedUser.name || foundLicense.school_name || "School Admin", email: email, role: matchedUser.role || "admin" }, school_id: foundLicense.school_id, license_token: _path3Token, database: foundDb || {} });
+        }
+      }
+    }
+
+    return res.status(401).json({ success: false, message: "Invalid credentials." });
+  } catch (error) {
+    console.error("POST /api/mobile/login error:", error.message);
+    return res.status(500).json({ success: false, message: "Login failed. Please try again." });
+  }
+});
+
+app.post("/api/resolve-school", async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    if (!email) return res.status(400).json({ success: false, message: "Email required." });
+    const result = await pool.query("select school_id from public.license_accounts where lower(email) = $1 limit 1", [email]);
+    if (!result.rowCount) {
+      return res.json({ success: true, school_id: null });
+    }
+    return res.json({ success: true, school_id: result.rows[0].school_id });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/school/register", async (req, res) => {
+  var regRateKey = "register:" + (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
+  if (!checkRateLimit(regRateKey)) {
+    return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
+  }
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const password = String(req.body.password || "");
+    const schoolName = String(req.body.school_name || "School Admin").trim();
+    if (!email || !password) return res.status(400).json({ success: false, message: "Email and password required." });
+    const existingCheck = await pool.query("select school_id from public.license_accounts where lower(email) = $1 limit 1", [email]);
+    if (existingCheck.rowCount) {
+      const existingSchoolId = existingCheck.rows[0].school_id;
+      const existingLic = await pool.query("select school_id, license_token, status, modules_locked, expiry_date from public.license_accounts where school_id = $1 limit 1", [existingSchoolId]);
+      if (existingLic.rowCount) {
+        const lic = existingLic.rows[0];
+        const licToken = lic.license_token || generateToken();
+        if (!lic.license_token) {
+          await pool.query("UPDATE public.license_accounts SET license_token = $1, updated_at = now() WHERE school_id = $2", [licToken, existingSchoolId]).catch(function() {});
+        }
+        const db = await getSchoolDatabase(existingSchoolId);
+        return res.json({ success: true, school_id: existingSchoolId, license_token: licToken, database: db || {} });
+      }
+    }
+    const schoolId = "SCH-" + Date.now();
+    const licToken = generateToken();
+    const hashedPw = await hashPassword(password);
+    await pool.query(`insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, updated_at) values ($1, $2, $3, $4, 'active', 'monthly', $5, $6, $7, now()) on conflict (school_id) do update set school_name = excluded.school_name, email = excluded.email, password = excluded.password, status = excluded.status, license_token = excluded.license_token, updated_at = now()`, [schoolId, schoolName, email, hashedPw, new Date().toISOString().slice(0, 10), new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10), licToken]);
+    const db = await getSchoolDatabase(schoolId);
+    return res.json({ success: true, school_id: schoolId, license_token: licToken, database: db || {} });
+  } catch (error) {
+    console.error("POST /api/school/register error:", error.message);
+    return res.status(500).json({ success: false, message: "Registration failed. Please try again." });
+  }
+});
+
+app.get("/api/mobile/database/:schoolId", async (req, res) => {
+  try {
+    const schoolId = normalizeSchoolId(req.params.schoolId);
+    const token = String(req.query.license_token || req.headers["x-license-token"] || "").trim();
+    const license = await findLicenseByToken(schoolId, token);
+    if (!license || !isLicenseUsable(license)) {
+      return res.status(401).json({ success: false, message: "Invalid or inactive license." });
+    }
+    return res.json({ success: true, school_id: schoolId, database: await getSchoolDatabase(schoolId) || {} });
+  } catch (error) {
+    console.error("GET /api/mobile/database/:schoolId error:", error.message);
+    return res.status(500).json({ success: false, message: "Failed to load school database." });
+  }
+});
+
+app.post("/api/mobile/database/:schoolId", async (req, res) => {
+  try {
+    const schoolId = normalizeSchoolId(req.params.schoolId);
+    const token = String(req.body.license_token || req.headers["x-license-token"] || "").trim();
+    const license = await findLicenseByToken(schoolId, token);
+    if (!license || !isLicenseUsable(license)) {
+      return res.status(401).json({ success: false, message: "Invalid or inactive license." });
+    }
+    await saveSchoolDatabaseWithMirrors(schoolId, req.body.database || {});
+    return res.json({ success: true, school_id: schoolId });
+  } catch (error) {
+    console.error("POST /api/mobile/database/:schoolId error:", error.message);
+    return res.status(500).json({ success: false, message: "Unable to save mobile database." });
+  }
+});
+
+app.post("/api/check-license", async (req, res) => {
+  const schoolId = normalizeSchoolId(req.body.school_id);
+  const token = String(req.body.license_token || "").trim();
+  try {
+    const result = await pool.query(`
+      select * from public.license_accounts
+      where school_id = $1 and license_token = $2
+      limit 1
+    `, [schoolId, token]);
+    if (!result.rowCount) {
+      return res.status(401).json({ success: false, message: "License not found." });
+    }
+    const row = result.rows[0];
+    const notes = await pool.query("select id, title, message, created_at from public.license_notifications where school_id = $1 order by created_at desc limit 20", [row.school_id]);
+    var payload = toLicensePayload(row, notes.rows);
+    delete payload.password;
+    return res.json(payload);
+  } catch (error) {
+    console.error("POST /api/check-license error:", error.message);
+    return res.status(500).json({ success: false, message: "License check failed." });
+  }
+});
+
+app.post("/api/sync-school-data", requireSuperAdmin, async (req, res) => {
+  const schoolId = normalizeSchoolId(req.body.school_id);
+  if (!schoolId) {
+    return res.status(400).json({ success: false, message: "school_id is required." });
+  }
+  const schoolName = String(req.body.school_name || "").trim();
+  const status = String(req.body.activation_status || "active").trim().toLowerCase();
+  const plan = String(req.body.plan || "monthly").trim();
+  const email = String(req.body.email || "").trim().toLowerCase();
+  const password = String(req.body.password || "").trim();
+  if (!email) {
+    return res.status(400).json({ success: false, message: "Email is required for school sync." });
+  }
+  try {
+    const hashedPw = password ? await hashPassword(password) : null;
+    await pool.query(`
+      insert into public.license_accounts (school_id, school_name, email, password, status, plan, start_date, expiry_date, license_token, updated_at)
+      values ($1, $2, nullif($3, ''), nullif($4, ''), $5, $6, $7, $8, $9, now())
+      on conflict (school_id)
+      do update set
+        school_name = coalesce(nullif(excluded.school_name, ''), license_accounts.school_name),
+        email = coalesce(nullif(excluded.email, ''), license_accounts.email),
+        password = coalesce(nullif(excluded.password, ''), license_accounts.password),
+        status = excluded.status,
+        plan = excluded.plan,
+        start_date = coalesce(excluded.start_date, license_accounts.start_date),
+        expiry_date = coalesce(excluded.expiry_date, license_accounts.expiry_date),
+        license_token = coalesce(license_accounts.license_token, excluded.license_token),
+        updated_at = now()
+    `, [
+      schoolId,
+      schoolName,
+      email,
+      hashedPw,
+      status,
+      plan,
+      req.body.start_date || null,
+      req.body.expiry_date || null,
+      String(req.body.license_token || `LIC-${schoolId}`)
+    ]);
+    const result = await pool.query("select * from public.license_accounts where school_id = $1", [schoolId]);
+    return res.json({ success: true, license: toLicensePayload(result.rows[0], []) });
+  } catch (error) {
+    console.error("POST /api/sync-school-data error:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+
+
+app.get("/api/admin/schools", requireSuperAdmin, async function (req, res) {
+  try {
+    var rows = await pool.query("select school_id, school_name, email, status, plan, start_date, expiry_date, modules_locked, last_seen, timezone, currency, symbol, created_at, updated_at from public.license_accounts order by updated_at desc");
+    return res.json({ success: true, schools: rows.rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/admin/schools/resequence", requireSuperAdmin, async function (req, res) {
+  var rateKey = "resequence:" + (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
+  }
+  try {
+    await pool.query("ALTER TABLE public.license_notifications DROP CONSTRAINT IF EXISTS license_notifications_school_id_fkey");
+    await pool.query("ALTER TABLE public.school_databases DROP CONSTRAINT IF EXISTS school_databases_school_id_fkey");
+    await pool.query("DELETE FROM public.license_notifications WHERE school_id NOT IN (SELECT school_id FROM public.license_accounts)");
+    var _rows = await pool.query("SELECT school_id FROM public.license_accounts ORDER BY created_at asc");
+    var _year = new Date().getFullYear();
+    var _updates = [];
+    for (var _i = 0; _i < _rows.rows.length; _i++) {
+      var _temp = "__TEMP_RESEQ_" + _i + "__";
+      await pool.query("UPDATE public.license_accounts SET school_id = $1 WHERE school_id = $2", [_temp, _rows.rows[_i].school_id]);
+      await pool.query("UPDATE public.school_databases SET school_id = $1 WHERE school_id = $2", [_temp, _rows.rows[_i].school_id]);
+      await pool.query("UPDATE public.license_notifications SET school_id = $1 WHERE school_id = $2", [_temp, _rows.rows[_i].school_id]);
+      _updates.push({ old: _rows.rows[_i].school_id, temp: _temp });
+    }
+    for (var _j = 0; _j < _updates.length; _j++) {
+      var _newId = "SCH-" + _year + "-" + String(_j + 1).padStart(3, '0');
+      await pool.query("UPDATE public.license_accounts SET school_id = $1 WHERE school_id = $2", [_newId, _updates[_j].temp]);
+      await pool.query("UPDATE public.school_databases SET school_id = $1 WHERE school_id = $2", [_newId, _updates[_j].temp]);
+      await pool.query("UPDATE public.license_notifications SET school_id = $1 WHERE school_id = $2", [_newId, _updates[_j].temp]);
+      _updates[_j].new_id = _newId;
+    }
+    await pool.query("ALTER TABLE public.license_notifications ADD CONSTRAINT license_notifications_school_id_fkey FOREIGN KEY (school_id) REFERENCES public.license_accounts(school_id) ON DELETE CASCADE");
+    var _result = await pool.query("SELECT school_id FROM public.license_accounts ORDER BY school_id asc");
+    return res.json({ success: true, schools: _result.rows, updated: _updates.length });
+  } catch (error) {
+    console.error("POST /api/admin/schools/resequence error:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/admin/schools", requireSuperAdmin, async function (req, res) {
+  delete req.body.school_id;
+  var schoolName = String(req.body.school_name || "").trim();
+  var email = String(req.body.email || "").trim().toLowerCase();
+  var password = String(req.body.password || "").trim();
+  var plan = String(req.body.plan || "premium").trim();
+  var startDate = req.body.start_date || new Date().toISOString().slice(0, 10);
+  var expiryDate = req.body.expiry_date || null;
+  if (!expiryDate) {
+    expiryDate = calculateExpiryDate(plan, startDate, req.body.custom_days);
+  }
+  if (!schoolName) return res.status(400).json({ success: false, message: "School name is required." });
+  if (!email) return res.status(400).json({ success: false, message: "Email is required." });
+  if (!password) return res.status(400).json({ success: false, message: "Password is required." });
+  var _client = await pool.connect();
+  var _newApiToken = generateToken();
+  try {
+    await _client.query("begin");
+    var _dupCheck = await _client.query("select school_id from public.license_accounts where email = $1", [email]);
+    if (_dupCheck.rows.length > 0) { await _client.query("rollback"); _client.release(); return res.status(409).json({ success: false, message: "This email is already registered with school: " + _dupCheck.rows[0].school_id + ". Use a different email." }); }
+    var _year = new Date().getFullYear();
+    var _maxResult = await _client.query("select max(school_id) as max_id from public.license_accounts where school_id like $1", ["SCH-" + _year + "-%"]);
+    var _lastId = _maxResult.rows[0].max_id;
+    var _num = 1;
+    if (_lastId) { var _parts = _lastId.split('-'); _num = parseInt(_parts[_parts.length - 1], 10) + 1; }
+    var schoolId = "SCH-" + _year + "-" + String(_num).padStart(3, '0');
+    var hashedPassword = await hashPassword(password);
+    var _newToken = "LIC-" + schoolId;
+    await _client.query("insert into public.license_accounts (school_id, school_name, email, password, plan, status, start_date, expiry_date, modules_locked, timezone, currency, symbol, license_token, api_token, created_at, updated_at) values ($1,$2,$3,$4,$5,'active',$6,$7,false,'Asia/Karachi','PKR','Rs',$8,$9,now(),now())", [schoolId, schoolName, email, hashedPassword, plan, startDate, expiryDate, _newToken, _newApiToken]);
+    await _client.query("commit");
+    _client.release();
+
+    var supabaseUrl = process.env.SUPABASE_URL;
+    var supabaseKey = process.env.SUPABASE_SECRET_KEY;
+    if (supabaseUrl && supabaseKey) {
+      try {
+        var _supaResp = await fetch(supabaseUrl + "/auth/v1/admin/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "apikey": supabaseKey, "Authorization": "Bearer " + supabaseKey },
+          body: JSON.stringify({ email: email, password: password, email_confirm: true, user_metadata: { school_id: schoolId, school_name: schoolName } })
+        });
+        if (_supaResp.ok) { console.log("Supabase Auth user created for", email); }
+        else {
+          console.error("Supabase Auth user creation failed:", _supaResp.status);
+          if (_supaResp.status === 422 || _supaResp.status === 409) {
+            try {
+              var _listResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(email), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
+              if (_listResp.ok) {
+                var _listData = await _listResp.json();
+                if (_listData.users && _listData.users.length > 0) {
+                  await fetch(supabaseUrl + "/auth/v1/admin/users/" + _listData.users[0].id, { method: "PUT", headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: "Bearer " + supabaseKey }, body: JSON.stringify({ user_metadata: { school_id: schoolId, school_name: schoolName }, email_confirm: true }) });
+                  console.log("Supabase Auth user updated for " + email + " to school:" + schoolId);
+                }
+              }
+            } catch (_e2) { console.error("Supabase Auth fallback error:", _e2.message); }
+          }
+        }
+      } catch (_supabaseError) { console.error("Supabase Auth error:", _supabaseError.message); }
+    }
+
+    return res.json({ success: true, school_id: schoolId, version: "5.0.0" });
+  } catch (error) {
+    try { await _client.query("rollback"); } catch (_e3) {}
+    try { _client.release(); } catch (_e4) {}
+    console.error("POST /api/admin/schools error:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/auth/superadmin", async function (req, res) {
+  try {
+    var clientIp = req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown";
+    var rateKey = "superadmin:" + clientIp;
+    if (!checkRateLimit(rateKey)) {
+      return res.status(429).json({ success: false, message: "Too many login attempts. Please try again later." });
+    }
+    var email = String(req.body.email || "").trim().toLowerCase();
+    var password = String(req.body.password || "");
+    if (!email || !password) {
+      return res.status(400).json({ success: false, message: "Email and password are required." });
+    }
+    if (email !== SUPERADMIN_EMAIL) {
+      return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
+    }
+    if (!(await verifyPasswordHash(password, SUPERADMIN_PASSWORD_STORED))) {
+      return res.status(401).json({ success: false, message: "Invalid super admin credentials." });
+    }
+    var tokenPayload = {
+      role: "superadmin",
+      email: email,
+      name: "SagarSoft Super Admin",
+      iat: Date.now(),
+      exp: Date.now() + SUPERADMIN_TOKEN_EXPIRY_MS
+    };
+    var token = signToken(tokenPayload);
+    return res.json({
+      success: true,
+      message: "Login successful.",
+      token: token,
+      user: { id: "USR-SUPER-001", name: tokenPayload.name, email: email, role: "superadmin" }
+    });
+  } catch (error) {
+    console.error("POST /api/auth/superadmin error:", error.message);
+    return res.status(500).json({ success: false, message: "Login failed." });
+  }
+});
+
+app.put("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, res) {
+  var schoolId = String(req.params.schoolId || "").trim();
+  if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
+  var body = req.body || {};
+  delete body.school_id;
+  try {
+    var sets = [];
+    var vals = [];
+    var idx = 1;
+    if (body.school_name !== undefined) { sets.push("school_name = $" + idx); vals.push(String(body.school_name)); idx++; }
+    if (body.email !== undefined) {
+      var _newEmail = String(body.email).trim().toLowerCase();
+      var _dupCheck = await pool.query("select school_id from public.license_accounts where email = $1 and school_id != $2", [_newEmail, schoolId]);
+      if (_dupCheck.rows.length > 0) { return res.status(409).json({ success: false, message: "This email is already used by school: " + _dupCheck.rows[0].school_id + "." }); }
+      sets.push("email = $" + idx); vals.push(_newEmail); idx++;
+    }
+    if (body.password !== undefined) { sets.push("password = $" + idx); vals.push(await hashPassword(String(body.password))); idx++; }
+    if (body.status !== undefined) { sets.push("status = $" + idx); vals.push(String(body.status).trim().toLowerCase()); idx++; }
+    if (body.plan !== undefined) { sets.push("plan = $" + idx); vals.push(String(body.plan).trim()); idx++; }
+    if (body.start_date !== undefined) { sets.push("start_date = $" + idx); vals.push(body.start_date || null); idx++; }
+    if (body.expiry_date !== undefined) {
+      var _expVal = body.expiry_date || null;
+      if (!_expVal && body.plan) {
+        var _sd = body.start_date || vals[sets.indexOf("start_date = $" + (idx - 2))] || new Date().toISOString().slice(0, 10);
+        _expVal = calculateExpiryDate(body.plan, _sd, body.custom_days);
+      }
+      sets.push("expiry_date = $" + idx); vals.push(_expVal); idx++;
+    }
+    if (body.modules_locked !== undefined) { sets.push("modules_locked = $" + idx); vals.push(Boolean(body.modules_locked)); idx++; }
+    if (body.timezone !== undefined) { sets.push("timezone = $" + idx); vals.push(String(body.timezone)); idx++; }
+    if (body.currency !== undefined) { sets.push("currency = $" + idx); vals.push(String(body.currency)); idx++; }
+    if (body.symbol !== undefined) { sets.push("symbol = $" + idx); vals.push(String(body.symbol)); idx++; }
+    if (!sets.length) return res.status(400).json({ success: false, message: "No fields to update." });
+    sets.push("updated_at = now()");
+    vals.push(schoolId);
+    await pool.query("update public.license_accounts set " + sets.join(", ") + " where school_id = $" + idx, vals);
+
+    if (body.email !== undefined || body.password !== undefined || body.school_name !== undefined) {
+      var supabaseUrl = process.env.SUPABASE_URL;
+      var supabaseKey = process.env.SUPABASE_SECRET_KEY;
+      if (supabaseUrl && supabaseKey) {
+        try {
+          var _oldRow = await pool.query("select email from public.license_accounts where school_id = $1", [schoolId]);
+          var _oldEmail = _oldRow.rows.length > 0 ? _oldRow.rows[0].email : null;
+          var _targetEmail = body.email !== undefined ? String(body.email).trim().toLowerCase() : _oldEmail;
+          var _listResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(_oldEmail || _targetEmail), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
+          if (_listResp.ok) {
+            var _listData = await _listResp.json();
+            if (_listData.users && _listData.users.length > 0) {
+              var _uid = _listData.users[0].id;
+              var _updateBody = { user_metadata: { school_id: schoolId, school_name: body.school_name || _listData.users[0].user_metadata.school_name || "" } };
+              if (body.email !== undefined) _updateBody.email = _targetEmail;
+              if (body.password !== undefined) _updateBody.password = String(body.password);
+              _updateBody.email_confirm = true;
+              await fetch(supabaseUrl + "/auth/v1/admin/users/" + _uid, { method: "PUT", headers: { "Content-Type": "application/json", apikey: supabaseKey, Authorization: "Bearer " + supabaseKey }, body: JSON.stringify(_updateBody) });
+              console.log("Supabase Auth user updated for school:", schoolId);
+            }
+          }
+        } catch (_sbErr) { console.error("Supabase Auth update error:", _sbErr.message); }
+      }
+    }
+
+    var _finalRow = await pool.query("SELECT status, expiry_date, modules_locked FROM public.license_accounts WHERE school_id = $1", [schoolId]);
+    if (_finalRow.rowCount) {
+      var _fr = _finalRow.rows[0];
+      var _nowStr = new Date().toISOString().slice(0, 10);
+      if (_fr.expiry_date && _fr.expiry_date > _nowStr && (_fr.status !== "active" || _fr.modules_locked)) {
+        await pool.query("UPDATE public.license_accounts SET status = 'active', modules_locked = false, updated_at = now() WHERE school_id = $1", [schoolId]);
+      }
+    }
+    return res.json({ success: true, school_id: schoolId });
+  } catch (error) {
+    console.error("PUT /api/admin/schools error:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.delete("/api/admin/schools/:schoolId", requireSuperAdmin, async function (req, res) {
+  var schoolId = String(req.params.schoolId || "").trim();
+  if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
+  var _client = await pool.connect();
+  try {
+    var _delResult = await _client.query("select email from public.license_accounts where school_id = $1", [schoolId]);
+    var _delEmail = _delResult.rows.length > 0 ? _delResult.rows[0].email : null;
+
+    var _mustTables = ["license_notifications", "school_databases", "license_accounts"];
+    await _client.query("begin");
+    for (var _i = 0; _i < _mustTables.length; _i++) {
+      await _client.query("DELETE FROM public." + _mustTables[_i] + " WHERE school_id = $1", [schoolId]);
+    }
+    await _client.query("commit");
+
+    var _optTables = ["sms_queue", "sent_messages", "devices"];
+    for (var _j = 0; _j < _optTables.length; _j++) {
+      try {
+        await _client.query("SAVEPOINT sp_" + _optTables[_j]);
+        await _client.query("DELETE FROM public." + _optTables[_j] + " WHERE school_id = $1", [schoolId]);
+        await _client.query("RELEASE SAVEPOINT sp_" + _optTables[_j]);
+      } catch (_e) {
+        try { await _client.query("ROLLBACK TO SAVEPOINT sp_" + _optTables[_j]); } catch (_e2) {}
+      }
+    }
+
+    var supabaseUrl = process.env.SUPABASE_URL;
+    var supabaseKey = process.env.SUPABASE_SECRET_KEY;
+    if (_delEmail && supabaseUrl && supabaseKey) {
+      try {
+        var _delListResp = await fetch(supabaseUrl + "/auth/v1/admin/users?filter%5Bemail%5D=" + encodeURIComponent(_delEmail), { headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
+        if (_delListResp.ok) {
+          var _delListData = await _delListResp.json();
+          if (_delListData.users && _delListData.users.length > 0) {
+            var _delUid = _delListData.users[0].id;
+            await fetch(supabaseUrl + "/auth/v1/admin/users/" + _delUid, { method: "DELETE", headers: { apikey: supabaseKey, Authorization: "Bearer " + supabaseKey } });
+            console.log("Supabase Auth user deleted for", _delEmail);
+          }
+        }
+      } catch (_delSupaErr) { console.error("Supabase Auth delete error:", _delSupaErr.message); }
+    }
+
+    _client.release();
+    return res.json({ success: true, message: "School permanently deleted." });
+  } catch (error) {
+    try { await _client.query("rollback"); } catch (_e) {}
+    try { _client.release(); } catch (_e) {}
+    console.error("DELETE /api/admin/schools error:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/admin/schools/:schoolId/reset-tokens", requireSuperAdmin, async function (req, res) {
+  var rateKey = "reset-tokens:" + (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
+  }
+  var schoolId = String(req.params.schoolId || "").trim();
+  if (!schoolId) return res.status(400).json({ success: false, message: "School ID is required." });
+  try {
+    var newToken = "sft-" + Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36);
+    await pool.query("update public.license_accounts set license_token = $1, updated_at = now() where school_id = $2", [newToken, schoolId]);
+    return res.json({ success: true, message: "Tokens reset.", token: newToken });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/admin/notifications", requireSuperAdmin, async function (req, res) {
+  var title = String(req.body.title || "Notification").trim();
+  var message = String(req.body.message || "").trim();
+  var targetSchoolId = String(req.body.school_id || "").trim();
+  if (!message) return res.status(400).json({ success: false, message: "Message is required." });
+  try {
+    if (targetSchoolId) {
+      await pool.query("insert into public.license_notifications (school_id, title, message, created_at) values ($1, $2, $3, now())", [targetSchoolId, title, message]);
+    } else {
+      await pool.query("insert into public.license_notifications (school_id, title, message, created_at) select school_id, $1, $2, now() from public.license_accounts", [title, message]);
+    }
+    return res.json({ success: true, message: "Notification sent." });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.get("/api/admin/notifications", requireSuperAdmin, async function (req, res) {
+  try {
+    var result = await pool.query("select n.id, n.school_id, n.title, n.message, n.created_at, coalesce(a.school_name,'') as school_name from public.license_notifications n left join public.license_accounts a on n.school_id = a.school_id where n.hidden_from_admin is not true order by n.created_at desc limit 100");
+    return res.json({ success: true, notifications: result.rows });
+  } catch (error) {
+    console.error("GET /api/admin/notifications error:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.delete("/api/admin/notifications", requireSuperAdmin, async function (req, res) {
+  try {
+    await pool.query("DO $$ BEGIN IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='license_notifications' AND column_name='hidden_from_admin') THEN ALTER TABLE public.license_notifications ADD COLUMN hidden_from_admin boolean DEFAULT false; END IF; END $$;");
+    await pool.query("update public.license_notifications set hidden_from_admin = true where hidden_from_admin is not true");
+    return res.json({ success: true, message: "Notification history cleared." });
+  } catch (error) {
+    console.error("DELETE /api/admin/notifications error:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+var ALLOWED_TABLES = {
+  students: "students",
+  classes: "classes",
+  subjects: "subjects",
+  attendance: "attendance",
+  fees: "fees",
+  fee_invoices: "fee_invoices",
+  fee_collections: "fee_collections",
+  salary_payments: "salary_payments",
+  accounts_ledger: "accounts_ledger",
+  activity_logs: "activity_logs",
+  app_users: "app_users",
+  exams: "exams",
+  exam_marks: "exam_marks",
+  timetable: "timetable",
+  homework: "homework",
+  class_tests: "class_tests",
+  class_test_marks: "class_test_marks",
+  question_papers: "question_papers",
+  certificates: "certificates",
+  employees: "employees",
+  notices: "notices",
+  events: "events",
+  sms_templates: "sms_templates",
+  account_activity: "account_activity",
+  school_settings: "school_settings",
+  school_setting_items: "school_setting_items"
+};
+
+function sanitizeTableName(table) {
+  var name = String(table || "").trim().toLowerCase();
+  return ALLOWED_TABLES[name] || null;
+}
+
+app.get("/api/data/:schoolId/:table", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  var tableName = sanitizeTableName(req.params.table);
+  if (!tableName) {
+    return res.status(400).json({ success: false, message: "Invalid table name." });
+  }
+  try {
+    if (tableName === "school_settings") {
+      var result = await pool.query("select setting_key, setting_value, updated_at from public.school_settings where school_id = $1 order by updated_at desc", [schoolId]);
+      var mapped = result.rows.map(function (r) { return { id: r.setting_key, source_id: r.setting_key, data: r.setting_value, school_id: schoolId, updated_at: r.updated_at }; });
+      return res.json({ success: true, data: mapped });
+    }
+    if (tableName === "school_setting_items") {
+      var result = await pool.query("select setting_key, item_id, item_data, updated_at from public.school_setting_items where school_id = $1 order by updated_at desc", [schoolId]);
+      var mapped = result.rows.map(function (r) { return { id: r.item_id, source_id: r.item_id, data: r.item_data, settingKey: r.setting_key, school_id: schoolId, updated_at: r.updated_at }; });
+      return res.json({ success: true, data: mapped });
+    }
+    var result = await pool.query("select * from public." + tableName + " where school_id = $1 order by updated_at desc", [schoolId]);
+    return res.json({ success: true, data: result.rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/data/:schoolId/:table", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  var tableName = sanitizeTableName(req.params.table);
+  if (!tableName) {
+    return res.status(400).json({ success: false, message: "Invalid table name." });
+  }
+  var record = req.body.record || req.body.data || req.body || {};
+  if (!record.id) {
+    record.id = (tableName.slice(0, 3).toUpperCase() + "-" + Date.now() + "-" + Math.random().toString(16).slice(2, 8));
+  }
+  record.school_id = schoolId;
+  try {
+    if (tableName === "school_settings") {
+      var settingKey = record.id || record.source_id || "";
+      var settingValue = record.data !== undefined ? record.data : record;
+      await pool.query(
+        "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, $2, $3::jsonb, now()) on conflict (school_id, setting_key) do update set setting_value = excluded.setting_value, updated_at = now()",
+        [schoolId, settingKey, JSON.stringify(settingValue)]
+      );
+      return res.json({ success: true, data: { school_id: schoolId, setting_key: settingKey, setting_value: settingValue } });
+    }
+    if (tableName === "school_setting_items") {
+      var sKey = record.settingKey || record.setting_key || "";
+      var itemId = record.id || record.source_id || ("item-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6));
+      var itemData = record.data !== undefined ? record.data : record;
+      await pool.query(
+        "insert into public.school_setting_items (school_id, setting_key, item_id, item_data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, setting_key, item_id) do update set item_data = excluded.item_data, updated_at = now()",
+        [schoolId, sKey, itemId, JSON.stringify(itemData)]
+      );
+      return res.json({ success: true, data: { school_id: schoolId, setting_key: sKey, item_id: itemId, item_data: itemData } });
+    }
+    var _hasIdCol = ["students", "classes", "employees", "activity_logs"].indexOf(tableName) >= 0;
+    var insertResult;
+    if (_hasIdCol) {
+      insertResult = await pool.query(
+        "insert into public." + tableName + " (id, school_id, source_id, data, updated_at) values ($1, $2, $3, $4::jsonb, now()) on conflict (school_id, source_id) do update set data = excluded.data, updated_at = now() returning *",
+        [record.id, schoolId, record.id, JSON.stringify(record)]
+      );
+    } else {
+      insertResult = await pool.query(
+        "insert into public." + tableName + " (school_id, source_id, data, updated_at) values ($1, $2, $3::jsonb, now()) on conflict (school_id, source_id) do update set data = excluded.data, updated_at = now() returning *",
+        [schoolId, record.id || record.source_id || ("rec-" + Date.now()), JSON.stringify(record)]
+      );
+    }
+    return res.json({ success: true, data: insertResult.rows[0] || record });
+  } catch (error) {
+    console.error("[POST /api/data] ERROR table=" + req.params.table + " school=" + req.params.schoolId, error.message, error.stack);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.put("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  var tableName = sanitizeTableName(req.params.table);
+  var recordId = String(req.params.id || "").trim();
+  if (!tableName) {
+    return res.status(400).json({ success: false, message: "Invalid table name." });
+  }
+  if (!recordId) {
+    return res.status(400).json({ success: false, message: "Record id is required." });
+  }
+  var record = req.body.record || req.body.data || req.body || {};
+  record.id = recordId;
+  record.school_id = schoolId;
+  try {
+    if (tableName === "school_settings") {
+      var settingKey = recordId;
+      var settingValue = record.data !== undefined ? record.data : record;
+      var updResult = await pool.query(
+        "update public.school_settings set setting_value = $1::jsonb, updated_at = now() where school_id = $2 and setting_key = $3 returning *",
+        [JSON.stringify(settingValue), schoolId, settingKey]
+      );
+      if (!updResult.rowCount) {
+        await pool.query(
+          "insert into public.school_settings (school_id, setting_key, setting_value, updated_at) values ($1, $2, $3::jsonb, now())",
+          [schoolId, settingKey, JSON.stringify(settingValue)]
+        );
+      }
+      return res.json({ success: true, data: { school_id: schoolId, setting_key: settingKey, setting_value: settingValue } });
+    }
+    if (tableName === "school_setting_items") {
+      var sKey = record.settingKey || record.setting_key || "";
+      var itemId = recordId;
+      var itemData = record.data !== undefined ? record.data : record;
+      var updItem = await pool.query(
+        "update public.school_setting_items set item_data = $1::jsonb, updated_at = now() where school_id = $2 and setting_key = $3 and item_id = $4 returning *",
+        [JSON.stringify(itemData), schoolId, sKey, itemId]
+      );
+      if (!updItem.rowCount) {
+        await pool.query(
+          "insert into public.school_setting_items (school_id, setting_key, item_id, item_data, updated_at) values ($1, $2, $3, $4::jsonb, now())",
+          [schoolId, sKey, itemId, JSON.stringify(itemData)]
+        );
+      }
+      return res.json({ success: true, data: { school_id: schoolId, setting_key: sKey, item_id: itemId, item_data: itemData } });
+    }
+    var clientUpdatedAt = record.updated_at || req.headers["x-client-updated-at"];
+    if (clientUpdatedAt && tableName !== "school_settings" && tableName !== "school_setting_items") {
+      var existingRow = await pool.query(
+        "select updated_at from public." + tableName + " where school_id = $1 and source_id = $2",
+        [schoolId, recordId]
+      );
+      if (existingRow.rowCount > 0 && existingRow.rows[0].updated_at) {
+        var serverTime = new Date(existingRow.rows[0].updated_at).getTime();
+        var clientTime = new Date(clientUpdatedAt).getTime();
+        if (serverTime > clientTime + 1000) {
+          return res.status(409).json({
+            success: false,
+            message: "Conflict: this record was modified by another device.",
+            code: "CONFLICT",
+            serverRecord: existingRow.rows[0]
+          });
+        }
+      }
+    }
+    var updateResult = await pool.query(
+      "update public." + tableName + " set data = $1::jsonb, updated_at = now() where school_id = $2 and source_id = $3 returning *",
+      [JSON.stringify(record), schoolId, recordId]
+    );
+    if (!updateResult.rowCount) {
+      return res.status(404).json({ success: false, message: "Record not found." });
+    }
+    return res.json({ success: true, data: updateResult.rows[0], updated_at: new Date().toISOString() });
+  } catch (error) {
+    console.error("[PUT /api/data] ERROR table=" + req.params.table + " id=" + req.params.id + " school=" + req.params.schoolId, error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.delete("/api/data/:schoolId/:table/:id", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  var tableName = sanitizeTableName(req.params.table);
+  var recordId = String(req.params.id || "").trim();
+  if (!tableName) {
+    return res.status(400).json({ success: false, message: "Invalid table name." });
+  }
+  if (!recordId) {
+    return res.status(400).json({ success: false, message: "Record id is required." });
+  }
+  try {
+    if (tableName === "school_settings") {
+      var delResult = await pool.query("delete from public.school_settings where school_id = $1 and setting_key = $2", [schoolId, recordId]);
+      console.log("[DELETE] table=school_settings school_id=" + schoolId + " key=" + recordId + " Rows Affected: " + delResult.rowCount);
+      return res.json({ success: true, message: "Setting deleted." });
+    }
+    if (tableName === "school_setting_items") {
+      var parts = recordId.split("::");
+      var sKey = parts[0] || "";
+      var itemId = parts[1] || recordId;
+      var delResult = await pool.query("delete from public.school_setting_items where school_id = $1 and setting_key = $2 and item_id = $3", [schoolId, sKey, itemId]);
+      console.log("[DELETE] table=school_setting_items school_id=" + schoolId + " key=" + sKey + " item=" + itemId + " Rows Affected: " + delResult.rowCount);
+      return res.json({ success: true, message: "Setting item deleted." });
+    }
+    var delResult = await pool.query("delete from public." + tableName + " where school_id = $1 and source_id = $2", [schoolId, recordId]);
+    console.log("[DELETE] table=" + tableName + " school_id=" + schoolId + " source_id=" + recordId + " Rows Affected: " + delResult.rowCount);
+    try {
+      var _blobRes = await pool.query("select database from public.school_databases where school_id = $1", [schoolId]);
+      if (_blobRes.rowCount) {
+        var _blobDb = _blobRes.rows[0].database || {};
+        if (typeof _blobDb === "string") { try { _blobDb = JSON.parse(_blobDb); } catch (_e2) { _blobDb = {}; } }
+        if (!_blobDb._deletedIds) _blobDb._deletedIds = [];
+        if (_blobDb._deletedIds.indexOf(recordId) === -1) _blobDb._deletedIds.push(recordId);
+        var _jsonbKeyMap = { activity_logs: "activityLogs", account_activity: "accountActivity", sms_templates: "smsTemplates", app_users: "users" };
+        var _jsonbKey = _jsonbKeyMap[tableName] || tableName;
+        if (_blobDb[_jsonbKey] && Array.isArray(_blobDb[_jsonbKey])) {
+          _blobDb[_jsonbKey] = _blobDb[_jsonbKey].filter(function(item) { return item && item.id !== recordId; });
+        }
+        if (_blobDb.generalSettings) {
+          ["feeInvoices","feeCollections","salaryPayments","accountsLedger","exams","examMarks","timetableEntries","homework","classTests","classTestMarks","questionPapers","certificates"].forEach(function(key) {
+            if (Array.isArray(_blobDb.generalSettings[key])) {
+              _blobDb.generalSettings[key] = _blobDb.generalSettings[key].filter(function(item) { return item && item.id !== recordId; });
+            }
+          });
+        }
+        await pool.query("update public.school_databases set database = $1::jsonb, updated_at = now() where school_id = $2", [JSON.stringify(_blobDb), schoolId]);
+      }
+    } catch (_blobErr) {}
+    return res.json({ success: true, message: "Record deleted.", rowsAffected: delResult.rowCount });
+  } catch (error) {
+    console.error("[DELETE] FAILED table=" + tableName + " school_id=" + schoolId + " source_id=" + recordId + " error=" + error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.post("/api/backup", requireApiKey, requireSchoolAuth, async function (req, res) {
+  var rateKey = "backup:" + (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown");
+  if (!checkRateLimit(rateKey)) {
+    return res.status(429).json({ success: false, message: "Too many requests. Please try again later." });
+  }
+  var schoolId = String(req.body.school_id || "").trim();
+  if (!schoolId) return res.status(400).json({ success: false, message: "School ID required." });
+  if (req.authRole !== "superadmin" && req.authSchoolId !== schoolId) {
+    return res.status(403).json({ success: false, message: "Access denied: school_id mismatch." });
+  }
+  var database = req.body.database || {};
+  try {
+    var _schoolCheck = await pool.query("select 1 from public.license_accounts where school_id = $1 limit 1", [schoolId]);
+    if (!_schoolCheck.rowCount) {
+      return res.status(404).json({ success: false, message: "School not found." });
+    }
+    var jsonStr = JSON.stringify(database);
+    var sizeBytes = Buffer.byteLength(jsonStr, "utf8");
+    await pool.query("insert into public.school_backups (school_id, database, size_bytes, created_at) values ($1, $2::jsonb, $3, now())", [schoolId, jsonStr, sizeBytes]);
+    var countResult = await pool.query("select count(*) from public.school_backups where school_id = $1", [schoolId]);
+    var totalBackups = parseInt(countResult.rows[0].count, 10);
+    if (totalBackups > 20) {
+      await pool.query("delete from public.school_backups where school_id = $1 and id not in (select id from public.school_backups where school_id = $1 order by created_at desc limit 20)", [schoolId]);
+    }
+    return res.json({ success: true, message: "Backup saved.", size_bytes: sizeBytes, backup_count: totalBackups });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+app.get("/api/backup/:schoolId", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  try {
+    var limit = Math.min(parseInt(req.query.limit, 10) || 10, 50);
+    var result = await pool.query(
+      "select id, school_id, size_bytes, created_at from public.school_backups where school_id = $1 order by created_at desc limit $2",
+      [schoolId, limit]
+    );
+    return res.json({ success: true, backups: result.rows });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred." });
+  }
+});
+
+app.get("/api/backup/:schoolId/:backupId", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  try {
+    var result = await pool.query(
+      "select id, school_id, database, size_bytes, created_at from public.school_backups where school_id = $1 and id = $2",
+      [schoolId, req.params.backupId]
+    );
+    if (!result.rowCount) {
+      return res.status(404).json({ success: false, message: "Backup not found." });
+    }
+    return res.json({ success: true, backup: result.rows[0] });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred." });
+  }
+});
+
+app.get("/api/search/:schoolId/:table", requireSchoolAuth, async function (req, res) {
+  var schoolId = normalizeSchoolId(req.params.schoolId);
+  if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+    return res.status(403).json({ success: false, message: "Access denied." });
+  }
+  var tableName = sanitizeTableName(req.params.table);
+  if (!tableName) return res.status(400).json({ success: false, message: "Invalid table." });
+  if (tableName === "school_settings" || tableName === "school_setting_items" || tableName === "activity_logs" || tableName === "account_activity") {
+    return res.status(400).json({ success: false, message: "Search not supported for this table." });
+  }
+  var q = String(req.query.q || "").trim();
+  if (!q) return res.json({ success: true, results: [], total: 0 });
+  var limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+  var offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+  try {
+    var searchPattern = "%" + q.toLowerCase() + "%";
+    var countResult = await pool.query(
+      "select count(*) from public." + tableName + " where school_id = $1 and lower(data::text) like $2",
+      [schoolId, searchPattern]
+    );
+    var total = parseInt(countResult.rows[0].count, 10);
+    var result = await pool.query(
+      "select source_id, data, updated_at from public." + tableName + " where school_id = $1 and lower(data::text) like $2 order by updated_at desc limit $3 offset $4",
+      [schoolId, searchPattern, limit, offset]
+    );
+    return res.json({ success: true, results: result.rows, total: total, limit: limit, offset: offset });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "An internal error occurred." });
+  }
+});
+
+app.get("/api/version", function (_req, res) {
+  var versionPath = path.resolve(__dirname, "..", "version.json");
+  if (versionPath) {
+    fs.readFile(versionPath, "utf8", function (err, data) {
+      if (err) {
+        return res.json({ version: "1.0.0", releaseDate: "", updateUrl: "", message: "No version info" });
+      }
+      try { return res.json(JSON.parse(data)); }
+      catch (_e) { return res.json({ version: "1.0.0", releaseDate: "", updateUrl: "", message: "Invalid version file" }); }
+    });
+  } else {
+    return res.json({ version: "1.0.0", releaseDate: "", updateUrl: "" });
+  }
+});
+
+async function migrateExistingData() {
+  if (!pool) return;
+  try {
+    var result = await pool.query("select school_id, database from public.school_databases");
+    if (!result.rowCount) { console.log("No schools to migrate."); return; }
+    for (var row of result.rows) {
+      var db = row.database || {};
+      var sid = row.school_id;
+      console.log("Migrating data for " + sid + "...");
+      var client = await pool.connect();
+      try {
+        await client.query("begin");
+        await syncEmployeeMirrorTables(client, sid, db);
+        await syncStudentMirrorTable(client, sid, db);
+        await syncClassMirrorTable(client, sid, db);
+        await syncStructuredModuleTables(client, sid, db);
+        await syncExamTables(client, sid, db);
+        await syncTimetableTable(client, sid, db);
+        await syncHomeworkTable(client, sid, db);
+        await syncClassTestTables(client, sid, db);
+        await syncQuestionPapersTable(client, sid, db);
+        await syncCertificatesTable(client, sid, db);
+        await syncAppRecordsTable(client, sid, db);
+        await client.query("commit");
+        console.log("Migration complete for " + sid);
+      } catch (err) {
+        await client.query("rollback");
+        console.error("Migration error for " + sid + ":", err.message);
+      } finally {
+        client.release();
+      }
+    }
+  } catch (err) {
+    console.error("migrateExistingData error:", err.message);
+  }
+}
+
+ensureSchema()
+  .then(function () {
+    return ensureSmsTables();
+  })
+  .then(function () {
+    return migrateExistingData();
+  })
+  .then(function () {
+    app.listen(port, function () {
+      console.log("SagarSoft online API listening on " + port);
+      startKeepAlive();
+      startBackupCron();
+    });
+  })
+  .catch(function (error) {
+    console.error("Unable to start SagarSoft online API:", error);
+    process.exit(1);
+  });
+
+function startKeepAlive() {
+  var baseUrl = process.env.RENDER_EXTERNAL_URL || "";
+  if (!baseUrl) return;
+  console.log("Keep-alive started, pinging:", baseUrl + "/health");
+  setInterval(function () {
+    fetch(baseUrl + "/health").then(function (r) {
+      console.log("Keep-alive ping:", r.status);
+    }).catch(function (e) {
+      console.error("Keep-alive ping failed:", e.message);
+    });
+  }, 14 * 60 * 1000);
+}
+
+app.get("/api/supabase-config", requireSuperAdmin, function (req, res) {
+  var supabaseUrl = process.env.SUPABASE_URL || "";
+  var anonKey = process.env.SUPABASE_ANON_KEY || "";
+  return res.json({
+    success: true,
+    url: supabaseUrl,
+    anonKey: anonKey
+  });
+});
+
+app.get("/api/sms/device-status", requireSchoolAuth, async function (req, res) {
+  try {
+    var schoolId = req.authSchoolId;
+    if (!schoolId) return res.json({ success: true, device: null });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.json({ success: true, device: null });
+    var url = supabaseUrl + "/rest/v1/devices?school_id=eq." + encodeURIComponent(schoolId) + "&select=sim_number,last_poll_at,is_active,device_id,created_at&limit=1";
+    var resp = await fetch(url, { headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey } });
+    var data = await resp.json();
+    var device = Array.isArray(data) && data.length > 0 ? data[0] : null;
+    return res.json({ success: true, device: device });
+  } catch (e) {
+    return res.json({ success: true, device: null, error: e.message });
+  }
+});
+
+app.post("/api/sms/mark-sent", requireSchoolAuth, async function (req, res) {
+  try {
+    var smsId = req.body.sms_id;
+    var deviceId = req.body.device_id || "";
+    if (!smsId) return res.status(400).json({ success: false, message: "sms_id required" });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.status(500).json({ success: false, message: "Supabase not configured" });
+    var now = new Date().toISOString();
+    var url = supabaseUrl + "/rest/v1/rpc/update_sms_status";
+    var resp = await fetch(url, {
+      method: "POST",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ p_sms_id: smsId, p_status: "sent", p_device_id: deviceId, p_sent_at: now })
+    });
+    if (!resp.ok) {
+      var bodyText = await resp.text();
+      return res.json({ success: true, fallback: true, message: bodyText });
+    }
+    return res.json({ success: true });
+  } catch (e) {
+    return res.json({ success: false, message: e.message });
+  }
+});
+
+app.post("/api/sms/mark-failed", requireSchoolAuth, async function (req, res) {
+  try {
+    var smsId = req.body.sms_id;
+    var errorMsg = req.body.error || "send-failed";
+    if (!smsId) return res.status(400).json({ success: false, message: "sms_id required" });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.status(500).json({ success: false, message: "Supabase not configured" });
+    var url = supabaseUrl + "/rest/v1/sms_queue?id=eq." + encodeURIComponent(smsId);
+    var resp = await fetch(url, {
+      method: "PATCH",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json", "Prefer": "return=minimal" },
+      body: JSON.stringify({ status: "failed", error_message: errorMsg })
+    });
+    return res.json({ success: true });
+  } catch (e) {
+    return res.json({ success: false, message: e.message });
+  }
+});
+
+app.post("/api/sms/retry-failed", requireSchoolAuth, async function (req, res) {
+  try {
+    var schoolId = req.body.school_id;
+    if (!schoolId) return res.status(400).json({ success: false, message: "school_id required" });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.status(500).json({ success: false, message: "Supabase not configured" });
+    var url = supabaseUrl + "/rest/v1/sms_queue?school_id=eq." + encodeURIComponent(schoolId) + "&status=eq.failed";
+    var patchUrl = supabaseUrl + "/rest/v1/sms_queue?school_id=eq." + encodeURIComponent(schoolId) + "&status=eq.failed";
+    var countResp = await fetch(url, {
+      method: "GET",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json", "Prefer": "count=exact" }
+    });
+    var count = 0;
+    try {
+      var countHeader = countResp.headers.get("content-range") || "";
+      var match = countHeader.match(/\/(\d+)$/);
+      if (match) count = parseInt(match[1], 10);
+    } catch (_e) {}
+    if (count === 0) return res.json({ success: true, retried: 0 });
+    var patchResp = await fetch(patchUrl, {
+      method: "PATCH",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json", "Prefer": "return=minimal" },
+      body: JSON.stringify({ status: "pending", error_message: null })
+    });
+    return res.json({ success: true, retried: count });
+  } catch (e) {
+    return res.json({ success: false, message: e.message });
+  }
+});
+
+app.post("/api/sms/send", requireSchoolAuth, async function (req, res) {
+  try {
+    var schoolId = req.body.school_id;
+    if (req.authSchoolId !== schoolId && req.authRole !== "superadmin") {
+      return res.status(403).json({ success: false, message: "Access denied." });
+    }
+    var phone = req.body.recipient_phone;
+    var message = req.body.message;
+    var source = req.body.source || "Manual SMS";
+    var campaignType = req.body.campaign_type || "manual";
+    var recipientName = req.body.recipient_name || "-";
+    var recipientType = req.body.recipient_type || "student";
+    if (!schoolId || !phone || !message) return res.status(400).json({ success: false, message: "school_id, recipient_phone, message required" });
+    var supabaseUrl = process.env.SUPABASE_URL || "";
+    var anonKey = process.env.SUPABASE_ANON_KEY || "";
+    if (!supabaseUrl || !anonKey) return res.status(500).json({ success: false, message: "Supabase not configured" });
+    var url = supabaseUrl + "/rest/v1/sms_queue";
+    var resp = await fetch(url, {
+      method: "POST",
+      headers: { "apikey": anonKey, "Authorization": "Bearer " + anonKey, "Content-Type": "application/json", "Prefer": "return=representation" },
+      body: JSON.stringify({
+        school_id: schoolId,
+        recipient_phone: phone,
+        message: message,
+        source: source,
+        campaign_type: campaignType,
+        recipient_name: recipientName,
+        recipient_type: recipientType,
+        status: "pending"
+      })
+    });
+    var body = await resp.json();
+    if (!resp.ok || (body && body.code)) return res.json({ success: false, message: (body && body.message) || "Insert failed" });
+    var smsId = (body && body[0] && body[0].id) ? String(body[0].id) : "";
+    return res.json({ success: true, sms_id: smsId });
+  } catch (e) {
+    return res.json({ success: false, message: e.message });
+  }
+});
+
+app.post("/api/setup-sms-tables", requireSchoolAuth, async function (req, res) {
+  try {
+    if (!_pool) {
+      return res.status(500).json({ success: false, message: "Database not connected." });
+    }
+    var sql = `
+      CREATE TABLE IF NOT EXISTS sms_queue (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        device_id TEXT,
+        recipient_phone TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT DEFAULT 'pending',
+        source TEXT DEFAULT 'Manual SMS',
+        campaign_type TEXT DEFAULT 'manual',
+        recipient_name TEXT,
+        recipient_type TEXT DEFAULT 'student',
+        error_message TEXT,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS sent_messages (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT,
+        device_id TEXT,
+        recipient_phone TEXT NOT NULL,
+        message TEXT NOT NULL,
+        status TEXT,
+        error_message TEXT,
+        sent_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS devices (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        school_id TEXT NOT NULL,
+        device_name TEXT,
+        device_id TEXT NOT NULL UNIQUE,
+        is_active BOOLEAN DEFAULT false,
+        sim_number TEXT,
+        last_poll_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ DEFAULT now()
+      );
+    `;
+    await _pool.query(sql);
+
+    var rpcSql = `
+      CREATE OR REPLACE FUNCTION create_tables()
+      RETURNS void
+      LANGUAGE plpgsql
+      SECURITY DEFINER
+      SET search_path = public
+      AS $$
+      BEGIN
+        CREATE TABLE IF NOT EXISTS sms_queue (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          school_id TEXT NOT NULL,
+          device_id TEXT,
+          recipient_phone TEXT NOT NULL,
+          message TEXT NOT NULL,
+          status TEXT DEFAULT 'pending',
+          source TEXT DEFAULT 'Manual SMS',
+          campaign_type TEXT DEFAULT 'manual',
+          recipient_name TEXT,
+          recipient_type TEXT DEFAULT 'student',
+          error_message TEXT,
+          sent_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+        CREATE TABLE IF NOT EXISTS sent_messages (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          school_id TEXT,
+          device_id TEXT,
+          recipient_phone TEXT NOT NULL,
+          message TEXT NOT NULL,
+          status TEXT,
+          error_message TEXT,
+          sent_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+        CREATE TABLE IF NOT EXISTS devices (
+          id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+          school_id TEXT NOT NULL,
+          device_name TEXT,
+          device_id TEXT NOT NULL UNIQUE,
+          is_active BOOLEAN DEFAULT false,
+          sim_number TEXT,
+          last_poll_at TIMESTAMPTZ,
+          created_at TIMESTAMPTZ DEFAULT now()
+        );
+      END;
+      $$;
+    `;
+    await _pool.query(rpcSql);
+
+    var grants = `
+      GRANT EXECUTE ON FUNCTION create_tables TO anon;
+      GRANT EXECUTE ON FUNCTION create_tables TO authenticated;
+      GRANT ALL ON TABLE sms_queue TO anon;
+      GRANT ALL ON TABLE devices TO anon;
+      GRANT ALL ON TABLE sent_messages TO anon;
+      GRANT ALL ON TABLE sms_queue TO authenticated;
+      GRANT ALL ON TABLE devices TO authenticated;
+      GRANT ALL ON TABLE sent_messages TO authenticated;
+      ALTER TABLE sms_queue ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE sent_messages ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE devices ENABLE ROW LEVEL SECURITY;
+    `;
+    try { await _pool.query(grants); } catch (_grantErr) {}
+
+    var rlsPolicies = `
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sms_queue_anon_all' AND tablename='sms_queue') THEN
+          CREATE POLICY sms_queue_anon_all ON sms_queue FOR ALL TO anon USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sms_queue_auth_all' AND tablename='sms_queue') THEN
+          CREATE POLICY sms_queue_auth_all ON sms_queue FOR ALL TO authenticated USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='devices_anon_all' AND tablename='devices') THEN
+          CREATE POLICY devices_anon_all ON devices FOR ALL TO anon USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='devices_auth_all' AND tablename='devices') THEN
+          CREATE POLICY devices_auth_all ON devices FOR ALL TO authenticated USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sent_messages_anon_all' AND tablename='sent_messages') THEN
+          CREATE POLICY sent_messages_anon_all ON sent_messages FOR ALL TO anon USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='sent_messages_auth_all' AND tablename='sent_messages') THEN
+          CREATE POLICY sent_messages_auth_all ON sent_messages FOR ALL TO authenticated USING (true) WITH CHECK (true);
+        END IF;
+      END $$;
+    `;
+    try { await _pool.query(rlsPolicies); } catch (_rlsErr) { console.error("RLS policy error:", _rlsErr.message); }
+
+    var rpcFn = `
+      CREATE OR REPLACE FUNCTION update_sms_status(p_sms_id UUID, p_status TEXT, p_device_id TEXT, p_sent_at TIMESTAMPTZ)
+      RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+      BEGIN
+        UPDATE sms_queue SET status = p_status, device_id = p_device_id, sent_at = p_sent_at WHERE id = p_sms_id;
+      END; $$;
+      GRANT EXECUTE ON FUNCTION update_sms_status TO anon;
+      GRANT EXECUTE ON FUNCTION update_sms_status TO authenticated;
+    `;
+    try { await _pool.query(rpcFn); } catch (_rpcErr) { console.error("RPC function error:", _rpcErr.message); }
+
+    return res.json({ success: true, message: "SMS tables created successfully." });
+  } catch (error) {
+    console.error("POST /api/setup-sms-tables error:", error.message);
+    return res.status(500).json({ success: false, message: "An internal error occurred. Please try again." });
+  }
+});
+
+var _backupLog = { lastRun: null, lastSuccess: null, schoolsBackedUp: 0, errors: 0, totalRuns: 0 };
+
+async function runAutomatedBackup() {
+  console.log("[AUTO-BACKUP] Starting automated backup...");
+  _backupLog.lastRun = new Date().toISOString();
+  _backupLog.totalRuns++;
+  var backedUp = 0;
+  var errors = 0;
+  try {
+    var schools = await pool.query("select school_id from public.license_accounts where status = 'active'");
+    for (var i = 0; i < schools.rows.length; i++) {
+      var schoolId = schools.rows[i].school_id;
+      try {
+        var db = await getSchoolDatabase(schoolId);
+        if (!db) continue;
+        var jsonStr = JSON.stringify(db);
+        var sizeBytes = Buffer.byteLength(jsonStr, "utf8");
+        await pool.query(
+          "insert into public.school_backups (school_id, database, size_bytes, created_at) values ($1, $2::jsonb, $3, now())",
+          [schoolId, jsonStr, sizeBytes]
+        );
+        backedUp++;
+      } catch (err) {
+        errors++;
+        console.error("[AUTO-BACKUP] Failed for school " + schoolId + ":", err.message);
+      }
+    }
+    await pool.query("delete from public.school_backups where id not in (select id from public.school_backups order by created_at desc limit 500)");
+    _backupLog.lastSuccess = new Date().toISOString();
+    _backupLog.schoolsBackedUp = backedUp;
+    _backupLog.errors = errors;
+    console.log("[AUTO-BACKUP] Complete. Backed up: " + backedUp + " schools, Errors: " + errors);
+  } catch (err) {
+    _backupLog.errors = errors;
+    console.error("[AUTO-BACKUP] Fatal error:", err.message);
+  }
+}
+
+function startBackupCron() {
+  var TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000;
+  var now = new Date();
+  var nextMidnight = new Date(now);
+  nextMidnight.setHours(2, 0, 0, 0);
+  if (nextMidnight <= now) nextMidnight.setTime(nextMidnight.getTime() + TWENTY_FOUR_HOURS);
+  var delay = nextMidnight.getTime() - now.getTime();
+  console.log("[AUTO-BACKUP] First backup scheduled in " + Math.round(delay / 60000) + " minutes (at " + nextMidnight.toISOString() + ")");
+  setTimeout(function () {
+    runAutomatedBackup();
+    setInterval(runAutomatedBackup, TWENTY_FOUR_HOURS);
+  }, delay);
+}
+
+app.get("/api/monitor", requireSchoolAuth, async function (req, res) {
+  var schoolId = req.authSchoolId;
+  var dbLatencyMs = 0;
+  try {
+    var t0 = Date.now();
+    await pool.query("select 1");
+    dbLatencyMs = Date.now() - t0;
+  } catch (_e) { dbLatencyMs = -1; }
+  var mem = process.memoryUsage();
+  var uptimeSec = Math.floor((Date.now() - _serverStartTime) / 1000);
+  var days = Math.floor(uptimeSec / 86400);
+  var hours = Math.floor((uptimeSec % 86400) / 3600);
+  res.json({
+    success: true,
+    monitor: {
+      version: "5.1.0",
+      uptime: days + "d " + hours + "h " + (uptimeSec % 3600) + "s",
+      uptimeSeconds: uptimeSec,
+      database: {
+        latencyMs: dbLatencyMs,
+        pool: { total: pool.totalCount, idle: pool.idleCount, waiting: pool.waitingCount },
+        status: dbLatencyMs >= 0 ? "healthy" : "unavailable"
+      },
+      memory: {
+        rssMB: Math.floor(mem.rss / 1048576),
+        heapUsedMB: Math.floor(mem.heapUsed / 1048576),
+        heapTotalMB: Math.floor(mem.heapTotal / 1048576)
+      },
+      requests: { total: _requestMetrics.total, errors: _requestMetrics.errors, errorRate: _requestMetrics.total > 0 ? ((_requestMetrics.errors / _requestMetrics.total) * 100).toFixed(2) + "%" : "0%" },
+      backup: _backupLog,
+      env: {
+        NODE_ENV: process.env.NODE_ENV || "development",
+        PORT: process.env.PORT || "not set",
+        SUPABASE_DB_URL: process.env.SUPABASE_DB_URL ? "configured" : "MISSING",
+        SUPERADMIN_EMAIL: process.env.SUPERADMIN_EMAIL ? "configured" : "MISSING",
+        SUPERADMIN_PASSWORD_HASH: process.env.SUPERADMIN_PASSWORD_HASH ? "configured" : "MISSING",
+        SAGARSOFT_API_KEY: process.env.SAGARSOFT_API_KEY ? "configured" : "MISSING",
+        ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || "default"
+      }
+    }
+  });
+});
+
+function gracefulShutdown(signal) {
+  console.log("Received " + signal + ". Shutting down gracefully...");
+  if (_pool) {
+    _pool.end().then(function () {
+      console.log("Database pool closed.");
+      process.exit(0);
+    }).catch(function () {
+      process.exit(1);
+    });
+  } else {
+    process.exit(0);
+  }
+}
+process.on("SIGTERM", function () { gracefulShutdown("SIGTERM"); });
+process.on("SIGINT", function () { gracefulShutdown("SIGINT"); });
+process.on("unhandledRejection", function (reason, promise) {
+  console.error("Unhandled Rejection:", reason && reason.message ? reason.message : reason);
+});
+process.on("uncaughtException", function (err) {
+  console.error("Uncaught Exception:", err.message);
+});

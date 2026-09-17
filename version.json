@@ -1,0 +1,6 @@
+{
+  "version": "6.0.0",
+  "releaseDate": "2026-07-28",
+  "updateUrl": "https://sagarsoftonline.onrender.com/app/dashboard.html",
+  "releaseNotes": "Phase 12: Root cause fixes (superadmin auth, PHP route cleanup), repository cleanup (removed test/debug/utility files), security hardening (removed server/.env), enterprise codebase cleanup."
+}
