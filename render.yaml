@@ -3,7 +3,6 @@ services:
     name: sagarsoft-online
     runtime: node
     repo: https://github.com/aleemsagar75-sys/SagarSoftonline
-    rootDir: sagarsoft
     buildCommand: cd server && npm install
     startCommand: cd server && node server.js
     envVars:
