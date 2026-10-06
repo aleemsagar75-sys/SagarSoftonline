@@ -17880,28 +17880,37 @@ ${allContent}
       }
 
       const activeStudents = (database.students || []).filter(function (student) { return String(student.status || "").toLowerCase() === "active"; });
-      const studentSuggestions = activeStudents.map(function (student) {
-        return `<option value="${escapeAttr(student.name || "")} (${escapeAttr(student.admissionNo || "-")})"></option>`;
-      }).join("");
       const templateOptionsMarkup = (settings.certificateTemplates || []).map(function (tpl) {
         return `<option value="${escapeAttr(tpl.id)}">${escapeHtml(tpl.name || "-")}</option>`;
       }).join("");
+      var certTypeOptions = ["General Certificate","Character Certificate","Transfer Certificate (TC)","School Leaving Certificate (SLC)","Merit Certificate","Attendance Certificate"];
+      var certTypeMarkup = certTypeOptions.map(function (t) { return '<option value="' + escapeAttr(t) + '">' + escapeHtml(t) + '</option>'; }).join("");
+      var schoolLogoData = (settings.instituteProfile && settings.instituteProfile.logo) || database.school.logo || "";
+
+      function generateCertificateNumber() {
+        var prefix = (database.school.name || "SS").substring(0, 3).toUpperCase().replace(/[^A-Z]/g, "X");
+        var yr = new Date().getFullYear();
+        var issued = (settings.certificateIssuedCount || 0) + 1;
+        settings.certificateIssuedCount = issued;
+        return prefix + "-CERT-" + yr + "-" + String(issued).padStart(4, "0");
+      }
 
       moduleSummary.innerHTML = `
         <article style="max-width:100%;overflow-x:hidden;">
           <strong class="module-center-title">Generate Certificate</strong>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 4px 0;">
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Certificate Type*</label><select id="certificateTypeSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;">${certTypeMarkup}</select></div>
             <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Select Class*</label><select id="certificateClassSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Class</option>${classOptionsMarkup}</select></div>
             <div style="flex:1 1 160px;min-width:0;position:relative;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Search Student*</label><input id="certificateStudentSearch" type="search" placeholder="Search by roll no / name" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><div id="certificateSearchDropdown" class="search-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid rgba(27,95,122,0.2);border-radius:8px;box-shadow:0 10px 25px rgba(0,0,0,0.1);z-index:1000;max-height:280px;overflow-y:auto;margin-top:5px;"></div></div>
             <div style="flex:1 1 130px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Issue Date*</label><input id="certificateIssueDate" type="date" value="${new Date().toISOString().slice(0, 10)}" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
           </div>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0;">
-            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Leaving Date (SLC)</label><input id="certificateLeavingDate" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
-            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Conduct (SLC)</label><input id="certificateConductText" type="text" placeholder="e.g., Excellent, Good" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 140px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Leaving Date (SLC/TC)</label><input id="certificateLeavingDate" type="date" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
+            <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Conduct / Remark</label><input id="certificateConductText" type="text" placeholder="e.g., Excellent, Good" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"></div>
             <div style="flex:1 1 150px;min-width:0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Template*</label><select id="certificateTemplateSelect" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;"><option value="">Select Template</option>${templateOptionsMarkup}</select></div>
           </div>
           <div style="margin:4px 0;"><label style="display:block;font-size:0.78rem;font-weight:600;margin-bottom:3px;">Certificate Text</label><textarea id="certificateBodyPreview" rows="8" placeholder="Template text will appear here" style="width:100%;box-sizing:border-box;padding:6px;border:1px solid #dde4ea;border-radius:6px;font-size:0.8rem;resize:vertical;"></textarea></div>
-          <div style="text-align:center;margin:8px 0 4px 0;"><button class="primary-button" id="printCertificateBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Print Certificate</button></div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:8px 0 4px 0;"><button class="primary-button" id="printCertificateBtn" type="button" style="padding:6px 20px;font-size:0.8rem;">Print Certificate</button><button class="primary-button" id="printBulkCertificateBtn" type="button" style="padding:6px 20px;font-size:0.8rem;background:#1b5f7a;">Bulk Print (Entire Class)</button></div>
           <p class="form-message" id="certificateMessage"></p>
         </article>
       `;
@@ -17984,71 +17993,110 @@ ${allContent}
         bodyPreview.value = bodyText;
       }
 
-      [classSelect, studentSearch, issueDateInput, leavingDateInput, conductInput, templateSelect].forEach(function (input) {
+      const certTypeSelect = document.getElementById("certificateTypeSelect");
+
+      function buildCertificateHtml(student, certNumber) {
+        var text = bodyPreview.value.trim();
+        if (!text) return "";
+        var textLines = text.split('\n').filter(function(line) { return line.trim().length > 0; });
+        var heading = textLines[0] || "Certificate";
+        var certType = certTypeSelect ? certTypeSelect.value : "General Certificate";
+        var bodyContent = textLines.slice(1)
+          .filter(function (line) {
+            var normalizedLine = line.trim().replace(/\s+/g, " ").toLowerCase();
+            return normalizedLine !== "signature: principal" && normalizedLine !== "signature principal" && normalizedLine !== "school stamp";
+          })
+          .join('\n');
+        var logoHtml = schoolLogoData ? '<img src="' + escapeAttr(schoolLogoData) + '" alt="School Logo" style="height:60px;object-fit:contain;margin-bottom:8px;">' : '';
+        var dateStr = issueDateInput ? issueDateInput.value : new Date().toISOString().slice(0,10);
+        return '<article class="report-card certificate-print-card" style="max-width:900px;min-height:600px;margin:0 auto;page-break-after:avoid;display:flex;flex-direction:column;font-family:Georgia,\'Times New Roman\',serif;position:relative;padding:8px;background:#fff;">' +
+          '<div style="position:absolute;top:6px;left:6px;right:6px;bottom:6px;border:3px double #0f2b3f;pointer-events:none;"></div>' +
+          '<div style="position:absolute;top:10px;left:10px;right:10px;bottom:10px;border:1px solid rgba(15,43,63,0.2);pointer-events:none;"></div>' +
+          '<div style="text-align:center;margin-bottom:16px;padding-bottom:10px;border-bottom:3px double #0f2b3f;position:relative;">' +
+            logoHtml +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">' +
+              '<p style="margin:0;font-size:10px;color:#5b6777;letter-spacing:0.5px;">No: <strong>' + escapeHtml(certNumber) + '</strong></p>' +
+              '<p style="margin:0;font-size:10px;color:#5b6777;letter-spacing:0.5px;">Date: <strong>' + escapeHtml(dateStr) + '</strong></p>' +
+            '</div>' +
+            '<h1 style="margin:0;font-size:22px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#0f2b3f;">' + escapeHtml(heading) + '</h1>' +
+            '<p style="margin:6px auto 0;max-width:520px;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#5b6777;">' + escapeHtml(database.school.name || "School") + ' &mdash; ' + escapeHtml(certType) + '</p>' +
+          '</div>' +
+          '<div style="text-align:justify;line-height:1.65;font-size:14px;color:#1f2933;margin-bottom:22px;flex:1;padding:0 16px;">' +
+            '<p style="white-space:pre-wrap;margin:0;">' + escapeHtml(bodyContent) + '</p>' +
+          '</div>' +
+          '<div style="margin-top:auto;padding:12px 16px 16px;">' +
+            '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:18px;align-items:end;">' +
+              '<div style="text-align:center;"><div style="height:34px;border-bottom:1.5px solid #0f2b3f;"></div><p style="margin:9px 0 0;font-size:12px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#0f2b3f;">Prepared By</p></div>' +
+              '<div style="text-align:center;"><div style="height:34px;border-bottom:1.5px solid #0f2b3f;"></div><p style="margin:9px 0 0;font-size:12px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#0f2b3f;">Checked By</p></div>' +
+              '<div style="text-align:center;"><div style="height:34px;border-bottom:1.5px solid #0f2b3f;"></div><p style="margin:9px 0 0;font-size:12px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#0f2b3f;">Signature Principal</p></div>' +
+              '<div style="text-align:center;"><div style="width:72px;height:72px;margin:0 auto;border:1.5px dashed #0f2b3f;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#5b6777;font-size:10px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;">School<br>Stamp</div><p style="margin:9px 0 0;font-size:12px;font-weight:700;letter-spacing:0.6px;text-transform:uppercase;color:#0f2b3f;">School Stamp</p></div>' +
+            '</div>' +
+          '</div>' +
+        '</article>';
+      }
+
+      [classSelect, studentSearch, issueDateInput, leavingDateInput, conductInput, templateSelect, certTypeSelect].forEach(function (input) {
         input.addEventListener("input", fillTemplatePreview);
         input.addEventListener("change", fillTemplatePreview);
       });
       safeOn(document.getElementById("printCertificateBtn"), "click", function () {
-        const student = getSelectedStudentForCertificate();
-        const text = bodyPreview.value.trim();
+        var student = getSelectedStudentForCertificate();
+        var text = bodyPreview.value.trim();
         if (!student || !text) {
           certificateMessage.textContent = "Please select student and template first.";
           certificateMessage.className = "form-message error";
           return;
         }
-        
-        // Extract heading from certificate text (first line)
-        const textLines = text.split('\n').filter(function(line) { return line.trim().length > 0; });
-        const heading = textLines[0] || "Certificate";
-        const bodyContent = textLines.slice(1)
-          .filter(function (line) {
-            const normalizedLine = line.trim().replace(/\s+/g, " ").toLowerCase();
-            return normalizedLine !== "signature: principal" &&
-              normalizedLine !== "signature principal" &&
-              normalizedLine !== "school stamp";
-          })
-          .join('\n');
-        
-        const certificateHtml = `
-          <article class="report-card certificate-print-card" style="max-width: 900px; min-height: 560px; margin: 0 auto; page-break-after: avoid; border: 2px solid #0f2b3f; box-shadow: inset 0 0 0 5px rgba(15, 43, 63, 0.08); display: flex; flex-direction: column; font-family: Georgia, 'Times New Roman', serif;">
-            <div style="text-align: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px double #0f2b3f;">
-              <h1 style="margin: 0; font-size: 24px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #0f2b3f;">
-                ${escapeHtml(heading)}
-              </h1>
-              <p style="margin: 8px auto 0; max-width: 520px; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; color: #5b6777;">Official School Certificate</p>
-            </div>
-            <div style="text-align: justify; line-height: 1.65; font-size: 14px; color: #1f2933; margin-bottom: 22px; flex: 1;">
-              <p style="white-space: pre-wrap; margin: 0;">${escapeHtml(bodyContent)}</p>
-            </div>
-            <div style="margin-top: auto; padding-top: 24px;">
-              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; align-items: end;">
-                <div style="text-align: center;">
-                  <div style="height: 34px; border-bottom: 1.5px solid #0f2b3f;"></div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">Prepared By</p>
-                </div>
-                <div style="text-align: center;">
-                  <div style="height: 34px; border-bottom: 1.5px solid #0f2b3f;"></div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">Checked By</p>
-                </div>
-                <div style="text-align: center;">
-                  <div style="height: 34px; border-bottom: 1.5px solid #0f2b3f;"></div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">Signature Principal</p>
-                </div>
-                <div style="text-align: center;">
-                  <div style="width: 72px; height: 72px; margin: 0 auto; border: 1.5px dashed #0f2b3f; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #5b6777; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase;">School<br>Stamp</div>
-                  <p style="margin: 9px 0 0; font-size: 12px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase; color: #0f2b3f;">School Stamp</p>
-                </div>
-              </div>
-            </div>
-          </article>
-        `;
-        
+        var certNumber = generateCertificateNumber();
+        var certificateHtml = buildCertificateHtml(student, certNumber);
         openPrintReport({
           title: "Certificate",
-          subtitle: `Issued To: ${student.name || "-"} | Roll: ${student.admissionNo || "-"} | Class: ${student.className || "-"} | Date: ${issueDateInput.value || "-"}`,
+          subtitle: "No: " + certNumber + " | Issued To: " + (student.name || "-") + " | Roll: " + (student.admissionNo || "-") + " | Class: " + (student.className || "-") + " | Date: " + (issueDateInput.value || "-"),
           contentHtml: certificateHtml
         });
-        certificateMessage.textContent = "Certificate prepared successfully.";
+        saveDatabase("Saving certificate record...", [{ table: "school_settings", record: { id: "certificateIssuedCount", source_id: "certificateIssuedCount", data: settings.certificateIssuedCount, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        certificateMessage.textContent = "Certificate " + certNumber + " prepared successfully.";
+        certificateMessage.className = "form-message success";
+      });
+      safeOn(document.getElementById("printBulkCertificateBtn"), "click", function () {
+        var selectedClass = classSelect.value;
+        if (!selectedClass) {
+          certificateMessage.textContent = "Please select a class for bulk printing.";
+          certificateMessage.className = "form-message error";
+          return;
+        }
+        var template = (settings.certificateTemplates || []).find(function (item) { return String(item.id) === String(templateSelect.value); }) || null;
+        if (!template) {
+          certificateMessage.textContent = "Please select a template first.";
+          certificateMessage.className = "form-message error";
+          return;
+        }
+        var classStudents = activeStudents.filter(function (s) { return s.className === selectedClass; });
+        if (!classStudents.length) {
+          certificateMessage.textContent = "No active students found in " + selectedClass + ".";
+          certificateMessage.className = "form-message error";
+          return;
+        }
+        var allCertsHtml = "";
+        for (var i = 0; i < classStudents.length; i++) {
+          var stu = classStudents[i];
+          studentSearch.value = stu.name + " (" + (stu.admissionNo || "-") + ")";
+          fillTemplatePreview();
+          var certNum = generateCertificateNumber();
+          allCertsHtml += buildCertificateHtml(stu, certNum);
+          if (i < classStudents.length - 1) {
+            allCertsHtml += '<div style="page-break-after:always;"></div>';
+          }
+        }
+        studentSearch.value = "";
+        fillTemplatePreview();
+        openPrintReport({
+          title: "Bulk Certificates - " + escapeHtml(selectedClass),
+          subtitle: "Total: " + classStudents.length + " certificates | Class: " + escapeHtml(selectedClass) + " | Date: " + (issueDateInput.value || "-"),
+          contentHtml: allCertsHtml
+        });
+        saveDatabase("Saving bulk certificate records...", [{ table: "school_settings", record: { id: "certificateIssuedCount", source_id: "certificateIssuedCount", data: settings.certificateIssuedCount, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
+        certificateMessage.textContent = classStudents.length + " certificates prepared for " + selectedClass + ".";
         certificateMessage.className = "form-message success";
       });
       fillTemplatePreview();
