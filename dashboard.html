@@ -16,7 +16,7 @@
   <link rel="apple-touch-icon" href="./assets/app-icon-256.png">
   <title>SagarSoft Management System | Dashboard</title>
   <link rel="stylesheet" href="./css/base.css?v=20260819c">
-  <link rel="stylesheet" href="./css/dashboard.css?v=20260916c">
+  <link rel="stylesheet" href="./css/dashboard.css?v=20261009">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
@@ -1224,11 +1224,12 @@
         </div>
 
         <section class="view" id="view-module" data-view="module">
-          <div class="section-head">
-            <div>
-              <p class="panel-label" id="moduleSectionLabel">Selected Module</p>
-              <h2 id="moduleTitle">Module Workspace</h2>
-            </div>
+      <div class="section-head">
+        <div>
+          <span class="section-label">General Settings</span>
+          <h2 id="moduleTitle">Institute Profile</h2>
+          <p class="section-desc" id="moduleSectionDesc"></p>
+        </div>
           </div>
           <div class="split-grid">
             <article class="panel-card">
@@ -1266,7 +1267,7 @@
   <script src="./js/enterprise.js?v=20260729" defer></script>
   <script src="./js/auth.js?v=20260729" defer></script>
   <script src="./js/cache-manager.js?v=20260805" defer></script>
-  <script src="./js/dashboard.js?v=20261006" defer></script>
+    <script src="./js/dashboard.js?v=20261009" defer></script>
   <script>
     var _origFetch = window.fetch;
     window.fetch = function () {

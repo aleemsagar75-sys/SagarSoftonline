@@ -4,7 +4,7 @@ const PRECACHE_URLS = [
   "./login.html",
   "./dashboard.html",
   "./css/base.css?v=20260917",
-  "./css/dashboard.css?v=20260917",
+      "./css/dashboard.css?v=20261009",
   "./js/online-config.js?v=20260917",
   "./js/crypto-utils.js?v=20260917",
   "./js/utils.js?v=20260917",
@@ -13,7 +13,7 @@ const PRECACHE_URLS = [
   "./js/auth.js?v=20260917",
   "./js/cache-manager.js?v=20260917",
   "./js/login.js?v=20260917",
-  "./js/dashboard.js?v=20261006",
+        "./js/dashboard.js?v=20261009",
   "./assets/SagarSoft.logo.png",
   "./assets/parents.png",
   "./manifest.json"

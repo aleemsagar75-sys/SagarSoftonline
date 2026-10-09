@@ -4858,6 +4858,9 @@ document.addEventListener("DOMContentLoaded", function () {
     moduleSectionLabel.textContent = "Selected Module";
     moduleTitle.textContent = title;
     moduleCardTitle.textContent = title;
+    // ============================================================
+    // GENERAL SETTINGS — RULES & REGULATIONS
+    // ============================================================
     if (route === "rules-regulations") {
       var settings = (database && database.generalSettings) ? database.generalSettings : {};
       settings.rulesAndRegulations = settings.rulesAndRegulations || { students: database.school.rulesRegulations || "", employees: "" };
@@ -5328,8 +5331,11 @@ document.addEventListener("DOMContentLoaded", function () {
     const moduleGuideTitle = document.getElementById("moduleGuideTitle");
     const moduleGuideHeader = moduleGuideLabel ? moduleGuideLabel.closest(".panel-card__header") : null;
     const moduleGuideCard = moduleGuide ? moduleGuide.closest(".panel-card") : null;
+    const moduleSectionDesc = document.getElementById("moduleSectionDesc");
+    const moduleSummaryHeader = moduleCardTitle ? moduleCardTitle.closest(".panel-card__header") : null;
     if (moduleSummary) moduleSummary.scrollTop = 0;
     if (moduleGuide) moduleGuide.scrollTop = 0;
+    if (moduleSummaryHeader) moduleSummaryHeader.style.display = "";
     var fwEl = document.getElementById("moduleFullWidth");
     if (fwEl) { fwEl.style.display = "none"; fwEl.innerHTML = ""; }
     var splitCards = document.querySelectorAll(".split-grid > .panel-card");
@@ -5833,6 +5839,7 @@ document.addEventListener("DOMContentLoaded", function () {
     moduleSectionLabel.textContent = "General Settings";
     moduleTitle.textContent = title;
     moduleCardTitle.textContent = title;
+    if (moduleSectionDesc) moduleSectionDesc.textContent = "";
 
     if (moduleGuideHeader) {
       moduleGuideHeader.style.display = "none";
@@ -5867,85 +5874,274 @@ document.addEventListener("DOMContentLoaded", function () {
       viewModule.classList.toggle("module--sms-services", route === "sms-services");
       viewModule.classList.toggle("module--whatsapp", route === "whatsapp");
       viewModule.classList.toggle("module--homework", route === "homework");
+      viewModule.classList.toggle("module--institute-profile", route === "institute-profile");
     }
 
     const settings = ensureGeneralSettings();
 
+    // ============================================================
+    // GENERAL SETTINGS — INSTITUTE PROFILE
+    // ============================================================
     if (route === "institute-profile") {
+      // ------------------------------------------------------------
+      // STATE / DATA
+      // ------------------------------------------------------------
       const profile = settings.instituteProfile;
+      if (moduleSectionDesc) moduleSectionDesc.textContent = "Manage your school's identity, contact information and official profile.";
+
+      // Single full-width workspace (form + live preview); hide the
+      // duplicate panel header and the unused guide panel.
+      var _ipPanel = moduleSummary.closest(".panel-card");
+      if (moduleSummaryHeader) moduleSummaryHeader.style.display = "none";
+      if (moduleGuideCard) moduleGuideCard.style.display = "none";
+      if (_ipPanel) _ipPanel.style.gridColumn = "1 / -1";
+
+      // ============================================================
+      // INSTITUTE PROFILE — SCHOOL IDENTITY
+      // ============================================================
+      const ipIdentityMarkup = `
+        <section class="ip-section">
+          <div class="ip-section__header">
+            <span class="ip-section__icon ip-section__icon--identity">&#127970;</span>
+            <div>
+              <p class="ip-section__title">School Identity</p>
+              <p class="ip-section__subtitle">Logo, institute name and slogan</p>
+            </div>
+          </div>
+          <div class="ip-section__body">
+            <div class="ip-logo-area">
+              <div class="ip-logo-preview" id="ipLogoBox">${profile.logo ? `<img src="${profile.logo}" alt="Institute logo">` : `<span class="ip-logo-placeholder">${escapeHtml(getInitials(profile.name || "S") || "S")}</span>`}</div>
+              <div class="ip-logo-actions">
+                <button class="ip-btn ip-btn--primary ip-btn--sm" id="ipLogoBtn" type="button">Upload / Replace Logo</button>
+                <p class="ip-logo-hint">PNG / JPG / WEBP &middot; up to 5 MB</p>
+              </div>
+              <input type="file" id="instituteLogoInput" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+            </div>
+            <div class="ip-field">
+              <label class="ip-field__label" for="instituteNameInput">Institute Name <span class="ip-required">*</span></label>
+              <input class="ip-field__input" id="instituteNameInput" type="text" value="${escapeAttr(profile.name)}" placeholder="e.g. SagarSoft Public School">
+            </div>
+            <div class="ip-field">
+              <label class="ip-field__label" for="instituteSloganInput">Slogan <span class="ip-required">*</span></label>
+              <input class="ip-field__input" id="instituteSloganInput" type="text" value="${escapeAttr(profile.slogan)}" placeholder="e.g. Learning Today, Leading Tomorrow">
+            </div>
+          </div>
+        </section>`;
+
+      // ============================================================
+      // INSTITUTE PROFILE — CONTACT INFORMATION
+      // ============================================================
+      const ipContactMarkup = `
+        <section class="ip-section">
+          <div class="ip-section__header">
+            <span class="ip-section__icon ip-section__icon--contact">&#128222;</span>
+            <div>
+              <p class="ip-section__title">Contact Information</p>
+              <p class="ip-section__subtitle">Reachable phone number</p>
+            </div>
+          </div>
+          <div class="ip-section__body">
+            <div class="ip-field">
+              <label class="ip-field__label" for="institutePhoneInput">Phone Number <span class="ip-required">*</span></label>
+              <input class="ip-field__input" id="institutePhoneInput" type="text" inputmode="tel" value="${escapeAttr(profile.phone)}" placeholder="e.g. +92 300 1234567">
+            </div>
+          </div>
+        </section>`;
+
+      // ============================================================
+      // INSTITUTE PROFILE — REGISTRATION INFORMATION
+      // ============================================================
+      const ipRegistrationMarkup = `
+        <section class="ip-section">
+          <div class="ip-section__header">
+            <span class="ip-section__icon ip-section__icon--info">&#128203;</span>
+            <div>
+              <p class="ip-section__title">Registration Information</p>
+              <p class="ip-section__subtitle">Official registration number</p>
+            </div>
+          </div>
+          <div class="ip-section__body">
+            <div class="ip-field">
+              <label class="ip-field__label" for="institutePsraInput">PSRA</label>
+              <input class="ip-field__input" id="institutePsraInput" type="text" value="${escapeAttr(profile.psra)}" placeholder="Registration number">
+            </div>
+          </div>
+        </section>`;
+
+      // ============================================================
+      // INSTITUTE PROFILE — ADDRESS INFORMATION
+      // ============================================================
+      const ipAddressMarkup = `
+        <section class="ip-section">
+          <div class="ip-section__header">
+            <span class="ip-section__icon ip-section__icon--location">&#128205;</span>
+            <div>
+              <p class="ip-section__title">Address</p>
+              <p class="ip-section__subtitle">Location and country</p>
+            </div>
+          </div>
+          <div class="ip-section__body">
+            <div class="ip-field-row ip-field-row--location">
+              <div class="ip-field">
+                <label class="ip-field__label" for="instituteAddressInput">Address <span class="ip-required">*</span></label>
+                <input class="ip-field__input" id="instituteAddressInput" type="text" value="${escapeAttr(profile.address)}" placeholder="Street, area, city">
+              </div>
+              <div class="ip-field ip-field--country">
+                <label class="ip-field__label" for="instituteCountryInput">Country <span class="ip-required">*</span></label>
+                <input class="ip-field__input" id="instituteCountryInput" type="text" value="${escapeAttr(profile.country)}" placeholder="Pakistan">
+              </div>
+            </div>
+          </div>
+        </section>`;
+
+      // ============================================================
+      // INSTITUTE PROFILE — SAVE / UPDATE ACTIONS
+      // ============================================================
+      const ipSaveMarkup = `
+        <div class="ip-save-bar">
+          <div class="ip-save-bar__left" id="ipDirtyState" hidden>
+            <span class="ip-unsaved-dot"></span>
+            <span class="ip-unsaved-text">Unsaved changes</span>
+          </div>
+          <button class="ip-btn ip-btn--primary ip-btn--save" id="saveInstituteProfileBtn" type="button">Update Profile</button>
+        </div>`;
+
+      // ============================================================
+      // INSTITUTE PROFILE — RENDERING (FORM + LIVE PREVIEW)
+      // ============================================================
       moduleSummary.innerHTML = `
-        <article class="gs-form-section">
-          <div class="gs-form-section__header">
-            <div class="gs-form-section__icon" style="background:linear-gradient(135deg,#1b5f7a,#2fb08a);color:#fff;">??</div>
-            <div><p class="gs-form-section__title">Institute Profile</p><p class="gs-form-section__subtitle">Update school information</p></div>
+        <div class="ip-layout">
+          <div class="ip-layout__form">
+            ${ipIdentityMarkup}
+            ${ipContactMarkup}
+            ${ipRegistrationMarkup}
+            ${ipAddressMarkup}
+            ${ipSaveMarkup}
           </div>
-          <div class="gs-form-grid">
-            <div class="gs-field gs-field--full"><label class="gs-field__label">Institute Logo*</label><input class="gs-field__input" id="instituteLogoInput" type="file" accept="image/*" style="padding:0.5rem;"></div>
-            <div class="gs-field"><label class="gs-field__label">Name of Institute*</label><input class="gs-field__input" id="instituteNameInput" type="text" value="${escapeAttr(profile.name)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Slogan*</label><input class="gs-field__input" id="instituteSloganInput" type="text" value="${escapeAttr(profile.slogan)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Phone Number*</label><input class="gs-field__input" id="institutePhoneInput" type="text" inputmode="numeric" value="${escapeAttr(profile.phone)}"></div>
-            <div class="gs-field"><label class="gs-field__label">PSRA</label><input class="gs-field__input" id="institutePsraInput" type="text" value="${escapeAttr(profile.psra)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Address*</label><input class="gs-field__input" id="instituteAddressInput" type="text" value="${escapeAttr(profile.address)}"></div>
-            <div class="gs-field"><label class="gs-field__label">Country*</label><input class="gs-field__input" id="instituteCountryInput" type="text" value="${escapeAttr(profile.country)}"></div>
+          <div class="ip-layout__preview">
+            <div class="ip-preview-card">
+              <div class="ip-preview-card__header">
+                <p class="ip-preview-card__title">Live Preview</p>
+                <p class="ip-preview-card__subtitle">Updates as you type</p>
+              </div>
+              <div class="ip-preview-card__body">
+                <div id="instituteProfilePreview"></div>
+              </div>
+            </div>
           </div>
-          <div class="gs-button-row"><button class="gs-btn-primary" id="saveInstituteProfileBtn" type="button">Update Profile</button></div>
-          <div class="gs-message" id="instituteProfileMessage"><span class="gs-message__icon"></span><span class="gs-message__text"></span></div>
-        </article>
+        </div>
       `;
+      moduleGuide.innerHTML = "";
 
-      moduleGuide.innerHTML = `
-        <article>
-          <strong>Preview</strong>
-          <div id="instituteProfilePreview" class="module-preview-card"></div>
-        </article>
-      `;
-
+      // ------------------------------------------------------------
+      // HELPER FUNCTIONS
+      // ------------------------------------------------------------
       const logoInput = document.getElementById("instituteLogoInput");
+      const logoBox = document.getElementById("ipLogoBox");
       const nameInput = document.getElementById("instituteNameInput");
       const sloganInput = document.getElementById("instituteSloganInput");
       const phoneInput = document.getElementById("institutePhoneInput");
       const psraInput = document.getElementById("institutePsraInput");
       const addressInput = document.getElementById("instituteAddressInput");
       const countryInput = document.getElementById("instituteCountryInput");
-      const message = document.getElementById("instituteProfileMessage");
       const preview = document.getElementById("instituteProfilePreview");
+      const dirtyState = document.getElementById("ipDirtyState");
+      const saveBtn = document.getElementById("saveInstituteProfileBtn");
       let logoData = profile.logo || "";
+      let ipDirty = false;
 
+      function _ipToast(text, kind) {
+        const toast = document.createElement("div");
+        toast.className = "ip-toast ip-toast--" + (kind || "success");
+        toast.textContent = text;
+        document.body.appendChild(toast);
+        requestAnimationFrame(function () { toast.classList.add("ip-toast--visible"); });
+        setTimeout(function () {
+          toast.classList.remove("ip-toast--visible");
+          setTimeout(function () { toast.remove(); }, 350);
+        }, 2600);
+      }
+
+      function _ipMarkDirty() {
+        if (ipDirty) return;
+        ipDirty = true;
+        if (dirtyState) dirtyState.hidden = false;
+      }
+
+      function _ipSetLogo(data) {
+        if (!logoBox) return;
+        logoBox.innerHTML = data
+          ? `<img src="${data}" alt="Institute logo">`
+          : `<span class="ip-logo-placeholder">${escapeHtml(getInitials(nameInput.value || "S") || "S")}</span>`;
+      }
+
+      // Live preview renderer — single source of truth for the profile card.
       function renderProfilePreview() {
+        const nameValue = nameInput.value.trim();
         preview.innerHTML = `
-          <div class="module-preview-head">
-            ${logoData ? `<img src="${logoData}" alt="Institute logo" class="module-preview-logo">` : `<span class="module-preview-logo-placeholder">SS</span>`}
-            <div>
-              <h4>${escapeHtml(nameInput.value || "-")}</h4>
-              <p>${escapeHtml(sloganInput.value || "-")}</p>
+          <div class="ip-preview-card__inner">
+            <div class="ip-preview-doc">
+              <div class="ip-preview-doc__logo">
+                ${logoData ? `<img src="${logoData}" alt="Institute logo">` : `<span class="ip-logo-placeholder" style="width:48px;height:48px;border-radius:10px;">${escapeHtml(getInitials(nameValue || "S") || "S")}</span>`}
+              </div>
+              <h4 class="ip-preview-doc__name${nameValue ? "" : " ip-preview-doc__name--empty"}">${escapeHtml(nameValue || "Institute Name")}</h4>
+              <p class="ip-preview-doc__slogan">${escapeHtml(sloganInput.value.trim() || "Slogan")}</p>
+            </div>
+            <div class="ip-preview-info">
+              <div class="ip-preview-info__divider"></div>
+              <div class="ip-preview-info__row"><span class="ip-preview-info__label">Phone</span><span class="ip-preview-info__value">${escapeHtml(phoneInput.value.trim() || "-")}</span></div>
+              <div class="ip-preview-info__row"><span class="ip-preview-info__label">PSRA</span><span class="ip-preview-info__value">${escapeHtml(psraInput.value.trim() || "-")}</span></div>
+              <div class="ip-preview-info__row"><span class="ip-preview-info__label">Address</span><span class="ip-preview-info__value">${escapeHtml(addressInput.value.trim() || "-")}</span></div>
+              <div class="ip-preview-info__row"><span class="ip-preview-info__label">Country</span><span class="ip-preview-info__value">${escapeHtml(countryInput.value.trim() || "-")}</span></div>
+            </div>
+            <div class="ip-preview-footer">
+              <p class="ip-preview-footer__text">Official Institute Profile</p>
             </div>
           </div>
-          <p><strong>Phone:</strong> ${escapeHtml(phoneInput.value || "-")}</p>
-          <p><strong>PSRA:</strong> ${escapeHtml(psraInput.value || "-")}</p>
-          <p><strong>Address:</strong> ${escapeHtml(addressInput.value || "-")}</p>
-          <p><strong>Country:</strong> ${escapeHtml(countryInput.value || "-")}</p>
         `;
       }
 
+      // ------------------------------------------------------------
+      // EVENT HANDLERS
+      // ------------------------------------------------------------
       [nameInput, sloganInput, phoneInput, psraInput, addressInput, countryInput].forEach(function (input) {
-        input.addEventListener("input", renderProfilePreview);
+        input.addEventListener("input", function () {
+          _ipMarkDirty();
+          renderProfilePreview();
+        });
       });
 
+      if (logoBox) logoBox.addEventListener("click", function () { logoInput.click(); });
+      const logoBtn = document.getElementById("ipLogoBtn");
+      if (logoBtn) logoBtn.addEventListener("click", function () { logoInput.click(); });
       logoInput.addEventListener("change", function () {
         const file = logoInput.files && logoInput.files[0];
-        if (!file) {
+        if (!file) return; // cancelled — keep existing logo
+        if (!/^image\/(png|jpe?g|webp|gif)$/i.test(file.type)) {
+          _ipToast("Please choose a PNG, JPG, WEBP or GIF image.", "error");
+          logoInput.value = "";
+          return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          _ipToast("Logo is too large. Maximum size is 5 MB.", "error");
+          logoInput.value = "";
           return;
         }
         const reader = new FileReader();
         reader.onload = function () {
           logoData = reader.result;
+          _ipSetLogo(logoData);
+          _ipMarkDirty();
           renderProfilePreview();
         };
         reader.readAsDataURL(file);
       });
 
-      var _el = document.getElementById("saveInstituteProfileBtn"); if (_el) _el.addEventListener("click", async function () {
-        var newProfile = {
+      // ------------------------------------------------------------
+      // SAVE / DATABASE OPERATIONS
+      // ------------------------------------------------------------
+      if (saveBtn) saveBtn.addEventListener("click", async function () {
+        const newProfile = {
           logo: logoData,
           name: nameInput.value.trim(),
           slogan: sloganInput.value.trim(),
@@ -5958,37 +6154,46 @@ document.addEventListener("DOMContentLoaded", function () {
         database.school.name = newProfile.name;
         database.school.phone = newProfile.phone;
         database.school.address = newProfile.address;
-        var license = ensureLicenseSettings();
+        const license = ensureLicenseSettings();
         license.schoolName = newProfile.name || database.school.name || license.schoolName;
-        var _saved = await saveDatabase("Saving institute profile...", [
+
+        const originalLabel = saveBtn.innerHTML;
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="ip-spinner"></span> Saving...';
+        const saved = await saveDatabase("Saving institute profile...", [
           { table: "school_settings", record: { id: "instituteProfile", source_id: "instituteProfile", data: settings.instituteProfile, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" },
           { table: "school_settings", record: { id: "accountSettings", source_id: "accountSettings", data: settings.accountSettings, school_id: database.schoolId || window.SagarSoftDB.getSchoolId() }, operation: "update" }
         ]);
-        await window.SagarSoftDB.saveProfileToServer({ school_name: newProfile.name, instituteProfile: newProfile }).catch(function(){});
+        await window.SagarSoftDB.saveProfileToServer({ school_name: newProfile.name, instituteProfile: newProfile }).catch(function() {});
         try { window.SagarSoftDB.saveDatabase(database); } catch (_e) {}
-        var _pn = document.getElementById("profileName");
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = originalLabel;
+
+        const _pn = document.getElementById("profileName");
         if (_pn) _pn.textContent = newProfile.name || "Admin";
-        var _pa = document.getElementById("profileAvatar");
+        const _pa = document.getElementById("profileAvatar");
         if (_pa) _pa.textContent = getInitials(newProfile.name || "Admin");
         updateTopProfileIdentity();
         renderProfileDropdownMenu();
-        if (typeof logoData !== "undefined") {
-          var _logoEl = document.getElementById("instituteLogoPreview");
-          if (_logoEl && logoData) { _logoEl.src = logoData; _logoEl.style.display = "block"; }
-        }
-        if (_saved) {
-          message.textContent = "Institute profile updated successfully.";
-          message.className = "form-message success";
+
+        if (saved) {
+          ipDirty = false;
+          if (dirtyState) dirtyState.hidden = true;
+          _ipToast("Profile updated successfully", "success");
         } else {
-          message.textContent = "Save failed. Please check your connection and try again.";
-          message.className = "form-message error";
+          _ipToast("Save failed. Please check your connection and try again.", "error");
         }
       });
 
+      // ------------------------------------------------------------
+      // INITIAL RENDER
+      // ------------------------------------------------------------
       renderProfilePreview();
       return;
     }
-
+    // ============================================================
+    // GENERAL SETTINGS — FEES PARTICULARS
+    // ============================================================
     if (route === "fees-particulars") {
       const optionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -6056,6 +6261,9 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // ============================================================
+    // GENERAL SETTINGS — FEES STRUCTURE
+    // ============================================================
     if (route === "fees-structure") {
       const optionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -6238,6 +6446,9 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // ============================================================
+    // GENERAL SETTINGS — DISCOUNT TYPE
+    // ============================================================
     if (route === "discount-type") {
       const classOptionsMarkup = ['<option value="">Select Class</option>'].concat(classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -6648,6 +6859,9 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // ============================================================
+    // GENERAL SETTINGS — ACCOUNTS FOR FEES INVOICE
+    // ============================================================
     if (route === "accounts-for-fees-invoice") {
       (async function loadBankAccountsFromSupabase() {
         try {
@@ -6806,6 +7020,9 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // ============================================================
+    // GENERAL SETTINGS — MARKS GRADING
+    // ============================================================
     if (route === "marks-grading") {
       const grades = settings.marksGrading.length ? settings.marksGrading : [{ required: true, grade: "A", from: 80, upto: 100, status: "Pass" }];
       const fail = settings.failCriteria;
@@ -6956,6 +7173,9 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // ============================================================
+    // GENERAL SETTINGS — THEME & LANGUAGE
+    // ============================================================
     if (route === "theme-language") {
       const theme = settings.themeLanguage;
       const allLanguages = ["English", "Urdu", "Hindi", "Arabic"];
@@ -7013,6 +7233,9 @@ document.addEventListener("DOMContentLoaded", function () {
       return;
     }
 
+    // ============================================================
+    // FEES — GENERATE FEES INVOICE
+    // ============================================================
     if (route === "generate-fees-invoice") {
       const currentFeeMonth = getCurrentMonthInputValue();
       const feeMonthOptionsMarkup = buildFeeMonthOptionList();
@@ -7772,6 +7995,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // FEES — COLLECT FEES
+    // ============================================================
     if (route === "collect-fees") {
       moduleSummary.innerHTML = `
         <article>
@@ -8238,6 +8464,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // FEES — FEES DEFAULTERS
+    // ============================================================
     if (route === "fees-defaulters") {
       const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
       const currentYear = new Date().getFullYear();
@@ -8561,6 +8790,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // FEES — FEES REPORT
+    // ============================================================
     if (route === "fees-report") {
       // Auto-clean fee records whose student has been removed.
       const studentIdSet = new Set((database.students || []).map(function (student) {
@@ -8803,6 +9035,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // FEES — DELETE FEES
+    // ============================================================
     if (route === "delete-fees") {
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -9038,6 +9273,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // SALARY — PAY SALARY / SALARY PAID SLIP
+    // ============================================================
     if (route === "pay-salary" || route === "salary-paid-slip") {
       const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
       const currencySymbol = (settings.accountSettings && settings.accountSettings.symbol) ? settings.accountSettings.symbol : "Rs";
@@ -9416,6 +9654,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // SALARY — SALARY SHEET
+    // ============================================================
     if (route === "salary-sheet") {
       const monthOptions = Array.from(new Set((settings.salaryPayments || []).map(function (item) {
         return item.salaryMonth;
@@ -9586,6 +9827,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // SALARY — SALARY REPORT
+    // ============================================================
     if (route === "salary-report") {
       const roleValues = Array.from(new Set(
         getEmployees().map(function (employee) {
@@ -9894,6 +10138,9 @@ ${allContent}
       return `${hour12}:${minuteValue} ${suffix}`;
     }
 
+    // ============================================================
+    // TIMETABLE — WEEKDAYS
+    // ============================================================
     if (route === "weekdays") {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
@@ -10024,6 +10271,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // TIMETABLE — TIME PERIODS
+    // ============================================================
     if (route === "time-periods") {
       moduleSummary.innerHTML = `
         <article class="gs-form-section">
@@ -10159,6 +10409,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // TIMETABLE — CLASS ROOMS
+    // ============================================================
     if (route === "class-rooms") {
       function getRoomClassOptions() {
         return database.classes.map(function (c) { return c.name; });
@@ -10295,6 +10548,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // TIMETABLE — CREATE TIMETABLE
+    // ============================================================
     if (route === "create-timetable") {
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -10427,6 +10683,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // TIMETABLE — GENERATE FOR CLASS
+    // ============================================================
     if (route === "generate-for-class") {
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -10535,6 +10794,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // TIMETABLE — GENERATE FOR TEACHER
+    // ============================================================
     if (route === "generate-for-teacher") {
       const profile = (database.generalSettings && database.generalSettings.instituteProfile) || {};
       const teachers = getEmployees().filter(function (employee) {
@@ -10745,6 +11007,9 @@ ${allContent}
       };
     }
 
+    // ============================================================
+    // EXAMS — CREATE NEW EXAM
+    // ============================================================
     if (route === "create-new-exam") {
       moduleSummary.innerHTML = `
         <article style="max-width:100%;overflow-x:hidden;">
@@ -10882,6 +11147,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EXAMS — ADD / UPDATE EXAM MARKS
+    // ============================================================
     if (route === "add-update-exam-marks") {
       const examOptionsMarkup = getExams().map(function (examItem) {
         return `<option value="${examItem.id}">${escapeHtml(examItem.name)}</option>`;
@@ -10995,6 +11263,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EXAMS — RESULT CARD
+    // ============================================================
     if (route === "result-card") {
       const examOptionsMarkup = getExams().map(function (examItem) {
         return `<option value="${examItem.id}">${escapeHtml(examItem.name)}</option>`;
@@ -11678,6 +11949,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EXAMS — RESULT SHEET
+    // ============================================================
     if (route === "result-sheet") {
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -11762,6 +12036,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EXAMS — EXAM SCHEDULE
+    // ============================================================
     if (route === "exam-schedule") {
       const examOptionsMarkup = getExams().map(function (examItem) {
         return `<option value="${examItem.id}">${escapeHtml(examItem.name)}</option>`;
@@ -11865,6 +12142,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EXAMS — DATE SHEET
+    // ============================================================
     if (route === "date-sheet") {
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -11945,6 +12225,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EXAMS — BLANK AWARD LIST
+    // ============================================================
     if (route === "blank-award-list") {
       const examOptionsMarkup = getExams().map(function (examItem) {
         return `<option value="${examItem.id}">${escapeHtml(examItem.name)}</option>`;
@@ -12042,6 +12325,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // ATTENDANCE — STUDENTS ATTENDANCE
+    // ============================================================
     if (route === "students-attendance") {
       const classOptionsMarkup = classOptions.map(function (className) {
         return `<option value="${escapeAttr(className)}">${escapeHtml(className)}</option>`;
@@ -12245,6 +12531,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // ATTENDANCE — EMPLOYEES ATTENDANCE
+    // ============================================================
     if (route === "employees-attendance") {
       moduleSummary.innerHTML = `
         <article style="overflow-x:hidden;">
@@ -12477,6 +12766,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // ATTENDANCE — CLASS WISE REPORT
+    // ============================================================
     if (route === "class-wise-report") {
       moduleSummary.innerHTML = `
         <article style="max-width:100%;overflow-x:hidden;">
@@ -12536,6 +12828,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // ATTENDANCE — STUDENTS ATTENDANCE REPORT
+    // ============================================================
     if (route === "students-attendance-report") {
       moduleSummary.innerHTML = `
         <article style="overflow-x:hidden;">
@@ -12669,6 +12964,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // ATTENDANCE — EMPLOYEES ATTENDANCE REPORT
+    // ============================================================
     if (route === "employees-attendance-report") {
       moduleSummary.innerHTML = `
         <article style="overflow-x:hidden;">
@@ -12801,6 +13099,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EMPLOYEES — ALL EMPLOYEES
+    // ============================================================
     if (route === "all-employees") {
       moduleSummary.innerHTML = `
         <article>
@@ -12931,6 +13232,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EMPLOYEES — ADD NEW EMPLOYEE
+    // ============================================================
     if (route === "employees-add-new") {
       const editEmployeeId = sessionStorage.getItem("sagarsoft_edit_employee_id");
       const editingEmployee = editEmployeeId ? getEmployeeById(editEmployeeId) : null;
@@ -13197,6 +13501,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EMPLOYEES — STAFF ID CARDS
+    // ============================================================
     if (route === "staff-id-cards") {
       moduleSummary.innerHTML = `
         <article>
@@ -13604,6 +13911,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EMPLOYEES — JOB LETTER
+    // ============================================================
     if (route === "job-letter") {
       let selectedJobLetterEmployeeId = null;
 
@@ -13858,6 +14168,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // EMPLOYEES — EMPLOYEES MANAGE LOGIN
+    // ============================================================
     if (route === "employees-manage-login") {
       moduleSummary.innerHTML = `
         <article style="max-width:100%;overflow-x:hidden;">
@@ -14375,6 +14688,9 @@ ${allContent}
       return { rows: rows, income: summary.revenue, expense: summary.totalExpenses, net: summary.profit };
     }
 
+    // ============================================================
+    // REPORTS — STUDENTS REPORT CARD
+    // ============================================================
     if (route === "students-report-card") {
       const examOptionsMarkup = getExams().map(function (exam) {
         return `<option value="${exam.id}">${escapeHtml(exam.name)}</option>`;
@@ -14508,6 +14824,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // REPORTS — STUDENT PROGRESS REPORT
+    // ============================================================
     if (route === "student-progress-report") {
       var _progressStudentId = "";
 
@@ -14724,6 +15043,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // REPORTS — STUDENTS INFO REPORT / PARENTS INFO REPORT
+    // ============================================================
     if (route === "students-info-report" || route === "parents-info-report") {
       const classOptionsMarkup = classOptions.map(function (name) {
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
@@ -14819,6 +15141,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // REPORTS — STUDENTS MONTHLY ATTENDANCE REPORT / STAFF MONTHLY ATTENDANCE REPORT
+    // ============================================================
     if (route === "students-monthly-attendance-report" || route === "staff-monthly-attendance-report") {
       const classOptionsMarkup = classOptions.map(function (name) {
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
@@ -14965,6 +15290,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // REPORTS — FEE COLLECTION REPORT / ACCOUNTS REPORT
+    // ============================================================
     if (route === "fee-collection-report" || route === "accounts-report") {
       if (route === "fee-collection-report") {
         const classOptionsMarkup = classOptions.map(function (name) {
@@ -15228,6 +15556,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // REPORTS — CUSTOMISED REPORTS
+    // ============================================================
     if (route === "customised-reports") {
       const classOptionsMarkup = classOptions.map(function (name) {
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
@@ -15349,6 +15680,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // ACCOUNTS — CHART OF ACCOUNT / ADD INCOME / ADD EXPENSE / ACCOUNT STATEMENT
+    // ============================================================
     if (route === "chart-of-account" || route === "add-income" || route === "add-expense" || route === "account-statement") {
       if (purgeUntouchedLegacyFinanceData(settings)) {
         saveDatabase("", [{ table: "school_settings", record: { id: "accountsLedger", source_id: "accountsLedger", data: settings.accountsLedger, school_id: window.SagarSoftDB.getSchoolId() }, operation: "update" }]);
@@ -15726,6 +16060,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // QUESTION BANK — SUBJECT CHAPTERS / QUESTION BANK / CREATE QUESTION PAPER
+    // ============================================================
     if (route === "subject-chapters" || route === "question-bank" || route === "create-question-paper") {
       const qpClassOptionsMarkup = classOptions.map(function (name) {
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
@@ -17441,6 +17778,9 @@ ${allContent}
     }
 
 
+    // ============================================================
+    // QUESTION BANK — MANAGE TEST MARKS / TEST RESULT
+    // ============================================================
     if (route === "manage-test-marks" || route === "test-result") {
       const classOptionsMarkup = classOptions.map(function (name) {
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
@@ -17827,6 +18167,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // CERTIFICATES — GENERATE CERTIFICATE / CERTIFICATE TEMPLATES
+    // ============================================================
     if (route === "generate-certificate" || route === "certificate-templates") {
       const classOptionsMarkup = classOptions.map(function (name) {
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
@@ -18103,6 +18446,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // MESSAGING — SMS/WHATSAPP TEMPLATES
+    // ============================================================
     if (route === "sms-templates") {
       moduleSectionLabel.textContent = "Sms/Whatsapp Templates";
       moduleGuide.innerHTML = "";
@@ -18164,6 +18510,9 @@ ${allContent}
       }
       return;
     }
+    // ============================================================
+    // MESSAGING — NOTICE BOARD
+    // ============================================================
     if (route === "notice-board") {
       moduleSectionLabel.textContent = "Communication Module";
       var cache = window.SagarSoftCache;
@@ -18428,6 +18777,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // MESSAGING — EVENT CALENDAR
+    // ============================================================
     if (route === "event-calendar") {
       moduleSectionLabel.textContent = "Communication Module";
       var cache = window.SagarSoftCache;
@@ -18660,6 +19012,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // MESSAGING — HOMEWORK
+    // ============================================================
     if (route === "homework") {
       refreshDatabase();
       const classOptionsMarkup = classOptions.map(function (name) {
@@ -19447,6 +19802,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // MESSAGING — WHATSAPP
+    // ============================================================
     if (route === "whatsapp") {
       const classOptionsMarkup = classOptions.map(function (name) {
         return `<option value="${escapeAttr(name)}">${escapeHtml(name)}</option>`;
@@ -19458,13 +19816,6 @@ ${allContent}
         const status = String(employee.status || "active").toLowerCase();
         return status === "active" || status === "";
       });
-      const studentSuggestions = activeStudents.map(function (student) {
-        return `<option value="${escapeAttr(student.name || "")} (${escapeAttr(student.admissionNo || "-")})"></option>`;
-      }).join("");
-      const employeeSuggestions = activeEmployees.map(function (employee) {
-        return `<option value="${escapeAttr(employee.name || "")} (${escapeAttr(employee.role || "Employee")})"></option>`;
-      }).join("");
-
       moduleSectionLabel.textContent = "WhatsApp Module";
       moduleSummary.innerHTML = `
         <article class="whatsapp-form-card">
@@ -19858,6 +20209,9 @@ ${allContent}
       return;
     }
 
+    // ============================================================
+    // MESSAGING — SMS SERVICES
+    // ============================================================
     if (route === "sms-services") {
       const smsGateway = settings.smsGateway || {
         provider: "supabase-queue",

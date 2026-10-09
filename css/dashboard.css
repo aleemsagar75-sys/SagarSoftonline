@@ -956,6 +956,17 @@ body {
   color: var(--text-color, #102A43);
 }
 
+.section-desc {
+  margin: 0.35rem 0 0;
+  font-size: 0.86rem;
+  color: var(--text-muted, #5b6777);
+  max-width: 72ch;
+}
+
+.section-desc:empty {
+  display: none;
+}
+
 .activity-list,
 .insight-list,
 .mini-list,
@@ -15651,15 +15662,20 @@ button.ss-btn-loading {
   padding:1rem 1.2rem;
 }
 .view.module--institute-profile{
+  max-height:100%;
+  min-height:0;
   overflow-y:auto;
+  overflow-x:hidden;
   scrollbar-width:thin;
-  scrollbar-color:#cbd5e0 transparent;
+  scrollbar-color:rgba(255,255,255,0.4) rgba(255,255,255,0.1);
+  align-content:start;
+  gap:1.25rem;
 }
 
 /* Desktop: 65-68% form / 32-35% preview */
 .ip-layout{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(300px,0.9fr);gap:16px;align-items:start;}
 .ip-layout__form{display:flex;flex-direction:column;gap:10px;min-width:0;}
-.ip-layout__preview{z-index:1;align-self:start;}
+.ip-layout__preview{position:sticky;top:12px;z-index:1;align-self:start;max-height:calc(100vh - 120px);overflow:auto;}
 
 /* Sections */
 .ip-section{background:#fff;border:1px solid #e8ecf1;border-radius:10px;overflow:hidden;}
@@ -15706,6 +15722,7 @@ button.ss-btn-loading {
 /* Save bar */
 .ip-save-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 0 0;border-top:1px solid #f0f3f6;margin-top:2px;}
 .ip-save-bar__left{display:flex;align-items:center;gap:6px;}
+.ip-save-bar__left[hidden]{display:none!important;}
 .ip-unsaved-dot{width:7px;height:7px;border-radius:50%;background:#e53e3e;animation:ipPulse 1.5s infinite;}
 .ip-unsaved-text{font-size:0.72rem;color:#e53e3e;font-weight:500;}
 @keyframes ipPulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
@@ -15757,6 +15774,7 @@ button.ss-btn-loading {
 @media(max-width:1024px){
   .ip-layout{grid-template-columns:1fr;}
   .ip-layout__preview{position:static;max-height:none;overflow:visible;}
+  .view.module--institute-profile{max-height:none;overflow:visible;}
 }
 @media(max-width:768px){
   .view.module--institute-profile .panel-card:first-child{padding:0.8rem;border-radius:14px;}
